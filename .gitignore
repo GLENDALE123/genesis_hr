@@ -39,3 +39,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# firebase
+.firebase-debug.log
+.firebase-debug.*.log
+firebase-debug.log
+firebase-debug.*.log
+firebase-debug.log*
+ui-debug.log
+# .firebase/ 폴더는 설정 파일이므로 버전 관리에 포함
