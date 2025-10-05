@@ -39,19 +39,41 @@ if (typeof window !== 'undefined' && useEmulator) {
     // Auth 에뮬레이터 연결
     if (auth && !auth.config.emulator) {
       connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
+      console.log('✅ Auth 에뮬레이터 연결 완료');
     }
     
     // Firestore 에뮬레이터 연결
-    if (db && !db._delegate._databaseId.database.includes('localhost')) {
-      connectFirestoreEmulator(db, 'localhost', 8080);
+    if (db) {
+      try {
+        // 에뮬레이터 연결 상태 확인을 더 안전하게 처리
+        const isAlreadyConnected = (db as any)._delegate?._databaseId?.database?.includes('localhost');
+        if (!isAlreadyConnected) {
+          connectFirestoreEmulator(db, 'localhost', 8080);
+          console.log('✅ Firestore 에뮬레이터 연결 완료');
+        } else {
+          console.log('✅ Firestore 에뮬레이터 이미 연결됨');
+        }
+      } catch (firestoreError) {
+        console.warn('Firestore 에뮬레이터 연결 실패:', firestoreError);
+      }
     }
     
     // Storage 에뮬레이터 연결
-    if (storage && !storage._host.includes('localhost')) {
-      connectStorageEmulator(storage, 'localhost', 9199);
+    if (storage) {
+      try {
+        const isAlreadyConnected = (storage as any)._host?.includes('localhost');
+        if (!isAlreadyConnected) {
+          connectStorageEmulator(storage, 'localhost', 9199);
+          console.log('✅ Storage 에뮬레이터 연결 완료');
+        } else {
+          console.log('✅ Storage 에뮬레이터 이미 연결됨');
+        }
+      } catch (storageError) {
+        console.warn('Storage 에뮬레이터 연결 실패:', storageError);
+      }
     }
     
-    console.log('🔥 Firebase 에뮬레이터에 연결되었습니다.');
+    console.log('🔥 Firebase 에뮬레이터 설정 완료');
   } catch (error) {
     console.warn('Firebase 에뮬레이터 연결 실패:', error);
   }

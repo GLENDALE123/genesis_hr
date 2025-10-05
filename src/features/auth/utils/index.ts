@@ -19,37 +19,6 @@ export const validateEmail = (email: string): ValidationResult => {
   return { isValid: true };
 };
 
-// 로그인 아이디 검증
-export const validateLoginId = (loginId: string): ValidationResult => {
-  if (!loginId.trim()) {
-    return { isValid: false, error: AUTH_ERROR_MESSAGES.LOGIN_ID_REQUIRED };
-  }
-  
-  const trimmedLoginId = loginId.trim();
-  
-  if (trimmedLoginId.length < AUTH_VALIDATION_RULES.LOGIN_ID.MIN_LENGTH) {
-    return { 
-      isValid: false, 
-      error: `로그인 아이디는 최소 ${AUTH_VALIDATION_RULES.LOGIN_ID.MIN_LENGTH}자 이상이어야 합니다.` 
-    };
-  }
-  
-  if (trimmedLoginId.length > AUTH_VALIDATION_RULES.LOGIN_ID.MAX_LENGTH) {
-    return { 
-      isValid: false, 
-      error: `로그인 아이디는 최대 ${AUTH_VALIDATION_RULES.LOGIN_ID.MAX_LENGTH}자까지 가능합니다.` 
-    };
-  }
-  
-  if (!AUTH_VALIDATION_RULES.LOGIN_ID.PATTERN.test(trimmedLoginId)) {
-    return { 
-      isValid: false, 
-      error: '로그인 아이디는 영문, 숫자, 언더스코어(_)만 사용할 수 있습니다.' 
-    };
-  }
-  
-  return { isValid: true };
-};
 
 // 비밀번호 검증
 export const validatePassword = (password: string): ValidationResult => {
@@ -74,16 +43,48 @@ export const validatePassword = (password: string): ValidationResult => {
   return { isValid: true };
 };
 
-// 표시 이름 검증
-export const validateDisplayName = (displayName: string): ValidationResult => {
-  if (!displayName.trim()) {
+// 이름 검증
+export const validateName = (name: string): ValidationResult => {
+  if (!name.trim()) {
+    return { isValid: false, error: '이름을 입력해주세요.' };
+  }
+  
+  if (name.trim().length > AUTH_VALIDATION_RULES.NAME.MAX_LENGTH) {
+    return { 
+      isValid: false, 
+      error: `이름은 최대 ${AUTH_VALIDATION_RULES.NAME.MAX_LENGTH}자까지 가능합니다.` 
+    };
+  }
+  
+  return { isValid: true };
+};
+
+// 직책 검증
+export const validatePosition = (position: string): ValidationResult => {
+  if (!position.trim()) {
     return { isValid: true }; // 선택사항이므로 빈 값도 허용
   }
   
-  if (displayName.trim().length > AUTH_VALIDATION_RULES.DISPLAY_NAME.MAX_LENGTH) {
+  if (position.trim().length > AUTH_VALIDATION_RULES.POSITION.MAX_LENGTH) {
     return { 
       isValid: false, 
-      error: `표시 이름은 최대 ${AUTH_VALIDATION_RULES.DISPLAY_NAME.MAX_LENGTH}자까지 가능합니다.` 
+      error: `직책은 최대 ${AUTH_VALIDATION_RULES.POSITION.MAX_LENGTH}자까지 가능합니다.` 
+    };
+  }
+  
+  return { isValid: true };
+};
+
+// 부서 검증
+export const validateDepartment = (department: string): ValidationResult => {
+  if (!department.trim()) {
+    return { isValid: true }; // 선택사항이므로 빈 값도 허용
+  }
+  
+  if (department.trim().length > AUTH_VALIDATION_RULES.DEPARTMENT.MAX_LENGTH) {
+    return { 
+      isValid: false, 
+      error: `부서는 최대 ${AUTH_VALIDATION_RULES.DEPARTMENT.MAX_LENGTH}자까지 가능합니다.` 
     };
   }
   
@@ -95,23 +96,32 @@ export const isEmailFormat = (input: string): boolean => {
   return input.includes('@');
 };
 
+// 비밀번호 확인 검증
+export const validateConfirmPassword = (password: string, confirmPassword: string): ValidationResult => {
+  if (!confirmPassword) {
+    return { isValid: false, error: '비밀번호 확인을 입력해주세요.' };
+  }
+  
+  if (password !== confirmPassword) {
+    return { isValid: false, error: '비밀번호가 일치하지 않습니다.' };
+  }
+  
+  return { isValid: true };
+};
+
 // 회원가입 폼 전체 검증
 export const validateSignUpForm = (formData: {
   email: string;
   password: string;
-  loginId: string;
-  displayName?: string;
+  confirmPassword: string;
+  name: string;
+  position?: string;
+  department?: string;
 }): ValidationResult => {
   // 이메일 검증
   const emailValidation = validateEmail(formData.email);
   if (!emailValidation.isValid) {
     return emailValidation;
-  }
-  
-  // 로그인 아이디 검증
-  const loginIdValidation = validateLoginId(formData.loginId);
-  if (!loginIdValidation.isValid) {
-    return loginIdValidation;
   }
   
   // 비밀번호 검증
@@ -120,11 +130,31 @@ export const validateSignUpForm = (formData: {
     return passwordValidation;
   }
   
-  // 표시 이름 검증 (선택사항)
-  if (formData.displayName) {
-    const displayNameValidation = validateDisplayName(formData.displayName);
-    if (!displayNameValidation.isValid) {
-      return displayNameValidation;
+  // 비밀번호 확인 검증
+  const confirmPasswordValidation = validateConfirmPassword(formData.password, formData.confirmPassword);
+  if (!confirmPasswordValidation.isValid) {
+    return confirmPasswordValidation;
+  }
+  
+  // 이름 검증
+  const nameValidation = validateName(formData.name);
+  if (!nameValidation.isValid) {
+    return nameValidation;
+  }
+  
+  // 직책 검증 (선택사항)
+  if (formData.position) {
+    const positionValidation = validatePosition(formData.position);
+    if (!positionValidation.isValid) {
+      return positionValidation;
+    }
+  }
+  
+  // 부서 검증 (선택사항)
+  if (formData.department) {
+    const departmentValidation = validateDepartment(formData.department);
+    if (!departmentValidation.isValid) {
+      return departmentValidation;
     }
   }
   
@@ -133,29 +163,21 @@ export const validateSignUpForm = (formData: {
 
 // 로그인 폼 검증
 export const validateLoginForm = (formData: {
-  emailOrLoginId: string;
+  email: string;
   password: string;
 }): ValidationResult => {
-  if (!formData.emailOrLoginId.trim()) {
-    return { isValid: false, error: '이메일 또는 로그인 아이디를 입력해주세요.' };
+  if (!formData.email.trim()) {
+    return { isValid: false, error: '이메일을 입력해주세요.' };
   }
   
   if (!formData.password) {
     return { isValid: false, error: '비밀번호를 입력해주세요.' };
   }
   
-  // 이메일 형식인 경우 이메일 검증
-  if (isEmailFormat(formData.emailOrLoginId)) {
-    const emailValidation = validateEmail(formData.emailOrLoginId);
-    if (!emailValidation.isValid) {
-      return emailValidation;
-    }
-  } else {
-    // 로그인 아이디 형식인 경우 로그인 아이디 검증
-    const loginIdValidation = validateLoginId(formData.emailOrLoginId);
-    if (!loginIdValidation.isValid) {
-      return loginIdValidation;
-    }
+  // 이메일 검증
+  const emailValidation = validateEmail(formData.email);
+  if (!emailValidation.isValid) {
+    return emailValidation;
   }
   
   const passwordValidation = validatePassword(formData.password);

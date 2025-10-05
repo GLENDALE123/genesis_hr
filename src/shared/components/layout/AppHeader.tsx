@@ -13,14 +13,18 @@ import {
   DropdownMenuTrigger 
 } from '@/shared/components/ui/dropdown-menu';
 import { Badge } from '@/shared/components/ui/badge';
+import { Switch } from '@/shared/components/ui/switch';
 import { 
   Bell, 
   Search, 
-  Settings, 
   LogOut, 
   User,
-  Menu
+  Menu,
+  Sun,
+  Moon,
+  Monitor
 } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { logout } from '@/shared/services/firebase/auth';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/shared/lib/utils';
@@ -36,6 +40,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 }) => {
   const { user } = useAuth();
   const router = useRouter();
+  const { theme, setTheme, resolvedTheme } = useTheme();
 
   const handleLogout = async () => {
     try {
@@ -55,26 +60,17 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       "sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
       className
     )}>
-      <div className="container flex h-16 items-center justify-between px-4">
+      <div className="container max-w-none flex h-12 items-center justify-between px-4">
         {/* Left Section */}
         <div className="flex items-center gap-4">
-          {/* Mobile Menu Button */}
+          {/* Sidebar Toggle Button - Always visible */}
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden"
             onClick={onMenuClick}
           >
             <Menu className="h-5 w-5" />
           </Button>
-          
-          {/* Logo */}
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-sm">HS</span>
-            </div>
-            <span className="font-bold text-lg hidden sm:block">HS Next</span>
-          </div>
         </div>
 
         {/* Center Section - Search */}
@@ -84,7 +80,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             <input
               type="text"
               placeholder="검색..."
-              className="w-full pl-10 pr-4 py-2 border border-input rounded-md bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+              className="w-full pl-10 pr-4 py-1 border border-input rounded-md bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
             />
           </div>
         </div>
@@ -100,11 +96,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             >
               3
             </Badge>
-          </Button>
-
-          {/* Settings */}
-          <Button variant="ghost" size="icon">
-            <Settings className="h-5 w-5" />
           </Button>
 
           {/* User Menu */}
@@ -135,10 +126,30 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                 <User className="mr-2 h-4 w-4" />
                 <span>프로필</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push('/settings')}>
+              <DropdownMenuSeparator />
+              {/* Theme Switch */}
+              <div className="flex items-center justify-between px-2 py-1.5 text-sm">
+                <div className="flex items-center">
+                  {(resolvedTheme || theme) === 'dark' ? (
+                    <Moon className="mr-2 h-4 w-4" />
+                  ) : (
+                    <Sun className="mr-2 h-4 w-4" />
+                  )}
+                  <span>다크 모드</span>
+                </div>
+                <Switch
+                  checked={(resolvedTheme || theme) === 'dark'}
+                  onCheckedChange={(checked) => {
+                    console.log('테마 변경:', checked ? 'dark' : 'light');
+                    setTheme(checked ? 'dark' : 'light');
+                  }}
+                />
+              </div>
+              {/* Settings menu - 임시 비활성화 */}
+              {/* <DropdownMenuItem onClick={() => router.push('/settings')}>
                 <Settings className="mr-2 h-4 w-4" />
                 <span>설정</span>
-              </DropdownMenuItem>
+              </DropdownMenuItem> */}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />

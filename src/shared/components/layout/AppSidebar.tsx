@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import {
   Users,
@@ -15,13 +16,17 @@ import {
   MessageSquare,
   Bell,
   HelpCircle,
-  ChevronLeft,
   ChevronRight,
   LayoutDashboard,
   UserCheck,
   CreditCard,
   Building,
-  PieChart
+  PieChart,
+  Factory,
+  CalendarDays,
+  ClipboardList,
+  Package,
+  AlertTriangle
 } from 'lucide-react';
 
 interface AppSidebarProps {
@@ -38,11 +43,23 @@ interface NavItem {
   children?: NavItem[];
 }
 
-const navigationItems: NavItem[] = [
+// 메인 메뉴 (큰 메뉴들)
+const mainNavigationItems: NavItem[] = [
   {
     title: '대시보드',
     href: '/dashboard',
     icon: LayoutDashboard,
+  },
+  {
+    title: '생산센터',
+    href: '/production/daily-report',
+    icon: Factory,
+    children: [
+      { title: '생산일보', href: '/production/daily-report', icon: FileText },
+      { title: '생산일정', href: '/production/schedule', icon: CalendarDays },
+      { title: '생산관리부', href: '/production/management', icon: ClipboardList },
+      { title: '부족분관리', href: '/production/shortage', icon: AlertTriangle },
+    ],
   },
   {
     title: '직원 관리',
@@ -74,6 +91,10 @@ const navigationItems: NavItem[] = [
       { title: '통계 분석', href: '/reports/analytics', icon: PieChart },
     ],
   },
+];
+
+// 서브 메뉴 (작은 메뉴들)
+const subNavigationItems: NavItem[] = [
   {
     title: '일정 관리',
     href: '/calendar',
@@ -100,17 +121,11 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 }) => {
   const router = useRouter();
   const pathname = usePathname();
-  const [expandedItems, setExpandedItems] = useState<string[]>([]);
 
-  const toggleExpanded = (title: string) => {
-    setExpandedItems(prev => 
-      prev.includes(title) 
-        ? prev.filter(item => item !== title)
-        : [...prev, title]
-    );
-  };
-
-  const isActive = (href: string) => {
+  const isActive = (href: string, exact = false) => {
+    if (exact) {
+      return pathname === href;
+    }
     return pathname === href || pathname.startsWith(href + '/');
   };
 
@@ -120,54 +135,79 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 
   const renderNavItem = (item: NavItem, level = 0) => {
     const hasChildren = item.children && item.children.length > 0;
-    const isExpanded = expandedItems.includes(item.title);
-    const active = isActive(item.href);
+    
+    // 부모 메뉴의 경우: 자식 메뉴 중 하나가 정확히 일치하면 부모는 비활성화
+    let active = false;
+    if (level === 0 && hasChildren) {
+      // 자식 메뉴 중 현재 경로와 정확히 일치하는 것이 있는지 확인
+      const exactChildMatch = item.children?.some(child => pathname === child.href);
+      if (exactChildMatch) {
+        active = false; // 자식이 활성화되면 부모는 비활성화
+      } else {
+        active = isActive(item.href); // 그렇지 않으면 기존 로직 사용
+      }
+    } else {
+      // 자식 메뉴나 자식이 없는 메뉴의 경우 정확한 매칭 사용
+      active = isActive(item.href, true);
+    }
+
+    const navItemContent = (
+      <div
+        className={cn(
+          "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors",
+          // 태블릿 최적화: 터치 영역 최소 44px 보장
+          "min-h-[44px] px-3 py-3 md:px-3 md:py-2",
+          level > 0 && "ml-6",
+          active
+            ? "bg-accent text-accent-foreground"
+            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+          // 접힌 상태에서는 정사각형 터치 영역
+          collapsed && "justify-center px-2 py-3 md:px-2 md:py-2 min-w-[44px] md:min-w-[40px]"
+        )}
+        onClick={() => handleNavigation(item.href)}
+      >
+        <div className="flex items-center gap-3">
+          <item.icon className={cn(
+            // 태블릿에서 아이콘 크기 증가 (모바일: 5x5, 데스크톱: 4x4)
+            "h-5 w-5 md:h-4 md:w-4 flex-shrink-0",
+            active && "text-accent-foreground"
+          )} />
+          {!collapsed && (
+            <>
+              <span className="truncate">{item.title}</span>
+              {item.badge && (
+                <Badge variant="secondary" className="ml-auto">
+                  {item.badge}
+                </Badge>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    );
 
     return (
       <div key={item.title}>
-        <div
-          className={cn(
-            "flex items-center justify-between group cursor-pointer rounded-md px-3 py-2 text-sm font-medium transition-colors",
-            level > 0 && "ml-4",
-            active
-              ? "bg-accent text-accent-foreground"
-              : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-            collapsed && "justify-center px-2"
-          )}
-          onClick={() => {
-            if (hasChildren) {
-              toggleExpanded(item.title);
-            } else {
-              handleNavigation(item.href);
-            }
-          }}
-        >
-          <div className="flex items-center gap-3">
-            <item.icon className={cn(
-              "h-4 w-4 flex-shrink-0",
-              active && "text-accent-foreground"
-            )} />
-            {!collapsed && (
-              <>
-                <span className="truncate">{item.title}</span>
-                {item.badge && (
-                  <Badge variant="secondary" className="ml-auto">
-                    {item.badge}
-                  </Badge>
-                )}
-              </>
-            )}
-          </div>
-          {!collapsed && hasChildren && (
-            <ChevronRight className={cn(
-              "h-4 w-4 transition-transform",
-              isExpanded && "rotate-90"
-            )} />
-          )}
-        </div>
+        {collapsed ? (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                {navItemContent}
+              </TooltipTrigger>
+              <TooltipContent side="right" className="ml-2">
+                <p>{item.title}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ) : (
+          navItemContent
+        )}
         
-        {!collapsed && hasChildren && isExpanded && (
-          <div className="mt-1 space-y-1">
+        {/* 서브메뉴 항상 표시 (접힌 상태가 아닐 때만) */}
+        {!collapsed && hasChildren && (
+          <div className="mt-1 space-y-1 relative">
+            {/* 서브메뉴 왼쪽 세로선 */}
+            <div className="absolute left-4 top-0 bottom-0 w-px bg-border" />
             {item.children?.map(child => renderNavItem(child, level + 1))}
           </div>
         )}
@@ -177,12 +217,13 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 
   return (
     <div className={cn(
-      "flex h-full flex-col border-r bg-background transition-all duration-300",
-      collapsed ? "w-16" : "w-64",
+      "flex h-screen flex-col border-r bg-background transition-all duration-300",
+      // 태블릿에서 사이드바 너비 조정 (모바일: 더 넓게, 데스크톱: 기존 유지)
+      collapsed ? "w-16 md:w-16" : "w-72 md:w-64",
       className
     )}>
       {/* Sidebar Header */}
-      <div className="flex h-16 items-center justify-between border-b px-4">
+      <div className="flex h-16 items-center justify-center border-b px-4">
         {!collapsed && (
           <div className="flex items-center gap-2">
             <div className="h-6 w-6 rounded bg-primary flex items-center justify-center">
@@ -191,24 +232,27 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             <span className="font-semibold">HS Next</span>
           </div>
         )}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onToggle}
-          className="h-8 w-8"
-        >
-          {collapsed ? (
-            <ChevronRight className="h-4 w-4" />
-          ) : (
-            <ChevronLeft className="h-4 w-4" />
-          )}
-        </Button>
       </div>
 
       {/* Navigation */}
-      <ScrollArea className="flex-1 px-3 py-4">
-        <nav className="space-y-2">
-          {navigationItems.map(item => renderNavItem(item))}
+      <ScrollArea className="flex-1 py-4">
+        <nav className="space-y-1">
+          {/* 메인 메뉴 섹션 */}
+          <div className="space-y-1 px-3">
+            {mainNavigationItems.map(item => renderNavItem(item))}
+          </div>
+          
+          {/* 세로 구분선 */}
+          {!collapsed && (
+            <div className="flex items-center px-3">
+              <div className="h-px bg-border flex-1" />
+            </div>
+          )}
+          
+          {/* 서브 메뉴 섹션 */}
+          <div className="space-y-1 px-3">
+            {subNavigationItems.map(item => renderNavItem(item))}
+          </div>
         </nav>
       </ScrollArea>
 
@@ -219,30 +263,58 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             <>
               <Button
                 variant="ghost"
-                className="w-full justify-start"
+                className="w-full justify-start min-h-[44px] md:min-h-[40px]"
                 onClick={() => handleNavigation('/settings')}
               >
-                <Settings className="mr-2 h-4 w-4" />
+                <Settings className="mr-2 h-5 w-5 md:h-4 md:w-4" />
                 설정
               </Button>
               <Button
                 variant="ghost"
-                className="w-full justify-start"
+                className="w-full justify-start min-h-[44px] md:min-h-[40px]"
                 onClick={() => handleNavigation('/help')}
               >
-                <HelpCircle className="mr-2 h-4 w-4" />
+                <HelpCircle className="mr-2 h-5 w-5 md:h-4 md:w-4" />
                 도움말
               </Button>
             </>
           )}
           {collapsed && (
             <div className="flex flex-col gap-2">
-              <Button variant="ghost" size="icon">
-                <Settings className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon">
-                <HelpCircle className="h-4 w-4" />
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      className="min-h-[44px] min-w-[44px] md:min-h-[40px] md:min-w-[40px]"
+                      onClick={() => handleNavigation('/settings')}
+                    >
+                      <Settings className="h-5 w-5 md:h-4 md:w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="ml-2">
+                    <p>설정</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      className="min-h-[44px] min-w-[44px] md:min-h-[40px] md:min-w-[40px]"
+                      onClick={() => handleNavigation('/help')}
+                    >
+                      <HelpCircle className="h-5 w-5 md:h-4 md:w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="ml-2">
+                    <p>도움말</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           )}
         </div>

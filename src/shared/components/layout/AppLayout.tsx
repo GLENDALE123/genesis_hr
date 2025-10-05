@@ -24,26 +24,30 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <AppHeader onMenuClick={toggleSidebarCollapsed} />
-      
-      <div className="flex">
-        {/* Sidebar */}
-        <AppSidebar 
-          collapsed={sidebarCollapsed}
-          onToggle={toggleSidebarCollapsed}
-        />
+      <div className="flex h-screen">
+        {/* Sidebar - 전체 화면 높이에서 헤더 높이 제외 */}
+        <div className="sticky top-0 h-screen flex-shrink-0">
+          <AppSidebar 
+            collapsed={sidebarCollapsed}
+            onToggle={toggleSidebarCollapsed}
+          />
+        </div>
         
-        {/* Main Content */}
-        <main className={cn(
-          "flex-1 transition-all duration-300",
-          sidebarCollapsed ? "ml-16" : "ml-64",
-          className
-        )}>
-          <div className="p-6">
-            {children}
-          </div>
-        </main>
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* Header */}
+          <AppHeader onMenuClick={toggleSidebarCollapsed} />
+          
+          {/* Main Content */}
+          <main className={cn(
+            "flex-1 transition-all duration-300 overflow-hidden",
+            className
+          )}>
+            <div className="h-full p-6 overflow-auto">
+              {children}
+            </div>
+          </main>
+        </div>
       </div>
     </div>
   );

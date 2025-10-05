@@ -1,6 +1,7 @@
 'use client';
 
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { LoadingSpinner } from '@/shared/components/common';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
@@ -23,11 +24,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }, [user, loading, router, redirectTo]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
-      </div>
-    );
+    return <LoadingSpinner fullScreen size="xl" label="로그인 확인 중..." />;
   }
 
   if (!user) {

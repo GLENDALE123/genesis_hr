@@ -18,8 +18,9 @@ export const createUserProfile = async (userData: SignUpData, uid: string): Prom
   const userProfile: UserProfile = {
     uid,
     email: userData.email,
-    loginId: userData.loginId,
-    displayName: userData.displayName || userData.loginId,
+    name: userData.name,
+    position: userData.position,
+    department: userData.department,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -50,33 +51,6 @@ export const getUserProfile = async (uid: string): Promise<UserProfile | null> =
   }
 };
 
-// 로그인 아이디로 사용자 프로필 조회 (로그인 시 사용)
-export const getUserProfileByLoginId = async (loginId: string): Promise<UserProfile | null> => {
-  try {
-    const q = query(
-      collection(db, USERS_COLLECTION),
-      where('loginId', '==', loginId)
-    );
-    
-    const querySnapshot = await getDocs(q);
-    
-    if (!querySnapshot.empty) {
-      const doc = querySnapshot.docs[0];
-      const data = doc.data();
-      return {
-        ...data,
-        createdAt: data.createdAt?.toDate() || new Date(),
-        updatedAt: data.updatedAt?.toDate() || new Date(),
-        lastLoginAt: data.lastLoginAt?.toDate(),
-      } as UserProfile;
-    }
-    
-    return null;
-  } catch (error) {
-    console.error('로그인 아이디로 사용자 프로필 조회 실패:', error);
-    return null;
-  }
-};
 
 // 이메일로 사용자 프로필 조회 (로그인 시 사용)
 export const getUserProfileByEmail = async (email: string): Promise<UserProfile | null> => {
@@ -118,34 +92,4 @@ export const updateLastLogin = async (uid: string): Promise<void> => {
   }
 };
 
-// 로그인 아이디 중복 확인
-export const checkLoginIdExists = async (loginId: string): Promise<boolean> => {
-  try {
-    const q = query(
-      collection(db, USERS_COLLECTION),
-      where('loginId', '==', loginId)
-    );
-    
-    const querySnapshot = await getDocs(q);
-    return !querySnapshot.empty;
-  } catch (error) {
-    console.error('로그인 아이디 중복 확인 실패:', error);
-    return false;
-  }
-};
 
-// 이메일 중복 확인
-export const checkEmailExists = async (email: string): Promise<boolean> => {
-  try {
-    const q = query(
-      collection(db, USERS_COLLECTION),
-      where('email', '==', email)
-    );
-    
-    const querySnapshot = await getDocs(q);
-    return !querySnapshot.empty;
-  } catch (error) {
-    console.error('이메일 중복 확인 실패:', error);
-    return false;
-  }
-};

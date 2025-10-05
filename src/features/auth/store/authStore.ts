@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { User } from 'firebase/auth';
-import { onAuthStateChange, getCurrentUserProfile } from '@/shared/services/firebase/auth';
+import { onAuthStateChange } from '@/shared/services/firebase/auth';
+import { AuthService } from '@/features/auth/services';
 import { UserProfile } from '@/features/auth/types';
 
 interface AuthState {
@@ -75,7 +76,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             if (user) {
               // 사용자 프로필 정보도 함께 로드
               try {
-                const userProfile = await getCurrentUserProfile();
+                const userProfile = await AuthService.getCurrentUserProfile();
                 set({ userProfile });
               } catch (error) {
                 console.error('사용자 프로필 로드 실패:', error);

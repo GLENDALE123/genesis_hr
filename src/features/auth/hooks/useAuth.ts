@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { User } from 'firebase/auth';
-import { onAuthStateChange, getCurrentUserProfile } from '@/shared/services/firebase/auth';
+import { onAuthStateChange } from '@/shared/services/firebase/auth';
+import { AuthService } from '@/features/auth/services';
 import { UserProfile } from '@/features/auth/types';
 
 interface UseAuthReturn {
@@ -23,7 +24,7 @@ export const useAuth = (): UseAuthReturn => {
       if (user) {
         // 사용자가 로그인된 경우 프로필 정보 가져오기
         try {
-          const profile = await getCurrentUserProfile();
+          const profile = await AuthService.getCurrentUserProfile();
           setUserProfile(profile);
         } catch (error) {
           console.error('사용자 프로필 로드 실패:', error);

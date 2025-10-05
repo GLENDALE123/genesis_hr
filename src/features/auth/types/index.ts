@@ -4,8 +4,9 @@ import { User } from 'firebase/auth';
 export interface UserProfile {
   uid: string;              // Firebase Auth UID
   email: string;            // 이메일 (Firebase Auth에서 가져옴)
-  loginId: string;          // 로그인 아이디 (새로 추가)
-  displayName?: string;     // 표시 이름
+  name: string;             // 이름
+  position?: string;        // 직책 (선택사항)
+  department?: string;      // 부서 (선택사항)
   createdAt: Date;          // 계정 생성일
   updatedAt: Date;          // 마지막 업데이트일
   lastLoginAt?: Date;       // 마지막 로그인 시간
@@ -15,13 +16,15 @@ export interface UserProfile {
 export interface SignUpData {
   email: string;
   password: string;
-  loginId: string;
-  displayName?: string;
+  confirmPassword: string;
+  name: string;
+  position?: string;
+  department?: string;
 }
 
-// 로그인 시 사용할 데이터 (이메일 또는 아이디)
+// 로그인 시 사용할 데이터
 export interface LoginData {
-  emailOrLoginId: string;   // 이메일 또는 로그인 아이디
+  email: string;            // 이메일
   password: string;
 }
 

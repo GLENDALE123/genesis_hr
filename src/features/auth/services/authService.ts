@@ -8,11 +8,8 @@ import {
 import { auth } from '@/shared/services/firebase/config';
 import { 
   createUserProfile, 
-  getUserProfileByLoginId, 
   getUserProfileByEmail, 
-  updateLastLogin,
-  checkLoginIdExists,
-  checkEmailExists
+  updateLastLogin
 } from '@/shared/services/firebase/userProfile';
 import { SignUpData, LoginData, UserProfile } from '@/features/auth/types';
 import { 
@@ -27,7 +24,7 @@ import { AUTH_ERROR_MESSAGES } from '@/features/auth/constants';
 // 인증 서비스 클래스
 export class AuthService {
   /**
-   * 로그인 (이메일 또는 로그인 아이디로)
+   * 로그인 (이메일로)
    */
   static async signIn(loginData: LoginData): Promise<User> {
     if (!auth) {
@@ -41,21 +38,7 @@ export class AuthService {
         throw new Error(validation.error);
       }
 
-      const { emailOrLoginId, password } = loginData;
-      const sanitizedInput = sanitizeInput(emailOrLoginId);
-      
-      // 이메일 형식인지 확인
-      const isEmail = sanitizedInput.includes('@');
-      let email = sanitizedInput;
-      
-      if (!isEmail) {
-        // 로그인 아이디인 경우, 로그인 아이디로 이메일 찾기
-        const userProfile = await getUserProfileByLoginId(sanitizedInput);
-        if (!userProfile) {
-          throw new Error(AUTH_ERROR_MESSAGES.INVALID_LOGIN_ID);
-        }
-        email = userProfile.email;
-      }
+      const { email, password } = loginData;
       
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       
@@ -73,7 +56,7 @@ export class AuthService {
   }
 
   /**
-   * 회원가입 (로그인 아이디 포함)
+   * 회원가입
    */
   static async signUp(signUpData: SignUpData): Promise<User> {
     if (!auth) {
@@ -87,35 +70,25 @@ export class AuthService {
         throw new Error(validation.error);
       }
 
-      const { email, password, loginId, displayName } = signUpData;
-      const sanitizedLoginId = sanitizeInput(loginId);
-      const sanitizedDisplayName = displayName ? sanitizeInput(displayName) : undefined;
+      const { email, password, confirmPassword, name, position, department } = signUpData;
+      const sanitizedName = sanitizeInput(name);
+      const sanitizedPosition = position ? sanitizeInput(position) : undefined;
+      const sanitizedDepartment = department ? sanitizeInput(department) : undefined;
       
-      // 로그인 아이디 중복 확인
-      const loginIdExists = await checkLoginIdExists(sanitizedLoginId);
-      if (loginIdExists) {
-        throw new Error(AUTH_ERROR_MESSAGES.LOGIN_ID_EXISTS);
-      }
-      
-      // 이메일 중복 확인
-      const emailExists = await checkEmailExists(email);
-      if (emailExists) {
-        throw new Error(AUTH_ERROR_MESSAGES.EMAIL_EXISTS);
-      }
+      // Firebase Auth에서 이메일 중복을 자동으로 체크하므로 별도 확인 불필요
       
       // Firebase Auth로 계정 생성
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       
       // 사용자 프로필 업데이트
-      if (sanitizedDisplayName) {
-        await updateProfile(userCredential.user, { displayName: sanitizedDisplayName });
-      }
+      await updateProfile(userCredential.user, { displayName: sanitizedName });
       
       // Firestore에 사용자 프로필 생성
       await createUserProfile({
         ...signUpData,
-        loginId: sanitizedLoginId,
-        displayName: sanitizedDisplayName,
+        name: sanitizedName,
+        position: sanitizedPosition,
+        department: sanitizedDepartment,
       }, userCredential.user.uid);
       
       return userCredential.user;
@@ -173,30 +146,5 @@ export class AuthService {
     }
   }
 
-  /**
-   * 로그인 아이디 중복 확인
-   */
-  static async checkLoginIdAvailability(loginId: string): Promise<boolean> {
-    try {
-      const sanitizedLoginId = sanitizeInput(loginId);
-      const exists = await checkLoginIdExists(sanitizedLoginId);
-      return !exists; // 사용 가능하면 true
-    } catch (error) {
-      console.error(AUTH_ERROR_MESSAGES.LOGIN_ID_CHECK_FAILED, error);
-      return false;
-    }
-  }
 
-  /**
-   * 이메일 중복 확인
-   */
-  static async checkEmailAvailability(email: string): Promise<boolean> {
-    try {
-      const exists = await checkEmailExists(email);
-      return !exists; // 사용 가능하면 true
-    } catch (error) {
-      console.error(AUTH_ERROR_MESSAGES.EMAIL_CHECK_FAILED, error);
-      return false;
-    }
-  }
 }
