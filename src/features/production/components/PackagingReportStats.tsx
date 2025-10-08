@@ -9,16 +9,15 @@ import {
   Package, 
   Users, 
   Calendar,
-  BarChart3,
-  PieChart
+  BarChart3
 } from 'lucide-react';
 import { ProductionReportStats as StatsType } from '@/features/production/types';
 
-interface ProductionReportStatsProps {
+interface PackagingReportStatsProps {
   stats: StatsType | null;
 }
 
-export const ProductionReportStats: React.FC<ProductionReportStatsProps> = ({ stats }) => {
+export const PackagingReportStats: React.FC<PackagingReportStatsProps> = ({ stats }) => {
   if (!stats) {
     return (
       <Card>

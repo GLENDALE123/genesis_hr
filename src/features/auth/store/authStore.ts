@@ -33,7 +33,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         error: null,
         
         // Actions
-        login: async (emailOrLoginId: string, _password: string) => {
+        login: async (emailOrLoginId: string) => {
           set({ isLoading: true, error: null });
           try {
             // Firebase 로그인 로직은 별도 서비스에서 처리
@@ -69,7 +69,12 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         setError: (error: string | null) => set({ error }),
         
         initializeAuth: (): (() => void) => {
-          set({ isLoading: true });
+          // persist된 user가 있으면 로딩 표시하지 않음 (깜빡임 방지)
+          const currentState = useAuthStore.getState();
+          if (!currentState.user) {
+            set({ isLoading: true });
+          }
+          
           const unsubscribe = onAuthStateChange(async (user) => {
             set({ user, isLoading: false, error: null });
             
@@ -79,7 +84,11 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                 const userProfile = await AuthService.getCurrentUserProfile();
                 set({ userProfile });
               } catch (error) {
-                console.error('사용자 프로필 로드 실패:', error);
+                // 권한 에러는 조용히 처리 (로그인 전 상태)
+                const errorMessage = error instanceof Error ? error.message : '';
+                if (!errorMessage.includes('permission') && !errorMessage.includes('insufficient')) {
+                  console.error('사용자 프로필 로드 실패:', error);
+                }
                 set({ userProfile: null });
               }
             } else {

@@ -1,0 +1,75 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 사용자 프로필 컬렉션
+    match /users/{userId} {
+      // 로그인하지 않은 사용자도 이메일로 프로필 조회 가능 (마이그레이션용)
+      allow read: if true;
+      
+      // 자신의 프로필만 수정 가능
+      allow update: if request.auth != null && request.auth.uid == userId;
+      
+      // 마이그레이션: 같은 이메일이면 삭제 가능 (기존 UID → 새 UID 마이그레이션)
+      allow delete: if request.auth != null && 
+        (request.auth.uid == userId || 
+         request.auth.token.email == resource.data.email);
+      
+      // 회원가입 및 마이그레이션: 같은 이메일이면 생성 가능
+      allow create: if request.auth != null && 
+        (request.auth.uid == userId || 
+         request.auth.token.email == request.resource.data.email);
+    }
+    
+    // 알림 컬렉션
+    match /notifications/{notificationId} {
+      // 로그인한 사용자는 자신의 알림만 조회 가능
+      allow read: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+      
+      // 알림 생성은 시스템에서만 가능 (서버 사이드)
+      allow create: if request.auth != null;
+      
+      // 자신의 알림만 수정 가능 (읽음 표시 등)
+      allow update: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+      
+      // 자신의 알림만 삭제 가능
+      allow delete: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+    }
+    
+    // 생산 일보 컬렉션
+    match /packaging-reports/{reportId} {
+      // 로그인한 사용자만 읽기 가능
+      allow read: if request.auth != null;
+      
+      // 로그인한 사용자는 생성 가능
+      allow create: if request.auth != null;
+      
+      // Admin, Manager만 수정/삭제 가능
+      allow update, delete: if request.auth != null && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin' ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Manager');
+    }
+    
+    // 사용자별 권한 설정 컬렉션
+    match /user-permissions/{userId} {
+      // 로그인한 사용자는 자신의 권한 조회 가능
+      allow read: if request.auth != null && 
+        (request.auth.uid == userId || 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin');
+      
+      // Admin만 권한 생성/수정/삭제 가능
+      allow create, update, delete: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
+    }
+    
+    // 기타 컬렉션 기본 규칙 (필요시 추가)
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+

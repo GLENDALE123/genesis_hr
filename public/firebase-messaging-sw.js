@@ -72,7 +72,7 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 // 서비스 워커 설치
-self.addEventListener('install', (event) => {
+self.addEventListener('install', () => {
   console.log('Firebase 메시징 서비스 워커 설치됨');
   self.skipWaiting();
 });

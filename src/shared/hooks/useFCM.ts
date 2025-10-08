@@ -7,6 +7,15 @@ import {
   requestNotificationPermission 
 } from '@/shared/services/firebase';
 
+interface MessagePayload {
+  notification?: {
+    title?: string;
+    body?: string;
+    image?: string;
+  };
+  data?: Record<string, string>;
+}
+
 interface FCMState {
   token: string | null;
   permission: NotificationPermission;
@@ -18,7 +27,7 @@ interface FCMState {
 interface FCMHook extends FCMState {
   requestPermission: () => Promise<boolean>;
   refreshToken: () => Promise<string | null>;
-  onMessage: (callback: (payload: any) => void) => void;
+  onMessage: (callback: (payload: MessagePayload) => void) => void;
 }
 
 export const useFCM = (): FCMHook => {
@@ -105,7 +114,7 @@ export const useFCM = (): FCMHook => {
   }, []);
 
   // 포그라운드 메시지 리스너 설정
-  const onMessage = useCallback((callback: (payload: any) => void) => {
+  const onMessage = useCallback((callback: (payload: MessagePayload) => void) => {
     onForegroundMessage(callback);
   }, []);
 

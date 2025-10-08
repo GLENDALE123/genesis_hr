@@ -4,8 +4,27 @@ import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getStorage, connectStorageEmulator } from 'firebase/storage';
 import { getAnalytics } from 'firebase/analytics';
 
+// Tauri 환경 감지 함수
+const isTauriEnv = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return '__TAURI__' in window;
+};
+
+// 개발 환경 감지 함수
+const isDevEnvironment = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const hostname = window.location.hostname;
+  return hostname === 'localhost' || hostname === '127.0.0.1';
+};
+
 // 에뮬레이터 사용 여부 확인
-const useEmulator = process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true';
+// 1. 환경 변수로 명시적으로 설정
+// 2. Tauri 개발 환경 (localhost:3000)
+// 3. 웹 개발 환경 (localhost)
+const useEmulator = 
+  process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true' ||
+  (isTauriEnv() && isDevEnvironment()) ||
+  (isDevEnvironment() && process.env.NODE_ENV === 'development');
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyAFdnBgl1jlKGUYEvK2zNncm4T_z5t2kBc',
@@ -36,20 +55,41 @@ export const analytics = typeof window !== 'undefined' && !useEmulator ? getAnal
 // 에뮬레이터 연결 (개발 환경에서만)
 if (typeof window !== 'undefined' && useEmulator) {
   try {
+    // 현재 호스트 정보 가져오기
+    const currentHost = window.location.hostname;
+    const isLocalhost = currentHost === 'localhost' || currentHost === '127.0.0.1';
+    const isTauri = isTauriEnv();
+    
+    console.log('🔥 Firebase 에뮬레이터 연결 시도:', {
+      환경: isTauri ? 'Tauri' : 'Web',
+      호스트: currentHost,
+      포트: window.location.port,
+      에뮬레이터_사용: useEmulator,
+    });
+    
     // Auth 에뮬레이터 연결
-    if (auth && !auth.config.emulator) {
-      connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
-      console.log('✅ Auth 에뮬레이터 연결 완료');
+    if (auth) {
+      try {
+        const authHost = isLocalhost ? 'localhost' : currentHost;
+        connectAuthEmulator(auth, `http://${authHost}:9099`, { 
+          disableWarnings: true 
+        });
+        console.log(`✅ Auth 에뮬레이터 연결 완료 (${authHost}:9099)`);
+      } catch (authError) {
+        console.warn('Auth 에뮬레이터 이미 연결됨 또는 연결 실패:', authError);
+      }
     }
     
     // Firestore 에뮬레이터 연결
     if (db) {
       try {
         // 에뮬레이터 연결 상태 확인을 더 안전하게 처리
-        const isAlreadyConnected = (db as any)._delegate?._databaseId?.database?.includes('localhost');
+        const dbDelegate = db as unknown as { _delegate?: { _databaseId?: { database?: string } } };
+        const isAlreadyConnected = dbDelegate._delegate?._databaseId?.database?.includes(currentHost);
         if (!isAlreadyConnected) {
-          connectFirestoreEmulator(db, 'localhost', 8080);
-          console.log('✅ Firestore 에뮬레이터 연결 완료');
+          const firestoreHost = isLocalhost ? 'localhost' : currentHost;
+          connectFirestoreEmulator(db, firestoreHost, 8080);
+          console.log(`✅ Firestore 에뮬레이터 연결 완료 (${firestoreHost}:8080)`);
         } else {
           console.log('✅ Firestore 에뮬레이터 이미 연결됨');
         }
@@ -61,10 +101,12 @@ if (typeof window !== 'undefined' && useEmulator) {
     // Storage 에뮬레이터 연결
     if (storage) {
       try {
-        const isAlreadyConnected = (storage as any)._host?.includes('localhost');
+        const storageHost = storage as unknown as { _host?: string };
+        const isAlreadyConnected = storageHost._host?.includes(currentHost);
         if (!isAlreadyConnected) {
-          connectStorageEmulator(storage, 'localhost', 9199);
-          console.log('✅ Storage 에뮬레이터 연결 완료');
+          const host = isLocalhost ? 'localhost' : currentHost;
+          connectStorageEmulator(storage, host, 9199);
+          console.log(`✅ Storage 에뮬레이터 연결 완료 (${host}:9199)`);
         } else {
           console.log('✅ Storage 에뮬레이터 이미 연결됨');
         }
@@ -78,5 +120,32 @@ if (typeof window !== 'undefined' && useEmulator) {
     console.warn('Firebase 에뮬레이터 연결 실패:', error);
   }
 }
+
+// Firebase 초기화 대기 유틸리티
+export const waitForFirebaseInit = (maxWaitTime: number = 5000): Promise<boolean> => {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined') {
+      resolve(false);
+      return;
+    }
+
+    if (db) {
+      resolve(true);
+      return;
+    }
+
+    const startTime = Date.now();
+    const checkInterval = setInterval(() => {
+      if (db) {
+        clearInterval(checkInterval);
+        resolve(true);
+      } else if (Date.now() - startTime > maxWaitTime) {
+        clearInterval(checkInterval);
+        console.error('Firebase 초기화 타임아웃');
+        resolve(false);
+      }
+    }, 100);
+  });
+};
 
 export default app;

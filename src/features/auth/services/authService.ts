@@ -8,7 +8,6 @@ import {
 import { auth } from '@/shared/services/firebase/config';
 import { 
   createUserProfile, 
-  getUserProfileByEmail, 
   updateLastLogin
 } from '@/shared/services/firebase/userProfile';
 import { SignUpData, LoginData, UserProfile } from '@/features/auth/types';
@@ -48,8 +47,9 @@ export class AuthService {
       return userCredential.user;
     } catch (error) {
       // Firebase 에러를 한국어로 변환
-      if (error instanceof Error && error.message.includes('auth/')) {
-        throw new Error(translateFirebaseError(error.message));
+      const firebaseError = error as { code?: string; message?: string };
+      if (firebaseError.code && firebaseError.code.startsWith('auth/')) {
+        throw new Error(translateFirebaseError(firebaseError.code));
       }
       throw new Error(formatAuthError(error));
     }
@@ -70,7 +70,7 @@ export class AuthService {
         throw new Error(validation.error);
       }
 
-      const { email, password, confirmPassword, name, position, department } = signUpData;
+      const { email, password, name, position, department } = signUpData;
       const sanitizedName = sanitizeInput(name);
       const sanitizedPosition = position ? sanitizeInput(position) : undefined;
       const sanitizedDepartment = department ? sanitizeInput(department) : undefined;
@@ -87,6 +87,8 @@ export class AuthService {
       await createUserProfile({
         ...signUpData,
         name: sanitizedName,
+        displayName: sanitizedName,  // displayName 추가
+        role: signUpData.role || 'Member',  // 기본값은 Member
         position: sanitizedPosition,
         department: sanitizedDepartment,
       }, userCredential.user.uid);
@@ -94,8 +96,9 @@ export class AuthService {
       return userCredential.user;
     } catch (error) {
       // Firebase 에러를 한국어로 변환
-      if (error instanceof Error && error.message.includes('auth/')) {
-        throw new Error(translateFirebaseError(error.message));
+      const firebaseError = error as { code?: string; message?: string };
+      if (firebaseError.code && firebaseError.code.startsWith('auth/')) {
+        throw new Error(translateFirebaseError(firebaseError.code));
       }
       throw new Error(formatAuthError(error));
     }
@@ -129,7 +132,11 @@ export class AuthService {
       const userProfile = await getUserProfile(auth.currentUser.uid);
       return userProfile;
     } catch (error) {
-      console.error(AUTH_ERROR_MESSAGES.USER_PROFILE_LOAD_FAILED, error);
+      // 권한 에러는 조용히 처리 (로그인 전 상태)
+      const errorMessage = error instanceof Error ? error.message : '';
+      if (!errorMessage.includes('permission') && !errorMessage.includes('insufficient')) {
+        console.error(AUTH_ERROR_MESSAGES.USER_PROFILE_LOAD_FAILED, error);
+      }
       return null;
     }
   }

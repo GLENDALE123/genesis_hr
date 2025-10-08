@@ -47,5 +47,18 @@ service cloud.firestore {
       allow update: if request.auth != null;
       allow delete: if request.auth != null;
     }
+    
+    // 패키징 보고서 데이터 (HS-Jig와 동일한 컬렉션)
+    match /packaging-reports/{reportId} {
+      allow read, write: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null;
+      allow delete: if request.auth != null;
+    }
+    
+    // HS-Jig와 동일한 범용 규칙 (개발 편의를 위해)
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
   }
 }

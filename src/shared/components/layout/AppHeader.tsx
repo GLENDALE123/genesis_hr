@@ -22,12 +22,14 @@ import {
   Menu,
   Sun,
   Moon,
-  Monitor
+  Shield
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { logout } from '@/shared/services/firebase/auth';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/shared/lib/utils';
+import { ThemeCustomizer } from '@/shared/components/common';
+import { useDevStore } from '@/app/store';
 
 interface AppHeaderProps {
   className?: string;
@@ -38,9 +40,10 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   className,
   onMenuClick 
 }) => {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const router = useRouter();
   const { theme, setTheme, resolvedTheme } = useTheme();
+  const { dummyRole, setDummyRole, clearDummyRole } = useDevStore();
 
   const handleLogout = async () => {
     try {
@@ -56,10 +59,16 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   };
 
   return (
-    <header className={cn(
-      "sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
-      className
-    )}>
+    <header 
+      className={cn(
+        "sticky top-0 z-50 w-full border-b",
+        className
+      )}
+      style={{
+        backgroundColor: 'hsl(var(--header-background))',
+        color: 'hsl(var(--header-foreground))',
+      }}
+    >
       <div className="container max-w-none flex h-12 items-center justify-between px-4">
         {/* Left Section */}
         <div className="flex items-center gap-4">
@@ -87,6 +96,9 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
         {/* Right Section */}
         <div className="flex items-center gap-2">
+          {/* Theme Customizer */}
+          <ThemeCustomizer />
+
           {/* Notifications */}
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="h-5 w-5" />
@@ -119,6 +131,20 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                   <p className="text-xs leading-none text-muted-foreground">
                     {user?.email}
                   </p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Badge variant={
+                      (dummyRole || userProfile?.role) === 'Admin' ? 'default' : 
+                      (dummyRole || userProfile?.role) === 'Manager' ? 'secondary' : 
+                      'outline'
+                    }>
+                      {dummyRole || userProfile?.role || 'Member'}
+                    </Badge>
+                    {dummyRole && (
+                      <Badge variant="destructive" className="text-xs">
+                        테스트 모드
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
@@ -151,6 +177,59 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                 <span>설정</span>
               </DropdownMenuItem> */}
               <DropdownMenuSeparator />
+              
+              {/* Admin 전용: 권한 테스트 모드 */}
+              {userProfile?.role === 'Admin' && (
+                <>
+                  <DropdownMenuLabel>
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-4 w-4" />
+                      <span>권한 테스트 (개발용)</span>
+                    </div>
+                  </DropdownMenuLabel>
+                  <div className="px-2 py-2 space-y-2">
+                    <Button
+                      variant={dummyRole === 'Admin' ? 'default' : 'outline'}
+                      size="sm"
+                      className="w-full justify-start"
+                      onClick={() => setDummyRole(dummyRole === 'Admin' ? null : 'Admin')}
+                    >
+                      <Badge variant="default" className="mr-2">A</Badge>
+                      Admin으로 보기
+                    </Button>
+                    <Button
+                      variant={dummyRole === 'Manager' ? 'secondary' : 'outline'}
+                      size="sm"
+                      className="w-full justify-start"
+                      onClick={() => setDummyRole(dummyRole === 'Manager' ? null : 'Manager')}
+                    >
+                      <Badge variant="secondary" className="mr-2">M</Badge>
+                      Manager로 보기
+                    </Button>
+                    <Button
+                      variant={dummyRole === 'Member' ? 'outline' : 'outline'}
+                      size="sm"
+                      className="w-full justify-start"
+                      onClick={() => setDummyRole(dummyRole === 'Member' ? null : 'Member')}
+                    >
+                      <Badge variant="outline" className="mr-2">U</Badge>
+                      Member로 보기
+                    </Button>
+                    {dummyRole && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => clearDummyRole()}
+                      >
+                        원래 권한으로 복구
+                      </Button>
+                    )}
+                  </div>
+                  <DropdownMenuSeparator />
+                </>
+              )}
+              
               <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>로그아웃</span>

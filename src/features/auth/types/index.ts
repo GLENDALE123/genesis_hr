@@ -1,10 +1,15 @@
 import { User } from 'firebase/auth';
 
+// 사용자 역할 타입
+export type UserRole = 'Admin' | 'Manager' | 'Member';
+
 // Firestore에 저장될 사용자 프로필 정보
 export interface UserProfile {
   uid: string;              // Firebase Auth UID
   email: string;            // 이메일 (Firebase Auth에서 가져옴)
   name: string;             // 이름
+  displayName: string;      // 표시 이름
+  role: UserRole;           // 역할 (Admin/Manager/Member)
   position?: string;        // 직책 (선택사항)
   department?: string;      // 부서 (선택사항)
   createdAt: Date;          // 계정 생성일
@@ -18,6 +23,8 @@ export interface SignUpData {
   password: string;
   confirmPassword: string;
   name: string;
+  displayName: string;
+  role?: UserRole;          // 회원가입 시 역할 (기본값: Member)
   position?: string;
   department?: string;
 }

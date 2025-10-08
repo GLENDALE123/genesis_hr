@@ -20,7 +20,11 @@ npm run firebase:emulators:functions # Functions만
 
 ### 2. 개발 서버 시작 (에뮬레이터 모드)
 ```bash
+# 로컬 접속만 가능
 npm run dev:emulator
+
+# 외부 접속 가능 (다른 기기에서 접속)
+npm run dev:emulator:external
 ```
 
 ### 3. 에뮬레이터 UI 접근
@@ -77,11 +81,13 @@ hs-next/
 
 ### 1. 개발 시작
 ```bash
-# 터미널 1: 에뮬레이터 시작
+# 터미널 1: 에뮬레이터 시작 (외부 접속 허용)
 npm run firebase:emulators
 
 # 터미널 2: 개발 서버 시작
-npm run dev:emulator
+# 로컬 접속만: npm run dev:emulator
+# 외부 접속 허용: npm run dev:emulator:external
+npm run dev:emulator:external
 ```
 
 ### 2. 데이터 테스트
@@ -119,12 +125,27 @@ const result = await calculatePayroll({
 
 ## 🚨 문제 해결
 
+### CORS 오류 (외부 접속 시)
+```bash
+# 1. .env.local 파일 생성 (프로젝트 루트에)
+NEXT_PUBLIC_USE_FIREBASE_EMULATOR=true
+
+# 2. 외부 접속용 명령어 사용
+npm run dev:emulator:external
+
+# 3. 방화벽 포트 열기 (Windows)
+netsh advfirewall firewall add rule name="Firebase Emulator Auth" dir=in action=allow protocol=TCP localport=9099
+netsh advfirewall firewall add rule name="Firebase Emulator Firestore" dir=in action=allow protocol=TCP localport=8080
+netsh advfirewall firewall add rule name="Next.js Dev Server" dir=in action=allow protocol=TCP localport=3000
+```
+
 ### 에뮬레이터 연결 실패
 ```bash
 # 포트 충돌 확인
 netstat -ano | findstr :9099
 netstat -ano | findstr :8080
 netstat -ano | findstr :9199
+netstat -ano | findstr :3000
 
 # 프로세스 종료
 taskkill /PID <PID> /F

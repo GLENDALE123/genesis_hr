@@ -7,6 +7,14 @@ export interface PackagedBox {
   reason?: string;
 }
 
+// 폼에서 사용하는 PackagedBox (quantity가 string)
+export interface PackagedBoxFormData {
+  boxNumber: string;
+  type: '정상' | 'B급' | '구분출하' | '';
+  quantity: string;
+  reason: string;
+}
+
 export interface ProcessCoat {
   conditions: string;
   remarks: string;
@@ -114,7 +122,7 @@ export interface PackagingFormData {
   packagingUnit: string;
   boxCount: string;
   remainder: string;
-  packagedBoxes: PackagedBox[];
+  packagedBoxes: PackagedBoxFormData[];
   memo: string;
 }
 
@@ -130,7 +138,7 @@ export interface ProductionReportFilter {
 }
 
 // 생산일보 통계 데이터
-export interface ProductionReportStats {
+export interface ProductionReportStatsData {
   totalReports: number;
   totalInputQuantity: number;
   totalGoodQuantity: number;

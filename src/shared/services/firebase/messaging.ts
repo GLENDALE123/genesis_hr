@@ -1,11 +1,20 @@
-import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging';
+import { getMessaging, getToken, onMessage, isSupported, Messaging } from 'firebase/messaging';
 import app from './config';
 
 // VAPID 키 (Firebase Console에서 생성)
 const VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || '';
 
+interface MessagePayload {
+  notification?: {
+    title?: string;
+    body?: string;
+    image?: string;
+  };
+  data?: Record<string, string>;
+}
+
 // 메시징 서비스 초기화
-let messaging: any = null;
+let messaging: Messaging | null = null;
 
 // 메시징 서비스 가져오기 (클라이언트 사이드에서만)
 export const getMessagingService = async () => {
@@ -55,20 +64,25 @@ export const getFCMToken = async (): Promise<string | null> => {
       return null;
     }
   } catch (error) {
+    // NotAllowedError는 조용히 처리 (사용자가 권한을 거부함)
+    if (error instanceof Error && error.name === 'NotAllowedError') {
+      // 권한 거부 에러는 로그 출력 안 함
+      return null;
+    }
     console.error('FCM 토큰 가져오기 실패:', error);
     return null;
   }
 };
 
 // 포그라운드 메시지 리스너
-export const onForegroundMessage = (callback: (payload: any) => void) => {
+export const onForegroundMessage = (callback: (payload: MessagePayload) => void) => {
   if (typeof window === 'undefined') return;
 
   getMessagingService().then((messagingService) => {
     if (messagingService) {
       onMessage(messagingService, (payload) => {
         console.log('포그라운드 메시지 수신:', payload);
-        callback(payload);
+        callback(payload as MessagePayload);
       });
     }
   });
@@ -143,7 +157,7 @@ export const initializeFCM = async (): Promise<{
   }
 };
 
-export default {
+const messagingService = {
   getMessagingService,
   getFCMToken,
   onForegroundMessage,
@@ -152,3 +166,6 @@ export default {
   registerServiceWorker,
   initializeFCM,
 };
+
+export default messagingService;
+export type { MessagePayload };

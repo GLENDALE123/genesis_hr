@@ -4,18 +4,31 @@
 export { AuthProvider } from './components/AuthProvider';
 export { ProtectedRoute } from './components/ProtectedRoute';
 export { LoginForm } from './components/LoginForm';
+export { PermissionSettingsButton } from './components/PermissionSettingsButton';
 
 // Hooks
 export { useAuth } from './hooks/useAuth';
+export { useUserRole, useHasRole, useIsAdmin, useIsManager } from './hooks/useUserRole';
+export { usePagePermissions, useHasPermission, useHasCustomPermission } from './hooks/usePagePermissions';
 
 // Services
 export { AuthService } from './services';
+export { MigrationService } from './services/migrationService';
+export { PermissionsService } from './services/permissionsService';
 
 // Store
 export { useAuthStore } from './store';
 
 // Types
-export type { UserProfile, SignUpData, LoginData, AuthState } from './types';
+export type { UserProfile, SignUpData, LoginData, AuthState, UserRole } from './types';
+export type { 
+  UserPermissions, 
+  PagePermissions, 
+  PageIdentifier, 
+  CrudPermission,
+  CustomPermissions,
+  PermissionCheck 
+} from './types/permissions';
 
 // Constants
 export { 
@@ -41,3 +54,13 @@ export {
   formatAuthError,
   translateFirebaseError
 } from './utils';
+
+// Permissions
+export {
+  isAdmin,
+  isManager,
+  hasRole,
+  canManageData,
+  canCreateData,
+  canViewData
+} from './utils/permissions';

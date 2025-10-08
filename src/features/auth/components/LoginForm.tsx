@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AuthService } from '@/features/auth/services';
+import { MigrationService } from '@/features/auth/services/migrationService';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -17,6 +18,7 @@ import {
   AUTH_ERROR_MESSAGES 
 } from '@/features/auth/constants';
 import { Eye, EyeOff } from 'lucide-react';
+import { toast } from 'sonner';
 
 export function LoginForm() {
   const [email, setEmail] = useState('');
@@ -30,6 +32,7 @@ export function LoginForm() {
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordMismatch, setPasswordMismatch] = useState(false);
   const router = useRouter();
   const { user } = useAuth();
 
@@ -39,6 +42,15 @@ export function LoginForm() {
       router.push('/');
     }
   }, [user, router]);
+
+  // 비밀번호 일치 여부 실시간 체크
+  useEffect(() => {
+    if (isSignUp && confirmPassword) {
+      setPasswordMismatch(password !== confirmPassword);
+    } else {
+      setPasswordMismatch(false);
+    }
+  }, [password, confirmPassword, isSignUp]);
 
   // 로그인된 사용자는 렌더링하지 않음
   if (user) {
@@ -57,16 +69,62 @@ export function LoginForm() {
           password,
           confirmPassword,
           name: name.trim(),
+          displayName: name.trim(),
           position: position.trim() || undefined,
           department: department.trim() || undefined,
         });
-      } else {
-        await AuthService.signIn({
-          email: email.trim(),
-          password,
+        toast.success('회원가입이 완료되었습니다!', {
+          description: '환영합니다. 로그인되었습니다.',
         });
+        router.push('/dashboard');
+      } else {
+        // 로그인 시도
+        try {
+          await AuthService.signIn({
+            email: email.trim(),
+            password,
+          });
+          toast.success('로그인되었습니다!');
+          router.push('/dashboard');
+        } catch (loginError: any) {
+          // 로그인 실패 시 Firestore 프로필 확인 (마이그레이션)
+          if (loginError.message?.includes('사용자') || loginError.message?.includes('존재하지') || loginError.code === 'auth/user-not-found') {
+            const hasProfile = await MigrationService.checkFirestoreProfileExists(email.trim());
+            
+            if (hasProfile) {
+              // Firestore에 프로필이 있으면 Auth 계정 생성 시도
+              toast.info('기존 프로필을 찾았습니다. 계정을 연결하는 중...', {
+                description: '잠시만 기다려주세요.'
+              });
+              
+              const result = await MigrationService.createAuthFromFirestoreProfile(email.trim(), password);
+              
+              if (result.success) {
+                // 마이그레이션 성공 후 중복 문서 정리
+                try {
+                  const deletedCount = await MigrationService.cleanupDuplicateProfiles(email.trim());
+                  if (deletedCount > 0) {
+                    console.log(`✅ ${deletedCount}개의 중복 프로필 정리 완료`);
+                  }
+                } catch (cleanupError) {
+                  console.warn('중복 문서 정리 중 에러 (무시):', cleanupError);
+                }
+                
+                toast.success('계정이 성공적으로 연결되었습니다!', {
+                  description: '로그인되었습니다.'
+                });
+                router.push('/dashboard');
+                return;
+              } else {
+                throw new Error(result.error || '계정 연결에 실패했습니다.');
+              }
+            }
+          }
+          
+          // 마이그레이션도 실패하면 원래 에러 던지기
+          throw loginError;
+        }
       }
-      router.push('/');
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : AUTH_ERROR_MESSAGES.LOGIN_FAILED);
     } finally {
@@ -109,6 +167,7 @@ export function LoginForm() {
                 placeholder={FORM_PLACEHOLDERS.PASSWORD}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                className="pr-10"
                 required
               />
               <Button
@@ -139,6 +198,7 @@ export function LoginForm() {
                     placeholder={FORM_PLACEHOLDERS.CONFIRM_PASSWORD}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
+                    className={passwordMismatch ? "pr-10 border-destructive focus-visible:ring-destructive" : "pr-10"}
                     required
                   />
                   <Button
@@ -155,6 +215,11 @@ export function LoginForm() {
                     )}
                   </Button>
                 </div>
+                {passwordMismatch && (
+                  <p className="text-sm text-destructive">
+                    비밀번호가 일치하지 않습니다.
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -222,6 +287,7 @@ export function LoginForm() {
               setError('');
               setShowPassword(false);
               setShowConfirmPassword(false);
+              setPasswordMismatch(false);
             }}
             className="text-primary hover:text-primary/80 font-medium"
           >

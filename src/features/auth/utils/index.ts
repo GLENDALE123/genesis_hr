@@ -1,4 +1,4 @@
-import { AUTH_VALIDATION_RULES, AUTH_ERROR_MESSAGES } from '@/features/auth/constants';
+import { AUTH_VALIDATION_RULES } from '@/features/auth/constants';
 
 // 유효성 검증 결과 타입
 export interface ValidationResult {
@@ -209,14 +209,24 @@ export const formatAuthError = (error: unknown): string => {
 // Firebase 에러 메시지를 한국어로 변환
 export const translateFirebaseError = (errorCode: string): string => {
   const errorMap: Record<string, string> = {
+    // 로그인 관련 에러
     'auth/user-not-found': '존재하지 않는 계정입니다.',
     'auth/wrong-password': '비밀번호가 올바르지 않습니다.',
+    'auth/invalid-credential': '이메일 또는 비밀번호가 올바르지 않습니다.',
+    'auth/invalid-login-credentials': '이메일 또는 비밀번호가 올바르지 않습니다.',
+    
+    // 회원가입 관련 에러
     'auth/email-already-in-use': '이미 사용 중인 이메일입니다.',
-    'auth/weak-password': '비밀번호가 너무 약합니다.',
+    'auth/weak-password': '비밀번호가 너무 약합니다. (최소 6자 이상)',
     'auth/invalid-email': '올바르지 않은 이메일 형식입니다.',
+    
+    // 계정 상태 에러
     'auth/user-disabled': '비활성화된 계정입니다.',
-    'auth/too-many-requests': '너무 많은 요청으로 인해 일시적으로 차단되었습니다.',
+    
+    // 네트워크 및 기타 에러
+    'auth/too-many-requests': '너무 많은 로그인 시도로 인해 일시적으로 차단되었습니다. 잠시 후 다시 시도해주세요.',
     'auth/network-request-failed': '네트워크 연결을 확인해주세요.',
+    'auth/operation-not-allowed': '허용되지 않는 작업입니다.',
   };
   
   return errorMap[errorCode] || '인증 중 오류가 발생했습니다.';

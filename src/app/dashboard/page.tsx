@@ -1,9 +1,9 @@
 'use client';
 
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
-import { useAuth } from '@/features/auth/hooks/useAuth';
+import { useAuth, useUserRole, useIsAdmin, useIsManager } from '@/features/auth/hooks';
 import { useDashboardStore } from '@/features/dashboard';
-// import { useGlobalStore } from '@/app/store'; // 향후 알림 기능에 사용 예정
+import { useDevStore } from '@/app/store';
 import { useState, useEffect } from 'react';
 import { addDocument, getDocuments } from '@/shared/services/firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
@@ -11,6 +11,10 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Badge } from '@/shared/components/ui/badge';
 import { Skeleton } from '@/shared/components/ui/skeleton';
+import { toast } from 'sonner';
+import { Spinner } from '@/shared/components/ui/spinner';
+import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
+import { Shield, Lock } from 'lucide-react';
 
 interface Todo {
   id: string;
@@ -20,12 +24,42 @@ interface Todo {
 }
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
+  const currentRole = useUserRole();
+  const isAdmin = useIsAdmin();
+  const isManager = useIsManager();
+  const { dummyRole } = useDevStore();
   const { stats, isLoading: dashboardLoading, fetchStats } = useDashboardStore();
-  // const { addNotification } = useGlobalStore(); // 향후 알림 기능에 사용 예정
   const [todos, setTodos] = useState<Todo[]>([]);
   const [newTodo, setNewTodo] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // UserProfile 콘솔 로그
+  useEffect(() => {
+    console.log('=====================================');
+    console.log('🔍 [Dashboard] User:', user);
+    console.log('🔍 [Dashboard] User UID:', user?.uid);
+    console.log('🔍 [Dashboard] User Email:', user?.email);
+    console.log('=====================================');
+    console.log('🔍 [Dashboard] UserProfile:', userProfile);
+    console.log('🔍 [Dashboard] UserProfile UID:', userProfile?.uid);
+    console.log('🔍 [Dashboard] UserProfile Email:', userProfile?.email);
+    console.log('🔍 [Dashboard] UserProfile Name:', userProfile?.name);
+    console.log('🔍 [Dashboard] UserProfile Role:', userProfile?.role);
+    console.log('=====================================');
+    
+    // UserProfile이 null인 경우 수동으로 프로필 조회 시도
+    if (user && !userProfile) {
+      console.warn('⚠️ UserProfile이 null입니다. 수동으로 프로필 조회를 시도합니다...');
+      import('@/shared/services/firebase/userProfile').then(({ getUserProfile }) => {
+        getUserProfile(user.uid).then(profile => {
+          console.log('🔍 [Manual Fetch] 수동 조회 결과:', profile);
+        }).catch(err => {
+          console.error('❌ [Manual Fetch] 프로필 조회 실패:', err);
+        });
+      });
+    }
+  }, [user, userProfile]);
 
   // Firestore에서 할 일 목록 가져오기
   const loadTodos = async () => {
@@ -79,6 +113,97 @@ export default function DashboardPage() {
               </CardDescription>
             </CardHeader>
           </Card>
+
+          {/* 권한별 UI 테스트 카드 (개발용) */}
+          {userProfile?.role === 'Admin' && (
+            <Card className="border-2 border-primary">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-5 w-5" />
+                    <CardTitle>권한별 UI 테스트 (개발 전용)</CardTitle>
+                  </div>
+                  {dummyRole && (
+                    <Badge variant="destructive">
+                      테스트 모드: {dummyRole}
+                    </Badge>
+                  )}
+                </div>
+                <CardDescription>
+                  우측 상단 유저 메뉴에서 권한을 변경하면 아래 카드들이 동적으로 변경됩니다.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* 현재 권한 표시 */}
+                <div className="p-4 bg-muted rounded-lg">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">실제 권한:</span>
+                      <Badge variant="default">{userProfile?.role}</Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">현재 보고 있는 권한:</span>
+                      <Badge variant={dummyRole ? 'destructive' : 'secondary'}>
+                        {currentRole || 'None'}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 권한별 표시 예시 */}
+                <div className="grid gap-4">
+                  {/* Admin 전용 */}
+                  {isAdmin && (
+                    <div className="p-4 border-2 border-primary rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Shield className="h-5 w-5 text-primary" />
+                        <span className="font-semibold">Admin 전용 기능</span>
+                        <Badge variant="default">Admin</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        이 카드는 Admin 권한이 있을 때만 표시됩니다.
+                      </p>
+                      <Button size="sm" className="mt-2" variant="default">
+                        관리자 작업 수행
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Manager 이상 */}
+                  {isManager && (
+                    <div className="p-4 border-2 border-secondary rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Shield className="h-5 w-5 text-secondary-foreground" />
+                        <span className="font-semibold">Manager 이상 기능</span>
+                        <Badge variant="secondary">Manager+</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        이 카드는 Manager 또는 Admin 권한이 있을 때 표시됩니다.
+                      </p>
+                      <Button size="sm" className="mt-2" variant="secondary">
+                        매니저 작업 수행
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* 모든 사용자 */}
+                  <div className="p-4 border-2 border-muted rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Lock className="h-5 w-5 text-muted-foreground" />
+                      <span className="font-semibold">모든 사용자 기능</span>
+                      <Badge variant="outline">All Users</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      이 카드는 권한과 상관없이 모든 로그인 사용자에게 표시됩니다.
+                    </p>
+                    <Button size="sm" className="mt-2" variant="outline">
+                      일반 작업 수행
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* 대시보드 통계 카드 */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -238,6 +363,307 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-2">
                   <Badge variant="default">✅</Badge>
                   <span>Storage - 파일 업로드 준비됨</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Sonner 토스트 테스트 */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Sonner 토스트 테스트</CardTitle>
+              <CardDescription>
+                다양한 유형의 알림 테스트
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Button
+                  onClick={() => toast.success('성공 알림입니다!', {
+                    description: '작업이 성공적으로 완료되었습니다.',
+                  })}
+                  variant="default"
+                >
+                  성공 알림
+                </Button>
+                
+                <Button
+                  onClick={() => toast.error('에러 알림입니다!', {
+                    description: '작업 중 오류가 발생했습니다.',
+                  })}
+                  variant="destructive"
+                >
+                  에러 알림
+                </Button>
+                
+                <Button
+                  onClick={() => toast.info('정보 알림입니다!', {
+                    description: '새로운 정보가 있습니다.',
+                  })}
+                  variant="secondary"
+                >
+                  정보 알림
+                </Button>
+                
+                <Button
+                  onClick={() => toast.warning('경고 알림입니다!', {
+                    description: '주의가 필요한 사항입니다.',
+                  })}
+                  variant="outline"
+                >
+                  경고 알림
+                </Button>
+                
+                <Button
+                  onClick={() => toast('기본 알림입니다!', {
+                    description: '일반 메시지입니다.',
+                  })}
+                  variant="secondary"
+                  className="col-span-2"
+                >
+                  기본 알림
+                </Button>
+                
+                <Button
+                  onClick={() => toast.promise(
+                    new Promise((resolve) => setTimeout(resolve, 2000)),
+                    {
+                      loading: '처리 중...',
+                      success: '작업 완료!',
+                      error: '작업 실패',
+                    }
+                  )}
+                  variant="outline"
+                  className="col-span-2"
+                >
+                  프로미스 알림
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 스피너 컴포넌트 테스트 */}
+          <Card>
+            <CardHeader>
+              <CardTitle>✅ 스피너 컴포넌트 통일 완료</CardTitle>
+              <CardDescription>
+                프로젝트 전체에서 통일된 2가지 스피너 컴포넌트 사용 중
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-8">
+              {/* 스피너 통일 완료 */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">✅ 스피너 통일 완료</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* 1. Spinner 컴포넌트 */}
+                  <div className="p-6 bg-muted/50 rounded-lg border-2 border-primary/20">
+                    <div className="flex flex-col items-center gap-4">
+                      <Spinner size="lg" />
+                      <div className="text-center">
+                        <h4 className="font-semibold text-sm">Spinner</h4>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Shadcn/ui 기반 원형 테두리 회전<br/>
+                          간단한 로딩 상태 표시<br/>
+                          <span className="text-green-600 font-semibold">✓ 표준 컴포넌트</span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 2. LoadingSpinner 컴포넌트 */}
+                  <div className="p-6 bg-muted/50 rounded-lg border-2 border-green-500/20">
+                    <div className="flex flex-col items-center gap-4">
+                      <LoadingSpinner size="lg" label="" />
+                      <div className="text-center">
+                        <h4 className="font-semibold text-sm">LoadingSpinner</h4>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Spinner 래퍼 컴포넌트<br/>
+                          레이블/오버레이/전체화면 지원<br/>
+                          <span className="text-green-600 font-semibold">✓ 고급 기능 제공</span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 사용 위치 정보 */}
+                <div className="mt-4 p-4 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
+                  <h4 className="font-semibold text-sm mb-2">✅ 스피너 사용 현황 (통일 완료)</h4>
+                  <ul className="text-xs space-y-1 text-muted-foreground">
+                    <li>✅ <strong>PackagingReportListView.tsx</strong> → LoadingSpinner 사용</li>
+                    <li>✅ <strong>PackagingDailyReportContainer.tsx</strong> → Spinner 사용 (DIV 스피너 제거)</li>
+                    <li>✅ <strong>PackagingReportForm.tsx</strong> → Spinner 사용 (SVG 스피너 제거)</li>
+                  </ul>
+                </div>
+
+                {/* 사용 가이드 */}
+                <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <h4 className="font-semibold text-sm mb-2">📖 사용 가이드</h4>
+                  <div className="space-y-2 text-xs text-muted-foreground">
+                    <div>
+                      <p className="font-semibold text-foreground mb-1">1. 간단한 로딩</p>
+                      <code className="bg-muted px-2 py-1 rounded block">{'<Spinner size="lg" label="로딩 중..." />'}</code>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-foreground mb-1">2. 버튼 내부</p>
+                      <code className="bg-muted px-2 py-1 rounded block">{'<Spinner size="sm" className="mr-2" />'}</code>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-foreground mb-1">3. 전체 화면 로딩</p>
+                      <code className="bg-muted px-2 py-1 rounded block">{'<LoadingSpinner fullScreen={true} />'}</code>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-foreground mb-1">4. 오버레이 로딩</p>
+                      <code className="bg-muted px-2 py-1 rounded block">{'<LoadingSpinner overlay={true} label="저장 중..." />'}</code>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {/* Spinner 컴포넌트 */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">1. Spinner (기본 스피너)</h3>
+                <p className="text-sm text-muted-foreground">
+                  Shadcn/ui 스타일의 원형 회전 스피너 - 다양한 크기와 색상 variant 지원
+                </p>
+                
+                {/* 크기별 */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-foreground">크기별 (Size)</h4>
+                  <div className="flex items-center gap-6 p-4 bg-muted/50 rounded-lg">
+                    <div className="flex flex-col items-center gap-2">
+                      <Spinner size="sm" />
+                      <span className="text-xs text-muted-foreground">Small</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-2">
+                      <Spinner size="default" />
+                      <span className="text-xs text-muted-foreground">Default</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-2">
+                      <Spinner size="lg" />
+                      <span className="text-xs text-muted-foreground">Large</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-2">
+                      <Spinner size="xl" />
+                      <span className="text-xs text-muted-foreground">XL</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 색상별 */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-foreground">색상별 (Variant)</h4>
+                  <div className="flex items-center gap-6 p-4 bg-muted/50 rounded-lg">
+                    <div className="flex flex-col items-center gap-2">
+                      <Spinner variant="default" />
+                      <span className="text-xs text-muted-foreground">Default</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-2">
+                      <Spinner variant="secondary" />
+                      <span className="text-xs text-muted-foreground">Secondary</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-2">
+                      <Spinner variant="muted" />
+                      <span className="text-xs text-muted-foreground">Muted</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-2">
+                      <Spinner variant="destructive" />
+                      <span className="text-xs text-muted-foreground">Destructive</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 레이블과 함께 */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-foreground">레이블과 함께</h4>
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    <Spinner size="lg" label="로딩 중..." />
+                  </div>
+                </div>
+              </div>
+
+              {/* LoadingSpinner 컴포넌트 */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">2. LoadingSpinner (고급 래퍼)</h3>
+                <p className="text-sm text-muted-foreground">
+                  Spinner를 래핑한 고급 컴포넌트 - 전체 화면, 오버레이 옵션 지원
+                </p>
+
+                {/* 기본 사용 */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-foreground">기본 사용</h4>
+                  <div className="p-8 bg-muted/50 rounded-lg">
+                    <LoadingSpinner label="데이터 로딩 중..." />
+                  </div>
+                </div>
+
+                {/* 크기별 */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-foreground">크기별 LoadingSpinner</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="p-6 bg-muted/50 rounded-lg">
+                      <LoadingSpinner size="sm" label="Small" />
+                    </div>
+                    <div className="p-6 bg-muted/50 rounded-lg">
+                      <LoadingSpinner size="default" label="Default" />
+                    </div>
+                    <div className="p-6 bg-muted/50 rounded-lg">
+                      <LoadingSpinner size="lg" label="Large" />
+                    </div>
+                    <div className="p-6 bg-muted/50 rounded-lg">
+                      <LoadingSpinner size="xl" label="XL" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 색상별 */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-foreground">색상별 LoadingSpinner</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="p-6 bg-muted/50 rounded-lg">
+                      <LoadingSpinner variant="default" label="Default" />
+                    </div>
+                    <div className="p-6 bg-muted/50 rounded-lg">
+                      <LoadingSpinner variant="secondary" label="Secondary" />
+                    </div>
+                    <div className="p-6 bg-muted/50 rounded-lg">
+                      <LoadingSpinner variant="muted" label="Muted" />
+                    </div>
+                    <div className="p-6 bg-muted/50 rounded-lg">
+                      <LoadingSpinner variant="destructive" label="Error" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 실제 사용 예시 */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-foreground">실제 사용 예시 - 카드 내부</h4>
+                  <Card className="min-h-[200px] relative">
+                    <CardContent className="p-0">
+                      <LoadingSpinner 
+                        size="lg"
+                        variant="default"
+                        label="데이터를 불러오는 중..."
+                        overlay={true}
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+
+              {/* 코드 예시 */}
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold">코드 사용 예시</h3>
+                <div className="p-4 bg-slate-900 text-slate-50 rounded-lg font-mono text-xs space-y-2 overflow-x-auto">
+                  <div>
+                    <p className="text-green-400">// Spinner 사용</p>
+                    <p className="text-blue-300">import {'{'} Spinner {'}'} from '@/shared/components/ui/spinner';</p>
+                    <p className="text-yellow-200">&lt;Spinner size="lg" variant="default" label="로딩 중..." /&gt;</p>
+                  </div>
+                  <div className="pt-2">
+                    <p className="text-green-400">// LoadingSpinner 사용</p>
+                    <p className="text-blue-300">import {'{'} LoadingSpinner {'}'} from '@/shared/components/common/LoadingSpinner';</p>
+                    <p className="text-yellow-200">&lt;LoadingSpinner size="default" overlay={'{true}'} /&gt;</p>
+                  </div>
                 </div>
               </div>
             </CardContent>

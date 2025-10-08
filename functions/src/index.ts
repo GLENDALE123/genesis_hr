@@ -50,7 +50,7 @@ export const calculatePayroll = functions.https.onCall(async (data, context) => 
   }
   
   try {
-    const { employeeId, baseSalary, overtimeHours, bonus } = data;
+    const { baseSalary, overtimeHours, bonus } = data;
     
     // 기본 급여 계산
     const hourlyRate = baseSalary / 160; // 월 160시간 기준
@@ -121,3 +121,110 @@ export const getEmployeeStats = functions.https.onCall(async (data, context) => 
     throw new functions.https.HttpsError('internal', '통계 조회 중 오류가 발생했습니다.');
   }
 });
+
+// 🔔 알림 생성 함수 (Tauri 앱에서 실시간 수신)
+export const sendNotification = functions.https.onCall(async (data, context) => {
+  // 인증 확인
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', '인증이 필요합니다.');
+  }
+  
+  try {
+    const { userId, title, body, type, link, metadata } = data;
+    
+    // 필수 필드 검증
+    if (!userId || !title || !body) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'userId, title, body는 필수 필드입니다.'
+      );
+    }
+    
+    // Firestore에 알림 저장
+    const notification = await admin.firestore().collection('notifications').add({
+      userId,
+      title,
+      body,
+      type: type || 'info',
+      read: false,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      link: link || null,
+      metadata: metadata || null,
+    });
+    
+    console.log(`알림 생성됨: ${notification.id} (대상: ${userId})`);
+    
+    return {
+      success: true,
+      notificationId: notification.id,
+    };
+  } catch (error) {
+    console.error('알림 생성 실패:', error);
+    throw new functions.https.HttpsError('internal', '알림 생성 중 오류가 발생했습니다.');
+  }
+});
+
+// 🔔 생산 보고서 생성 시 자동 알림 (예시)
+export const onProductionReportCreated = functions.firestore
+  .document('productionReports/{reportId}')
+  .onCreate(async (snapshot, context) => {
+    try {
+      const report = snapshot.data();
+      
+      // 관리자에게 알림 전송
+      const managersSnapshot = await admin.firestore()
+        .collection('users')
+        .where('role', '==', 'manager')
+        .get();
+      
+      const notifications = managersSnapshot.docs.map(doc => {
+        return admin.firestore().collection('notifications').add({
+          userId: doc.id,
+          title: '새 생산 보고서',
+          body: `${report.productName || '제품'}의 생산 보고서가 등록되었습니다.`,
+          type: 'info',
+          read: false,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          link: `/production/daily-report/${context.params.reportId}`,
+          metadata: {
+            reportId: context.params.reportId,
+            productName: report.productName,
+          },
+        });
+      });
+      
+      await Promise.all(notifications);
+      console.log(`생산 보고서 알림 전송 완료: ${context.params.reportId}`);
+    } catch (error) {
+      console.error('생산 보고서 알림 전송 실패:', error);
+    }
+  });
+
+// 🔔 급여 계산 완료 시 자동 알림 (예시)
+export const onPayrollCalculated = functions.firestore
+  .document('payrolls/{payrollId}')
+  .onCreate(async (snapshot, context) => {
+    try {
+      const payroll = snapshot.data();
+      
+      // 직원에게 알림 전송
+      await admin.firestore().collection('notifications').add({
+        userId: payroll.employeeId,
+        title: '급여 계산 완료',
+        body: `${payroll.month || '이번 달'} 급여가 계산되었습니다. 확인해주세요.`,
+        type: 'success',
+        read: false,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        link: `/payroll/${context.params.payrollId}`,
+        metadata: {
+          payrollId: context.params.payrollId,
+          month: payroll.month,
+          amount: payroll.netPay,
+        },
+      });
+      
+      console.log(`급여 계산 알림 전송 완료: ${context.params.payrollId}`);
+    } catch (error) {
+      console.error('급여 계산 알림 전송 실패:', error);
+    }
+  });

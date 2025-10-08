@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
@@ -16,7 +16,6 @@ import {
   MessageSquare,
   Bell,
   HelpCircle,
-  ChevronRight,
   LayoutDashboard,
   UserCheck,
   CreditCard,
@@ -25,14 +24,12 @@ import {
   Factory,
   CalendarDays,
   ClipboardList,
-  Package,
   AlertTriangle
 } from 'lucide-react';
 
 interface AppSidebarProps {
   className?: string;
   collapsed?: boolean;
-  onToggle?: () => void;
 }
 
 interface NavItem {
@@ -116,11 +113,28 @@ const subNavigationItems: NavItem[] = [
 
 export const AppSidebar: React.FC<AppSidebarProps> = ({ 
   className,
-  collapsed = false,
-  onToggle 
+  collapsed = false
 }) => {
   const router = useRouter();
   const pathname = usePathname();
+  const [isHovered, setIsHovered] = React.useState(false);
+  
+  // 데스크톱에서만 호버 효과 적용 (1024px 이상)
+  const [isDesktop, setIsDesktop] = React.useState(false);
+
+  React.useEffect(() => {
+    const checkDesktop = () => {
+      setIsDesktop(window.innerWidth >= 1024);
+    };
+    
+    checkDesktop();
+    window.addEventListener('resize', checkDesktop);
+    
+    return () => window.removeEventListener('resize', checkDesktop);
+  }, []);
+
+  // 실제 표시 상태: 데스크톱에서 접혀있을 때 호버하면 펼침
+  const isExpanded = isDesktop && collapsed ? isHovered : !collapsed;
 
   const isActive = (href: string, exact = false) => {
     if (exact) {
@@ -136,19 +150,22 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   const renderNavItem = (item: NavItem, level = 0) => {
     const hasChildren = item.children && item.children.length > 0;
     
-    // 부모 메뉴의 경우: 자식 메뉴 중 하나가 정확히 일치하면 부모는 비활성화
+    // 부모 메뉴의 경우: 자식 메뉴 중 하나가 활성화되면 부모도 활성화
     let active = false;
     if (level === 0 && hasChildren) {
-      // 자식 메뉴 중 현재 경로와 정확히 일치하는 것이 있는지 확인
-      const exactChildMatch = item.children?.some(child => pathname === child.href);
-      if (exactChildMatch) {
-        active = false; // 자식이 활성화되면 부모는 비활성화
+      // 자식 메뉴 중 현재 경로와 일치하는 것이 있는지 확인
+      const childMatch = item.children?.some(child => 
+        pathname === child.href || pathname.startsWith(child.href + '/')
+      );
+      if (childMatch) {
+        active = true; // 자식이 활성화되면 부모도 활성화
       } else {
         active = isActive(item.href); // 그렇지 않으면 기존 로직 사용
       }
     } else {
-      // 자식 메뉴나 자식이 없는 메뉴의 경우 정확한 매칭 사용
-      active = isActive(item.href, true);
+      // 자식 메뉴나 자식이 없는 메뉴의 경우
+      // 정확한 매칭 또는 하위 경로 매칭 모두 허용
+      active = pathname === item.href || pathname.startsWith(item.href + '/');
     }
 
     const navItemContent = (
@@ -162,7 +179,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             ? "bg-accent text-accent-foreground"
             : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
           // 접힌 상태에서는 정사각형 터치 영역
-          collapsed && "justify-center px-2 py-3 md:px-2 md:py-2 min-w-[44px] md:min-w-[40px]"
+          !isExpanded && "justify-center px-2 py-3 md:px-2 md:py-2 min-w-[44px] md:min-w-[40px]"
         )}
         onClick={() => handleNavigation(item.href)}
       >
@@ -172,7 +189,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             "h-5 w-5 md:h-4 md:w-4 flex-shrink-0",
             active && "text-accent-foreground"
           )} />
-          {!collapsed && (
+          {isExpanded && (
             <>
               <span className="truncate">{item.title}</span>
               {item.badge && (
@@ -188,7 +205,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 
     return (
       <div key={item.title}>
-        {collapsed ? (
+        {!isExpanded ? (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -204,7 +221,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
         )}
         
         {/* 서브메뉴 항상 표시 (접힌 상태가 아닐 때만) */}
-        {!collapsed && hasChildren && (
+        {isExpanded && hasChildren && (
           <div className="mt-1 space-y-1 relative">
             {/* 서브메뉴 왼쪽 세로선 */}
             <div className="absolute left-4 top-0 bottom-0 w-px bg-border" />
@@ -216,15 +233,23 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   };
 
   return (
-    <div className={cn(
-      "flex h-screen flex-col border-r bg-background transition-all duration-300",
-      // 태블릿에서 사이드바 너비 조정 (모바일: 더 넓게, 데스크톱: 기존 유지)
-      collapsed ? "w-16 md:w-16" : "w-72 md:w-64",
-      className
-    )}>
+    <div 
+      className={cn(
+        "flex h-full flex-col border-r transition-all duration-300 flex-shrink-0",
+        // 태블릿에서 사이드바 너비 조정 (모바일: 더 넓게, 데스크톱: 기존 유지)
+        isExpanded ? "w-72 md:w-64" : "w-16 md:w-16",
+        className
+      )}
+      style={{
+        backgroundColor: 'hsl(var(--sidebar-background))',
+        color: 'hsl(var(--sidebar-foreground))',
+      }}
+      onMouseEnter={() => isDesktop && collapsed && setIsHovered(true)}
+      onMouseLeave={() => isDesktop && collapsed && setIsHovered(false)}
+    >
       {/* Sidebar Header */}
       <div className="flex h-16 items-center justify-center border-b px-4">
-        {!collapsed && (
+        {isExpanded && (
           <div className="flex items-center gap-2">
             <div className="h-6 w-6 rounded bg-primary flex items-center justify-center">
               <span className="text-primary-foreground font-bold text-xs">HS</span>
@@ -243,7 +268,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
           </div>
           
           {/* 세로 구분선 */}
-          {!collapsed && (
+          {isExpanded && (
             <div className="flex items-center px-3">
               <div className="h-px bg-border flex-1" />
             </div>
@@ -259,7 +284,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
       {/* Sidebar Footer */}
       <div className="border-t p-4">
         <div className="space-y-2">
-          {!collapsed && (
+          {isExpanded && (
             <>
               <Button
                 variant="ghost"
@@ -279,7 +304,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
               </Button>
             </>
           )}
-          {collapsed && (
+          {!isExpanded && (
             <div className="flex flex-col gap-2">
               <TooltipProvider>
                 <Tooltip>
