@@ -1,5 +1,4 @@
-import { db } from '@/shared/services/firebase/config';
-import { collection, query, where, limit, getDocs } from 'firebase/firestore';
+import { getDocumentsWithQuery } from '@/shared/services/firebase/firestore';
 
 /**
  * 발주번호로 생산일정 데이터를 조회하는 서비스
@@ -25,22 +24,17 @@ class OrderLookupService {
     }
 
     try {
-      if (!db) {
-        throw new Error('Firebase not initialized');
-      }
-
-      // production-schedules 컬렉션에서 발주번호로 조회
-      const q = query(
-        collection(db, 'production-schedules'),
-        where('orderNumber', '==', orderNumber),
-        limit(1)
+      // ✅ 공통 서비스 사용
+      const docs = await getDocumentsWithQuery(
+        'production-schedules',
+        [{ field: 'orderNumber', operator: '==', value: orderNumber }],
+        undefined,
+        'asc',
+        1
       );
 
-      const snapshot = await getDocs(q);
-
-      if (!snapshot.empty) {
-        const doc = snapshot.docs[0];
-        const data = doc.data();
+      if (docs.length > 0) {
+        const data = docs[0] as any;
 
         // 발주처 필드 확인 - 다양한 가능한 필드명 체크
         const supplierValue = data.client || data.supplier || data.발주처 || data.clientName || '';

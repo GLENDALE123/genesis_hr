@@ -28,6 +28,7 @@ import { useTheme } from 'next-themes';
 import { logout } from '@/shared/services/firebase/auth';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/shared/lib/utils';
+import { getUserDisplayName, getUserInitial, getUserRoleBadgeVariant, getUserRoleText, isAdmin as checkIsAdmin } from '@/shared/utils/userUtils';
 import { ThemeCustomizer } from '@/shared/components/common';
 import { useDevStore } from '@/app/store';
 
@@ -52,10 +53,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
     } catch (error) {
       console.error('로그아웃 실패:', error);
     }
-  };
-
-  const getUserInitials = (email: string) => {
-    return email.charAt(0).toUpperCase();
   };
 
   return (
@@ -115,9 +112,9 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                 <Avatar className="h-10 w-10">
-                  <AvatarImage src={user?.photoURL || ''} alt={user?.displayName || ''} />
+                  <AvatarImage src={user?.photoURL || ''} alt={getUserDisplayName(user, '')} />
                   <AvatarFallback>
-                    {user?.email ? getUserInitials(user.email) : 'U'}
+                    {getUserInitial(user, 'U')}
                   </AvatarFallback>
                 </Avatar>
               </Button>
@@ -126,18 +123,14 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-medium leading-none">
-                    {user?.displayName || '사용자'}
+                    {getUserDisplayName(user, '사용자')}
                   </p>
                   <p className="text-xs leading-none text-muted-foreground">
                     {user?.email}
                   </p>
                   <div className="flex items-center gap-2 mt-2">
-                    <Badge variant={
-                      (dummyRole || userProfile?.role) === 'Admin' ? 'default' : 
-                      (dummyRole || userProfile?.role) === 'Manager' ? 'secondary' : 
-                      'outline'
-                    }>
-                      {dummyRole || userProfile?.role || 'Member'}
+                    <Badge variant={getUserRoleBadgeVariant(dummyRole ? { role: dummyRole } : userProfile)}>
+                      {getUserRoleText(dummyRole ? { role: dummyRole } : userProfile)}
                     </Badge>
                     {dummyRole && (
                       <Badge variant="destructive" className="text-xs">
@@ -179,7 +172,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               <DropdownMenuSeparator />
               
               {/* Admin 전용: 권한 테스트 모드 */}
-              {userProfile?.role === 'Admin' && (
+              {checkIsAdmin(userProfile) && (
                 <>
                   <DropdownMenuLabel>
                     <div className="flex items-center gap-2">

@@ -5,10 +5,12 @@ import {
   query, 
   collection, 
   where, 
-  getDocs 
+  getDocs,
+  onSnapshot
 } from 'firebase/firestore';
 import { db } from './config';
 import { UserProfile, SignUpData } from '@/features/auth/types';
+import { toDate } from '@/shared/utils/dateUtils';
 
 const USERS_COLLECTION = 'users';
 
@@ -189,4 +191,64 @@ export const updateLastLogin = async (uid: string): Promise<void> => {
   }
 };
 
+// 모든 사용자 목록 조회
+export const getAllUsers = async (): Promise<UserProfile[]> => {
+  if (!db) throw new Error('Firestore is not initialized');
 
+  try {
+    const querySnapshot = await getDocs(collection(db, USERS_COLLECTION));
+    
+    return querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      
+      // 날짜 필드 안전하게 변환
+      const toDate = (field: any): Date => {
+        if (!field) return new Date();
+        if (field instanceof Date) return field;
+        if (typeof field.toDate === 'function') return field.toDate();
+        if (typeof field === 'string') return new Date(field);
+        return new Date();
+      };
+      
+      return {
+        ...data,
+        createdAt: toDate(data.createdAt),
+        updatedAt: toDate(data.updatedAt),
+        lastLoginAt: data.lastLoginAt ? toDate(data.lastLoginAt) : undefined,
+      } as UserProfile;
+    });
+  } catch (error) {
+    console.error('사용자 목록 조회 실패:', error);
+    return [];
+  }
+};
+
+// 사용자 목록 실시간 구독
+export const subscribeToUsers = (
+  callback: (users: UserProfile[]) => void,
+  onError?: (error: Error) => void
+) => {
+  if (!db) throw new Error('Firestore is not initialized');
+
+  return onSnapshot(
+    collection(db, USERS_COLLECTION),
+    (snapshot) => {
+      const users = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          ...data,
+          createdAt: toDate(data.createdAt),
+          updatedAt: toDate(data.updatedAt),
+          lastLoginAt: data.lastLoginAt ? toDate(data.lastLoginAt) : undefined,
+        } as UserProfile;
+      });
+      callback(users);
+    },
+    (error) => {
+      console.error('사용자 목록 구독 실패:', error);
+      if (onError) {
+        onError(error as Error);
+      }
+    }
+  );
+};

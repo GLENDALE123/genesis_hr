@@ -11,8 +11,8 @@ const nextConfig: NextConfig = {
     unoptimized: process.env.TAURI_BUILD === 'true',
   },
   
-  // 후행 슬래시 추가 (Tauri 라우팅 호환성)
-  trailingSlash: true,
+  // 후행 슬래시 추가 (Tauri 라우팅 호환성) - 개발 환경에서는 비활성화
+  trailingSlash: process.env.TAURI_BUILD === 'true',
   
   // 워크스페이스 루트 설정 (경고 제거)
   outputFileTracingRoot: path.join(__dirname),

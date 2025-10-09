@@ -2,6 +2,7 @@
 
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 import { useAuth, useUserRole, useIsAdmin, useIsManager } from '@/features/auth/hooks';
+import { isAdmin as checkIsAdmin } from '@/shared/utils/userUtils';
 import { useDashboardStore } from '@/features/dashboard';
 import { useDevStore } from '@/app/store';
 import { useState, useEffect } from 'react';
@@ -14,7 +15,8 @@ import { Skeleton } from '@/shared/components/ui/skeleton';
 import { toast } from 'sonner';
 import { Spinner } from '@/shared/components/ui/spinner';
 import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
-import { Shield, Lock } from 'lucide-react';
+import { Shield, Lock, MessageSquare, TestTube } from 'lucide-react';
+import { NotificationManager } from '@/shared/components/common/CustomNotification';
 
 interface Todo {
   id: string;
@@ -95,6 +97,77 @@ export default function DashboardPage() {
     }
   };
 
+  // 멘션 알림 테스트 함수
+  const testMentionNotification = async () => {
+    try {
+      console.log('🔔 [Dashboard] 포그라운드 알림 테스트 시작');
+      console.log('🔍 [Dashboard] Tauri 환경:', typeof window !== 'undefined' && window.__TAURI__);
+      
+      // 테스트용 사용자 프로필 이미지
+      const senderAvatar = (userProfile as any)?.photoURL;
+      const senderName = '이현석본부장';
+      
+      console.log('📤 [Dashboard] 알림 데이터:', {
+        senderName,
+        senderAvatar,
+        hasTauri: typeof window !== 'undefined' && window.__TAURI__
+      });
+      
+      // 자체 알림 시스템 사용
+      await NotificationManager.notify({
+        title: '생산관리부 요청사항',
+        body: '신30ML진공/캡 (@이현석본부장)본부장님 테스트입니다',
+        senderName: senderName,
+        senderAvatar: senderAvatar,
+        type: 'mention',
+        onClick: () => {
+          console.log('멘션 알림 클릭됨!');
+          // 실제로는 해당 요청 페이지로 이동
+        }
+      });
+      
+      toast.success('알림 요청이 전송되었습니다!');
+      
+    } catch (error) {
+      console.error('❌ [Dashboard] 알림 테스트 실패:', error);
+      toast.error('알림 테스트 중 오류가 발생했습니다.');
+    }
+  };
+
+  // 백그라운드 알림 테스트 함수
+  const testBackgroundNotification = async () => {
+    try {
+      console.log('🌙 [Dashboard] 백그라운드 알림 테스트 시작');
+      
+      // 앱을 백그라운드로 전환
+      NotificationManager.setAppState(false);
+      
+      // 백그라운드 알림 테스트
+      await NotificationManager.notify({
+        title: '생산관리부 요청사항',
+        body: '신30ML진공/캡 (@이현석본부장)백그라운드 테스트입니다',
+        senderName: '이현석본부장',
+        senderAvatar: (userProfile as any)?.photoURL,
+        type: 'mention',
+        onClick: () => {
+          console.log('백그라운드 알림 클릭됨!');
+        }
+      });
+      
+      toast.success('백그라운드 알림이 전송되었습니다! (시스템 알림 확인)');
+      
+      // 3초 후 포그라운드로 복원
+      setTimeout(() => {
+        console.log('☀️ [Dashboard] 포그라운드로 복원');
+        NotificationManager.setAppState(true);
+      }, 3000);
+      
+    } catch (error) {
+      console.error('❌ [Dashboard] 백그라운드 알림 테스트 실패:', error);
+      toast.error('백그라운드 알림 테스트 중 오류가 발생했습니다.');
+    }
+  };
+
   useEffect(() => {
     loadTodos();
     fetchStats(); // 대시보드 통계 데이터 로드
@@ -115,7 +188,7 @@ export default function DashboardPage() {
           </Card>
 
           {/* 권한별 UI 테스트 카드 (개발용) */}
-          {userProfile?.role === 'Admin' && (
+          {checkIsAdmin(userProfile) && (
             <Card className="border-2 border-primary">
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -147,6 +220,35 @@ export default function DashboardPage() {
                         {currentRole || 'None'}
                       </Badge>
                     </div>
+                  </div>
+                </div>
+
+                {/* 멘션 알림 테스트 버튼 */}
+                <div className="p-4 border-2 border-blue-200 rounded-lg bg-blue-50">
+                  <div className="flex items-center gap-2 mb-3">
+                    <TestTube className="h-5 w-5 text-blue-600" />
+                    <span className="font-semibold text-blue-800">멘션 알림 테스트</span>
+                    <Badge variant="secondary">개발용</Badge>
+                  </div>
+                  <p className="text-sm text-blue-700 mb-3">
+                    멘션 알림 기능을 테스트할 수 있습니다. 버튼을 클릭하면 우측 상단에 자체 알림이 표시됩니다.
+                  </p>
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={testMentionNotification}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      포그라운드 알림
+                    </Button>
+                    <Button 
+                      onClick={testBackgroundNotification}
+                      variant="outline"
+                      className="border-blue-600 text-blue-600 hover:bg-blue-50"
+                    >
+                      <TestTube className="h-4 w-4 mr-2" />
+                      백그라운드 알림
+                    </Button>
                   </div>
                 </div>
 

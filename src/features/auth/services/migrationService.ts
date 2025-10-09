@@ -3,6 +3,7 @@ import { doc, setDoc, deleteDoc, collection, query, where, getDocs } from 'fireb
 import { auth, db } from '@/shared/services/firebase/config';
 import { getUserProfileByEmail } from '@/shared/services/firebase/userProfile';
 import { UserProfile } from '../types';
+import { getUserDisplayName } from '@/shared/utils/userUtils';
 
 /**
  * Firestore에 존재하는 유저를 Firebase Auth에 생성
@@ -143,11 +144,12 @@ export class MigrationService {
         return newProfile;
       } else if (!existingProfile) {
         // 프로필이 전혀 없으면 새로 생성
+        const userName = getUserDisplayName(user, user.email.split('@')[0]);
         const newProfile: UserProfile = {
           uid: user.uid,
           email: user.email,
-          name: user.displayName || user.email.split('@')[0],
-          displayName: user.displayName || user.email.split('@')[0],
+          name: userName,
+          displayName: userName,
           role: 'Member',
           createdAt: new Date(),
           updatedAt: new Date(),

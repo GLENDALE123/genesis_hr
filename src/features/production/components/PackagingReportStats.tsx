@@ -11,7 +11,7 @@ import {
   Calendar,
   BarChart3
 } from 'lucide-react';
-import { ProductionReportStats as StatsType } from '@/features/production/types';
+import { ProductionReportStatsData as StatsType } from '@/features/production/types';
 
 interface PackagingReportStatsProps {
   stats: StatsType | null;
@@ -96,12 +96,6 @@ export const PackagingReportStats: React.FC<PackagingReportStatsProps> = ({ stat
               <div className="text-4xl font-bold text-green-600 mb-2">
                 {stats.averageYieldRate.toFixed(1)}%
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
-                  className="bg-green-500 h-2 rounded-full" 
-                  style={{ width: `${Math.min(stats.averageYieldRate, 100)}%` }}
-                ></div>
-              </div>
               <p className="text-sm text-muted-foreground mt-2">
                 전체 생산 대비 양품 비율
               </p>
@@ -121,12 +115,6 @@ export const PackagingReportStats: React.FC<PackagingReportStatsProps> = ({ stat
               <div className="text-4xl font-bold text-red-600 mb-2">
                 {stats.averageDefectRate.toFixed(1)}%
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
-                  className="bg-red-500 h-2 rounded-full" 
-                  style={{ width: `${Math.min(stats.averageDefectRate, 100)}%` }}
-                ></div>
-              </div>
               <p className="text-sm text-muted-foreground mt-2">
                 전체 생산 대비 불량 비율
               </p>
@@ -145,7 +133,7 @@ export const PackagingReportStats: React.FC<PackagingReportStatsProps> = ({ stat
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {stats.topProductionLines.map((line, index) => (
+            {stats.topProductionLines.map((line: { line: string; count: number; totalQuantity: number }, index: number) => (
               <div key={line.line} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                 <div className="flex items-center gap-3">
                   <Badge variant={index < 3 ? "default" : "secondary"}>
@@ -175,7 +163,7 @@ export const PackagingReportStats: React.FC<PackagingReportStatsProps> = ({ stat
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {stats.topSuppliers.map((supplier, index) => (
+            {stats.topSuppliers.map((supplier: { supplier: string; count: number; totalQuantity: number }, index: number) => (
               <div key={supplier.supplier} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                 <div className="flex items-center gap-3">
                   <Badge variant={index < 3 ? "default" : "secondary"}>

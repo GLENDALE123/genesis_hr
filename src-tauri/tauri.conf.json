@@ -18,7 +18,8 @@
         "all": true
       },
       "window": {
-        "all": false,
+        "all": true,
+        "create": true,
         "close": true,
         "hide": true,
         "show": true,
@@ -100,8 +101,12 @@
     "updater": {
       "active": false
     },
+    "systemTray": {
+      "iconPath": "icons/icon.ico"
+    },
     "windows": [
       {
+        "label": "main",
         "fullscreen": false,
         "height": 800,
         "minHeight": 600,

@@ -15,7 +15,9 @@ export {
   createUserProfile,
   getUserProfile,
   getUserProfileByEmail,
-  updateLastLogin
+  updateLastLogin,
+  getAllUsers,
+  subscribeToUsers
 } from './userProfile';
 
 // Firestore 서비스

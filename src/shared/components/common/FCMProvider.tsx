@@ -76,20 +76,25 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
     initialize();
   }, [user]);
 
-  // 포그라운드 메시지 처리
+  // 포그라운드 메시지 처리 (한 번만 등록)
   useEffect(() => {
-    if (state.isInitialized && user) {
-      onForegroundMessage((payload) => {
-        console.log('포그라운드 메시지 수신:', payload);
-        
-        // 토스트 알림 표시
-        toast({
-          title: payload.notification?.title || '새로운 알림',
-          description: payload.notification?.body || '새로운 메시지가 도착했습니다.',
-          duration: 5000,
-        });
+    if (!state.isInitialized || !user) return;
+
+    // 메시지 핸들러 등록 (Firebase onMessage는 unsubscribe를 반환하지 않음)
+    // 대신 isInitialized가 true일 때 한 번만 등록됨
+    onForegroundMessage((payload) => {
+      console.log('📬 포그라운드 메시지 수신:', payload);
+      
+      // 토스트 알림 표시
+      toast({
+        title: payload.notification?.title || '새로운 알림',
+        description: payload.notification?.body || '새로운 메시지가 도착했습니다.',
+        duration: 5000,
       });
-    }
+    });
+
+    // Firebase Messaging의 onMessage는 cleanup 함수를 제공하지 않음
+    // 메시징 인스턴스가 cleanup되면 자동으로 정리됨
   }, [state.isInitialized, user]);
 
   // 초기화 완료 시 토큰 정보 로그

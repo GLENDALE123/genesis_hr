@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react';
-import { orderLookupService } from '@/shared/services/orderLookupService';
+import { orderLookupService, type OrderData } from '@/shared/services/orderLookupService';
 import { toast } from 'sonner';
 
 interface UseOrderNumberFormatterProps {
@@ -61,7 +61,7 @@ export const useOrderNumberFormatter = ({ onAutoFill, onClear }: UseOrderNumberF
       return `T${digitsOnly.substring(0, 5)}-${digitsOnly.substring(5)}`;
     } else {
       // 7자리 이상: T12345-6, T나머지 형식으로 쉼표 구분
-      const parts = [];
+      const parts: string[] = [];
       let remaining = digitsOnly;
       
       while (remaining.length > 0) {
@@ -125,15 +125,15 @@ export const useOrderNumberFormatter = ({ onAutoFill, onClear }: UseOrderNumberF
       console.log(`전체 조회 시간: ${(endTime - startTime).toFixed(0)}ms`);
 
       // null이 아닌 데이터만 필터링
-      const validData = orderDataList.filter(data => data !== null);
+      const validData = orderDataList.filter((data): data is OrderData => data !== null);
 
       if (validData.length > 0) {
         // 각 필드별로 고유한 값들만 수집
-        const suppliers = [...new Set(validData.map(d => d.supplier).filter(Boolean))];
-        const productNames = [...new Set(validData.map(d => d.productName).filter(Boolean))];
-        const partNames = [...new Set(validData.map(d => d.partName).filter(Boolean))];
-        const orderQuantities = [...new Set(validData.map(d => d.orderQuantity).filter(Boolean))];
-        const specifications = [...new Set(validData.map(d => d.specification).filter(Boolean))];
+        const suppliers = [...new Set(validData.map((d: OrderData) => d.supplier).filter(Boolean))];
+        const productNames = [...new Set(validData.map((d: OrderData) => d.productName).filter(Boolean))];
+        const partNames = [...new Set(validData.map((d: OrderData) => d.partName).filter(Boolean))];
+        const orderQuantities = [...new Set(validData.map((d: OrderData) => d.orderQuantity).filter(Boolean))];
+        const specifications = [...new Set(validData.map((d: OrderData) => d.specification).filter(Boolean))];
 
         // 상태 업데이트 전 로그
         console.log('상태 업데이트 시작');

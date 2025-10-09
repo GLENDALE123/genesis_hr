@@ -8,6 +8,7 @@ interface LoadingSpinnerProps {
   className?: string
   fullScreen?: boolean
   overlay?: boolean
+  centered?: boolean
 }
 
 export const LoadingSpinner = ({
@@ -17,12 +18,14 @@ export const LoadingSpinner = ({
   className,
   fullScreen = false,
   overlay = false,
+  centered = true,
 }: LoadingSpinnerProps) => {
   const spinnerContent = (
     <div className={cn(
       'flex flex-col items-center justify-center gap-2',
       fullScreen && 'min-h-screen',
       overlay && 'absolute inset-0 bg-background/80 backdrop-blur-sm z-50',
+      centered && !fullScreen && !overlay && 'w-full flex-1 min-h-[60vh]',
       className
     )}>
       <Spinner size={size} variant={variant} label={label} />

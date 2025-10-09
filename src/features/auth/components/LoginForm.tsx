@@ -70,6 +70,7 @@ export function LoginForm() {
           confirmPassword,
           name: name.trim(),
           displayName: name.trim(),
+          loginId: email.trim().split('@')[0], // 이메일의 @ 앞부분을 기본 로그인 ID로 사용
           position: position.trim() || undefined,
           department: department.trim() || undefined,
         });
@@ -81,7 +82,7 @@ export function LoginForm() {
         // 로그인 시도
         try {
           await AuthService.signIn({
-            email: email.trim(),
+            emailOrLoginId: email.trim(),
             password,
           });
           toast.success('로그인되었습니다!');

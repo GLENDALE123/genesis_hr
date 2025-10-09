@@ -24,6 +24,7 @@ export interface SignUpData {
   confirmPassword: string;
   name: string;
   displayName: string;
+  loginId: string;          // 로그인 아이디
   role?: UserRole;          // 회원가입 시 역할 (기본값: Member)
   position?: string;
   department?: string;
@@ -31,7 +32,7 @@ export interface SignUpData {
 
 // 로그인 시 사용할 데이터
 export interface LoginData {
-  email: string;            // 이메일
+  emailOrLoginId: string;   // 이메일 또는 로그인 아이디
   password: string;
 }
 

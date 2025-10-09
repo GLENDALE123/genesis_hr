@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/shared/components/ui/button';
 import {
   Dialog,
@@ -10,14 +10,36 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/shared/components/ui/dialog';
-import { Settings, Shield } from 'lucide-react';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/shared/components/ui/sheet';
+import { Settings, Shield, User, Check, X } from 'lucide-react';
 import { useIsAdmin } from '@/features/auth/hooks';
 import { Badge } from '@/shared/components/ui/badge';
-import type { PageIdentifier } from '@/features/auth/types/permissions';
+import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Switch } from '@/shared/components/ui/switch';
+import type { PageIdentifier, PagePermissions } from '@/features/auth/types/permissions';
+import type { UserProfile } from '@/features/auth/types';
+import { PermissionsService } from '@/features/auth/services/permissionsService';
+import { toast } from 'sonner';
+import { getUserDisplayName, getUserRoleBadgeVariant, isAdmin as checkIsAdmin, hasRole } from '@/shared/utils/userUtils';
 
 interface PermissionSettingsButtonProps {
   pageId: PageIdentifier;
   pageName: string;
+}
+
+// 내부적으로 사용할 간단한 권한 상태 타입
+interface PermissionState {
+  canRead: boolean;
+  canCreate: boolean;
+  canUpdate: boolean;
+  canDelete: boolean;
+  custom: Record<string, boolean>;
 }
 
 /**
@@ -30,9 +52,169 @@ export const PermissionSettingsButton: React.FC<PermissionSettingsButtonProps> =
 }) => {
   const isAdmin = useIsAdmin();
   const [open, setOpen] = useState(false);
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [userPermissions, setUserPermissions] = useState<Record<string, PermissionState>>({});
+  const [savingPermissions, setSavingPermissions] = useState<boolean>(false);
+
+  console.log('🔍 [PermissionSettingsButton] isAdmin:', isAdmin);
+  console.log('🔍 [PermissionSettingsButton] open:', open);
+
+  // 사용자 목록 가져오기
+  useEffect(() => {
+    console.log('🔄 [PermissionSettingsButton] useEffect triggered - open:', open, 'isAdmin:', isAdmin);
+    
+    if (!open || !isAdmin) {
+      console.log('⚠️ [PermissionSettingsButton] Skip fetch - open:', open, 'isAdmin:', isAdmin);
+      return;
+    }
+
+    const fetchUsers = async () => {
+      console.log('🔍 [PermissionSettingsButton] Fetching users...');
+      setLoading(true);
+      try {
+        // ✅ 공통 서비스 사용 (중복 제거)
+        const usersList = await PermissionsService.getAllUserProfiles();
+        console.log('✅ [PermissionSettingsButton] Users loaded:', usersList.length);
+
+        setUsers(usersList);
+
+        // 각 사용자의 권한 가져오기
+        const permissionsMap: Record<string, PermissionState> = {};
+        for (const user of usersList) {
+          if (!user.uid) {
+            console.warn('⚠️ User without UID:', user);
+            continue;
+          }
+          const permissions = await PermissionsService.getUserPagePermissions(user.uid, pageId);
+          console.log(`🔍 [${user.displayName}] 권한 데이터:`, permissions);
+          
+          // PagePermissions를 PermissionState로 변환
+          if (permissions && permissions.crudPermissions && Array.isArray(permissions.crudPermissions)) {
+            permissionsMap[user.uid] = {
+              canRead: permissions.crudPermissions.includes('read'),
+              canCreate: permissions.crudPermissions.includes('create'),
+              canUpdate: permissions.crudPermissions.includes('update'),
+              canDelete: permissions.crudPermissions.includes('delete'),
+              custom: (permissions.customPermissions as Record<string, boolean>) || {},
+            };
+          } else {
+            // 권한 데이터가 없거나 잘못된 경우 기본 권한 설정
+            permissionsMap[user.uid] = {
+              canRead: true,
+              canCreate: true,
+              canUpdate: hasRole(user, 'Manager'), // Manager는 수정 권한 기본 허용
+              canDelete: false,
+              custom: {},
+            };
+          }
+        }
+        setUserPermissions(permissionsMap);
+        console.log('✅ [PermissionSettingsButton] Permissions loaded:', permissionsMap);
+      } catch (error) {
+        console.error('사용자 목록 가져오기 실패:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, [open, isAdmin, pageId]);
+
+  // 권한 설정 Sheet 열기
+  const handleOpenPermissions = (user: UserProfile) => {
+    console.log('🔍 Opening permissions for user:', user.uid);
+    console.log('🔍 Current permissions:', userPermissions[user.uid]);
+    setSelectedUser(user);
+    setSheetOpen(true);
+  };
+
+  // 권한 업데이트 핸들러
+  const handlePermissionChange = async (
+    permissionKey: keyof PermissionState,
+    value: boolean
+  ) => {
+    if (!selectedUser) return;
+
+    try {
+      setSavingPermissions(true);
+      
+      const currentPermissions = userPermissions[selectedUser.uid] || {
+        canRead: true,
+        canCreate: true,
+        canUpdate: hasRole(selectedUser, 'Manager'), // Manager는 수정 권한 기본 허용
+        canDelete: false,
+        custom: {},
+      };
+
+      const updatedPermissions: PermissionState = {
+        ...currentPermissions,
+        [permissionKey]: value,
+      };
+
+      // PermissionState를 PagePermissions로 변환
+      const pagePermissions: PagePermissions = {
+        pageId: pageId,
+        crudPermissions: [
+          ...(updatedPermissions.canRead ? ['read' as const] : []),
+          ...(updatedPermissions.canCreate ? ['create' as const] : []),
+          ...(updatedPermissions.canUpdate ? ['update' as const] : []),
+          ...(updatedPermissions.canDelete ? ['delete' as const] : []),
+        ],
+        customPermissions: updatedPermissions.custom,
+      };
+
+      await PermissionsService.setUserPagePermissions(selectedUser.uid, pageId, pagePermissions);
+      
+      setUserPermissions((prev) => ({
+        ...prev,
+        [selectedUser.uid]: updatedPermissions,
+      }));
+
+      toast.success('권한이 업데이트되었습니다.');
+    } catch (error) {
+      console.error('권한 업데이트 실패:', error);
+      toast.error('권한 업데이트에 실패했습니다.');
+    } finally {
+      setSavingPermissions(false);
+    }
+  };
+
+  // 권한 텍스트 포맷팅 함수
+  const formatPermissionsText = (userId: string): string => {
+    const permissions = userPermissions[userId];
+    if (!permissions) return '권한 로딩 중...';
+
+    const permissionLabels = [];
+    if (permissions.canRead) permissionLabels.push('읽기');
+    if (permissions.canCreate) permissionLabels.push('생성');
+    if (permissions.canUpdate) permissionLabels.push('수정');
+    if (permissions.canDelete) permissionLabels.push('삭제');
+
+    if (permissionLabels.length === 0) return '권한 없음';
+    if (permissionLabels.length === 4) return '모든 권한';
+    
+    return permissionLabels.join(', ');
+  };
+
+  // 권한 상태에 따른 배지 색상
+  const getPermissionBadgeVariant = (userId: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
+    const permissions = userPermissions[userId];
+    if (!permissions) return 'outline';
+
+    const permissionCount = [permissions.canRead, permissions.canCreate, permissions.canUpdate, permissions.canDelete].filter(Boolean).length;
+    
+    if (permissionCount === 4) return 'default'; // 모든 권한
+    if (permissionCount >= 2) return 'secondary'; // 일부 권한
+    if (permissionCount === 1 && permissions.canRead) return 'outline'; // 읽기만
+    return 'destructive'; // 권한 없음
+  };
 
   // Admin이 아니면 버튼 숨김
   if (!isAdmin) {
+    console.log('⚠️ [PermissionSettingsButton] Not admin - hiding button');
     return null;
   }
 
@@ -57,20 +239,88 @@ export const PermissionSettingsButton: React.FC<PermissionSettingsButtonProps> =
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* TODO: 사용자 목록 표시 */}
-          <div className="p-8 border-2 border-dashed border-muted rounded-lg text-center">
-            <Settings className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-semibold mb-2">권한 설정 UI</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              사용자 목록과 권한 체크박스를 여기에 구현하세요.
-            </p>
-            <div className="text-xs text-muted-foreground space-y-1">
-              <p>• 사용자 목록 표시</p>
-              <p>• 읽기/쓰기/수정/삭제 체크박스</p>
-              <p>• 페이지별 커스텀 권한 (예: 공정조건 보기)</p>
-              <p>• Firestore에 권한 데이터 저장</p>
+          {/* 사용자 목록 */}
+          {loading ? (
+            <div className="space-y-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="flex items-center gap-4 p-4 border rounded-lg">
+                  <Skeleton className="h-12 w-12 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-48" />
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
+          ) : users.length === 0 ? (
+            <div className="p-8 border-2 border-dashed border-muted rounded-lg text-center">
+              <User className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                사용자가 없습니다.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {users.map((user) => {
+                const isUserAdmin = checkIsAdmin(user);
+                
+                return (
+                  <div key={user.uid} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="flex items-start justify-between gap-4">
+                      {/* 사용자 정보 */}
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <User className="h-5 w-5 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold text-sm truncate">
+                              {getUserDisplayName(user)}
+                            </p>
+                            <Badge variant={getUserRoleBadgeVariant(user)} className="text-xs">
+                              {user.role}
+                            </Badge>
+                            {isUserAdmin && (
+                              <Badge variant="outline" className="text-xs text-muted-foreground">
+                                모든 권한 보유
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {user.email}
+                          </p>
+                          {user.department && (
+                            <p className="text-xs text-muted-foreground">
+                              {user.department}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 우측: 권한 설정 버튼과 권한 정보 */}
+                      {!isUserAdmin && (
+                        <div className="flex flex-col items-end gap-2">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleOpenPermissions(user)}
+                          >
+                            권한 설정
+                          </Button>
+                          <Badge 
+                            variant={getPermissionBadgeVariant(user.uid)}
+                            className="text-xs text-blue-600 bg-blue-50 border-blue-200"
+                          >
+                            {formatPermissionsText(user.uid)}
+                          </Badge>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* 예시 구조 */}
           <div className="p-4 bg-muted/50 rounded-lg">
@@ -100,6 +350,127 @@ export const PermissionSettingsButton: React.FC<PermissionSettingsButtonProps> =
           </div>
         </div>
       </DialogContent>
+
+      {/* 권한 설정 Sheet */}
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+          {selectedUser && (
+            <>
+              <SheetHeader className="sticky top-0 bg-background pb-4 z-10">
+                <SheetTitle className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                    <User className="h-6 w-6 text-primary" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className="font-semibold">
+                      {getUserDisplayName(selectedUser)}
+                    </p>
+                    <p className="text-sm text-muted-foreground font-normal">
+                      {selectedUser.email}
+                    </p>
+                  </div>
+                </SheetTitle>
+                <SheetDescription>
+                  {pageName} 페이지에 대한 권한을 설정합니다.
+                </SheetDescription>
+              </SheetHeader>
+
+              <div className="mt-6 space-y-6 pb-6">
+                {/* 사용자 정보 */}
+                <div className="p-4 bg-muted/50 rounded-lg space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">역할</span>
+                    <Badge variant={getUserRoleBadgeVariant(selectedUser)}>
+                      {selectedUser.role}
+                    </Badge>
+                  </div>
+                  {selectedUser.department && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">부서</span>
+                      <span className="text-sm font-medium">{selectedUser.department}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* CRUD 권한 */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-sm">기본 권한 (CRUD)</h3>
+                  
+                  {(() => {
+                    const permissions = userPermissions[selectedUser.uid] || {
+                      canRead: true,
+                      canCreate: true,
+                      canUpdate: false,
+                      canDelete: false,
+                      custom: {},
+                    };
+                    
+                    return (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between p-3 border rounded-lg">
+                          <div>
+                            <p className="font-medium text-sm">읽기</p>
+                            <p className="text-xs text-muted-foreground">데이터 조회 권한</p>
+                          </div>
+                          <Switch
+                            checked={permissions.canRead}
+                            onCheckedChange={(checked) => handlePermissionChange('canRead', checked)}
+                            disabled={savingPermissions}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between p-3 border rounded-lg">
+                          <div>
+                            <p className="font-medium text-sm">생성</p>
+                            <p className="text-xs text-muted-foreground">새 데이터 생성 권한</p>
+                          </div>
+                          <Switch
+                            checked={permissions.canCreate}
+                            onCheckedChange={(checked) => handlePermissionChange('canCreate', checked)}
+                            disabled={savingPermissions}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between p-3 border rounded-lg">
+                          <div>
+                            <p className="font-medium text-sm">수정</p>
+                            <p className="text-xs text-muted-foreground">기존 데이터 수정 권한</p>
+                          </div>
+                          <Switch
+                            checked={permissions.canUpdate}
+                            onCheckedChange={(checked) => handlePermissionChange('canUpdate', checked)}
+                            disabled={savingPermissions}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between p-3 border rounded-lg">
+                          <div>
+                            <p className="font-medium text-sm">삭제</p>
+                            <p className="text-xs text-muted-foreground">데이터 삭제 권한</p>
+                          </div>
+                          <Switch
+                            checked={permissions.canDelete}
+                            onCheckedChange={(checked) => handlePermissionChange('canDelete', checked)}
+                            disabled={savingPermissions}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* 저장 상태 */}
+                {savingPermissions && (
+                  <div className="flex items-center justify-center gap-2 p-3 bg-primary/10 rounded-lg">
+                    <Check className="h-4 w-4 text-primary animate-pulse" />
+                    <span className="text-sm font-medium text-primary">저장 중...</span>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </Dialog>
   );
 };

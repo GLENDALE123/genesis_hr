@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>알림</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        body:hover {
+            transform: scale(1.02);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .notification {
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            min-height: 100px;
+        }
+
+        .avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            font-size: 18px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            flex-shrink: 0;
+        }
+
+        .content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .sender-name {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 4px;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .title {
+            font-weight: 700;
+            font-size: 16px;
+            margin-bottom: 6px;
+            color: white;
+        }
+
+        .body {
+            font-size: 13px;
+            opacity: 0.9;
+            line-height: 1.4;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .close {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 24px;
+            height: 24px;
+            border: none;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .close:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+
+        .timestamp {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 4px;
+        }
+
+
+        .mention {
+            color: #ffd700;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="notification" id="notification">
+        <div class="avatar" id="avatar">?</div>
+        <div class="content">
+            <div class="sender-name" id="sender-name">발신자</div>
+            <div class="title" id="title">제목</div>
+            <div class="body" id="body">내용</div>
+            <div class="timestamp" id="timestamp">시간</div>
+        </div>
+        <button class="close" id="close-btn">×</button>
+    </div>
+
+    <script>
+        const { listen } = window.__TAURI__.event;
+        const { getCurrent } = window.__TAURI__.window;
+
+        // Rust에서 보낸 알림 이벤트 수신
+        listen('new_notification', (event) => {
+            const data = event.payload;
+            
+            // UI 업데이트
+            document.getElementById('sender-name').textContent = data.sender_name;
+            document.getElementById('title').textContent = data.title;
+            document.getElementById('body').innerHTML = data.body.replace(/@([^\s]+)/g, '<span class="mention">@$1</span>');
+            document.getElementById('timestamp').textContent = new Date().toLocaleTimeString('ko-KR', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            // 아바타 설정
+            const avatar = document.getElementById('avatar');
+            if (data.sender_avatar) {
+                avatar.style.backgroundImage = `url(${data.sender_avatar})`;
+                avatar.style.backgroundSize = 'cover';
+                avatar.style.backgroundPosition = 'center';
+            } else {
+                avatar.textContent = data.sender_name.charAt(0).toUpperCase();
+            }
+        });
+
+        // 알림 클릭 시 메인 앱으로 포커스
+        document.getElementById('notification').addEventListener('click', async () => {
+            try {
+                const mainWindow = getCurrent();
+                await mainWindow.setFocus();
+                await mainWindow.hide();
+            } catch (error) {
+                console.error('알림 클릭 처리 실패:', error);
+            }
+        });
+
+        // 닫기 버튼 클릭
+        document.getElementById('close-btn').addEventListener('click', async (e) => {
+            e.stopPropagation();
+            try {
+                const window = getCurrent();
+                await window.hide();
+            } catch (error) {
+                console.error('알림 닫기 실패:', error);
+            }
+        });
+
+        // 5초 후 자동 닫기
+        setTimeout(async () => {
+            try {
+                const window = getCurrent();
+                await window.hide();
+            } catch (error) {
+                console.error('자동 닫기 실패:', error);
+            }
+        }, 5000);
+    </script>
+</body>
+</html>

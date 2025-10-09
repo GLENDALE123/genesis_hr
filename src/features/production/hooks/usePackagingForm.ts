@@ -3,6 +3,7 @@ import { PackagingReport, PackagingFormData, PackagedBoxFormData } from '@/featu
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useOrderNumberFormatter } from '@/shared/hooks/useOrderNumberFormatter';
 import { usePackagingCalculations } from './usePackagingCalculations';
+import { getUserDisplayName } from '@/shared/utils/userUtils';
 
 const initialFormData: PackagingFormData = {
   workDate: new Date().toISOString().split('T')[0],
@@ -137,7 +138,7 @@ export const usePackagingForm = ({ report, isEditMode = false }: UseProductionFo
       // 새 생산일보 작성 시 로그인한 사용자 정보 자동 채우기
       setFormData({
         ...initialFormData,
-        authorName: user?.displayName || user?.email || ''
+        authorName: getUserDisplayName(user)
       });
     }
   }, [report, isEditMode, user]);

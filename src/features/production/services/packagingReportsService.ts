@@ -13,6 +13,7 @@ import {
   addDoc
 } from 'firebase/firestore';
 import { PackagingReport, PackagingFormData, PackagedBoxFormData } from '@/features/production/types';
+import { getUserDisplayName } from '@/shared/utils/userUtils';
 
 interface ReportUser {
   uid: string;
@@ -46,7 +47,7 @@ export class PackagingReportsService {
         workDate: formData.workDate,
         author: {
           uid: user.uid,
-          displayName: user.displayName || user.email || '알 수 없음'
+          displayName: getUserDisplayName(user, '알 수 없음')
         },
         productionLine: formData.productionLine,
         orderNumbers: formData.orderNumbers.filter(num => num.trim() !== ''),
@@ -254,6 +255,92 @@ export class PackagingReportsService {
         onError(error as Error);
       }
       // 빈 배열로 콜백 호출하여 로딩 상태 해제
+      callback([]);
+      return () => {};
+    }
+  }
+
+  /**
+   * 날짜 범위별 실시간 업데이트 리스너 (성능 최적화)
+   */
+  static subscribeToPackagingReportsByDateRange(
+    startDate: string,
+    endDate: string,
+    callback: (reports: PackagingReport[]) => void,
+    onError?: (error: Error) => void
+  ): () => void {
+    if (!db) {
+      const error = new Error('Firebase not initialized');
+      console.error('Firebase not initialized');
+      if (onError) {
+        onError(error);
+      }
+      callback([]);
+      return () => {};
+    }
+
+    try {
+      const q = query(
+        collection(db, 'packaging-reports'),
+        where('workDate', '>=', startDate),
+        where('workDate', '<=', endDate),
+        orderBy('workDate', 'desc')
+      );
+
+      return onSnapshot(
+        q,
+        (snapshot) => {
+          const reports = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          } as PackagingReport));
+          
+          // HS-Jig와 동일한 정렬 로직 적용
+          const sortedReports = reports.sort((a, b) => {
+            const dateComparison = new Date(b.workDate).getTime() - new Date(a.workDate).getTime();
+            if (dateComparison !== 0) return dateComparison;
+
+            // 생산라인별 정렬
+            const productionLineSortOrder = [
+              '증착1', '증착1하도', '증착1상도', 
+              '증착2', '증착2하도', '증착2상도',
+              '증착1하도(아)', '증착1상도(아)', 
+              '증착2하도(아)', '증착2상도(아)',
+              '2코팅', '1코팅', 
+              '내부코팅1호기', '내부코팅2호기', '내부코팅3호기'
+            ];
+
+            const aIndex = productionLineSortOrder.indexOf(a.productionLine);
+            const bIndex = productionLineSortOrder.indexOf(b.productionLine);
+            const aSortIndex = aIndex === -1 ? Infinity : aIndex;
+            const bSortIndex = bIndex === -1 ? Infinity : bIndex;
+            if (aSortIndex !== bSortIndex) {
+              return aSortIndex - bSortIndex;
+            }
+
+            // 시작시간으로 정렬
+            if (a.startTime && b.startTime) {
+              return a.startTime.localeCompare(b.startTime);
+            }
+            if (a.startTime) return -1;
+            if (b.startTime) return 1;
+            return 0;
+          });
+
+          callback(sortedReports);
+        },
+        (error) => {
+          console.error('Error in packaging reports date range subscription:', error);
+          if (onError) {
+            onError(error as Error);
+          }
+        }
+      );
+    } catch (error) {
+      console.error('Error setting up packaging reports date range subscription:', error);
+      if (onError) {
+        onError(error as Error);
+      }
       callback([]);
       return () => {};
     }

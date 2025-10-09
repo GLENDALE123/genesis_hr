@@ -46,7 +46,9 @@ interface PackagingReportListViewProps {
   onRefetch: () => void;
   onOpenProcessConditions: (report: PackagingReport) => void;
   onOpenMemo: (report: PackagingReport) => void;
-  canManage: boolean;  // 수정/삭제 권한
+  canManage: boolean;  // 수정/삭제 권한 (deprecated)
+  canUpdate?: boolean;  // 수정 권한
+  canDelete?: boolean;  // 삭제 권한
 }
 
 export const PackagingReportListView: React.FC<PackagingReportListViewProps> = ({
@@ -69,7 +71,9 @@ export const PackagingReportListView: React.FC<PackagingReportListViewProps> = (
   onRefetch,
   onOpenProcessConditions,
   onOpenMemo,
-  canManage
+  canManage,
+  canUpdate,
+  canDelete
 }) => {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ko-KR', {
@@ -374,7 +378,11 @@ export const PackagingReportListView: React.FC<PackagingReportListViewProps> = (
                   {reports.map((report) => {
                     // 상태 계산 (HS-Jig 로직)
                     const status = report.endTime ? '생산완료' : (report.startTime ? '작업중' : '대기');
-                    const statusVariant = report.endTime ? 'success' : (report.startTime ? 'warning' : 'outline');
+                    const statusColorClass = report.endTime 
+                      ? 'bg-[hsl(var(--status-completed))] text-[hsl(var(--status-completed-foreground))]'
+                      : report.startTime 
+                      ? 'bg-[hsl(var(--status-inprogress))] text-[hsl(var(--status-inprogress-foreground))]'
+                      : 'bg-[hsl(var(--status-requested))] text-[hsl(var(--status-requested-foreground))]';
                     
                     return (
                     <TableRow key={report.id} className="border-b">
@@ -384,7 +392,9 @@ export const PackagingReportListView: React.FC<PackagingReportListViewProps> = (
                        </TableCell>
                       {/* 상태 */}
                       <TableCell className="px-2 py-3 whitespace-nowrap">
-                        <Badge variant={statusVariant}>{status}</Badge>
+                        <span className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${statusColorClass}`}>
+                          {status}
+                        </span>
                       </TableCell>
                       {/* 생산라인 */}
                       <TableCell className="px-2 py-3 whitespace-nowrap">
@@ -465,29 +475,35 @@ export const PackagingReportListView: React.FC<PackagingReportListViewProps> = (
                           <span className="text-muted-foreground">-</span>
                         )}
                       </TableCell>
-                      {/* 작업 */}
-                      <TableCell className="h-8 px-3 py-1 whitespace-nowrap text-right">
-                        {canManage ? (
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => onEdit(report)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => onDelete(report.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground text-xs">-</span>
-                        )}
-                      </TableCell>
+                     {/* 작업 */}
+                     <TableCell className="h-8 px-3 py-1 whitespace-nowrap text-right">
+                       {(canUpdate || canDelete) ? (
+                         <div className="flex items-center justify-end gap-1">
+                           {canUpdate && (
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               onClick={() => onEdit(report)}
+                               title="생산일보 수정"
+                             >
+                               <Edit className="h-4 w-4" />
+                             </Button>
+                           )}
+                           {canDelete && (
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               onClick={() => onDelete(report.id)}
+                               title="생산일보 삭제"
+                             >
+                               <Trash2 className="h-4 w-4" />
+                             </Button>
+                           )}
+                         </div>
+                       ) : (
+                         <span className="text-muted-foreground text-xs">-</span>
+                       )}
+                     </TableCell>
                       </TableRow>
                     );
                   })}

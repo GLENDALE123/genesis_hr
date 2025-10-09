@@ -4,3 +4,4 @@ export { AppLayout } from './AppLayout';
 export { AppHeader } from './AppHeader';
 export { AppSidebar } from './AppSidebar';
 export { ConditionalLayout } from './ConditionalLayout';
+export { AppStateProvider } from './AppStateProvider';

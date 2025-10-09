@@ -47,13 +47,13 @@ export interface PagePermissions {
 // 사용자별 권한 설정
 export interface UserPermissions {
   userId: string;                     // 사용자 UID
-  email: string;                      // 사용자 이메일
-  displayName: string;                // 사용자 이름
-  globalRole: 'Admin' | 'Manager' | 'Member';  // 전역 역할
-  pagePermissions: PagePermissions[]; // 페이지별 세부 권한
-  createdAt: Date;
-  updatedAt: Date;
-  createdBy: string;                  // 권한을 설정한 관리자 UID
+  email?: string;                     // 사용자 이메일
+  displayName?: string;               // 사용자 이름
+  globalRole?: 'Admin' | 'Manager' | 'Member';  // 전역 역할
+  pagePermissions: Record<PageIdentifier, PagePermissions>; // 페이지별 세부 권한 (객체 형태)
+  createdAt?: Date;
+  updatedAt?: Date;
+  createdBy?: string;                 // 권한을 설정한 관리자 UID
 }
 
 // 권한 체크 헬퍼 타입

@@ -6,8 +6,7 @@ import {
   onAuthStateChanged,
   updateProfile
 } from 'firebase/auth';
-import { disableNetwork, enableNetwork } from 'firebase/firestore';
-import { auth, db } from './config';
+import { auth } from './config';
 import { 
   createUserProfile, 
   getUserProfile,
@@ -87,31 +86,10 @@ export const signUp = async (signUpData: SignUpData) => {
 export const logout = async () => {
   if (!auth) throw new Error('Firebase Auth is not initialized');
   try {
-    // Firestore 네트워크 연결 비활성화하여 모든 활성 리스너 종료
-    if (db) {
-      try {
-        await disableNetwork(db);
-        console.log('✅ Firestore 네트워크 연결 종료 완료');
-      } catch (error) {
-        console.warn('Firestore 네트워크 비활성화 실패:', error);
-      }
-    }
-    
     // Firebase Auth 로그아웃
+    // 리스너는 각 컴포넌트의 useEffect cleanup에서 자동으로 정리됨
     await signOut(auth);
-    
-    // 로그아웃 후 Firestore 네트워크 재활성화 (약간의 지연 후)
-    // 이렇게 하면 로그아웃 상태가 완전히 적용된 후 네트워크가 활성화됨
-    if (db) {
-      setTimeout(async () => {
-        try {
-          await enableNetwork(db);
-          console.log('✅ Firestore 네트워크 연결 재활성화 완료');
-        } catch (error) {
-          console.warn('Firestore 네트워크 재활성화 실패:', error);
-        }
-      }, 500); // 500ms 지연
-    }
+    console.log('✅ 로그아웃 완료');
   } catch (error) {
     throw error;
   }

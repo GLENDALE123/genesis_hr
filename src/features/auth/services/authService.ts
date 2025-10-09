@@ -1,19 +1,14 @@
-import { 
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut,
-  User,
-  updateProfile
-} from 'firebase/auth';
+import { User } from 'firebase/auth';
 import { auth } from '@/shared/services/firebase/config';
 import { 
-  createUserProfile, 
-  updateLastLogin
-} from '@/shared/services/firebase/userProfile';
+  signIn as sharedSignIn,
+  signUp as sharedSignUp,
+  logout as sharedLogout,
+  getCurrentUserProfile as sharedGetCurrentUserProfile
+} from '@/shared/services/firebase/auth';
 import { SignUpData, LoginData, UserProfile } from '@/features/auth/types';
 import { 
   validateSignUpForm, 
-  validateLoginForm, 
   sanitizeInput, 
   translateFirebaseError,
   formatAuthError 
@@ -23,7 +18,8 @@ import { AUTH_ERROR_MESSAGES } from '@/features/auth/constants';
 // 인증 서비스 클래스
 export class AuthService {
   /**
-   * 로그인 (이메일로)
+   * 로그인 (이메일 또는 로그인 ID)
+   * ✅ 공통 서비스 사용 + 추가 검증 레이어
    */
   static async signIn(loginData: LoginData): Promise<User> {
     if (!auth) {
@@ -31,20 +27,17 @@ export class AuthService {
     }
 
     try {
-      // 폼 검증
-      const validation = validateLoginForm(loginData);
-      if (!validation.isValid) {
-        throw new Error(validation.error);
+      const { emailOrLoginId, password } = loginData;
+      
+      // 간단한 폼 검증
+      if (!emailOrLoginId || !password) {
+        throw new Error('이메일 또는 로그인 ID와 비밀번호를 입력해주세요.');
       }
-
-      const { email, password } = loginData;
       
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      // ✅ 공통 서비스 호출 (로그인 ID 지원 포함)
+      const user = await sharedSignIn(loginData);
       
-      // 마지막 로그인 시간 업데이트
-      await this.updateLastLoginTime(userCredential.user.uid);
-      
-      return userCredential.user;
+      return user;
     } catch (error) {
       // Firebase 에러를 한국어로 변환
       const firebaseError = error as { code?: string; message?: string };
@@ -57,6 +50,7 @@ export class AuthService {
 
   /**
    * 회원가입
+   * ✅ 공통 서비스 사용 + 추가 검증 및 sanitization 레이어
    */
   static async signUp(signUpData: SignUpData): Promise<User> {
     if (!auth) {
@@ -70,30 +64,20 @@ export class AuthService {
         throw new Error(validation.error);
       }
 
-      const { email, password, name, position, department } = signUpData;
-      const sanitizedName = sanitizeInput(name);
-      const sanitizedPosition = position ? sanitizeInput(position) : undefined;
-      const sanitizedDepartment = department ? sanitizeInput(department) : undefined;
-      
-      // Firebase Auth에서 이메일 중복을 자동으로 체크하므로 별도 확인 불필요
-      
-      // Firebase Auth로 계정 생성
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      
-      // 사용자 프로필 업데이트
-      await updateProfile(userCredential.user, { displayName: sanitizedName });
-      
-      // Firestore에 사용자 프로필 생성
-      await createUserProfile({
+      // 입력값 sanitization
+      const sanitizedData: SignUpData = {
         ...signUpData,
-        name: sanitizedName,
-        displayName: sanitizedName,  // displayName 추가
-        role: signUpData.role || 'Member',  // 기본값은 Member
-        position: sanitizedPosition,
-        department: sanitizedDepartment,
-      }, userCredential.user.uid);
+        name: sanitizeInput(signUpData.name),
+        displayName: sanitizeInput(signUpData.name),
+        position: signUpData.position ? sanitizeInput(signUpData.position) : undefined,
+        department: signUpData.department ? sanitizeInput(signUpData.department) : undefined,
+        role: signUpData.role || 'Member', // 기본값은 Member
+      };
       
-      return userCredential.user;
+      // ✅ 공통 서비스 호출 (로그인 ID 중복 체크 포함)
+      const user = await sharedSignUp(sanitizedData);
+      
+      return user;
     } catch (error) {
       // Firebase 에러를 한국어로 변환
       const firebaseError = error as { code?: string; message?: string };
@@ -106,6 +90,7 @@ export class AuthService {
 
   /**
    * 로그아웃
+   * ✅ 공통 서비스 사용
    */
   static async logout(): Promise<void> {
     if (!auth) {
@@ -113,7 +98,8 @@ export class AuthService {
     }
 
     try {
-      await signOut(auth);
+      // ✅ 공통 서비스 호출
+      await sharedLogout();
     } catch (error) {
       throw new Error(formatAuthError(error));
     }
@@ -121,6 +107,7 @@ export class AuthService {
 
   /**
    * 현재 사용자의 프로필 조회
+   * ✅ 공통 서비스 사용
    */
   static async getCurrentUserProfile(): Promise<UserProfile | null> {
     if (!auth?.currentUser) {
@@ -128,8 +115,8 @@ export class AuthService {
     }
     
     try {
-      const { getUserProfile } = await import('@/shared/services/firebase/userProfile');
-      const userProfile = await getUserProfile(auth.currentUser.uid);
+      // ✅ 공통 서비스 호출
+      const userProfile = await sharedGetCurrentUserProfile();
       return userProfile;
     } catch (error) {
       // 권한 에러는 조용히 처리 (로그인 전 상태)
@@ -140,18 +127,4 @@ export class AuthService {
       return null;
     }
   }
-
-  /**
-   * 마지막 로그인 시간 업데이트
-   */
-  private static async updateLastLoginTime(uid: string): Promise<void> {
-    try {
-      await updateLastLogin(uid);
-    } catch (error) {
-      console.error(AUTH_ERROR_MESSAGES.LAST_LOGIN_UPDATE_FAILED, error);
-      // 로그인 시간 업데이트 실패는 로그인을 막지 않음
-    }
-  }
-
-
 }

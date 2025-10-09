@@ -4,6 +4,7 @@ import { User } from 'firebase/auth';
 import { onAuthStateChange } from '@/shared/services/firebase/auth';
 import { AuthService } from '@/features/auth/services';
 import { UserProfile } from '@/features/auth/types';
+import { TauriWindowUtils } from '@/shared/utils/tauri-window';
 
 interface AuthState {
   user: User | null;
@@ -50,11 +51,17 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         logout: async () => {
           set({ isLoading: true });
           try {
-            // Firebase 로그아웃 로직은 별도 서비스에서 처리
+            // 실제 Firebase 로그아웃 호출
+            await AuthService.logout();
             set({ user: null, userProfile: null, error: null });
-            console.log('Logout successful');
+            console.log('✅ 로그아웃 완료');
+            
+            // Tauri 환경이면 윈도우 크기 복원
+            await TauriWindowUtils.onLogout();
           } catch (error) {
-            set({ error: error instanceof Error ? error.message : '로그아웃에 실패했습니다.' });
+            const errorMessage = error instanceof Error ? error.message : '로그아웃에 실패했습니다.';
+            console.error('❌ 로그아웃 실패:', errorMessage);
+            set({ error: errorMessage });
           } finally {
             set({ isLoading: false });
           }
@@ -69,13 +76,11 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         setError: (error: string | null) => set({ error }),
         
         initializeAuth: (): (() => void) => {
-          // persist된 user가 있으면 로딩 표시하지 않음 (깜빡임 방지)
-          const currentState = useAuthStore.getState();
-          if (!currentState.user) {
-            set({ isLoading: true });
-          }
+          // 초기 로딩 상태 설정
+          set({ isLoading: true });
           
           const unsubscribe = onAuthStateChange(async (user) => {
+            console.log('🔐 Firebase 인증 상태 변경:', user ? '로그인됨' : '로그아웃됨');
             set({ user, isLoading: false, error: null });
             
             if (user) {
@@ -83,6 +88,9 @@ export const useAuthStore = create<AuthState & AuthActions>()(
               try {
                 const userProfile = await AuthService.getCurrentUserProfile();
                 set({ userProfile });
+                
+                // 로그인 완료 시 Tauri 윈도우 최대화
+                await TauriWindowUtils.onLogin();
               } catch (error) {
                 // 권한 에러는 조용히 처리 (로그인 전 상태)
                 const errorMessage = error instanceof Error ? error.message : '';

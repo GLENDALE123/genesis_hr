@@ -30,13 +30,27 @@ import { ProcessConditionsModal } from '@/features/production/components/Process
 import { MemoModal } from '@/features/production/components/MemoModal';
 import { usePackagingReports } from '@/features/production/hooks/usePackagingReports';
 import { usePackagingReportFilters } from '@/features/production/hooks/usePackagingReportFilters';
-import { useAuth, canManageData, canCreateData, PermissionSettingsButton } from '@/features/auth';
+import { 
+  useAuth, 
+  canManageData, 
+  canCreateData, 
+  PermissionSettingsButton,
+  usePagePermissions 
+} from '@/features/auth';
 import { PackagingReport, PackagingFormData } from '@/features/production/types';
 import { toast } from 'sonner';
 import { getFirebaseErrorMessage } from '@/shared/utils/firebaseErrorHandler';
 
 export const PackagingDailyReportContainer: React.FC = () => {
   const { user, userProfile } = useAuth();
+  
+  // 페이지별 권한 확인
+  const { 
+    canRead, 
+    canCreate, 
+    canUpdate, 
+    canDelete 
+  } = usePagePermissions('production-daily-report');
   const [selectedReport, setSelectedReport] = useState<PackagingReport | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -87,18 +101,30 @@ export const PackagingDailyReportContainer: React.FC = () => {
   } = usePackagingReportFilters(reports);
 
   const handleCreateReport = () => {
+    if (!canCreate) {
+      toast.error('생산일보를 생성할 권한이 없습니다.');
+      return;
+    }
     setSelectedReport(null);
     setIsEditMode(false);
     setIsFormOpen(true);
   };
 
   const handleEditReport = (report: PackagingReport) => {
+    if (!canUpdate) {
+      toast.error('생산일보를 수정할 권한이 없습니다.');
+      return;
+    }
     setSelectedReport(report);
     setIsEditMode(true);
     setIsFormOpen(true);
   };
 
   const handleDeleteReport = (reportId: string) => {
+    if (!canDelete) {
+      toast.error('생산일보를 삭제할 권한이 없습니다.');
+      return;
+    }
     setDeleteConfirmState({ isOpen: true, reportId });
   };
 
@@ -235,6 +261,7 @@ export const PackagingDailyReportContainer: React.FC = () => {
     }
   }, [error]);
 
+  // 로딩 상태
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -243,9 +270,24 @@ export const PackagingDailyReportContainer: React.FC = () => {
     );
   }
 
-  // 권한 체크
-  const canCreate = canCreateData(userProfile);
-  const canManage = canManageData(userProfile);
+  // 읽기 권한 확인
+  if (!canRead) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 space-y-4">
+        <div className="text-center">
+          <h3 className="text-lg font-semibold text-muted-foreground">접근 권한 없음</h3>
+          <p className="text-sm text-muted-foreground mt-2">
+            생산일보 페이지에 접근할 권한이 없습니다.
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            관리자에게 권한을 요청하세요.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  console.log('🔒 [생산일보] 권한 상태:', { canRead, canCreate, canUpdate, canDelete });
 
   return (
     <>
@@ -262,15 +304,28 @@ export const PackagingDailyReportContainer: React.FC = () => {
           
           {/* 우측: 액션 버튼들 */}
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" disabled={!canManage}>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              disabled={!canCreate}
+              title={canCreate ? '엑셀 업로드' : '권한이 없습니다'}
+            >
               <Upload className="h-4 w-4 mr-2" />
               엑셀 업로드
             </Button>
-            <Button variant="outline" size="sm">
+            <Button 
+              variant="outline" 
+              size="sm"
+              title="엑셀 다운로드"
+            >
               <Download className="h-4 w-4 mr-2" />
               엑셀 다운로드
             </Button>
-            <Button onClick={handleCreateReport} disabled={!canCreate}>
+            <Button 
+              onClick={handleCreateReport} 
+              disabled={!canCreate}
+              title={canCreate ? '생산일보 등록' : '생성 권한이 없습니다'}
+            >
               <Plus className="h-4 w-4 mr-2" />
               생산일보 등록
             </Button>
@@ -299,7 +354,9 @@ export const PackagingDailyReportContainer: React.FC = () => {
             onRefetch={refetch}
             onOpenProcessConditions={handleOpenProcessConditions}
             onOpenMemo={handleOpenMemo}
-            canManage={canManage}
+            canManage={canUpdate || canDelete}
+            canUpdate={canUpdate}
+            canDelete={canDelete}
           />
         </div>
       </div>
@@ -333,7 +390,7 @@ export const PackagingDailyReportContainer: React.FC = () => {
         onClose={() => setProcessConditionsModalState({ isOpen: false, report: null })}
         report={processConditionsModalState.report}
         onSave={handleSaveProcessConditions}
-        canManage={canManage}
+        canManage={canUpdate}
       />
 
       {/* 메모 모달 */}
