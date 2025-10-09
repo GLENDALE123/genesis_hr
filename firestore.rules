@@ -20,6 +20,21 @@ service cloud.firestore {
       allow create: if request.auth != null && 
         (request.auth.uid == userId || 
          request.auth.token.email == request.resource.data.email);
+      
+      // 사용자별 알림 inbox 서브컬렉션
+      match /inbox/{notificationId} {
+        // 자신의 inbox만 읽기 가능
+        allow read: if request.auth != null && request.auth.uid == userId;
+        
+        // 알림 생성은 누구나 가능 (서버/클라이언트)
+        allow create: if request.auth != null;
+        
+        // 자신의 inbox만 수정 가능 (읽음 처리 등)
+        allow update: if request.auth != null && request.auth.uid == userId;
+        
+        // 자신의 inbox만 삭제 가능
+        allow delete: if request.auth != null && request.auth.uid == userId;
+      }
     }
     
     // 알림 컬렉션

@@ -4,7 +4,6 @@ import { User } from 'firebase/auth';
 import { onAuthStateChange } from '@/shared/services/firebase/auth';
 import { AuthService } from '@/features/auth/services';
 import { UserProfile } from '@/features/auth/types';
-import { TauriWindowUtils } from '@/shared/utils/tauri-window';
 
 interface AuthState {
   user: User | null;
@@ -55,9 +54,6 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             await AuthService.logout();
             set({ user: null, userProfile: null, error: null });
             console.log('✅ 로그아웃 완료');
-            
-            // Tauri 환경이면 윈도우 크기 복원
-            await TauriWindowUtils.onLogout();
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : '로그아웃에 실패했습니다.';
             console.error('❌ 로그아웃 실패:', errorMessage);
@@ -76,10 +72,21 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         setError: (error: string | null) => set({ error }),
         
         initializeAuth: (): (() => void) => {
+          console.log('🔐 Firebase 인증 초기화 시작...');
+          
           // 초기 로딩 상태 설정
           set({ isLoading: true });
           
+          // 타임아웃 설정 (5초 후에도 콜백이 안 오면 강제로 로딩 해제)
+          const timeoutId = setTimeout(() => {
+            console.warn('⚠️ Firebase 인증 초기화 타임아웃 - 로딩 상태 해제');
+            set({ isLoading: false });
+          }, 5000);
+          
           const unsubscribe = onAuthStateChange(async (user) => {
+            // 타임아웃 해제
+            clearTimeout(timeoutId);
+            
             console.log('🔐 Firebase 인증 상태 변경:', user ? '로그인됨' : '로그아웃됨');
             set({ user, isLoading: false, error: null });
             
@@ -88,9 +95,6 @@ export const useAuthStore = create<AuthState & AuthActions>()(
               try {
                 const userProfile = await AuthService.getCurrentUserProfile();
                 set({ userProfile });
-                
-                // 로그인 완료 시 Tauri 윈도우 최대화
-                await TauriWindowUtils.onLogin();
               } catch (error) {
                 // 권한 에러는 조용히 처리 (로그인 전 상태)
                 const errorMessage = error instanceof Error ? error.message : '';
@@ -105,7 +109,10 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           });
           
           // 컴포넌트 언마운트 시 구독 해제를 위한 cleanup 함수 반환
-          return unsubscribe;
+          return () => {
+            clearTimeout(timeoutId);
+            unsubscribe();
+          };
         },
       }),
       {

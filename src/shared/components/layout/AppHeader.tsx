@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useAuth } from '@/features/auth/hooks/useAuth';
+import { useAuthStore } from '@/features/auth/store/authStore';
 import { Button } from '@/shared/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { 
@@ -12,6 +12,11 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from '@/shared/components/ui/dropdown-menu';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/shared/components/ui/popover';
 import { Badge } from '@/shared/components/ui/badge';
 import { Switch } from '@/shared/components/ui/switch';
 import { 
@@ -41,10 +46,50 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   className,
   onMenuClick 
 }) => {
-  const { user, userProfile } = useAuth();
+  const { user, userProfile } = useAuthStore();
   const router = useRouter();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const { dummyRole, setDummyRole, clearDummyRole } = useDevStore();
+  
+  const [notifications, setNotifications] = React.useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = React.useState(0);
+  const [isNotificationOpen, setIsNotificationOpen] = React.useState(false);
+
+  // 실시간 알림 조회
+  React.useEffect(() => {
+    if (!user?.uid) return;
+
+    const fetchNotifications = async () => {
+      try {
+        const { collection, query, orderBy, limit, onSnapshot } = await import('firebase/firestore');
+        const { db } = await import('@/shared/services/firebase/config');
+        
+        if (!db) return;
+
+        const q = query(
+          collection(db, `users/${user.uid}/inbox`),
+          orderBy('createdAt', 'desc'),
+          limit(10)
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+          const notifs = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+          
+          setNotifications(notifs);
+          setUnreadCount(notifs.filter((n: any) => !n.read).length);
+        });
+
+        return unsubscribe;
+      } catch (error) {
+        console.error('알림 조회 실패:', error);
+      }
+    };
+
+    fetchNotifications();
+  }, [user?.uid]);
 
   const handleLogout = async () => {
     try {
@@ -97,15 +142,90 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           <ThemeCustomizer />
 
           {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-            <Badge 
-              variant="destructive" 
-              className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
-            >
-              3
-            </Badge>
-          </Button>
+          <Popover open={isNotificationOpen} onOpenChange={setIsNotificationOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="icon" className="relative">
+                <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <Badge 
+                    variant="destructive" 
+                    className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+                  >
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </Badge>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-0" align="end">
+              <div className="flex items-center justify-between p-4 border-b">
+                <h3 className="font-semibold">알림</h3>
+                {unreadCount > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={async () => {
+                      if (user?.uid) {
+                        const { NotificationManager } = await import('@/shared/components/common/CustomNotification');
+                        await NotificationManager.markAllAsRead(user.uid);
+                      }
+                    }}
+                  >
+                    모두 읽음
+                  </Button>
+                )}
+              </div>
+              <div className="max-h-96 overflow-y-auto">
+                {notifications.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    알림이 없습니다
+                  </div>
+                ) : (
+                  notifications.map((notif) => (
+                    <div
+                      key={notif.id}
+                      className={cn(
+                        "p-4 border-b cursor-pointer hover:bg-accent transition-colors",
+                        !notif.read && "bg-primary/5"
+                      )}
+                      onClick={async () => {
+                        if (user?.uid) {
+                          const { NotificationManager } = await import('@/shared/components/common/CustomNotification');
+                          await NotificationManager.markAsRead(user.uid, notif.id);
+                          
+                          // 딥링크 이동
+                          if (notif.link) {
+                            router.push(notif.link);
+                          }
+                          
+                          setIsNotificationOpen(false);
+                        }
+                      }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0">
+                          <Bell className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">{notif.title}</p>
+                          <p className="text-xs text-muted-foreground line-clamp-2">
+                            {notif.body}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {notif.metadata?.senderName || '시스템'}
+                          </p>
+                        </div>
+                        {!notif.read && (
+                          <div className="flex-shrink-0">
+                            <div className="w-2 h-2 bg-primary rounded-full" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
 
           {/* User Menu */}
           <DropdownMenu>

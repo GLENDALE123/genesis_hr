@@ -26,6 +26,8 @@ const imageTriggers = require('./triggers/imageOptimization');
 // HTTPS 함수들
 const notificationHttps = require('./https/notifications');
 const createNotificationHttps = require('./https/createNotification');
+const registerMobileTokenHttps = require('./https/registerMobileToken');
+const getUnreadNotificationsHttps = require('./https/getUnreadNotifications');
 
 // 모든 함수들을 export
 module.exports = {
@@ -36,5 +38,7 @@ module.exports = {
   // HTTPS 함수들
   ...notificationHttps,
   ...createNotificationHttps,
+  ...registerMobileTokenHttps,
+  ...getUnreadNotificationsHttps,
 };
 

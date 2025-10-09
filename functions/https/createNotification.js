@@ -4,14 +4,12 @@
 
 const { onRequest } = require('firebase-functions/v2/https');
 const { 
-  db, 
-  messaging, 
-  FieldValue, 
   chunkArray,
   selectTitleByType, 
   getAndroidChannelIdByTypeAndPriority, 
   getCategoryKey, 
-  mapUrlByType 
+  mapUrlByType,
+  initializeFirebase
 } = require('../lib/utils');
 const { 
   upsertInboxAndCountersForUids, 
@@ -45,6 +43,9 @@ exports.createNotification = onRequest(async (req, res) => {
     if (!message || !requestId || !type) {
       return res.status(400).json({ ok: false, error: 'message, requestId, type are required' });
     }
+
+    // Firebase 초기화
+    const { db, messaging, FieldValue } = initializeFirebase();
 
     // 중복 알림 방지를 위한 고유 키 생성
     const duplicateKey = `${type}-${requestId}-${JSON.stringify(targetUsers || [])}`;
@@ -81,7 +82,6 @@ exports.createNotification = onRequest(async (req, res) => {
     });
 
     // Firestore에 알림 저장 및 FCM 푸시 발송
-    const { db, messaging, FieldValue } = require('../lib/utils').initializeFirebase();
     const notifId = db.collection('notifications').doc().id; // Generate ID
     const title = selectTitleByType(type, subType);
     const bodyText = String(message || '');
@@ -130,24 +130,41 @@ exports.createNotification = onRequest(async (req, res) => {
       }
     }
 
-    // Firestore에 알림 저장
+    // 사용자별 inbox에 알림 저장
+    const metadata = {
+      senderName: relatedData?.senderName || '시스템'
+    };
+    
+    // senderAvatar가 있을 때만 추가 (undefined 방지)
+    if (relatedData?.senderAvatar) {
+      metadata.senderAvatar = relatedData.senderAvatar;
+    }
+    
     const notificationDoc = {
       id: notifId,
       type: String(type || ''),
       subType: String(subType || ''),
       message: String(message || ''),
+      title: String(title || ''),
+      body: String(bodyText || ''),
       requestId: String(requestId || ''),
       priority: String(priority || 'normal'),
       actionRequired: Boolean(actionRequired || false),
-      targetUsers: resolvedTargetUsers || [],
       relatedData: relatedData || {},
-      createdAt: FieldValue.serverTimestamp(),
+      createdAt: FieldValue ? FieldValue.serverTimestamp() : new Date(),
       read: false,
-      readBy: []
+      metadata
     };
 
-    await db.collection('notifications').doc(notifId).set(notificationDoc);
-    console.log('[createNotification] Notification saved to Firestore:', notifId);
+    // 각 사용자의 inbox에 알림 저장 (배치 처리)
+    const batch = db.batch();
+    for (const userId of resolvedTargetUsers) {
+      const inboxRef = db.collection('users').doc(userId).collection('inbox').doc(notifId);
+      batch.set(inboxRef, notificationDoc);
+    }
+    await batch.commit();
+    
+    console.log(`[createNotification] Notification saved to ${resolvedTargetUsers.length} user inboxes:`, notifId);
 
     const tokenDocs = await collectTokensForTargets(resolvedTargetUsers);
 

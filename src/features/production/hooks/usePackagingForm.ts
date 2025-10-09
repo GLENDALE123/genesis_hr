@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { PackagingReport, PackagingFormData, PackagedBoxFormData } from '@/features/production/types';
-import { useAuth } from '@/features/auth/hooks/useAuth';
+import { useAuthStore } from '@/features/auth/store/authStore';
 import { useOrderNumberFormatter } from '@/shared/hooks/useOrderNumberFormatter';
 import { usePackagingCalculations } from './usePackagingCalculations';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
@@ -48,7 +48,7 @@ interface UseProductionFormProps {
  * - 박스 정보 관리
  */
 export const usePackagingForm = ({ report, isEditMode = false }: UseProductionFormProps) => {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [formData, setFormData] = useState<PackagingFormData>(initialFormData);
   const [isSaving, setIsSaving] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);

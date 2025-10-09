@@ -15,6 +15,12 @@ function initializeFirebase() {
     db = getFirestore();
     messaging = getMessaging();
     FieldValue = admin.firestore.FieldValue;
+    console.log('Firebase initialized:', { 
+      hasDb: !!db, 
+      hasMessaging: !!messaging, 
+      hasFieldValue: !!FieldValue,
+      fieldValueType: typeof FieldValue 
+    });
   }
   return { db, messaging, FieldValue };
 }
@@ -211,5 +217,9 @@ module.exports = {
   getCategoryKey,
   mapUrlByType,
   chunkArray,
-  createCommentNotificationMessage
+  createCommentNotificationMessage,
+  // 직접 export도 지원 (하위 호환성)
+  get db() { return db; },
+  get messaging() { return messaging; },
+  get FieldValue() { return FieldValue; }
 };

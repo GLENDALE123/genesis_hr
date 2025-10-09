@@ -1,7 +1,8 @@
 'use client';
 
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
-import { useAuth, useUserRole, useIsAdmin, useIsManager } from '@/features/auth/hooks';
+import { useUserRole, useIsAdmin, useIsManager } from '@/features/auth/hooks';
+import { useAuthStore } from '@/features/auth/store/authStore';
 import { isAdmin as checkIsAdmin } from '@/shared/utils/userUtils';
 import { useDashboardStore } from '@/features/dashboard';
 import { useDevStore } from '@/app/store';
@@ -26,7 +27,7 @@ interface Todo {
 }
 
 export default function DashboardPage() {
-  const { user, userProfile } = useAuth();
+  const { user, userProfile } = useAuthStore();
   const currentRole = useUserRole();
   const isAdmin = useIsAdmin();
   const isManager = useIsManager();
@@ -97,36 +98,44 @@ export default function DashboardPage() {
     }
   };
 
-  // 멘션 알림 테스트 함수
+  // 멘션 알림 테스트 함수 (Firebase Functions 호출)
   const testMentionNotification = async () => {
     try {
-      console.log('🔔 [Dashboard] 포그라운드 알림 테스트 시작');
-      console.log('🔍 [Dashboard] Tauri 환경:', typeof window !== 'undefined' && window.__TAURI__);
+      console.log('🔔 [Dashboard] 포그라운드 알림 테스트 시작 (Firebase Functions)');
       
-      // 테스트용 사용자 프로필 이미지
-      const senderAvatar = (userProfile as any)?.photoURL;
-      const senderName = '이현석본부장';
-      
-      console.log('📤 [Dashboard] 알림 데이터:', {
-        senderName,
-        senderAvatar,
-        hasTauri: typeof window !== 'undefined' && window.__TAURI__
+      // Firebase Functions 호출 (로컬 에뮬레이터)
+      const response = await fetch('http://127.0.0.1:5001/control-6a11d/asia-northeast3/createNotification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: '신30ML진공/캡 본부장님 테스트입니다',
+          requestId: `test-${Date.now()}`,
+          type: 'mention',
+          subType: 'user_mention',
+          priority: 'high',
+          targetUsers: [user?.uid], // 현재 사용자에게 전송
+          actionRequired: true,
+          relatedData: {
+            senderName: '이현석본부장',
+            mentionType: 'user'
+          }
+        }),
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ [Dashboard] Firebase Functions 응답:', result);
       
-      // 자체 알림 시스템 사용
-      await NotificationManager.notify({
-        title: '생산관리부 요청사항',
-        body: '신30ML진공/캡 (@이현석본부장)본부장님 테스트입니다',
-        senderName: senderName,
-        senderAvatar: senderAvatar,
-        type: 'mention',
-        onClick: () => {
-          console.log('멘션 알림 클릭됨!');
-          // 실제로는 해당 요청 페이지로 이동
-        }
-      });
-      
-      toast.success('알림 요청이 전송되었습니다!');
+      if (result.ok) {
+        toast.success('알림 요청이 전송되었습니다! (FCM을 통해 Rust로 전달)');
+      } else {
+        throw new Error(result.error || '알림 전송 실패');
+      }
       
     } catch (error) {
       console.error('❌ [Dashboard] 알림 테스트 실패:', error);
@@ -142,19 +151,40 @@ export default function DashboardPage() {
       // 앱을 백그라운드로 전환
       NotificationManager.setAppState(false);
       
-      // 백그라운드 알림 테스트
-      await NotificationManager.notify({
-        title: '생산관리부 요청사항',
-        body: '신30ML진공/캡 (@이현석본부장)백그라운드 테스트입니다',
-        senderName: '이현석본부장',
-        senderAvatar: (userProfile as any)?.photoURL,
-        type: 'mention',
-        onClick: () => {
-          console.log('백그라운드 알림 클릭됨!');
-        }
+      // Firebase Functions 호출 (로컬 에뮬레이터)
+      const response = await fetch('http://127.0.0.1:5001/control-6a11d/asia-northeast3/createNotification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: '신30ML진공/캡 백그라운드 테스트입니다',
+          requestId: `bg-test-${Date.now()}`,
+          type: 'mention',
+          subType: 'user_mention',
+          priority: 'normal',
+          targetUsers: [user?.uid], // 현재 사용자에게 전송
+          actionRequired: false,
+          relatedData: {
+            senderName: '이현석본부장',
+            mentionType: 'user',
+            isBackground: true
+          }
+        }),
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ [Dashboard] 백그라운드 Firebase Functions 응답:', result);
       
-      toast.success('백그라운드 알림이 전송되었습니다! (시스템 알림 확인)');
+      if (result.ok) {
+        toast.success('백그라운드 알림이 전송되었습니다! (FCM을 통해 시스템 알림으로 표시)');
+      } else {
+        throw new Error(result.error || '백그라운드 알림 전송 실패');
+      }
       
       // 3초 후 포그라운드로 복원
       setTimeout(() => {

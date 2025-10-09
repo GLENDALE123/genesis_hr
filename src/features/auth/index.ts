@@ -7,7 +7,7 @@ export { LoginForm } from './components/LoginForm';
 export { PermissionSettingsButton } from './components/PermissionSettingsButton';
 
 // Hooks
-export { useAuth } from './hooks/useAuth';
+// useAuth는 삭제됨 - useAuthStore를 직접 사용하세요
 export { useUserRole, useHasRole, useIsAdmin, useIsManager } from './hooks/useUserRole';
 export { usePagePermissions, useHasPermission, useHasCustomPermission } from './hooks/usePagePermissions';
 

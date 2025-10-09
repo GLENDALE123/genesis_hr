@@ -17,7 +17,10 @@ const eslintConfig = [
       ".next/**",
       "out/**",
       "build/**",
+      "dist/**",
       "next-env.d.ts",
+      "electron/**", // Electron 파일 (CommonJS)
+      "functions/**", // Firebase Functions (CommonJS)
     ],
   },
 ];

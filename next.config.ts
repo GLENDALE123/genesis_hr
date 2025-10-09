@@ -2,17 +2,17 @@ import type { NextConfig } from "next";
 import path from 'path';
 
 const nextConfig: NextConfig = {
-  // Tauri용 정적 빌드 설정
-  output: process.env.TAURI_BUILD === 'true' ? 'export' : undefined,
-  distDir: process.env.TAURI_BUILD === 'true' ? 'out' : '.next',
+  // Electron용 정적 빌드 설정
+  output: process.env.ELECTRON_BUILD === 'true' ? 'export' : undefined,
+  distDir: 'out',
   
   // 이미지 최적화 설정
   images: {
-    unoptimized: process.env.TAURI_BUILD === 'true',
+    unoptimized: process.env.ELECTRON_BUILD === 'true',
   },
   
-  // 후행 슬래시 추가 (Tauri 라우팅 호환성) - 개발 환경에서는 비활성화
-  trailingSlash: process.env.TAURI_BUILD === 'true',
+  // 후행 슬래시 추가 (Electron 라우팅 호환성)
+  trailingSlash: process.env.ELECTRON_BUILD === 'true',
   
   // 워크스페이스 루트 설정 (경고 제거)
   outputFileTracingRoot: path.join(__dirname),
@@ -41,6 +41,16 @@ const nextConfig: NextConfig = {
             value: 'Content-Type, Authorization',
           },
         ],
+      },
+    ];
+  },
+  
+  // 정적 파일 리라이트 (notification.html을 public에서 제공)
+  async rewrites() {
+    return [
+      {
+        source: '/notification.html',
+        destination: '/notification.html',
       },
     ];
   },

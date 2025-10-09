@@ -26,7 +26,6 @@ export function ClientThemeProvider({ children }: ClientThemeProviderProps) {
       defaultTheme="system"
       enableSystem
       disableTransitionOnChange
-      suppressHydrationWarning
     >
       {children}
     </ThemeProvider>

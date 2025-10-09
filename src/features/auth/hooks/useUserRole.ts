@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth } from './useAuth';
+import { useAuthStore } from '../store/authStore';
 import { useDevStore } from '@/app/store';
 import type { UserRole } from '@/features/auth/types';
 
@@ -9,7 +9,7 @@ import type { UserRole } from '@/features/auth/types';
  * 개발 모드에서는 더미 권한 우선 사용
  */
 export const useUserRole = (): UserRole | null => {
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthStore();
   const { dummyRole } = useDevStore();
   
   // 더미 권한이 설정되어 있으면 더미 권한 사용 (개발용)

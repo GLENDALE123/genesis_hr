@@ -31,18 +31,18 @@ import { MemoModal } from '@/features/production/components/MemoModal';
 import { usePackagingReports } from '@/features/production/hooks/usePackagingReports';
 import { usePackagingReportFilters } from '@/features/production/hooks/usePackagingReportFilters';
 import { 
-  useAuth, 
   canManageData, 
   canCreateData, 
   PermissionSettingsButton,
-  usePagePermissions 
+  usePagePermissions,
+  useAuthStore
 } from '@/features/auth';
 import { PackagingReport, PackagingFormData } from '@/features/production/types';
 import { toast } from 'sonner';
 import { getFirebaseErrorMessage } from '@/shared/utils/firebaseErrorHandler';
 
 export const PackagingDailyReportContainer: React.FC = () => {
-  const { user, userProfile } = useAuth();
+  const { user, userProfile } = useAuthStore();
   
   // 페이지별 권한 확인
   const { 

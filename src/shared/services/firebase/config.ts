@@ -4,10 +4,10 @@ import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getStorage, connectStorageEmulator } from 'firebase/storage';
 import { getAnalytics } from 'firebase/analytics';
 
-// Tauri 환경 감지 함수
-const isTauriEnv = (): boolean => {
+// Electron 환경 감지 함수
+const isElectronEnv = (): boolean => {
   if (typeof window === 'undefined') return false;
-  return '__TAURI__' in window;
+  return '__ELECTRON__' in window;
 };
 
 // 개발 환경 감지 함수
@@ -23,7 +23,7 @@ const isDevEnvironment = (): boolean => {
 // 3. 웹 개발 환경 (localhost)
 const useEmulator = 
   process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true' ||
-  (isTauriEnv() && isDevEnvironment()) ||
+  (isElectronEnv() && isDevEnvironment()) ||
   (isDevEnvironment() && process.env.NODE_ENV === 'development');
 
 const firebaseConfig = {
@@ -35,6 +35,10 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '1:739974091539:web:6de6536e2178ed3d0440e6',
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || 'G-YDJBRPW5BY',
 };
+
+// Firebase Cloud Messaging VAPID Key
+// Firebase Console > Project Settings > Cloud Messaging > Web Push certificates에서 생성
+export const FIREBASE_VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || 'BJJPTFCxIgh2ddhl1vUAzQ-Cj_0RvUCx9xuxRdM9pb061G9YkCWqe9561VQDTnrPVm8j4SldzEl_2h0NPNlh_tE';
 
 // Firebase 앱이 이미 초기화되어 있는지 확인
 let app;
@@ -58,10 +62,10 @@ if (typeof window !== 'undefined' && useEmulator) {
     // 현재 호스트 정보 가져오기
     const currentHost = window.location.hostname;
     const isLocalhost = currentHost === 'localhost' || currentHost === '127.0.0.1';
-    const isTauri = isTauriEnv();
+    const isElectron = isElectronEnv();
     
     console.log('🔥 Firebase 에뮬레이터 연결 시도:', {
-      환경: isTauri ? 'Tauri' : 'Web',
+      환경: isElectron ? 'Electron' : 'Web',
       호스트: currentHost,
       포트: window.location.port,
       에뮬레이터_사용: useEmulator,

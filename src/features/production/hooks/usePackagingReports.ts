@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { PackagingReport, PackagingFormData } from '@/features/production/types';
 import { PackagingReportsService } from '@/features/production/services/packagingReportsService';
 import { waitForFirebaseInit } from '@/shared/services/firebase/config';
-import { useAuth } from '@/features/auth/hooks/useAuth';
+import { useAuthStore } from '@/features/auth/store/authStore';
 import { usePackagingReportsStore } from '@/features/production/store/packagingReportsStore';
 
 /**
@@ -14,7 +14,7 @@ import { usePackagingReportsStore } from '@/features/production/store/packagingR
  * - 캐시된 데이터 즉시 표시 → 백그라운드에서 최신 데이터 업데이트
  */
 export const usePackagingReports = () => {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [mounted, setMounted] = useState(false);
   
   // Zustand 스토어 사용

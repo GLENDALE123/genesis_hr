@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { AppLayout } from '@/shared/components/layout/AppLayout';
 import { TitleBar } from '@/shared/components/layout/TitleBar';
-import { useAuth } from '@/features/auth/hooks/useAuth';
+import { useAuthStore } from '@/features/auth/store/authStore';
 
 interface ConditionalLayoutProps {
   children: React.ReactNode;
@@ -14,7 +14,7 @@ export const ConditionalLayout: React.FC<ConditionalLayoutProps> = ({
   children 
 }) => {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [mounted, setMounted] = useState(false);
 
   // 로그인/회원가입 페이지는 AppLayout 없이 렌더링
@@ -34,10 +34,10 @@ export const ConditionalLayout: React.FC<ConditionalLayoutProps> = ({
   // 인증 페이지이거나 사용자가 로그인되지 않은 경우 TitleBar만 표시
   if (isAuthPage || !user) {
     return (
-      <div className="h-screen flex flex-col overflow-hidden">
-        {/* Tauri 타이틀바는 항상 표시 */}
+      <div className="h-screen flex flex-col">
+        {/* Electron 커스텀 타이틀바 (frame: false 환경) */}
         <TitleBar />
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-hidden">
           {children}
         </div>
       </div>

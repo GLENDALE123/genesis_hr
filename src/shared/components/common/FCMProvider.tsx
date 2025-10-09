@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, ReactNode, useState } from 'react';
 import { toast } from '@/shared/hooks/use-toast';
-import { useAuth } from '@/features/auth/hooks/useAuth';
+import { useAuthStore } from '@/features/auth/store/authStore';
 import { 
   initializeFCM, 
   getFCMToken, 
@@ -27,7 +27,7 @@ interface FCMProviderProps {
 }
 
 export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [state, setState] = useState({
     token: null as string | null,
     permission: 'default' as NotificationPermission,

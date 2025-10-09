@@ -8,109 +8,111 @@ interface TitleBarProps {
   className?: string;
 }
 
+/**
+ * Electron 커스텀 타이틀바
+ * frame: false 설정 시 사용
+ */
 export const TitleBar: React.FC<TitleBarProps> = ({ className }) => {
-  const [isTauri, setIsTauri] = useState(false);
+  const [isElectron, setIsElectron] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
 
   useEffect(() => {
-    // Tauri 환경인지 확인
-    if (typeof window !== 'undefined' && (window as any).__TAURI__) {
-      setIsTauri(true);
+    // Electron 환경 체크
+    if (typeof window !== 'undefined' && window.__ELECTRON__ && window.electron) {
+      setIsElectron(true);
       
-      // 최대화 상태 감지
-      const setupMaximizeListener = async () => {
-        const { appWindow } = await import('@tauri-apps/api/window');
-        const maximized = await appWindow.isMaximized();
-        setIsMaximized(maximized);
-        
-        // 최대화 상태 변경 감지
-        const unlistenResize = await appWindow.onResized(async () => {
-          const maximized = await appWindow.isMaximized();
-          setIsMaximized(maximized);
-        });
-        
-        return unlistenResize;
+      // 초기 최대화 상태 확인
+      window.electron.window.isMaximized().then(setIsMaximized);
+      
+      // 윈도우 리사이즈 이벤트 감지 (최대화 상태 변경)
+      const handleResize = () => {
+        window.electron?.window.isMaximized().then(setIsMaximized);
       };
       
-      setupMaximizeListener();
+      window.addEventListener('resize', handleResize);
+      
+      return () => {
+        window.removeEventListener('resize', handleResize);
+      };
     }
   }, []);
 
-  // Tauri가 아니면 렌더링하지 않음
-  if (!isTauri) {
+  // Electron 환경이 아니면 렌더링하지 않음
+  if (!isElectron) {
     return null;
   }
 
-  // Tauri 윈도우 컨트롤 함수
-  const minimizeWindow = async () => {
-    const { appWindow } = await import('@tauri-apps/api/window');
-    await appWindow.minimize();
+  // 윈도우 컨트롤 함수
+  const minimizeWindow = () => {
+    window.electron?.window.minimize();
   };
 
-  const maximizeWindow = async () => {
-    const { appWindow } = await import('@tauri-apps/api/window');
-    await appWindow.toggleMaximize();
+  const maximizeWindow = () => {
+    window.electron?.window.maximize();
   };
 
-  const closeWindow = async () => {
-    const { appWindow } = await import('@tauri-apps/api/window');
-    await appWindow.close();
+  const closeWindow = () => {
+    window.electron?.window.close();
   };
 
   return (
     <div
       className={cn(
-        "h-8 w-full flex items-center justify-between select-none",
+        "h-8 w-full flex items-center justify-between bg-background border-b select-none",
+        "drag-region", // 드래그 가능 영역
         className
       )}
       style={{
-        backgroundColor: 'hsl(var(--header-background))',
-        color: 'hsl(var(--header-foreground))',
-      }}
-      data-tauri-drag-region
+        WebkitAppRegion: 'drag',
+      } as React.CSSProperties}
     >
       {/* 왼쪽: 앱 아이콘 & 타이틀 */}
-      <div className="flex items-center gap-2 text-xs px-3" data-tauri-drag-region>
+      <div className="flex items-center gap-2 text-xs px-3">
         <div className="h-4 w-4 rounded-sm bg-primary flex items-center justify-center flex-shrink-0">
           <span className="text-primary-foreground font-bold text-[10px]">HS</span>
         </div>
-        <span className="font-normal">HS 인사관리 시스템</span>
+        <span className="font-medium text-foreground">HS 인사관리 시스템</span>
       </div>
 
       {/* 중앙: 드래그 영역 */}
-      <div className="flex-1" data-tauri-drag-region />
+      <div className="flex-1" />
 
-      {/* 오른쪽: 윈도우 컨트롤 버튼 (Windows 시스템 스타일) */}
-      <div className="flex items-center h-full">
+      {/* 오른쪽: 윈도우 컨트롤 버튼 (Windows 스타일) */}
+      <div 
+        className="flex items-center h-full"
+        style={{
+          WebkitAppRegion: 'no-drag',
+        } as React.CSSProperties}
+      >
         {/* 최소화 버튼 */}
         <button
-          className="h-full w-12 flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+          className="h-full w-12 flex items-center justify-center hover:bg-accent transition-colors"
           onClick={minimizeWindow}
           title="최소화"
         >
-          <Minus className="h-3 w-3" strokeWidth={1} />
+          <Minus className="h-3 w-3" strokeWidth={1.5} />
         </button>
         
         {/* 최대화/복원 버튼 */}
         <button
-          className="h-full w-12 flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+          className="h-full w-12 flex items-center justify-center hover:bg-accent transition-colors"
           onClick={maximizeWindow}
           title={isMaximized ? "복원" : "최대화"}
         >
           {isMaximized ? (
-            <Copy className="h-3 w-3" strokeWidth={1} />
+            <Copy className="h-3 w-3" strokeWidth={1.5} />
           ) : (
-            <Square className="h-3 w-3" strokeWidth={1} />
+            <Square className="h-3 w-3" strokeWidth={1.5} />
           )}
         </button>
         
         {/* 닫기 버튼 */}
         <button
-          className="h-full w-12 flex items-center justify-center hover:bg-red-600 hover:text-white transition-colors"
+          className="h-full w-12 flex items-center justify-center hover:bg-destructive hover:text-destructive-foreground transition-colors"
           onClick={closeWindow}
           title="닫기"
         >
-          <X className="h-3.5 w-3.5" strokeWidth={1} />
+          <X className="h-3.5 w-3.5" strokeWidth={1.5} />
         </button>
       </div>
     </div>

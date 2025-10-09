@@ -34,17 +34,6 @@ export const useAppState = () => {
     window.addEventListener('focus', handleFocus);
     window.addEventListener('blur', handleBlur);
 
-    // Tauri 환경에서 추가 이벤트 처리
-    if (typeof window !== 'undefined' && window.__TAURI__) {
-      // Tauri의 윈도우 이벤트 처리
-      const { appWindow } = window.__TAURI__.window;
-      
-      appWindow.onFocusChanged(({ focused }) => {
-        isForeground = focused;
-        NotificationManager.setAppState(focused);
-      });
-    }
-
     // 클린업
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);

@@ -13,7 +13,7 @@ export interface NotificationData {
   senderName: string;
   senderAvatar?: string;
   timestamp: Date;
-  type: 'comment' | 'mention';
+  type: 'comment' | 'mention' | 'info' | 'success' | 'warning' | 'error';
   onClick?: () => void;
 }
 
@@ -190,27 +190,25 @@ export class NotificationManager {
       isAppInForeground: this.isAppInForeground
     });
 
-    // Tauri 환경 체크
-    const isTauri = typeof window !== 'undefined' && window.__TAURI__;
+    // Electron 환경 체크
+    const isElectron = typeof window !== 'undefined' && window.__ELECTRON__;
 
-      // Tauri 환경에서는 포그라운드일 때 Rust 함수 호출
-      // undefined도 포그라운드로 처리 (HMR 대응)
-      if (isTauri && this.isAppInForeground !== false) {
-        console.log('🪟 [NotificationManager] Rust 알림 함수 호출');
-        try {
-          const { invoke } = await import('@tauri-apps/api/tauri');
-          await invoke('show_notification', {
-            title: newNotification.title,
-            body: newNotification.body,
-            senderName: newNotification.senderName,
-            senderAvatar: newNotification.senderAvatar
-          });
-          return;
-        } catch (error) {
-          console.error('Rust 알림 함수 실패:', error);
-          // 실패 시 기본 알림으로 폴백
-        }
+    // Electron 환경에서는 네이티브 알림 사용
+    if (isElectron && window.electron) {
+      console.log('🖥️ [NotificationManager] Electron 네이티브 알림 호출');
+      try {
+        await window.electron.showNotification({
+          title: newNotification.title,
+          body: newNotification.body,
+          icon: newNotification.senderAvatar
+        });
+        console.log('✅ [NotificationManager] Electron 알림 성공');
+        return;
+      } catch (error) {
+        console.error('❌ [NotificationManager] Electron 알림 실패:', error);
+        // 실패 시 기본 알림으로 폴백
       }
+    }
 
     // 앱이 명시적으로 백그라운드일 때만 시스템 알림 사용
     if (this.isAppInForeground === false) {
@@ -238,15 +236,12 @@ export class NotificationManager {
   // 시스템 알림 전송
   private static async sendSystemNotification(notification: NotificationData) {
     try {
-      // Tauri 환경 - 자체 백그라운드 알림 사용
-      if (typeof window !== 'undefined' && window.__TAURI__) {
-        // 동적 import로 백그라운드 알림 함수 가져오기
-        const { showBackgroundNotification } = await import('./BackgroundNotification');
-        await showBackgroundNotification({
+      // Electron 환경 - 네이티브 알림 사용
+      if (typeof window !== 'undefined' && window.__ELECTRON__ && window.electron) {
+        await window.electron.showNotification({
           title: notification.title,
           body: notification.body,
-          senderName: notification.senderName,
-          senderAvatar: notification.senderAvatar
+          icon: notification.senderAvatar
         });
         return;
       }
@@ -291,6 +286,54 @@ export class NotificationManager {
 
   private static notifyListeners() {
     this.listeners.forEach(listener => listener([...this.notifications]));
+  }
+
+  // 알림 읽음 처리
+  static async markAsRead(userId: string, notificationId: string) {
+    try {
+      console.log('✅ [NotificationManager] 알림 읽음 처리:', notificationId);
+      
+      const { doc, updateDoc } = await import('firebase/firestore');
+      const { db } = await import('@/shared/services/firebase/config');
+      
+      if (db) {
+        const inboxRef = doc(db, `users/${userId}/inbox`, notificationId);
+        await updateDoc(inboxRef, { read: true });
+        console.log('✅ [NotificationManager] 읽음 처리 완료:', notificationId);
+      }
+    } catch (error) {
+      console.error('❌ [NotificationManager] 읽음 처리 실패:', error);
+    }
+  }
+
+  // 모든 알림 읽음 처리
+  static async markAllAsRead(userId: string) {
+    try {
+      console.log('✅ [NotificationManager] 모든 알림 읽음 처리 시작');
+      
+      const { collection, query, where, getDocs, writeBatch } = await import('firebase/firestore');
+      const { db } = await import('@/shared/services/firebase/config');
+      
+      if (db) {
+        // 미읽은 알림 조회
+        const q = query(
+          collection(db, `users/${userId}/inbox`),
+          where('read', '==', false)
+        );
+        
+        const snapshot = await getDocs(q);
+        const batch = writeBatch(db);
+        
+        snapshot.forEach((document) => {
+          batch.update(document.ref, { read: true });
+        });
+        
+        await batch.commit();
+        console.log(`✅ [NotificationManager] ${snapshot.size}개 알림 읽음 처리 완료`);
+      }
+    } catch (error) {
+      console.error('❌ [NotificationManager] 모든 알림 읽음 처리 실패:', error);
+    }
   }
 }
 

@@ -1,6 +1,6 @@
 /**
  * Firestore 실시간 알림 리스너 훅
- * Windows 7 환경에서 Tauri 네이티브 알림과 연동
+ * Electron/Web 환경에서 네이티브 알림 표시
  */
 
 import { useEffect, useRef } from 'react';
@@ -15,7 +15,6 @@ import {
   Unsubscribe
 } from 'firebase/firestore';
 import { db } from '@/shared/services/firebase/config';
-import { TauriNotificationService } from '@/shared/services/notifications/tauri-notification';
 
 export interface NotificationData {
   id: string;
@@ -53,22 +52,17 @@ export const useRealtimeNotifications = (userId: string | null) => {
         return;
       }
 
-      // 앱 시작 시 알림 권한 초기화 (1회만)
+      // 초기화 플래그 설정
       if (!isInitializedRef.current) {
-        const granted = await TauriNotificationService.init();
-        if (granted) {
-          console.log('✅ Tauri 알림 권한이 활성화되었습니다.');
-        }
+        console.log('✅ 알림 시스템이 초기화되었습니다.');
         isInitializedRef.current = true;
       }
 
-      // Firestore 실시간 리스너 설정
-      // 복합 인덱스 필요: userId, read, createdAt
+      // Firestore 실시간 리스너 설정 - 사용자별 inbox 사용
+      // users/{uid}/inbox 서브컬렉션 (인덱스 불필요!)
       const firestore = db; // 타입 narrowing을 위한 로컬 변수
       const q = query(
-        collection(firestore, 'notifications'),
-        where('userId', '==', userId),
-        where('read', '==', false),
+        collection(firestore, `users/${userId}/inbox`),
         orderBy('createdAt', 'desc'),
         limit(50)  // 최근 50개만
       );
@@ -79,6 +73,12 @@ export const useRealtimeNotifications = (userId: string | null) => {
           snapshot.docChanges().forEach((change) => {
             if (change.type === 'added') {
               const docData = change.doc.data();
+              
+              // 읽은 알림은 무시 (클라이언트 필터링)
+              if (docData.read === true) {
+                return;
+              }
+              
               const data: NotificationData = {
                 id: change.doc.id,
                 userId: docData.userId,
@@ -97,11 +97,29 @@ export const useRealtimeNotifications = (userId: string | null) => {
               if (createdAt && createdAt > lastNotificationTimeRef.current) {
                 console.log('📬 새 알림 수신:', data.title);
                 
-                // Tauri 네이티브 알림 표시
-                TauriNotificationService.show(
-                  data.title,
-                  data.body
-                );
+                // NotificationManager를 통해 커스텀 알림 표시
+                import('@/shared/components/common/CustomNotification').then(({ NotificationManager }) => {
+                  NotificationManager.notify({
+                    title: data.title,
+                    body: data.body,
+                    senderName: data.metadata?.senderName as string || '시스템',
+                    senderAvatar: data.metadata?.senderAvatar as string,
+                    type: data.type,
+                  });
+                });
+              } else if (!createdAt) {
+                // createdAt이 없는 경우에도 표시 (테스트용)
+                console.log('📬 새 알림 수신 (시간 정보 없음):', data.title);
+                
+                import('@/shared/components/common/CustomNotification').then(({ NotificationManager }) => {
+                  NotificationManager.notify({
+                    title: data.title,
+                    body: data.body,
+                    senderName: data.metadata?.senderName as string || '시스템',
+                    senderAvatar: data.metadata?.senderAvatar as string,
+                    type: data.type,
+                  });
+                });
               }
             }
           });

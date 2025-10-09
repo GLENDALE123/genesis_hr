@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth } from './useAuth';
+import { useAuthStore } from '../store/authStore';
 import { useDevStore } from '@/app/store';
 import type { PageIdentifier, CrudPermission, PermissionCheck, CustomPermissions } from '../types/permissions';
 import { useState, useEffect } from 'react';
@@ -10,7 +10,7 @@ import { useState, useEffect } from 'react';
  * TODO: Firestore에서 사용자별 권한 데이터를 가져와야 함
  */
 export const usePagePermissions = (pageId: PageIdentifier): PermissionCheck => {
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthStore();
   const { dummyRole } = useDevStore();
   const [permissions, setPermissions] = useState<PermissionCheck>({
     canRead: false,

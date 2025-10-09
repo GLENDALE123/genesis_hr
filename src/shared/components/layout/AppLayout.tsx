@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { TitleBar } from '@/shared/components/layout/TitleBar';
 import { AppHeader } from '@/shared/components/layout/AppHeader';
 import { AppSidebar } from '@/shared/components/layout/AppSidebar';
@@ -23,9 +23,17 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
 
   const sidebarCollapsed = preferences.sidebarCollapsed;
 
+  // Electron 환경에서 AppLayout 진입 시 전체화면으로 전환
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.__ELECTRON__ && window.electron) {
+      window.electron.window.maximize();
+      console.log('🔧 AppLayout 전체화면으로 전환');
+    }
+  }, []);
+
   return (
     <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: 'hsl(var(--background))' }}>
-      {/* Tauri 타이틀바 */}
+      {/* Electron 커스텀 타이틀바 (frame: false 환경) */}
       <TitleBar />
       
       <div className="flex flex-1 overflow-hidden">

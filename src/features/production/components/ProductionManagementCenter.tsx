@@ -13,7 +13,7 @@ import {
   TableRow,
 } from '@/shared/components/ui/table';
 import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
-import { useAuth } from '@/features/auth/hooks';
+import { useAuthStore } from '@/features/auth/store/authStore';
 import { useProductionRequests } from '../hooks/useProductionRequests';
 import {
   ProductionRequestType,
@@ -35,7 +35,7 @@ import { TABLE_CELL_STYLES, TABLE_HEAD_STYLES } from '../constants/tableStyles';
 export const ProductionManagementCenter: React.FC = () => {
   const [requestTypeFilter, setRequestTypeFilter] = useState<'all' | ProductionRequestType>('all');
   const { requests, isLoading, createRequest, updateRequestStatus, deleteRequest, addComment, editComment, deleteComment } = useProductionRequests();
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuthStore();
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<ProductionRequest | null>(null);
 

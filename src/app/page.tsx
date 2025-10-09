@@ -2,12 +2,12 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/features/auth/hooks';
+import { useAuthStore } from '@/features/auth/store/authStore';
 import { LoadingSpinner } from '@/shared/components/common';
 
 export default function Home() {
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, isLoading: loading } = useAuthStore();
 
   useEffect(() => {
     // 로딩 중이면 대기
