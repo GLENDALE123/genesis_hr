@@ -25,179 +25,108 @@ function initializeFirebase() {
   return { db, messaging, FieldValue };
 }
 
-// 알림 타입별 제목 생성
+/**
+ * 알림 타입별 제목 생성
+ * @param {string} type - 알림 타입
+ * @param {string} subType - 알림 서브타입
+ * @returns {string} 알림 제목
+ */
 function selectTitleByType(type, subType) {
   switch (type) {
+    // ==================== 생산 관리 ====================
+    case 'production-request':
+      return '생산관리부 요청사항';
+    case 'production-request-comment':
+      return '생산관리부 요청사항';
+    case 'comment-mention':
+      return '생산관리부 요청사항';
+    case 'production-daily-report':
+      return '생산일보';
+    
+    // ==================== 시스템 ====================
     case 'announcement':
       return '공지사항';
-    case 'work-schedule':
-      return '근무계획';
-    case 'production-schedule':
-      return '생산일정';
-    case 'order':
-      return '수주등록';
-    case 'production-request':
-      return subType ? `생산요청 - ${subType}` : '생산요청';
-    case 'shortage-request':
-      return '부족분 요청';
-    case 'quality':
-      return subType ? `품질관리 - ${subType}` : '품질관리';
-    case 'quality-issue':
-      return '품질이슈';
-    case 'jig-request':
-      return '지그관리 요청';
-    case 'jig-approval':
-      return '지그관리 승인';
-    case 'user-registration':
-      return '신규 사용자 등록';
-    case 'user-permission':
-      return '사용자 권한 변경';
-    case 'master-data':
-      return '마스터데이터';
-    case 'cooperation-request':
-      return '협력 요청';
-    // 댓글 알림들
-    case 'task-comment':
-      return '업무 댓글';
-    case 'jig-request-comment':
-      return '지그 요청 댓글';
-    case 'sample-request-comment':
-      return '샘플 요청 댓글';
-    case 'sample-status-update':
-      return '샘플 상태 업데이트';
-    case 'production-request-comment':
-      return '생산 요청 댓글';
-    case 'quality-issue-comment':
-      return '품질 이슈 댓글';
-    // 새로 추가된 업무 관련 알림들
-    case 'task-confirmation-required':
-      return '업무 확인 필요';
-    case 'task-confirmation-reminder':
-      return '업무 확인 리마인더';
-    case 'task-overdue':
-      return '업무 지연';
-    case 'task-assignment':
-      return '업무 할당';
-    case 'task-status-change':
-      return '업무 상태 변경';
-    case 'task-comment':
-      return '업무 댓글';
-    case 'jig':
-      return '지그 관리';
-    case 'work':
-      return '생산 관리';
-    case 'sample':
-      return '샘플 관리';
+    
     default:
       return '알림';
   }
 }
 
-// Android 채널 ID 생성
+/**
+ * Android 채널 ID 생성
+ * @param {string} type - 알림 타입
+ * @param {string} priority - 우선순위
+ * @returns {string} Android 채널 ID
+ */
 function getAndroidChannelIdByTypeAndPriority(type, priority) {
   const p = String(priority || 'normal').toLowerCase();
   const t = String(type || '').toLowerCase();
 
-  if (p === 'urgent' || t === 'shortage-request') return 'urgent';
-  if (t === 'quality-issue' || t === 'quality') return 'quality';
+  if (p === 'urgent') return 'urgent';
   if (t === 'announcement') return 'announcements';
-  if (t === 'user-permission' || t === 'user-registration' || t === 'master-data') return 'system';
-  if (t === 'jig-request' || t === 'jig-approval' || t === 'jig') return 'operations';
-  if (t === 'production-schedule' || t === 'work-schedule' || t === 'order' || t === 'production-request' || t === 'work') return 'operations';
-  // 업무 관련 알림들
-  if (t.startsWith('task-')) return 'tasks';
-  if (t === 'sample') return 'operations';
-  return 'operations';
+  if (t.includes('production')) return 'production';
+  
+  return 'default';
 }
 
-// 댓글 알림 메시지 생성 (모든 댓글 타입 지원)
+/**
+ * 댓글 알림 메시지 생성 (사용하지 않음 - CommentsService에서 직접 생성)
+ * @deprecated
+ */
 function createCommentNotificationMessage(type, commentAuthor, title, commentText) {
   const commentPreview = commentText.length > 50 
     ? commentText.substring(0, 50) + '...' 
     : commentText;
   
-  switch (type) {
-    case 'task-comment':
-      return `💬 ${commentAuthor}님이 업무에 댓글을 남겼습니다: "${title}"\n"${commentPreview}"`;
-    case 'jig-request-comment':
-      return `💬 ${commentAuthor}님이 지그 요청에 댓글을 남겼습니다: "${title}"\n"${commentPreview}"`;
-    case 'sample-request-comment':
-      return `💬 ${commentAuthor}님이 샘플 요청에 댓글을 남겼습니다: "${title}"\n"${commentPreview}"`;
-    case 'production-request-comment':
-      return `💬 ${commentAuthor}님이 생산 요청에 댓글을 남겼습니다: "${title}"\n"${commentPreview}"`;
-    case 'quality-issue-comment':
-      return `💬 ${commentAuthor}님이 품질 이슈에 댓글을 남겼습니다: "${title}"\n"${commentPreview}"`;
-    default:
-      return `💬 ${commentAuthor}님이 댓글을 남겼습니다: "${title}"\n"${commentPreview}"`;
-  }
+  return `💬 ${commentAuthor}님이 댓글을 남겼습니다: "${title}"\n"${commentPreview}"`;
 }
 
-// 카테고리 키 생성
+/**
+ * 카테고리 키 생성
+ * @param {string} type - 알림 타입
+ * @param {string} priority - 우선순위
+ * @param {string} subType - 서브타입
+ * @returns {string} 카테고리 키
+ */
 function getCategoryKey(type, priority, subType) {
   const p = String(priority || 'normal').toLowerCase();
   const t = String(type || '').toLowerCase();
-  const s = String(subType || '').toLowerCase();
 
-  if (p === 'urgent' || t === 'shortage-request') return 'urgent';
-  if (t === 'quality-issue' || t === 'quality') {
-    if (s === '불합격') return 'urgent';
-    return 'quality';
-  }
+  if (p === 'urgent') return 'urgent';
   if (t === 'announcement') return 'announcements';
-  if (t === 'user-permission' || t === 'user-registration' || t === 'master-data') return 'system';
-  if (t === 'jig-request' || t === 'jig-approval' || t === 'jig') return 'operations';
-  if (t === 'production-schedule' || t === 'work-schedule' || t === 'order' || t === 'production-request' || t === 'work') return 'operations';
-  // 업무 관련 알림들
-  if (t.startsWith('task-')) return 'tasks';
-  if (t === 'sample') return 'operations';
-  return 'operations';
+  if (t.includes('production')) return 'production';
+  if (t.includes('comment') || t.includes('mention')) return 'comments';
+  
+  return 'default';
 }
 
 // 딥링크 URL 매핑
+/**
+ * 알림 타입별 딥링크 URL 생성
+ * @param {string} type - 알림 타입
+ * @param {string} requestId - 요청 ID
+ * @returns {string} 딥링크 URL
+ */
 function mapUrlByType(type, requestId) {
   const t = String(type || '').toLowerCase();
   const id = encodeURIComponent(String(requestId || ''));
+  
   switch (t) {
-    case 'jig-request':
-    case 'jig-approval':
-    case 'jig':
-      return `/jig?requestId=${id}`;
-    case 'quality':
-    case 'quality-issue':
-      return `/quality?orderNumber=${id}`;
-    case 'production-schedule':
-    case 'work-schedule':
-      return `/work?scheduleId=${id}`;
-    case 'order':
-      return `/work?orderId=${id}`;
+    // ==================== 생산 관리 ====================
     case 'production-request':
-    case 'work':
-      return `/work?requestId=${id}`;
-    case 'announcement':
-      return `/notifications?tab=announcements`;
-    case 'cooperation-request':
-      return `/notifications?tab=announcements`;
-    // 업무 관련 알림들
-    case 'task-confirmation-required':
-    case 'task-confirmation-reminder':
-    case 'task-overdue':
-    case 'task-assignment':
-    case 'task-status-change':
-    case 'task-comment':
-      return `/work?taskId=${id}`;
-    case 'sample':
-      return `/sample?sampleId=${id}`;
-    // 댓글 알림들
-    case 'jig-request-comment':
-      return `/jig?requestId=${id}`;
-    case 'sample-request-comment':
-      return `/sample?sampleId=${id}`;
     case 'production-request-comment':
-      return `/work?requestId=${id}`;
-    case 'quality-issue-comment':
-      return `/quality?issueId=${id}`;
+    case 'comment-mention':
+      return `/production/management?requestId=${id}`;
+    
+    case 'production-daily-report':
+      return `/production/daily-report?reportId=${id}`;
+    
+    // ==================== 기타 ====================
+    case 'announcement':
+      return `/dashboard`;
+    
     default:
-      return `/notifications`;
+      return `/dashboard`;
   }
 }
 

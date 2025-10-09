@@ -53,7 +53,7 @@ const getStatusColorClass = (status: ProductionRequestStatus): string => {
   return statusMap[status] || '';
 };
 
-export const ProductionRequestDetailModal: React.FC<ProductionRequestDetailModalProps> = ({
+const ProductionRequestDetailModalComponent: React.FC<ProductionRequestDetailModalProps> = ({
   isOpen,
   onClose,
   request,
@@ -329,4 +329,7 @@ export const ProductionRequestDetailModal: React.FC<ProductionRequestDetailModal
     </>
   );
 };
+
+// React.memo로 최적화하여 불필요한 리렌더링 방지
+export const ProductionRequestDetailModal = React.memo(ProductionRequestDetailModalComponent);
 

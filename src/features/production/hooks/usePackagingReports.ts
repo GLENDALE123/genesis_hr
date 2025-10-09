@@ -46,56 +46,59 @@ export const usePackagingReports = () => {
     let isCancelled = false;
 
     const initSubscription = async () => {
-      // 오늘 날짜
-      const today = new Date().toISOString().split('T')[0];
+      console.log('🔄 생산일보 데이터 구독 시작...');
       
-      // 캐시 확인 (즉시 표시)
-      const cachedData = getCachedReports(today, today);
+      // ✅ 간단하게: 최신 500건만 조회 (날짜 무관, 필터에서 처리)
+      console.log('📅 최신 500건 조회 시작...');
       
-      if (cachedData && cachedData.length > 0) {
-        // 캐시가 있으면 즉시 표시 (로딩 완료)
-        console.log('⚡ 캐시된 데이터 즉시 표시 - 초고속 로딩!');
-        setLoading(false);
-        setFetching(true); // 백그라운드 fetching 시작
-      } else {
-        // 캐시가 없으면 로딩 상태
-        setLoading(true);
-        setError(null);
-      }
+      // 로딩 시작
+      setLoading(true);
+      setError(null);
 
       // Firebase 초기화 대기
+      console.log('🔥 Firebase 초기화 확인 중...');
       const isFirebaseReady = await waitForFirebaseInit();
       
       if (isCancelled) return;
 
       if (!isFirebaseReady) {
+        console.error('❌ Firebase 초기화 실패');
         setError(new Error('Firebase 초기화에 실패했습니다. 페이지를 새로고침해주세요.'));
         setLoading(false);
         setFetching(false);
         return;
       }
+      
+      console.log('✅ Firebase 초기화 완료 - 실시간 구독 시작');
 
-      // Firebase 실시간 구독 (캐시 여부와 관계없이 항상 실행)
-      unsubscribe = PackagingReportsService.subscribeToPackagingReportsByDateRange(
-        today,
-        today,
+      // ✅ 간단하게: 최신 500건 실시간 구독
+      unsubscribe = PackagingReportsService.subscribeToPackagingReports(
         (newReports) => {
           if (!isCancelled) {
-            // Zustand 스토어에 캐싱
-            setCachedReports(newReports, today, today);
+            console.log('✅ 생산일보 데이터 수신 성공:', `${newReports.length}건`);
+            
+            // Zustand 스토어에 저장 (간단하게)
+            const store = usePackagingReportsStore.getState();
+            store.setReports(newReports, '', ''); // 날짜 범위 없이 저장
           }
         },
+        500, // 최신 500건
         (err) => {
-          // 에러 발생 시 처리 (권한 에러는 조용히 처리)
+          // 에러 발생 시 처리
           if (!isCancelled) {
+            console.error('❌ 생산일보 데이터 로드 실패:', err);
             const errorMessage = err instanceof Error ? err.message : '';
-            if (!errorMessage.includes('permission') && !errorMessage.includes('insufficient')) {
-              console.error('생산일보 데이터 로드 실패:', err);
-              setError(err);
+            
+            // 권한 에러 확인
+            if (errorMessage.includes('permission') || errorMessage.includes('insufficient')) {
+              console.warn('⚠️ 권한 에러 발생:', errorMessage);
+              // 권한 에러도 사용자에게 알림
+              setError(new Error('생산일보 데이터를 불러올 권한이 없습니다. 관리자에게 문의하세요.'));
             } else {
-              setLoading(false);
-              setFetching(false);
+              setError(err);
             }
+            setLoading(false);
+            setFetching(false);
           }
         }
       );

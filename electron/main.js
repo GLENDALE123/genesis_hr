@@ -1,6 +1,7 @@
 const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, Notification } = require('electron');
 const path = require('path');
 const registerIpcHandlers = require('./ipc-handlers');
+const notificationWindow = require('./notification-window');
 
 // 개발 모드 체크
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
@@ -13,8 +14,8 @@ let tray;
  */
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 550,        // 로그인 페이지 크기로 시작
-    height: 650,       // 로그인 페이지 크기로 시작
+    width: 1200,       // 기본 크기
+    height: 800,       // 기본 크기
     minWidth: 400,     // 최소 크기
     minHeight: 500,    // 최소 크기
     webPreferences: {
@@ -32,6 +33,9 @@ function createWindow() {
 
   // 메뉴바 완전 제거
   Menu.setApplicationMenu(null);
+
+  // 생성 직후 바로 최대화
+  mainWindow.maximize();
 
   // 개발 모드: Next.js dev 서버 연결
   // 프로덕션 모드: 정적 빌드 파일 로드
@@ -126,12 +130,41 @@ function createTray() {
 }
 
 /**
- * 알림 표시
+ * 커스텀 알림 표시
  */
 ipcMain.handle('show-notification', async (event, options) => {
   try {
-    const { title, body, icon } = options;
+    const { title, body, icon, useCustom = true } = options;
     
+    console.log('📥 [Electron Main] show-notification 수신:', { title, body, useCustom });
+    
+    // 커스텀 알림 사용
+    if (useCustom) {
+      try {
+        console.log('🎨 [Electron Main] 커스텀 알림 모드 선택');
+        console.log('📦 [Electron Main] notificationWindow:', notificationWindow);
+        
+        notificationWindow.createNotification({
+          title: title || 'HS 인사관리 시스템',
+          body: body || '',
+          icon: icon || path.join(__dirname, '../public/favicon.ico'),
+          onClick: () => {
+            if (mainWindow) {
+              mainWindow.show();
+              mainWindow.focus();
+            }
+          }
+        });
+        
+        console.log('✅ [Electron Main] 커스텀 알림 생성 완료:', { title, body });
+        return { success: true, type: 'custom' };
+      } catch (customError) {
+        console.error('❌ [Electron Main] 커스텀 알림 생성 실패, 네이티브 알림으로 폴백:', customError);
+        // 폴백으로 네이티브 알림 사용
+      }
+    }
+    
+    // 네이티브 알림 사용 (폴백)
     const notification = new Notification({
       title: title || 'HS 인사관리 시스템',
       body: body || '',
@@ -149,11 +182,21 @@ ipcMain.handle('show-notification', async (event, options) => {
       }
     });
 
-    console.log('🔔 [Electron] 알림 표시:', { title, body });
-    return { success: true };
+    console.log('🔔 [Electron] 네이티브 알림 표시:', { title, body });
+    return { success: true, type: 'native' };
   } catch (error) {
     console.error('❌ [Electron] 알림 표시 실패:', error);
     return { success: false, error: error.message };
+  }
+});
+
+/**
+ * 알림 클릭 이벤트 처리
+ */
+ipcMain.on('notification-clicked', () => {
+  if (mainWindow) {
+    mainWindow.show();
+    mainWindow.focus();
   }
 });
 

@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { AlertCircle, Plus, MessageSquare } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
@@ -32,7 +33,9 @@ import {
 import { isAdmin, isManager } from '@/shared/utils/userUtils';
 import { TABLE_CELL_STYLES, TABLE_HEAD_STYLES } from '../constants/tableStyles';
 
-export const ProductionManagementCenter: React.FC = () => {
+const ProductionManagementCenterComponent: React.FC = () => {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [requestTypeFilter, setRequestTypeFilter] = useState<'all' | ProductionRequestType>('all');
   const { requests, isLoading, createRequest, updateRequestStatus, deleteRequest, addComment, editComment, deleteComment } = useProductionRequests();
   const { userProfile } = useAuthStore();
@@ -44,6 +47,23 @@ export const ProductionManagementCenter: React.FC = () => {
     return requests.filter(req => req.requestType === requestTypeFilter);
   }, [requests, requestTypeFilter]);
 
+  // URL 파라미터로 모달 열기 (딥링크 처리)
+  useEffect(() => {
+    const requestId = searchParams.get('requestId');
+    if (requestId && !isLoading && requests.length > 0) {
+      const request = requests.find(req => req.id === requestId);
+      if (request) {
+        console.log('🔗 [ProductionManagement] 딥링크로 모달 열기:', requestId);
+        setSelectedRequest(request);
+        
+        // URL 파라미터 제거 (모달 닫을 때를 위해)
+        router.replace('/production/management', { scroll: false });
+      } else {
+        console.warn('⚠️ [ProductionManagement] 요청을 찾을 수 없음:', requestId);
+      }
+    }
+  }, [searchParams, requests, isLoading, router]);
+
   // 실시간 업데이트: requests가 변경되면 selectedRequest도 동기화
   useEffect(() => {
     if (selectedRequest) {
@@ -54,15 +74,15 @@ export const ProductionManagementCenter: React.FC = () => {
     }
   }, [requests]);
 
-  const handleNewRequest = () => {
+  const handleNewRequest = useCallback(() => {
     setIsFormModalOpen(true);
-  };
+  }, []);
 
-  const handleSelectRequest = (request: ProductionRequest) => {
+  const handleSelectRequest = useCallback((request: ProductionRequest) => {
     setSelectedRequest(request);
-  };
+  }, []);
 
-  const handleSaveRequest = async (
+  const handleSaveRequest = useCallback(async (
     data: {
       requestType: ProductionRequestType;
       requester: string;
@@ -93,16 +113,16 @@ export const ProductionManagementCenter: React.FC = () => {
       },
       imageUrls,
     });
-  };
+  }, [userProfile, createRequest]);
 
-  const handleStatusUpdate = async (id: string, status: ProductionRequestStatus, reason?: string) => {
+  const handleStatusUpdate = useCallback(async (id: string, status: ProductionRequestStatus, reason?: string) => {
     if (!userProfile) return;
     await updateRequestStatus(id, status, getUserDisplayName(userProfile), reason);
-  };
+  }, [userProfile, updateRequestStatus]);
 
-  const handleDelete = async (id: string) => deleteRequest(id);
+  const handleDelete = useCallback(async (id: string) => deleteRequest(id), [deleteRequest]);
 
-  const handleAddComment = async (id: string, text: string, mentionedUserIds?: string[]) => {
+  const handleAddComment = useCallback(async (id: string, text: string, mentionedUserIds?: string[]) => {
     if (!userProfile) return;
     await addComment(id, {
       text,
@@ -110,15 +130,15 @@ export const ProductionManagementCenter: React.FC = () => {
       uid: userProfile.uid,
       mentionedUserIds,
     });
-  };
+  }, [userProfile, addComment]);
 
-  const handleEditComment = async (id: string, commentId: string, newText: string) => {
+  const handleEditComment = useCallback(async (id: string, commentId: string, newText: string) => {
     await editComment(id, commentId, newText);
-  };
+  }, [editComment]);
 
-  const handleDeleteComment = async (id: string, commentId: string) => {
+  const handleDeleteComment = useCallback(async (id: string, commentId: string) => {
     await deleteComment(id, commentId);
-  };
+  }, [deleteComment]);
 
   return (
     <div className="h-full flex flex-col bg-background rounded-lg shadow-sm p-4">
@@ -275,4 +295,7 @@ export const ProductionManagementCenter: React.FC = () => {
     </div>
   );
 };
+
+// React.memo로 최적화하여 불필요한 리렌더링 방지
+export const ProductionManagementCenter = React.memo(ProductionManagementCenterComponent);
 

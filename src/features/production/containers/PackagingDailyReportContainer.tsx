@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/shared/components/ui/button';
 import { 
   Dialog,
@@ -41,7 +41,7 @@ import { PackagingReport, PackagingFormData } from '@/features/production/types'
 import { toast } from 'sonner';
 import { getFirebaseErrorMessage } from '@/shared/utils/firebaseErrorHandler';
 
-export const PackagingDailyReportContainer: React.FC = () => {
+const PackagingDailyReportContainerComponent: React.FC = () => {
   const { user, userProfile } = useAuthStore();
   
   // 페이지별 권한 확인
@@ -100,7 +100,14 @@ export const PackagingDailyReportContainer: React.FC = () => {
     toggleSummary
   } = usePackagingReportFilters(reports);
 
-  const handleCreateReport = () => {
+  // 데이터 로그 (디버깅용)
+  useEffect(() => {
+    console.log('📊 [생산일보] 전체 데이터:', `${reports.length}건`);
+    console.log('🔍 [생산일보] 필터링된 데이터:', `${filteredReports.length}건`);
+    console.log('🔧 [생산일보] 현재 필터:', filters);
+  }, [reports, filteredReports, filters]);
+
+  const handleCreateReport = useCallback(() => {
     if (!canCreate) {
       toast.error('생산일보를 생성할 권한이 없습니다.');
       return;
@@ -108,9 +115,9 @@ export const PackagingDailyReportContainer: React.FC = () => {
     setSelectedReport(null);
     setIsEditMode(false);
     setIsFormOpen(true);
-  };
+  }, [canCreate]);
 
-  const handleEditReport = (report: PackagingReport) => {
+  const handleEditReport = useCallback((report: PackagingReport) => {
     if (!canUpdate) {
       toast.error('생산일보를 수정할 권한이 없습니다.');
       return;
@@ -118,17 +125,17 @@ export const PackagingDailyReportContainer: React.FC = () => {
     setSelectedReport(report);
     setIsEditMode(true);
     setIsFormOpen(true);
-  };
+  }, [canUpdate]);
 
-  const handleDeleteReport = (reportId: string) => {
+  const handleDeleteReport = useCallback((reportId: string) => {
     if (!canDelete) {
       toast.error('생산일보를 삭제할 권한이 없습니다.');
       return;
     }
     setDeleteConfirmState({ isOpen: true, reportId });
-  };
+  }, [canDelete]);
 
-  const confirmDelete = async () => {
+  const confirmDelete = useCallback(async () => {
     if (!deleteConfirmState.reportId) return;
 
     // 삭제할 보고서 정보 찾기
@@ -152,13 +159,13 @@ export const PackagingDailyReportContainer: React.FC = () => {
       toast.error(errorInfo.message);
       setDeleteConfirmState({ isOpen: false, reportId: null });
     }
-  };
+  }, [deleteConfirmState.reportId, reports, deleteReport]);
 
-  const cancelDelete = () => {
+  const cancelDelete = useCallback(() => {
     setDeleteConfirmState({ isOpen: false, reportId: null });
-  };
+  }, []);
 
-  const handleFormSubmit = async (formData: PackagingFormData) => {
+  const handleFormSubmit = useCallback(async (formData: PackagingFormData) => {
     try {
       if (isEditMode && selectedReport) {
         // PackagingFormData를 Partial<PackagingReport>로 변환
@@ -220,21 +227,21 @@ export const PackagingDailyReportContainer: React.FC = () => {
       
       // 에러를 throw하지 않아 모달은 열린 상태로 유지
     }
-  };
+  }, [isEditMode, selectedReport, updateReport, createReport]);
 
-  const handleFormCancel = () => {
+  const handleFormCancel = useCallback(() => {
     setIsFormOpen(false);
     setSelectedReport(null);
     setIsEditMode(false);
-  };
+  }, []);
 
   // 공정조건 모달 열기
-  const handleOpenProcessConditions = (report: PackagingReport) => {
+  const handleOpenProcessConditions = useCallback((report: PackagingReport) => {
     setProcessConditionsModalState({ isOpen: true, report });
-  };
+  }, []);
 
   // 공정조건 저장
-  const handleSaveProcessConditions = async (
+  const handleSaveProcessConditions = useCallback(async (
     reportId: string, 
     conditions: PackagingReport['processConditions']
   ) => {
@@ -247,12 +254,12 @@ export const PackagingDailyReportContainer: React.FC = () => {
       const errorInfo = getFirebaseErrorMessage(error);
       toast.error(errorInfo.message);
     }
-  };
+  }, [updateReport]);
 
   // 메모 모달 열기
-  const handleOpenMemo = (report: PackagingReport) => {
+  const handleOpenMemo = useCallback((report: PackagingReport) => {
     setMemoModalState({ isOpen: true, report });
-  };
+  }, []);
 
   // 에러 발생 시 토스트 표시
   useEffect(() => {
@@ -286,8 +293,6 @@ export const PackagingDailyReportContainer: React.FC = () => {
       </div>
     );
   }
-
-  console.log('🔒 [생산일보] 권한 상태:', { canRead, canCreate, canUpdate, canDelete });
 
   return (
     <>
@@ -426,4 +431,5 @@ export const PackagingDailyReportContainer: React.FC = () => {
   );
 };
 
-
+// React.memo로 최적화하여 불필요한 리렌더링 방지
+export const PackagingDailyReportContainer = React.memo(PackagingDailyReportContainerComponent);

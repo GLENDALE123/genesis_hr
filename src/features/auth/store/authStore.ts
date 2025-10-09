@@ -95,6 +95,9 @@ export const useAuthStore = create<AuthState & AuthActions>()(
               try {
                 const userProfile = await AuthService.getCurrentUserProfile();
                 set({ userProfile });
+                
+                // ✅ Prefetch 제거: 각 페이지가 필요할 때 자동으로 로드함
+                console.log('✅ [Auth] 로그인 성공 - 각 페이지는 필요할 때 데이터 로드');
               } catch (error) {
                 // 권한 에러는 조용히 처리 (로그인 전 상태)
                 const errorMessage = error instanceof Error ? error.message : '';

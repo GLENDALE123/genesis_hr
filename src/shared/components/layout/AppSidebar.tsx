@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
@@ -115,7 +116,6 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   className,
   collapsed = false
 }) => {
-  const router = useRouter();
   const pathname = usePathname();
   const [isHovered, setIsHovered] = React.useState(false);
   
@@ -143,9 +143,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     return pathname === href || pathname.startsWith(href + '/');
   };
 
-  const handleNavigation = (href: string) => {
-    router.push(href);
-  };
+  // ✅ Link 컴포넌트 사용으로 변경 (handleNavigation 제거)
 
   const renderNavItem = (item: NavItem, level = 0) => {
     const hasChildren = item.children && item.children.length > 0;
@@ -169,7 +167,8 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     }
 
     const navItemContent = (
-      <div
+      <Link
+        href={item.href}
         className={cn(
           "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors",
           // 태블릿 최적화: 터치 영역 최소 44px 보장
@@ -181,7 +180,6 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
           // 접힌 상태에서는 정사각형 터치 영역
           !isExpanded && "justify-center px-2 py-3 md:px-2 md:py-2 min-w-[44px] md:min-w-[40px]"
         )}
-        onClick={() => handleNavigation(item.href)}
       >
         <div className="flex items-center gap-3">
           <item.icon className={cn(
@@ -200,7 +198,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             </>
           )}
         </div>
-      </div>
+      </Link>
     );
 
     return (
@@ -289,18 +287,22 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
               <Button
                 variant="ghost"
                 className="w-full justify-start min-h-[44px] md:min-h-[40px]"
-                onClick={() => handleNavigation('/settings')}
+                asChild
               >
-                <Settings className="mr-2 h-5 w-5 md:h-4 md:w-4" />
-                설정
+                <Link href="/settings">
+                  <Settings className="mr-2 h-5 w-5 md:h-4 md:w-4" />
+                  설정
+                </Link>
               </Button>
               <Button
                 variant="ghost"
                 className="w-full justify-start min-h-[44px] md:min-h-[40px]"
-                onClick={() => handleNavigation('/help')}
+                asChild
               >
-                <HelpCircle className="mr-2 h-5 w-5 md:h-4 md:w-4" />
-                도움말
+                <Link href="/help">
+                  <HelpCircle className="mr-2 h-5 w-5 md:h-4 md:w-4" />
+                  도움말
+                </Link>
               </Button>
             </>
           )}
@@ -313,9 +315,11 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                       variant="ghost" 
                       size="icon"
                       className="min-h-[44px] min-w-[44px] md:min-h-[40px] md:min-w-[40px]"
-                      onClick={() => handleNavigation('/settings')}
+                      asChild
                     >
-                      <Settings className="h-5 w-5 md:h-4 md:w-4" />
+                      <Link href="/settings">
+                        <Settings className="h-5 w-5 md:h-4 md:w-4" />
+                      </Link>
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="right" className="ml-2">
@@ -330,9 +334,11 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                       variant="ghost" 
                       size="icon"
                       className="min-h-[44px] min-w-[44px] md:min-h-[40px] md:min-w-[40px]"
-                      onClick={() => handleNavigation('/help')}
+                      asChild
                     >
-                      <HelpCircle className="h-5 w-5 md:h-4 md:w-4" />
+                      <Link href="/help">
+                        <HelpCircle className="h-5 w-5 md:h-4 md:w-4" />
+                      </Link>
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="right" className="ml-2">

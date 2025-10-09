@@ -11,6 +11,7 @@ interface ChatInputProps {
   placeholder?: string;
   disabled?: boolean;
   users: UserProfile[];
+  currentUserUid?: string;
   replyTo?: string | null;
   replyToUser?: UserProfile | null;
   onCancelReply?: () => void;
@@ -27,6 +28,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   placeholder = '메시지를 입력하세요...',
   disabled = false,
   users,
+  currentUserUid,
   replyTo,
   replyToUser,
   onCancelReply,
@@ -39,8 +41,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const editorRef = useRef<HTMLDivElement>(null);
   const mentionListRef = useRef<HTMLDivElement>(null);
 
-  // @ 뒤의 텍스트로 사용자 필터링
+  // @ 뒤의 텍스트로 사용자 필터링 (자기 자신 제외)
   const filteredUsers = users.filter(user => 
+    user.uid !== currentUserUid && // 자기 자신 제외
     user.displayName?.toLowerCase().includes(mentionSearch.toLowerCase())
   ).slice(0, 5); // 최대 5명만 표시
 

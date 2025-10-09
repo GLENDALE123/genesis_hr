@@ -24,7 +24,11 @@ export interface ElectronAPI {
     title: string;
     body: string;
     icon?: string;
-  }) => Promise<{ success: boolean; error?: string }>;
+    senderName?: string;
+    senderAvatar?: string | null;
+    timestamp?: string;
+    useCustom?: boolean; // true: 커스텀 윈도우, false: 네이티브 알림
+  }) => Promise<{ success: boolean; type?: 'custom' | 'native'; error?: string }>;
 
   /**
    * 개발 모드 여부

@@ -390,6 +390,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
           placeholder="댓글을 추가하세요..."
           disabled={!canComment}
           users={users}
+          currentUserUid={currentUserUid}
           replyTo={replyTo}
           replyToUser={replyToUser}
           onCancelReply={() => {

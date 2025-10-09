@@ -16,8 +16,7 @@ import { Skeleton } from '@/shared/components/ui/skeleton';
 import { toast } from 'sonner';
 import { Spinner } from '@/shared/components/ui/spinner';
 import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
-import { Shield, Lock, MessageSquare, TestTube } from 'lucide-react';
-import { NotificationManager } from '@/shared/components/common/CustomNotification';
+import { Shield, Lock, TestTube, Bell } from 'lucide-react';
 
 interface Todo {
   id: string;
@@ -98,103 +97,85 @@ export default function DashboardPage() {
     }
   };
 
-  // 멘션 알림 테스트 함수 (Firebase Functions 호출)
-  const testMentionNotification = async () => {
-    try {
-      console.log('🔔 [Dashboard] 포그라운드 알림 테스트 시작 (Firebase Functions)');
-      
-      // Firebase Functions 호출 (로컬 에뮬레이터)
-      const response = await fetch('http://127.0.0.1:5001/control-6a11d/asia-northeast3/createNotification', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: '신30ML진공/캡 본부장님 테스트입니다',
-          requestId: `test-${Date.now()}`,
-          type: 'mention',
-          subType: 'user_mention',
-          priority: 'high',
-          targetUsers: [user?.uid], // 현재 사용자에게 전송
-          actionRequired: true,
-          relatedData: {
-            senderName: '이현석본부장',
-            mentionType: 'user'
-          }
-        }),
-      });
+  // Electron 커스텀 알림 테스트 함수
+  const testElectronCustomNotification = async () => {
+    if (typeof window !== 'undefined' && window.__ELECTRON__ && window.electron) {
+      try {
+        console.log('🖥️ [Dashboard] Electron 커스텀 알림 테스트');
+        
+        const result = await window.electron.showNotification({
+          title: '생산관리부 요청사항',
+          body: '제품A/부속B - 확인 부탁드립니다! 😊',
+          senderName: userProfile?.name || user?.email || '테스트 사용자',
+          senderAvatar: null,
+          timestamp: new Date().toISOString(),
+          useCustom: true
+        });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        console.log('✅ [Dashboard] 커스텀 알림 결과:', result);
+        toast.success('커스텀 알림이 표시되었습니다!');
+      } catch (error) {
+        console.error('❌ [Dashboard] 커스텀 알림 실패:', error);
+        toast.error('커스텀 알림 표시 실패');
       }
-
-      const result = await response.json();
-      console.log('✅ [Dashboard] Firebase Functions 응답:', result);
-      
-      if (result.ok) {
-        toast.success('알림 요청이 전송되었습니다! (FCM을 통해 Rust로 전달)');
-      } else {
-        throw new Error(result.error || '알림 전송 실패');
-      }
-      
-    } catch (error) {
-      console.error('❌ [Dashboard] 알림 테스트 실패:', error);
-      toast.error('알림 테스트 중 오류가 발생했습니다.');
+    } else {
+      toast.error('Electron 환경이 아닙니다.');
     }
   };
 
-  // 백그라운드 알림 테스트 함수
+  // Electron 시스템 알림 테스트 함수
+  const testElectronSystemNotification = async () => {
+    if (typeof window !== 'undefined' && window.__ELECTRON__ && window.electron) {
+      try {
+        console.log('🔔 [Dashboard] Electron 시스템 알림 테스트');
+        
+        const result = await window.electron.showNotification({
+          title: 'HS 인사관리 시스템',
+          body: '시스템 알림 테스트입니다! Windows 알림 센터로 표시됩니다.',
+          useCustom: false // 시스템 알림 사용
+        });
+
+        console.log('✅ [Dashboard] 시스템 알림 결과:', result);
+        toast.success('시스템 알림이 표시되었습니다!');
+      } catch (error) {
+        console.error('❌ [Dashboard] 시스템 알림 실패:', error);
+        toast.error('시스템 알림 표시 실패');
+      }
+    } else {
+      toast.error('Electron 환경이 아닙니다.');
+    }
+  };
+
+  // 백그라운드 알림 테스트 (5초 후 알림)
   const testBackgroundNotification = async () => {
-    try {
-      console.log('🌙 [Dashboard] 백그라운드 알림 테스트 시작');
+    if (typeof window !== 'undefined' && window.__ELECTRON__ && window.electron) {
+      const electron = window.electron; // 변수에 할당하여 타입 안정성 확보
       
-      // 앱을 백그라운드로 전환
-      NotificationManager.setAppState(false);
-      
-      // Firebase Functions 호출 (로컬 에뮬레이터)
-      const response = await fetch('http://127.0.0.1:5001/control-6a11d/asia-northeast3/createNotification', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: '신30ML진공/캡 백그라운드 테스트입니다',
-          requestId: `bg-test-${Date.now()}`,
-          type: 'mention',
-          subType: 'user_mention',
-          priority: 'normal',
-          targetUsers: [user?.uid], // 현재 사용자에게 전송
-          actionRequired: false,
-          relatedData: {
-            senderName: '이현석본부장',
-            mentionType: 'user',
-            isBackground: true
-          }
-        }),
+      toast.success('5초 후 알림이 표시됩니다. 지금 창을 최소화하세요!', {
+        duration: 5000,
       });
+      console.log('⏰ [Dashboard] 5초 후 백그라운드 알림 테스트 시작...');
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      setTimeout(async () => {
+        try {
+          console.log('🔔 [Dashboard] 백그라운드 알림 표시 중...');
+          
+          const result = await electron.showNotification({
+            title: '생산관리부 요청사항',
+            body: '제품C/부속D - 긴급 확인 요청! 백그라운드 알림이 잘 표시되나요? 🎉',
+            senderName: '관리자',
+            senderAvatar: null,
+            timestamp: new Date().toISOString(),
+            useCustom: true
+          });
 
-      const result = await response.json();
-      console.log('✅ [Dashboard] 백그라운드 Firebase Functions 응답:', result);
-      
-      if (result.ok) {
-        toast.success('백그라운드 알림이 전송되었습니다! (FCM을 통해 시스템 알림으로 표시)');
-      } else {
-        throw new Error(result.error || '백그라운드 알림 전송 실패');
-      }
-      
-      // 3초 후 포그라운드로 복원
-      setTimeout(() => {
-        console.log('☀️ [Dashboard] 포그라운드로 복원');
-        NotificationManager.setAppState(true);
-      }, 3000);
-      
-    } catch (error) {
-      console.error('❌ [Dashboard] 백그라운드 알림 테스트 실패:', error);
-      toast.error('백그라운드 알림 테스트 중 오류가 발생했습니다.');
+          console.log('✅ [Dashboard] 백그라운드 알림 결과:', result);
+        } catch (error) {
+          console.error('❌ [Dashboard] 백그라운드 알림 실패:', error);
+        }
+      }, 5000);
+    } else {
+      toast.error('Electron 환경이 아닙니다.');
     }
   };
 
@@ -253,31 +234,37 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                {/* 멘션 알림 테스트 버튼 */}
-                <div className="p-4 border-2 border-blue-200 rounded-lg bg-blue-50">
+                {/* Electron 알림 테스트 버튼 */}
+                <div className="p-4 border-2 border-purple-200 rounded-lg bg-purple-50">
                   <div className="flex items-center gap-2 mb-3">
-                    <TestTube className="h-5 w-5 text-blue-600" />
-                    <span className="font-semibold text-blue-800">멘션 알림 테스트</span>
+                    <TestTube className="h-5 w-5 text-purple-600" />
+                    <span className="font-semibold text-purple-800">Electron 알림 테스트</span>
                     <Badge variant="secondary">개발용</Badge>
                   </div>
-                  <p className="text-sm text-blue-700 mb-3">
-                    멘션 알림 기능을 테스트할 수 있습니다. 버튼을 클릭하면 우측 상단에 자체 알림이 표시됩니다.
+                  <p className="text-sm text-purple-700 mb-3">
+                    Electron 환경에서 커스텀 알림과 시스템 알림을 테스트할 수 있습니다.
                   </p>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <Button 
-                      onClick={testMentionNotification}
-                      className="bg-blue-600 hover:bg-blue-700"
+                      onClick={testElectronCustomNotification}
+                      className="bg-purple-600 hover:bg-purple-700"
                     >
-                      <MessageSquare className="h-4 w-4 mr-2" />
-                      포그라운드 알림
+                      🖥️ 커스텀 알림
+                    </Button>
+                    <Button 
+                      onClick={testElectronSystemNotification}
+                      variant="outline"
+                      className="border-purple-600 text-purple-600 hover:bg-purple-50"
+                    >
+                      <Bell className="h-4 w-4 mr-2" />
+                      시스템 알림
                     </Button>
                     <Button 
                       onClick={testBackgroundNotification}
                       variant="outline"
-                      className="border-blue-600 text-blue-600 hover:bg-blue-50"
+                      className="border-orange-500 text-orange-600 hover:bg-orange-50"
                     >
-                      <TestTube className="h-4 w-4 mr-2" />
-                      백그라운드 알림
+                      ⏰ 백그라운드 테스트 (5초 후)
                     </Button>
                   </div>
                 </div>

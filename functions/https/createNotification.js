@@ -140,6 +140,8 @@ exports.createNotification = onRequest(async (req, res) => {
       metadata.senderAvatar = relatedData.senderAvatar;
     }
     
+    const link = mapUrlByType(type, requestId); // 딥링크 URL 생성
+    
     const notificationDoc = {
       id: notifId,
       type: String(type || ''),
@@ -151,6 +153,7 @@ exports.createNotification = onRequest(async (req, res) => {
       priority: String(priority || 'normal'),
       actionRequired: Boolean(actionRequired || false),
       relatedData: relatedData || {},
+      link: String(link || '/dashboard'), // 딥링크 추가
       createdAt: FieldValue ? FieldValue.serverTimestamp() : new Date(),
       read: false,
       metadata

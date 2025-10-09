@@ -36,22 +36,6 @@ export function LoginForm() {
   const router = useRouter();
   const { user } = useAuthStore();
 
-  // 회원가입/로그인 전환 시 Electron 윈도우 높이 조정
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.__ELECTRON__ && window.electron) {
-      const height = isSignUp ? 850 : 650; // 회원가입: 850px, 로그인: 650px
-      window.electron.window.resize({
-        width: 550,
-        height: height,
-        center: true
-      }).then(() => {
-        console.log(`🔧 폼 전환 윈도우 크기 조정: 550x${height}`);
-      }).catch((err) => {
-        console.error('❌ 윈도우 크기 조정 실패:', err);
-      });
-    }
-  }, [isSignUp]);
-
   // 이미 로그인된 사용자는 홈으로 리다이렉트
   useEffect(() => {
     if (user) {

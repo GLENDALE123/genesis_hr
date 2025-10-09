@@ -51,7 +51,7 @@ interface PackagingReportListViewProps {
   canDelete?: boolean;  // 삭제 권한
 }
 
-export const PackagingReportListView: React.FC<PackagingReportListViewProps> = ({
+const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> = ({
   reports,
   loading,
   error,
@@ -516,3 +516,6 @@ export const PackagingReportListView: React.FC<PackagingReportListViewProps> = (
     </div>
   );
 };
+
+// React.memo로 최적화하여 불필요한 리렌더링 방지
+export const PackagingReportListView = React.memo(PackagingReportListViewComponent);

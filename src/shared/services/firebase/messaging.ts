@@ -111,6 +111,13 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
 export const registerServiceWorker = async (): Promise<ServiceWorkerRegistration | null> => {
   if (typeof window === 'undefined') return null;
 
+  // Electron 환경에서는 서비스 워커 사용 안 함
+  // (렌더러 프로세스가 항상 실행 중이므로 Firestore 리스너만 사용)
+  if (window.__ELECTRON__) {
+    console.log('🖥️ Electron 환경: 서비스 워커 등록 건너뛰기 (Firestore 리스너 사용)');
+    return null;
+  }
+
   try {
     if ('serviceWorker' in navigator) {
       const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');

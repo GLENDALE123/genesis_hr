@@ -39,7 +39,7 @@ interface ProductionRequestFormModalProps {
   currentUserName?: string;
 }
 
-export const ProductionRequestFormModal: React.FC<ProductionRequestFormModalProps> = ({
+const ProductionRequestFormModalComponent: React.FC<ProductionRequestFormModalProps> = ({
   isOpen,
   onClose,
   onSave,
@@ -364,4 +364,7 @@ export const ProductionRequestFormModal: React.FC<ProductionRequestFormModalProp
     </Dialog>
   );
 };
+
+// React.memo로 최적화하여 불필요한 리렌더링 방지
+export const ProductionRequestFormModal = React.memo(ProductionRequestFormModalComponent);
 

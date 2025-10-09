@@ -46,7 +46,7 @@ interface PermissionState {
  * 관리자 전용: 페이지별 권한 설정 버튼
  * 우측 상단에 표시되어 사용자별 권한을 관리
  */
-export const PermissionSettingsButton: React.FC<PermissionSettingsButtonProps> = ({
+const PermissionSettingsButtonComponent: React.FC<PermissionSettingsButtonProps> = ({
   pageId,
   pageName
 }) => {
@@ -59,15 +59,9 @@ export const PermissionSettingsButton: React.FC<PermissionSettingsButtonProps> =
   const [userPermissions, setUserPermissions] = useState<Record<string, PermissionState>>({});
   const [savingPermissions, setSavingPermissions] = useState<boolean>(false);
 
-  console.log('🔍 [PermissionSettingsButton] isAdmin:', isAdmin);
-  console.log('🔍 [PermissionSettingsButton] open:', open);
-
   // 사용자 목록 가져오기
   useEffect(() => {
-    console.log('🔄 [PermissionSettingsButton] useEffect triggered - open:', open, 'isAdmin:', isAdmin);
-    
     if (!open || !isAdmin) {
-      console.log('⚠️ [PermissionSettingsButton] Skip fetch - open:', open, 'isAdmin:', isAdmin);
       return;
     }
 
@@ -214,7 +208,6 @@ export const PermissionSettingsButton: React.FC<PermissionSettingsButtonProps> =
 
   // Admin이 아니면 버튼 숨김
   if (!isAdmin) {
-    console.log('⚠️ [PermissionSettingsButton] Not admin - hiding button');
     return null;
   }
 
@@ -474,4 +467,7 @@ export const PermissionSettingsButton: React.FC<PermissionSettingsButtonProps> =
     </Dialog>
   );
 };
+
+// React.memo로 최적화하여 불필요한 리렌더링 방지
+export const PermissionSettingsButton = React.memo(PermissionSettingsButtonComponent);
 

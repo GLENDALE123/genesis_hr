@@ -26,6 +26,11 @@ interface FCMProviderProps {
   children: ReactNode;
 }
 
+// 최근 표시한 알림 ID 저장 (ElectronNotificationProvider와 공유)
+if (typeof window !== 'undefined') {
+  (window as any).__recentNotificationIds = (window as any).__recentNotificationIds || new Set<string>();
+}
+
 export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
   const { user } = useAuthStore();
   const [state, setState] = useState({
@@ -36,7 +41,7 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
     error: null as string | null,
   });
 
-  // FCM 초기화 (로그인 후에만)
+  // FCM 초기화 (로그인 후에만, 웹 환경만)
   useEffect(() => {
     if (!user) {
       // 로그인하지 않은 경우 상태 초기화
@@ -47,6 +52,18 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
         isLoading: false,
         error: null,
       });
+      return;
+    }
+
+    // Electron 환경에서는 FCM 토큰 불필요 (Firestore만 사용)
+    const isElectron = typeof window !== 'undefined' && window.__ELECTRON__;
+    if (isElectron) {
+      console.log('🖥️ Electron 환경: FCM 초기화 건너뛰기 (Firestore 리스너 사용)');
+      setState(prev => ({
+        ...prev,
+        isInitialized: true,
+        isLoading: false,
+      }));
       return;
     }
 
@@ -63,6 +80,8 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
           isInitialized: true,
           isLoading: false,
         }));
+        
+        console.log('🌐 웹 환경: FCM 초기화 완료');
       } catch (error) {
         console.error('FCM 초기화 실패:', error);
         setState(prev => ({
@@ -80,17 +99,41 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
   useEffect(() => {
     if (!state.isInitialized || !user) return;
 
+    // Electron 환경 체크
+    const isElectron = typeof window !== 'undefined' && window.__ELECTRON__ && window.electron;
+
     // 메시지 핸들러 등록 (Firebase onMessage는 unsubscribe를 반환하지 않음)
     // 대신 isInitialized가 true일 때 한 번만 등록됨
-    onForegroundMessage((payload) => {
-      console.log('📬 포그라운드 메시지 수신:', payload);
+    onForegroundMessage(async (payload) => {
+      console.log('📬 FCM 포그라운드 메시지 수신:', payload);
       
-      // 토스트 알림 표시
-      toast({
-        title: payload.notification?.title || '새로운 알림',
-        description: payload.notification?.body || '새로운 메시지가 도착했습니다.',
-        duration: 5000,
-      });
+      // Electron 환경: 커스텀 알림창 표시
+      if (isElectron) {
+        try {
+          await window.electron!.showNotification({
+            title: payload.notification?.title || '새로운 알림',
+            body: payload.notification?.body || '새로운 메시지가 도착했습니다.',
+            icon: payload.notification?.image,
+            useCustom: true, // 커스텀 알림창 사용
+          });
+          console.log('✅ [FCM → Electron] 커스텀 알림 표시');
+        } catch (error) {
+          console.error('❌ [FCM → Electron] 알림 표시 실패:', error);
+          // 폴백: 토스트 표시
+          toast({
+            title: payload.notification?.title || '새로운 알림',
+            description: payload.notification?.body || '새로운 메시지가 도착했습니다.',
+            duration: 5000,
+          });
+        }
+      } else {
+        // 웹 환경: 토스트 알림 표시
+        toast({
+          title: payload.notification?.title || '새로운 알림',
+          description: payload.notification?.body || '새로운 메시지가 도착했습니다.',
+          duration: 5000,
+        });
+      }
     });
 
     // Firebase Messaging의 onMessage는 cleanup 함수를 제공하지 않음

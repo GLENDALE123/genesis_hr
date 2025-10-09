@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notification</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      /* Light Mode Colors */
+      --background: 0 0% 100%;
+      --foreground: 222.2 84% 4.9%;
+      --card: 0 0% 100%;
+      --card-foreground: 222.2 84% 4.9%;
+      --primary: 221.2 83.2% 53.3%;
+      --primary-foreground: 210 40% 98%;
+      --border: 214.3 31.8% 91.4%;
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    }
+
+    /* Dark Mode Detection */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --background: 220.9 52.4% 8.2%;
+        --foreground: 210 40% 98%;
+        --card: 222.2 47.4% 11.2%;
+        --card-foreground: 210 40% 98%;
+        --primary: 217.2 91.2% 59.8%;
+        --primary-foreground: 222.2 47.4% 11.2%;
+        --border: 220.9 52.4% 8.2%;
+        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+      }
+    }
+
+    body {
+      font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 
+        'Segoe UI', 'Roboto', 'Helvetica Neue', 'Apple SD Gothic Neo', 'Noto Sans KR', 
+        'Malgun Gothic', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow: hidden;
+      background: transparent;
+      cursor: pointer;
+      padding: 10px;
+      margin: 0;
+    }
+
+    .notification {
+      width: 330px;
+      min-height: 130px;
+      background: linear-gradient(
+        135deg,
+        hsl(var(--card) / 0.85) 0%,
+        hsl(var(--card) / 0.75) 100%
+      );
+      border: 1px solid hsl(var(--border) / 0.4);
+      border-radius: 0.75rem;
+      box-shadow: 
+        var(--shadow-lg),
+        0 0 0 1px hsl(var(--primary) / 0.08),
+        inset 0 1px 0 0 hsl(var(--primary-foreground) / 0.05);
+      display: flex;
+      flex-direction: column;
+      padding: 1rem;
+      gap: 0.5rem;
+      color: hsl(var(--card-foreground));
+      position: relative;
+      overflow: hidden;
+      filter: blur(0.3px);
+    }
+    
+    .notification::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        180deg,
+        hsl(var(--primary-foreground) / 0.05) 0%,
+        transparent 50%,
+        hsl(var(--primary) / 0.02) 100%
+      );
+      pointer-events: none;
+      border-radius: 0.75rem;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: hsl(var(--primary) / 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: hsl(var(--primary));
+      border: 2px solid hsl(var(--primary) / 0.3);
+      overflow: hidden;
+    }
+
+    .avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .sender-name {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: hsl(var(--card-foreground));
+      flex: 1;
+    }
+
+    .timestamp {
+      font-size: 0.6875rem;
+      color: hsl(var(--card-foreground) / 0.6);
+      white-space: nowrap;
+    }
+
+    .content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .title {
+      font-size: 0.75rem;
+      font-weight: 500;
+      margin-bottom: 0.25rem;
+      color: hsl(var(--card-foreground) / 0.8);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .body {
+      font-size: 0.8125rem;
+      line-height: 1.4;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      color: hsl(var(--card-foreground));
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: hsl(var(--primary) / 0.15);
+      border: 1px solid hsl(var(--border) / 0.3);
+      color: hsl(var(--card-foreground));
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      opacity: 0.6;
+      transition: all 0.2s ease;
+    }
+
+    .close-btn:hover {
+      opacity: 1;
+      background: hsl(var(--primary) / 0.25);
+      transform: scale(1.1);
+    }
+
+    /* Slide in from right animation */
+    @keyframes slideInFromRight {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    /* Slide out to right animation */
+    @keyframes slideOutToRight {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+    }
+
+    .notification {
+      animation: slideInFromRight 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    .notification.closing {
+      animation: slideOutToRight 0.2s cubic-bezier(0.55, 0.085, 0.68, 0.53);
+    }
+  </style>
+</head>
+<body>
+  <div class="notification" id="notification">
+    <button class="close-btn" id="closeBtn">×</button>
+    
+    <div class="header">
+      <div class="avatar" id="avatar">
+        👤
+      </div>
+      <div class="sender-name" id="senderName">알림</div>
+      <div class="timestamp" id="timestamp">방금 전</div>
+    </div>
+    
+    <div class="content">
+      <div class="title" id="title">생산관리부 요청사항</div>
+      <div class="body" id="body">알림 내용이 여기에 표시됩니다.</div>
+    </div>
+  </div>
+
+  <script>
+    // URL에서 데이터 가져오기
+    const urlParams = new URLSearchParams(window.location.search);
+    const dataParam = urlParams.get('data');
+    
+    if (dataParam) {
+      try {
+        const data = JSON.parse(decodeURIComponent(dataParam));
+        
+        // 발신자 이름 설정
+        if (data.senderName) {
+          document.getElementById('senderName').textContent = data.senderName;
+        }
+        
+        // 아바타 설정
+        const avatarElement = document.getElementById('avatar');
+        if (data.senderAvatar && data.senderAvatar.startsWith('http')) {
+          avatarElement.innerHTML = `<img src="${data.senderAvatar}" alt="avatar" />`;
+        } else if (data.senderName) {
+          // 이름의 첫 글자를 아바타로 사용
+          avatarElement.textContent = data.senderName.charAt(0).toUpperCase();
+        }
+        
+        // 시간 설정
+        const timestampElement = document.getElementById('timestamp');
+        if (data.timestamp) {
+          const time = new Date(data.timestamp);
+          const now = new Date();
+          const diff = Math.floor((now - time) / 1000);
+          
+          if (diff < 60) {
+            timestampElement.textContent = '방금 전';
+          } else if (diff < 3600) {
+            timestampElement.textContent = `${Math.floor(diff / 60)}분 전`;
+          } else if (diff < 86400) {
+            timestampElement.textContent = `${Math.floor(diff / 3600)}시간 전`;
+          } else {
+            timestampElement.textContent = time.toLocaleString('ko-KR', {
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+          }
+        }
+        
+        // 제목 설정
+        document.getElementById('title').textContent = data.title || '알림';
+        
+        // 내용 설정
+        document.getElementById('body').textContent = data.body || '';
+      } catch (error) {
+        console.error('알림 데이터 파싱 실패:', error);
+      }
+    }
+
+    // 알림 닫기 함수 (애니메이션 포함)
+    function closeNotification() {
+      const notification = document.getElementById('notification');
+      notification.classList.add('closing');
+      
+      // 애니메이션 완료 후 윈도우 닫기
+      setTimeout(() => {
+        window.close();
+      }, 200); // 애니메이션 시간과 동일 (0.2초)
+    }
+
+    // 닫기 버튼 클릭 이벤트
+    document.getElementById('closeBtn').addEventListener('click', (event) => {
+      event.stopPropagation();
+      closeNotification();
+    });
+
+    // 알림 클릭 이벤트 (메인 윈도우로 포커스)
+    document.getElementById('notification').addEventListener('click', () => {
+      // Electron IPC를 통해 메인 프로세스에 알림
+      if (window.electronNotification) {
+        window.electronNotification.clicked();
+      }
+    });
+
+    // 외부에서 닫기 요청 받을 수 있도록 전역 함수로 노출
+    window.closeWithAnimation = closeNotification;
+  </script>
+</body>
+</html>
+

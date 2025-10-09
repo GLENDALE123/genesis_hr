@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { Button } from '@/shared/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
@@ -36,6 +37,7 @@ import { cn } from '@/shared/lib/utils';
 import { getUserDisplayName, getUserInitial, getUserRoleBadgeVariant, getUserRoleText, isAdmin as checkIsAdmin } from '@/shared/utils/userUtils';
 import { ThemeCustomizer } from '@/shared/components/common';
 import { useDevStore } from '@/app/store';
+import { toast } from 'sonner';
 
 interface AppHeaderProps {
   className?: string;
@@ -61,13 +63,14 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
     const fetchNotifications = async () => {
       try {
-        const { collection, query, orderBy, limit, onSnapshot } = await import('firebase/firestore');
+        const { collection, query, where, orderBy, limit, onSnapshot } = await import('firebase/firestore');
         const { db } = await import('@/shared/services/firebase/config');
         
         if (!db) return;
 
         const q = query(
           collection(db, `users/${user.uid}/inbox`),
+          where('read', '==', false), // 읽지 않은 알림만 조회
           orderBy('createdAt', 'desc'),
           limit(10)
         );
@@ -79,7 +82,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           }));
           
           setNotifications(notifs);
-          setUnreadCount(notifs.filter((n: any) => !n.read).length);
+          setUnreadCount(notifs.length); // 모두 읽지 않은 알림이므로 전체 개수
         });
 
         return unsubscribe;
@@ -157,16 +160,24 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-80 p-0" align="end">
-              <div className="flex items-center justify-between p-4 border-b">
-                <h3 className="font-semibold">알림</h3>
+              <div className="flex items-center justify-between px-3 py-2 border-b">
+                <h3 className="text-sm font-semibold">알림</h3>
                 {unreadCount > 0 && (
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={async () => {
+                    className="h-7 text-xs px-2"
+                    onClick={async (e) => {
+                      e.stopPropagation();
                       if (user?.uid) {
-                        const { NotificationManager } = await import('@/shared/components/common/CustomNotification');
-                        await NotificationManager.markAllAsRead(user.uid);
+                        try {
+                          const { NotificationManager } = await import('@/shared/components/common/CustomNotification');
+                          await NotificationManager.markAllAsRead(user.uid);
+                          toast.success(`${unreadCount}개의 알림을 읽음 처리했습니다.`);
+                        } catch (error) {
+                          console.error('모든 알림 읽음 처리 실패:', error);
+                          toast.error('알림 읽음 처리에 실패했습니다.');
+                        }
                       }
                     }}
                   >
@@ -176,51 +187,44 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               </div>
               <div className="max-h-96 overflow-y-auto">
                 {notifications.length === 0 ? (
-                  <div className="p-8 text-center text-muted-foreground">
+                  <div className="py-8 text-center text-muted-foreground text-sm">
                     알림이 없습니다
                   </div>
                 ) : (
                   notifications.map((notif) => (
-                    <div
+                    <Link
                       key={notif.id}
-                      className={cn(
-                        "p-4 border-b cursor-pointer hover:bg-accent transition-colors",
-                        !notif.read && "bg-primary/5"
-                      )}
-                      onClick={async () => {
+                      href={notif.link || '#'}
+                      className="block px-3 py-2 border-b cursor-pointer hover:bg-accent transition-colors bg-primary/5"
+                      onClick={async (e) => {
+                        if (!notif.link) {
+                          e.preventDefault();
+                        }
                         if (user?.uid) {
                           const { NotificationManager } = await import('@/shared/components/common/CustomNotification');
                           await NotificationManager.markAsRead(user.uid, notif.id);
-                          
-                          // 딥링크 이동
-                          if (notif.link) {
-                            router.push(notif.link);
-                          }
-                          
                           setIsNotificationOpen(false);
                         }
                       }}
                     >
-                      <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0">
-                          <Bell className="h-4 w-4 text-primary" />
+                      <div className="flex items-start gap-2">
+                        <div className="flex-shrink-0 mt-0.5">
+                          <Bell className="h-3.5 w-3.5 text-primary" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium">{notif.title}</p>
-                          <p className="text-xs text-muted-foreground line-clamp-2">
+                          <p className="text-xs font-medium leading-tight">{notif.title}</p>
+                          <p className="text-xs text-muted-foreground line-clamp-2 leading-tight mt-0.5">
                             {notif.body}
                           </p>
-                          <p className="text-xs text-muted-foreground mt-1">
+                          <p className="text-xs text-muted-foreground mt-0.5 leading-tight opacity-70">
                             {notif.metadata?.senderName || '시스템'}
                           </p>
                         </div>
-                        {!notif.read && (
-                          <div className="flex-shrink-0">
-                            <div className="w-2 h-2 bg-primary rounded-full" />
-                          </div>
-                        )}
+                        <div className="flex-shrink-0">
+                          <div className="w-2 h-2 bg-primary rounded-full mt-1" />
+                        </div>
                       </div>
-                    </div>
+                    </Link>
                   ))
                 )}
               </div>
@@ -261,9 +265,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => router.push('/profile')}>
-                <User className="mr-2 h-4 w-4" />
-                <span>프로필</span>
+              <DropdownMenuItem asChild>
+                <Link href="/profile">
+                  <User className="mr-2 h-4 w-4" />
+                  <span>프로필</span>
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               {/* Theme Switch */}
