@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, MessageSquare, User } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
+import { X } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
+import { CommentNotification, LogisticsNotification } from './notifications';
 
 export interface NotificationData {
   id: string;
@@ -15,6 +15,11 @@ export interface NotificationData {
   timestamp: Date;
   type: 'comment' | 'mention' | 'info' | 'success' | 'warning' | 'error';
   onClick?: () => void;
+  // 물류이동 알림용 메타데이터
+  metadata?: {
+    requestType?: string;
+    productName?: string;
+  };
 }
 
 interface CustomNotificationProps {
@@ -65,15 +70,14 @@ export const CustomNotification: React.FC<CustomNotificationProps> = ({
   };
 
   const getTypeColor = () => {
+    // 물류이동 알림
+    if (notification.metadata?.requestType) {
+      return 'border-l-orange-500 bg-orange-50 dark:bg-orange-950/20';
+    }
+    // 댓글/멘션 알림
     return notification.type === 'mention' 
       ? 'border-l-blue-500 bg-blue-50 dark:bg-blue-950/20' 
       : 'border-l-green-500 bg-green-50 dark:bg-green-950/20';
-  };
-
-  const getTypeIcon = () => {
-    return notification.type === 'mention' 
-      ? <MessageSquare className="h-4 w-4 text-blue-600" />
-      : <User className="h-4 w-4 text-green-600" />;
   };
 
   return (
@@ -106,44 +110,30 @@ export const CustomNotification: React.FC<CustomNotificationProps> = ({
           <X className="h-3 w-3" />
         </Button>
 
-        {/* 알림 내용 */}
+        {/* 알림 내용 - 타입별 컴포넌트 분기 */}
         <div className="p-4 pr-8">
-          <div className="flex items-start gap-3">
-            {/* 발신자 아바타 */}
-            <Avatar className="h-10 w-10 flex-shrink-0">
-              <AvatarImage 
-                src={notification.senderAvatar} 
-                alt={notification.senderName}
-              />
-              <AvatarFallback className="bg-muted">
-                {notification.senderName.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-
-            {/* 알림 텍스트 */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                {getTypeIcon()}
-                <span className="text-sm font-semibold text-foreground truncate">
-                  {notification.senderName}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {notification.timestamp.toLocaleTimeString('ko-KR', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </span>
-              </div>
-              
-              <p className="text-sm font-medium text-foreground mb-1">
-                {notification.title}
-              </p>
-              
-              <p className="text-sm text-muted-foreground line-clamp-2">
-                {notification.body}
-              </p>
-            </div>
-          </div>
+          {notification.metadata?.requestType ? (
+            /* 물류이동/생산요청 알림 */
+            <LogisticsNotification
+              title={notification.title}
+              requestType={notification.metadata.requestType}
+              requester={notification.senderName}
+              requesterAvatar={notification.senderAvatar}
+              productName={notification.metadata.productName || ''}
+              content={notification.body}
+              timestamp={notification.timestamp}
+            />
+          ) : (
+            /* 댓글/멘션 알림 */
+            <CommentNotification
+              senderName={notification.senderName}
+              senderAvatar={notification.senderAvatar}
+              title={notification.title}
+              body={notification.body}
+              timestamp={notification.timestamp}
+              type={notification.type as 'comment' | 'mention' | 'info'}
+            />
+          )}
         </div>
 
         {/* 진행 바 (자동 닫기) */}
@@ -184,25 +174,17 @@ export class NotificationManager {
       timestamp: new Date()
     };
 
-    console.log('📢 [NotificationManager] 알림 표시 요청:', {
-      title: newNotification.title,
-      body: newNotification.body,
-      isAppInForeground: this.isAppInForeground
-    });
-
     // Electron 환경 체크
     const isElectron = typeof window !== 'undefined' && window.__ELECTRON__;
 
     // Electron 환경에서는 네이티브 알림 사용
     if (isElectron && window.electron) {
-      console.log('🖥️ [NotificationManager] Electron 네이티브 알림 호출');
       try {
         await window.electron.showNotification({
           title: newNotification.title,
           body: newNotification.body,
           icon: newNotification.senderAvatar
         });
-        console.log('✅ [NotificationManager] Electron 알림 성공');
         return;
       } catch (error) {
         console.error('❌ [NotificationManager] Electron 알림 실패:', error);
@@ -212,19 +194,16 @@ export class NotificationManager {
 
     // 앱이 명시적으로 백그라운드일 때만 시스템 알림 사용
     if (this.isAppInForeground === false) {
-      console.log('🔔 [NotificationManager] 백그라운드 알림 사용');
       await this.sendSystemNotification(newNotification);
       return;
     }
 
     // 웹 환경 또는 폴백: 포그라운드에서는 자체 알림 사용
-    console.log('🔔 [NotificationManager] 포그라운드 자체 알림 사용');
     if (this.notifications.length >= this.maxNotifications) {
       this.notifications.shift();
     }
 
     this.notifications.push(newNotification);
-    console.log('✅ [NotificationManager] 알림 추가됨. 현재 알림 수:', this.notifications.length);
     this.notifyListeners();
 
     // 5초 후 자동 제거
@@ -291,15 +270,12 @@ export class NotificationManager {
   // 알림 읽음 처리
   static async markAsRead(userId: string, notificationId: string) {
     try {
-      console.log('✅ [NotificationManager] 알림 읽음 처리:', notificationId);
-      
       const { doc, updateDoc } = await import('firebase/firestore');
       const { db } = await import('@/shared/services/firebase/config');
       
       if (db) {
         const inboxRef = doc(db, `users/${userId}/inbox`, notificationId);
         await updateDoc(inboxRef, { read: true });
-        console.log('✅ [NotificationManager] 읽음 처리 완료:', notificationId);
       }
     } catch (error) {
       console.error('❌ [NotificationManager] 읽음 처리 실패:', error);
@@ -309,8 +285,6 @@ export class NotificationManager {
   // 모든 알림 읽음 처리
   static async markAllAsRead(userId: string) {
     try {
-      console.log('✅ [NotificationManager] 모든 알림 읽음 처리 시작');
-      
       const { collection, query, where, getDocs, writeBatch } = await import('firebase/firestore');
       const { db } = await import('@/shared/services/firebase/config');
       
@@ -329,7 +303,6 @@ export class NotificationManager {
         });
         
         await batch.commit();
-        console.log(`✅ [NotificationManager] ${snapshot.size}개 알림 읽음 처리 완료`);
       }
     } catch (error) {
       console.error('❌ [NotificationManager] 모든 알림 읽음 처리 실패:', error);
@@ -344,19 +317,15 @@ export const NotificationContainer: React.FC<{
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
 
   useEffect(() => {
-    console.log('🎬 [NotificationContainer] 컨테이너 마운트됨. Position:', position);
     const unsubscribe = NotificationManager.subscribe((newNotifications) => {
-      console.log('📥 [NotificationContainer] 알림 업데이트:', newNotifications.length, '개');
       setNotifications(newNotifications);
     });
     return () => {
-      console.log('👋 [NotificationContainer] 컨테이너 언마운트됨');
       unsubscribe();
     };
   }, [position]);
 
   useEffect(() => {
-    console.log('🔄 [NotificationContainer] 렌더링할 알림 수:', notifications.length);
   }, [notifications]);
 
   // bottom 포지션일 때는 음수 offset으로 위로 쌓이게 함
@@ -365,13 +334,6 @@ export const NotificationContainer: React.FC<{
   return (
     <>
       {notifications.map((notification, index) => {
-        console.log(`📍 [NotificationContainer] 알림 렌더링:`, {
-          id: notification.id,
-          index,
-          position,
-          isBottomPosition,
-          offset: isBottomPosition ? -index * 100 : index * 100
-        });
         return (
           <div
             key={notification.id}

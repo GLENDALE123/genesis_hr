@@ -22,11 +22,14 @@ export interface ElectronAPI {
    */
   showNotification: (options: {
     title: string;
+    subtitle?: string;
     body: string;
     icon?: string;
     senderName?: string;
     senderAvatar?: string | null;
     timestamp?: string;
+    centerInfo?: string;
+    link?: string | null; // 알림 클릭 시 이동할 링크
     useCustom?: boolean; // true: 커스텀 윈도우, false: 네이티브 알림
   }) => Promise<{ success: boolean; type?: 'custom' | 'native'; error?: string }>;
 
@@ -46,6 +49,13 @@ export interface ElectronAPI {
     resize: (options: { width: number; height: number; center?: boolean }) => Promise<{ success: boolean }>;
     getSize: () => Promise<{ width: number; height: number } | null>;
   };
+
+  /**
+   * 알림 클릭 시 네비게이션 이벤트 수신
+   * @param callback - 링크를 받아서 처리할 콜백 함수
+   * @returns 리스너 제거 함수
+   */
+  onNavigateTo: (callback: (link: string) => void) => (() => void);
 }
 
 declare global {

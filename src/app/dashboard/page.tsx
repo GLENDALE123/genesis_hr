@@ -16,7 +16,7 @@ import { Skeleton } from '@/shared/components/ui/skeleton';
 import { toast } from 'sonner';
 import { Spinner } from '@/shared/components/ui/spinner';
 import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
-import { Shield, Lock, TestTube, Bell } from 'lucide-react';
+import { Shield, Lock, TestTube, Bell, Send } from 'lucide-react';
 
 interface Todo {
   id: string;
@@ -36,26 +36,19 @@ export default function DashboardPage() {
   const [newTodo, setNewTodo] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // 컴포넌트 마운트 로그
+  useEffect(() => {
+    return () => {
+    };
+  }, []);
+
   // UserProfile 콘솔 로그
   useEffect(() => {
-    console.log('=====================================');
-    console.log('🔍 [Dashboard] User:', user);
-    console.log('🔍 [Dashboard] User UID:', user?.uid);
-    console.log('🔍 [Dashboard] User Email:', user?.email);
-    console.log('=====================================');
-    console.log('🔍 [Dashboard] UserProfile:', userProfile);
-    console.log('🔍 [Dashboard] UserProfile UID:', userProfile?.uid);
-    console.log('🔍 [Dashboard] UserProfile Email:', userProfile?.email);
-    console.log('🔍 [Dashboard] UserProfile Name:', userProfile?.name);
-    console.log('🔍 [Dashboard] UserProfile Role:', userProfile?.role);
-    console.log('=====================================');
-    
     // UserProfile이 null인 경우 수동으로 프로필 조회 시도
     if (user && !userProfile) {
       console.warn('⚠️ UserProfile이 null입니다. 수동으로 프로필 조회를 시도합니다...');
       import('@/shared/services/firebase/userProfile').then(({ getUserProfile }) => {
         getUserProfile(user.uid).then(profile => {
-          console.log('🔍 [Manual Fetch] 수동 조회 결과:', profile);
         }).catch(err => {
           console.error('❌ [Manual Fetch] 프로필 조회 실패:', err);
         });
@@ -101,18 +94,16 @@ export default function DashboardPage() {
   const testElectronCustomNotification = async () => {
     if (typeof window !== 'undefined' && window.__ELECTRON__ && window.electron) {
       try {
-        console.log('🖥️ [Dashboard] Electron 커스텀 알림 테스트');
-        
         const result = await window.electron.showNotification({
           title: '생산관리부 요청사항',
-          body: '제품A/부속B - 확인 부탁드립니다! 😊',
-          senderName: userProfile?.name || user?.email || '테스트 사용자',
+          subtitle: '100ml진공(스크류타입) 외 6건 (일체형민자펌프숄더, 받침, 어깨장식, 뽕무숄더, 외용기, 외캡)/커버',
+          body: '@유호령 긴급 확인 부탁드립니다! 😊',  // ✅ 실제 댓글 내용 (멘션 포함)
+          senderName: '이현석',  // 댓글 작성자 (본부장)
           senderAvatar: null,
           timestamp: new Date().toISOString(),
           useCustom: true
         });
 
-        console.log('✅ [Dashboard] 커스텀 알림 결과:', result);
         toast.success('커스텀 알림이 표시되었습니다!');
       } catch (error) {
         console.error('❌ [Dashboard] 커스텀 알림 실패:', error);
@@ -127,15 +118,12 @@ export default function DashboardPage() {
   const testElectronSystemNotification = async () => {
     if (typeof window !== 'undefined' && window.__ELECTRON__ && window.electron) {
       try {
-        console.log('🔔 [Dashboard] Electron 시스템 알림 테스트');
-        
         const result = await window.electron.showNotification({
           title: 'HS 인사관리 시스템',
           body: '시스템 알림 테스트입니다! Windows 알림 센터로 표시됩니다.',
           useCustom: false // 시스템 알림 사용
         });
 
-        console.log('✅ [Dashboard] 시스템 알림 결과:', result);
         toast.success('시스템 알림이 표시되었습니다!');
       } catch (error) {
         console.error('❌ [Dashboard] 시스템 알림 실패:', error);
@@ -154,28 +142,41 @@ export default function DashboardPage() {
       toast.success('5초 후 알림이 표시됩니다. 지금 창을 최소화하세요!', {
         duration: 5000,
       });
-      console.log('⏰ [Dashboard] 5초 후 백그라운드 알림 테스트 시작...');
 
       setTimeout(async () => {
         try {
-          console.log('🔔 [Dashboard] 백그라운드 알림 표시 중...');
-          
           const result = await electron.showNotification({
             title: '생산관리부 요청사항',
-            body: '제품C/부속D - 긴급 확인 요청! 백그라운드 알림이 잘 표시되나요? 🎉',
+            subtitle: '엔진A/실린더커버B',
+            body: '@관리자 백그라운드에서도 알림이 잘 표시되나요? 🎉',
             senderName: '관리자',
             senderAvatar: null,
             timestamp: new Date().toISOString(),
             useCustom: true
           });
-
-          console.log('✅ [Dashboard] 백그라운드 알림 결과:', result);
         } catch (error) {
           console.error('❌ [Dashboard] 백그라운드 알림 실패:', error);
         }
       }, 5000);
     } else {
       toast.error('Electron 환경이 아닙니다.');
+    }
+  };
+
+  // 물류이동 알림 테스트
+  const testLogisticsNotification = async () => {
+    if (!user || !userProfile) {
+      toast.error('사용자 정보가 없습니다.');
+      return;
+    }
+
+    try {
+      const { createTestLogisticsNotification } = await import('@/features/production/services/notificationService');
+      await createTestLogisticsNotification(userProfile.displayName);
+      toast.success('물류이동 테스트 알림이 Admin/Manager에게 발송되었습니다!');
+    } catch (error) {
+      console.error('물류이동 알림 발송 실패:', error);
+      toast.error('물류이동 알림 발송에 실패했습니다.');
     }
   };
 
@@ -231,6 +232,39 @@ export default function DashboardPage() {
                         {currentRole || 'None'}
                       </Badge>
                     </div>
+                  </div>
+                </div>
+
+                {/* 물류이동 알림 테스트 버튼 */}
+                <div className="p-4 border-2 border-blue-200 rounded-lg bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Send className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    <h3 className="font-semibold text-blue-800 dark:text-blue-200">물류이동 알림 테스트</h3>
+                  </div>
+                  <div className="space-y-3 mb-3">
+                    <div className="text-sm space-y-1">
+                      <p className="font-medium text-blue-700 dark:text-blue-300">알림 내용:</p>
+                      <ul className="text-xs text-blue-600 dark:text-blue-400 space-y-1 ml-4 list-disc">
+                        <li><strong>요청유형:</strong> 물류이동</li>
+                        <li><strong>요청자:</strong> {userProfile?.displayName || '테스트 사용자'}</li>
+                        <li><strong>제품명:</strong> 테스트제품A 외 2건</li>
+                        <li><strong>요청내용:</strong> 3건의 물류이동 상세 정보</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Button 
+                      onClick={testLogisticsNotification}
+                      variant="default"
+                      size="sm"
+                      className="w-full"
+                    >
+                      <Bell className="h-4 w-4 mr-2" />
+                      물류이동 알림 발송 (Admin/Manager에게)
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      Admin과 Manager의 inbox에 알림 추가
+                    </p>
                   </div>
                 </div>
 

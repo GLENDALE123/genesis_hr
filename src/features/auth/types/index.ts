@@ -12,6 +12,7 @@ export interface UserProfile {
   role: UserRole;           // 역할 (Admin/Manager/Member)
   position?: string;        // 직책 (선택사항)
   department?: string;      // 부서 (선택사항)
+  photoURL?: string;        // 프로필 사진 URL (선택사항)
   createdAt: Date;          // 계정 생성일
   updatedAt: Date;          // 마지막 업데이트일
   lastLoginAt?: Date;       // 마지막 로그인 시간

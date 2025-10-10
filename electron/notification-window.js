@@ -4,9 +4,23 @@ const path = require('path');
 class NotificationWindow {
   constructor() {
     this.currentWindow = null; // 현재 표시 중인 알림 윈도우
+    this.currentOnClick = null; // 현재 알림의 onClick 콜백
     this.queue = []; // 대기 중인 알림 큐
     this.notificationHeight = 150; // 알림 높이 (120px → 150px로 증가)
     this.notificationWidth = 350; // 알림 너비 (400px → 350px로 감소)
+  }
+
+  /**
+   * 알림 클릭 이벤트 처리 (외부에서 호출)
+   */
+  handleClick() {
+    if (this.currentOnClick) {
+      console.log('🖱️ [NotificationWindow] 알림 클릭 - onClick 콜백 실행');
+      this.currentOnClick();
+      this.closeNotification(this.currentWindow);
+    } else {
+      console.warn('⚠️ [NotificationWindow] onClick 콜백이 없습니다');
+    }
   }
 
   /**
@@ -32,9 +46,9 @@ class NotificationWindow {
    */
   showNotification(options) {
     try {
-      const { title, body, icon, onClick } = options;
+      const { title, subtitle, body, icon, onClick } = options;
 
-      console.log('🔔 [NotificationWindow] 알림 표시:', { title, body });
+      console.log('🔔 [NotificationWindow] 알림 표시:', { title, subtitle, body });
 
       // 작업 영역 가져오기 (작업 표시줄 제외)
       const workArea = screen.getPrimaryDisplay().workArea;
@@ -55,7 +69,7 @@ class NotificationWindow {
         y: y,
         frame: false,
         transparent: true,
-        opacity: 0.90, // 전체 윈도우 90% 불투명도 (더 투명하게)
+        opacity: 1.0, // 전체 윈도우 100% 불투명도 (완전 불투명)
         alwaysOnTop: true,
         skipTaskbar: true,
         resizable: false,
@@ -72,23 +86,29 @@ class NotificationWindow {
         }
       });
 
-      // 현재 윈도우로 설정
+      // 현재 윈도우 및 onClick 콜백 설정
       this.currentWindow = notificationWindow;
-      console.log('📝 [NotificationWindow] 현재 윈도우 설정 완료');
+      this.currentOnClick = onClick;
+      console.log('📝 [NotificationWindow] 현재 윈도우 및 onClick 설정 완료');
 
       // HTML 로드 (URL에 데이터 전달)
-      const notificationData = encodeURIComponent(JSON.stringify({
+      const dataToSend = {
         title,
+        subtitle: options.subtitle,  // ✅ 서브타이틀 추가
         body,
         icon: icon || path.join(__dirname, '../public/favicon.ico'),
         senderName: options.senderName,
         senderAvatar: options.senderAvatar,
-        timestamp: options.timestamp || new Date().toISOString()
-      }));
+        timestamp: options.timestamp || new Date().toISOString(),
+        centerInfo: options.centerInfo  // ✅ 중앙 정보 추가
+      };
+      
+      console.log('📤 [NotificationWindow] HTML로 전달할 데이터:', dataToSend);
+      const notificationData = encodeURIComponent(JSON.stringify(dataToSend));
 
-    const htmlPath = path.join(__dirname, 'notification.html');
-    const fullUrl = `file://${htmlPath}?data=${notificationData}`;
-    console.log('🔗 [NotificationWindow] HTML 로드:', fullUrl);
+      const htmlPath = path.join(__dirname, 'notification.html');
+      const fullUrl = `file://${htmlPath}?data=${notificationData}`;
+      console.log('🔗 [NotificationWindow] HTML 로드:', fullUrl.substring(0, 200) + '...');
 
     notificationWindow.loadURL(fullUrl);
 
@@ -100,11 +120,11 @@ class NotificationWindow {
       notificationWindow.show();
     });
 
-    // 5초 후 자동 닫기
+    // 7초 후 자동 닫기
     setTimeout(() => {
-      console.log('⏰ [NotificationWindow] 5초 경과, 알림 닫기 시작');
+      console.log('⏰ [NotificationWindow] 7초 경과, 알림 닫기 시작');
       this.closeNotification(notificationWindow);
-    }, 5000);
+    }, 7000);
 
     // 클릭 이벤트 처리
     if (onClick) {
@@ -123,6 +143,7 @@ class NotificationWindow {
         if (this.currentWindow === notificationWindow) {
           console.log('⚠️ [NotificationWindow] 예외 상황: closeNotification 미호출, 직접 처리');
           this.currentWindow = null;
+          this.currentOnClick = null;
           this.showNextNotification();
         }
       });
@@ -166,10 +187,11 @@ class NotificationWindow {
 
     console.log('🗑️ [NotificationWindow] 윈도우 닫기 애니메이션 시작');
     
-    // 현재 윈도우 초기화
+    // 현재 윈도우 및 onClick 초기화
     if (this.currentWindow === notificationWindow) {
       this.currentWindow = null;
-      console.log('📝 [NotificationWindow] 현재 윈도우 초기화');
+      this.currentOnClick = null;
+      console.log('📝 [NotificationWindow] 현재 윈도우 및 onClick 초기화');
     }
     
     // HTML에 닫기 애니메이션 트리거
@@ -207,9 +229,24 @@ class NotificationWindow {
     }
     
     this.currentWindow = null;
+    this.currentOnClick = null;
     console.log('✅ [NotificationWindow] 모든 알림 파괴됨');
   }
 }
 
-module.exports = new NotificationWindow();
+// 알림 클릭 이벤트 핸들러 노출
+const notificationWindowInstance = new NotificationWindow();
 
+// IPC 이벤트 리스너 등록 (main.js에서 사용하기 위해)
+if (typeof module !== 'undefined' && module.exports) {
+  const { ipcMain } = require('electron');
+  
+  ipcMain.on('notification-clicked', () => {
+    console.log('🖱️ [NotificationWindow] IPC: notification-clicked 수신');
+    notificationWindowInstance.handleClick();
+  });
+  
+  console.log('✅ [NotificationWindow] IPC 리스너 등록 완료');
+}
+
+module.exports = notificationWindowInstance;

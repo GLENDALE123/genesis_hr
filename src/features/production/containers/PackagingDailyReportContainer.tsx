@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/components/ui/dialog';
+import { LogisticsTransferModal } from '@/features/production/components/LogisticsTransferModal';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,11 +24,11 @@ import {
   Download, 
   Upload
 } from 'lucide-react';
-import { Spinner } from '@/shared/components/ui/spinner';
 import { PackagingReportListView } from '@/features/production/components/PackagingReportListView';
 import { PackagingReportForm } from '@/features/production/components/PackagingReportForm';
 import { ProcessConditionsModal } from '@/features/production/components/ProcessConditionsModal';
 import { MemoModal } from '@/features/production/components/MemoModal';
+import { ShortageRequestModal } from '@/features/production/components/ShortageRequestModal';
 import { usePackagingReports } from '@/features/production/hooks/usePackagingReports';
 import { usePackagingReportFilters } from '@/features/production/hooks/usePackagingReportFilters';
 import { 
@@ -37,12 +38,24 @@ import {
   usePagePermissions,
   useAuthStore
 } from '@/features/auth';
-import { PackagingReport, PackagingFormData } from '@/features/production/types';
+import { PackagingReport, PackagingFormData, ShortageRequest } from '@/features/production/types';
 import { toast } from 'sonner';
 import { getFirebaseErrorMessage } from '@/shared/utils/firebaseErrorHandler';
+import {
+  createShortageRequest,
+  updateShortageRequest,
+  getShortageRequestByReportId,
+  getAllShortageRequests
+} from '@/features/production/services/shortageService';
 
 const PackagingDailyReportContainerComponent: React.FC = () => {
   const { user, userProfile } = useAuthStore();
+  
+  // 컴포넌트 마운트 로그
+  useEffect(() => {
+    return () => {
+    };
+  }, []);
   
   // 페이지별 권한 확인
   const { 
@@ -73,16 +86,40 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
     report: PackagingReport | null;
   }>({ isOpen: false, report: null });
 
+  // 부족분 신청 모달 상태
+  const [shortageModalState, setShortageModalState] = useState<{
+    isOpen: boolean;
+    report: PackagingReport | null;
+    existingRequest: ShortageRequest | null;
+  }>({ isOpen: false, report: null, existingRequest: null });
+  
+  const [isSavingShortage, setIsSavingShortage] = useState(false);
+  
+  // 부족분 신청 목록 (reportId를 키로 하는 Map)
+  const [shortageRequestsMap, setShortageRequestsMap] = useState<Map<string, ShortageRequest>>(new Map());
+
+  // 물류이동 선택 상태
+  const [selectedReportIds, setSelectedReportIds] = useState<Set<string>>(new Set());
+  
+  // 물류이동 모달 상태
+  const [isLogisticsModalOpen, setIsLogisticsModalOpen] = useState(false);
+
   // 데이터 가져오기
   const {
     reports,
     loading,
     error,
     refetch,
+    getReportsByDateRange,
     createReport,
     deleteReport,
     updateReport
   } = usePackagingReports();
+
+  // 날짜 범위 변경 시 서버 쿼리 다시 보내기
+  const handleDateRangeChange = useCallback((startDate: string, endDate: string) => {
+    getReportsByDateRange(startDate, endDate);
+  }, [getReportsByDateRange]);
 
   // 필터링 및 검색 로직
   const {
@@ -93,19 +130,35 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
     filters,
     searchTerm,
     isSummaryVisible,
+    activeQuickFilter,
     handleFilterChange,
     handleQuickDateFilter,
     handleSearchChange,
     clearFilters,
     toggleSummary
-  } = usePackagingReportFilters(reports);
+  } = usePackagingReportFilters(reports, handleDateRangeChange);
 
   // 데이터 로그 (디버깅용)
   useEffect(() => {
-    console.log('📊 [생산일보] 전체 데이터:', `${reports.length}건`);
-    console.log('🔍 [생산일보] 필터링된 데이터:', `${filteredReports.length}건`);
-    console.log('🔧 [생산일보] 현재 필터:', filters);
   }, [reports, filteredReports, filters]);
+
+  // 부족분 신청 목록 조회 (초기 로드 시 한 번)
+  useEffect(() => {
+    const fetchShortageRequests = async () => {
+      try {
+        const requests = await getAllShortageRequests();
+        const requestsMap = new Map<string, ShortageRequest>();
+        requests.forEach(request => {
+          requestsMap.set(request.sourceReportId, request);
+        });
+        setShortageRequestsMap(requestsMap);
+      } catch (error) {
+        console.error('❌ [생산일보] 부족분 신청 목록 조회 실패:', error);
+      }
+    };
+
+    fetchShortageRequests();
+  }, []);
 
   const handleCreateReport = useCallback(() => {
     if (!canCreate) {
@@ -235,12 +288,12 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
     setIsEditMode(false);
   }, []);
 
-  // 공정조건 모달 열기
+  // 공정조건 모달 열기 (메모이제이션 최적화)
   const handleOpenProcessConditions = useCallback((report: PackagingReport) => {
     setProcessConditionsModalState({ isOpen: true, report });
   }, []);
 
-  // 공정조건 저장
+  // 공정조건 저장 (메모이제이션 최적화)
   const handleSaveProcessConditions = useCallback(async (
     reportId: string, 
     conditions: PackagingReport['processConditions']
@@ -256,10 +309,160 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
     }
   }, [updateReport]);
 
-  // 메모 모달 열기
+  // 메모 모달 열기 (메모이제이션 최적화)
   const handleOpenMemo = useCallback((report: PackagingReport) => {
     setMemoModalState({ isOpen: true, report });
   }, []);
+
+  // 부족분 신청 모달 열기 (메모이제이션 최적화)
+  const handleOpenShortageRequest = useCallback(async (report: PackagingReport) => {
+    try {
+      // 기존 부족분 신청이 있는지 확인
+      const existingRequest = await getShortageRequestByReportId(report.id);
+      setShortageModalState({ 
+        isOpen: true, 
+        report, 
+        existingRequest 
+      });
+    } catch (error) {
+      console.error('부족분 신청 조회 실패:', error);
+      // 조회 실패해도 모달은 열기
+      setShortageModalState({ 
+        isOpen: true, 
+        report, 
+        existingRequest: null 
+      });
+    }
+  }, []);
+
+  // 부족분 신청 저장 (메모이제이션 최적화)
+  const handleSaveShortageRequest = useCallback(async (
+    data: { shortageReason: string; requestedShortageQuantity: number }
+  ) => {
+    if (!shortageModalState.report || !user || !userProfile) {
+      toast.error('사용자 정보가 없습니다.');
+      return;
+    }
+
+    setIsSavingShortage(true);
+    
+    try {
+      const author = { uid: user.uid, displayName: userProfile.displayName };
+      
+      if (shortageModalState.existingRequest) {
+        // 기존 부족분 신청 수정
+        await updateShortageRequest(
+          shortageModalState.existingRequest.id,
+          data,
+          author
+        );
+        toast.success('부족분 신청이 수정되었습니다.');
+      } else {
+        // 새로운 부족분 신청 생성
+        await createShortageRequest(
+          shortageModalState.report,
+          data,
+          author
+        );
+        toast.success('부족분 신청이 완료되었습니다.');
+      }
+      
+      // 부족분 신청 목록 다시 조회하여 아이콘 업데이트
+      const requests = await getAllShortageRequests();
+      const requestsMap = new Map<string, ShortageRequest>();
+      requests.forEach(request => {
+        requestsMap.set(request.sourceReportId, request);
+      });
+      setShortageRequestsMap(requestsMap);
+      
+      // 모달 닫기
+      setShortageModalState({ isOpen: false, report: null, existingRequest: null });
+    } catch (error) {
+      console.error('부족분 신청 저장 실패:', error);
+      const errorInfo = getFirebaseErrorMessage(error);
+      toast.error(errorInfo.message);
+    } finally {
+      setIsSavingShortage(false);
+    }
+  }, [shortageModalState, user, userProfile]);
+
+  // 체크박스 토글 핸들러
+  const handleToggleReportSelection = useCallback((reportId: string) => {
+    setSelectedReportIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(reportId)) {
+        newSet.delete(reportId);
+      } else {
+        newSet.add(reportId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  // 선택 해제 핸들러
+  const handleClearSelection = useCallback(() => {
+    setSelectedReportIds(new Set());
+  }, []);
+
+  // 전체 선택/해제 핸들러
+  const handleSelectAll = useCallback((checked: boolean) => {
+    if (checked) {
+      // 현재 필터링된 모든 리포트 선택
+      const allIds = new Set(filteredReports.map(report => report.id));
+      setSelectedReportIds(allIds);
+    } else {
+      // 전체 해제
+      setSelectedReportIds(new Set());
+    }
+  }, [filteredReports]);
+
+  // 전체 선택 상태 계산
+  const isAllSelected = filteredReports.length > 0 && 
+    filteredReports.every(report => selectedReportIds.has(report.id));
+  
+  const isIndeterminate = filteredReports.some(report => selectedReportIds.has(report.id)) && 
+    !isAllSelected;
+
+  // 물류이동 리포트 생성 핸들러
+  const handleCreateLogisticsReport = useCallback(() => {
+    // 선택된 리포트들을 배열로 변환
+    const selectedReports = reports.filter(report => selectedReportIds.has(report.id));
+    
+    if (selectedReports.length === 0) {
+      toast.error('선택된 항목이 없습니다.');
+      return;
+    }
+    
+    setIsLogisticsModalOpen(true);
+  }, [selectedReportIds, reports]);
+
+  // 물류이동 리포트 확정 핸들러
+  const handleConfirmLogisticsTransfer = useCallback(async (data: any[]) => {
+    if (!user || !userProfile) {
+      toast.error('사용자 정보가 없습니다.');
+      return;
+    }
+
+    try {
+      const selectedReports = reports.filter(report => selectedReportIds.has(report.id));
+      
+      // Firestore에 저장
+      const { createLogisticsRequest } = await import('@/features/production/services/logisticsService');
+      const requestId = await createLogisticsRequest(
+        selectedReports,
+        data,
+        { uid: user.uid, displayName: userProfile.displayName }
+      );
+      
+      toast.success(`물류이동 요청이 생성되었습니다. (${requestId})`);
+      
+      setIsLogisticsModalOpen(false);
+      setSelectedReportIds(new Set()); // 선택 초기화
+    } catch (error) {
+      console.error('물류이동 요청 생성 실패:', error);
+      toast.error('물류이동 요청 생성에 실패했습니다.');
+    }
+  }, [user, userProfile, reports, selectedReportIds]);
 
   // 에러 발생 시 토스트 표시
   useEffect(() => {
@@ -267,15 +470,6 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
       toast.error('데이터를 불러오는 중 오류가 발생했습니다.');
     }
   }, [error]);
-
-  // 로딩 상태
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Spinner size="lg" label="데이터 로딩 중..." />
-      </div>
-    );
-  }
 
   // 읽기 권한 확인
   if (!canRead) {
@@ -337,6 +531,31 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
           </div>
         </div>
 
+        {/* 선택된 항목 배너 */}
+        {selectedReportIds.size > 0 && (
+          <div className="flex-shrink-0 p-3 bg-blue-100 dark:bg-blue-900/50 rounded-lg flex items-center justify-between animate-fade-in-down">
+            <span className="text-sm font-semibold text-blue-800 dark:text-blue-200">
+              {selectedReportIds.size}개 항목 선택됨
+            </span>
+            <div className="flex items-center gap-2">
+              <Button 
+                onClick={handleClearSelection} 
+                variant="outline"
+                size="sm"
+                className="bg-slate-200 dark:bg-slate-600"
+              >
+                선택 해제
+              </Button>
+              <Button 
+                onClick={handleCreateLogisticsReport}
+                size="sm"
+              >
+                선택 항목으로 리포트 생성
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* 메인 콘텐츠 - 필터링된 목록 표시 */}
         <div className="flex-1 min-h-0">
           <PackagingReportListView
@@ -346,9 +565,13 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
             filters={filters}
             searchTerm={searchTerm}
             isSummaryVisible={isSummaryVisible}
+            activeQuickFilter={activeQuickFilter}
             summaryData={summaryData}
             byLineGroup1={byLineGroup1}
             byLineGroup2={byLineGroup2}
+            selectedReportIds={selectedReportIds}
+            isAllSelected={isAllSelected}
+            isIndeterminate={isIndeterminate}
             onEdit={handleEditReport}
             onDelete={handleDeleteReport}
             onFilterChange={handleFilterChange}
@@ -359,6 +582,10 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
             onRefetch={refetch}
             onOpenProcessConditions={handleOpenProcessConditions}
             onOpenMemo={handleOpenMemo}
+            onOpenShortageRequest={handleOpenShortageRequest}
+            onToggleReportSelection={handleToggleReportSelection}
+            onSelectAll={handleSelectAll}
+            shortageRequestsMap={shortageRequestsMap}
             canManage={canUpdate || canDelete}
             canUpdate={canUpdate}
             canDelete={canDelete}
@@ -410,6 +637,18 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
         } : undefined}
       />
 
+      {/* 부족분 신청 모달 */}
+      {shortageModalState.report && (
+        <ShortageRequestModal
+          isOpen={shortageModalState.isOpen}
+          onClose={() => setShortageModalState({ isOpen: false, report: null, existingRequest: null })}
+          report={shortageModalState.report}
+          existingRequest={shortageModalState.existingRequest}
+          onSave={handleSaveShortageRequest}
+          isSaving={isSavingShortage}
+        />
+      )}
+
       {/* 삭제 확인 대화상자 */}
       <AlertDialog open={deleteConfirmState.isOpen} onOpenChange={(open) => !open && cancelDelete()}>
         <AlertDialogContent>
@@ -427,6 +666,14 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* 물류이동 리포트 생성 모달 */}
+      <LogisticsTransferModal
+        isOpen={isLogisticsModalOpen}
+        onClose={() => setIsLogisticsModalOpen(false)}
+        selectedReports={reports.filter(report => selectedReportIds.has(report.id))}
+        onConfirm={handleConfirmLogisticsTransfer}
+      />
     </>
   );
 };

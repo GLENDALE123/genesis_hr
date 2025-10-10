@@ -1,13 +1,13 @@
 'use client';
 
 import React from 'react';
-import { usePathname } from 'next/navigation';
-import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
+import Link from 'next/link';
 import {
   Users,
   FileText,
@@ -56,7 +56,7 @@ const mainNavigationItems: NavItem[] = [
       { title: '생산일보', href: '/production/daily-report', icon: FileText },
       { title: '생산일정', href: '/production/schedule', icon: CalendarDays },
       { title: '생산관리부', href: '/production/management', icon: ClipboardList },
-      { title: '부족분관리', href: '/production/shortage', icon: AlertTriangle },
+      { title: '부족분관리', href: '/production/shortage-management', icon: AlertTriangle },
     ],
   },
   {
@@ -117,6 +117,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   collapsed = false
 }) => {
   const pathname = usePathname();
+  const router = useRouter();
   const [isHovered, setIsHovered] = React.useState(false);
   
   // 데스크톱에서만 호버 효과 적용 (1024px 이상)
@@ -143,7 +144,14 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     return pathname === href || pathname.startsWith(href + '/');
   };
 
-  // ✅ Link 컴포넌트 사용으로 변경 (handleNavigation 제거)
+  // 즉시 페이지 이동 핸들러
+  const handleNavigate = (href: string) => {
+    if (pathname === href) {
+      return;
+    }
+    
+    router.push(href);
+  };
 
   const renderNavItem = (item: NavItem, level = 0) => {
     const hasChildren = item.children && item.children.length > 0;
@@ -167,13 +175,14 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     }
 
     const navItemContent = (
-      <Link
-        href={item.href}
+      <button
+        onClick={() => handleNavigate(item.href)}
         className={cn(
-          "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors",
+          "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors text-left",
           // 태블릿 최적화: 터치 영역 최소 44px 보장
           "min-h-[44px] px-3 py-3 md:px-3 md:py-2",
-          level > 0 && "ml-6",
+          // 서브메뉴는 버튼 너비를 줄임
+          level === 0 ? "w-full" : "w-[calc(100%-1.5rem)] ml-6",
           active
             ? "bg-accent text-accent-foreground"
             : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
@@ -198,7 +207,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             </>
           )}
         </div>
-      </Link>
+      </button>
     );
 
     return (

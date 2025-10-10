@@ -161,11 +161,20 @@
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-[data-state="checked"] {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+/* 체크박스는 애니메이션 완전 제거 */
+button[role="checkbox"] {
+  transition: none !important;
+  animation: none !important;
 }
 
-[data-state="unchecked"] {
+button[role="checkbox"] * {
+  transition: none !important;
+  animation: none !important;
+}
+
+/* 스위치 등 다른 Radix 컴포넌트만 애니메이션 적용 */
+button[data-state="checked"]:not([role="checkbox"]),
+button[data-state="unchecked"]:not([role="checkbox"]) {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 

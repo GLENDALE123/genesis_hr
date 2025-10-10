@@ -30,17 +30,12 @@ export const ElectronNotificationProvider: React.FC<ElectronNotificationProvider
   useEffect(() => {
     // Electron 환경 체크
     if (typeof window === 'undefined' || !window.__ELECTRON__ || !window.electron) {
-      console.log('🌐 Electron 환경이 아닙니다. ElectronNotificationProvider 비활성화');
       return;
     }
 
     if (!user?.uid) {
-      console.log('⚠️ 사용자 로그인 필요');
       return;
     }
-
-    console.log('🖥️ Electron Firestore 리스너 활성화 (주 알림 시스템)');
-    console.log('📌 백그라운드/포그라운드 모두 동작합니다!');
 
     if (!db) {
       console.error('❌ Firestore가 초기화되지 않았습니다.');
@@ -64,7 +59,6 @@ export const ElectronNotificationProvider: React.FC<ElectronNotificationProvider
       // 첫 스냅샷은 무시 (기존 데이터)
       if (isFirstSnapshot) {
         isFirstSnapshot = false;
-        console.log('📋 [Firestore] 초기 알림 로드 완료 (표시 안 함)');
         return;
       }
 
@@ -76,11 +70,8 @@ export const ElectronNotificationProvider: React.FC<ElectronNotificationProvider
           
           // 중복 확인 (FCM이 이미 표시했으면 스킵)
           if (recentIds.has(notificationId)) {
-            console.log('⏭️ [Firestore] 이미 표시된 알림 (FCM), 스킵:', notificationId);
             return;
           }
-
-          console.log('🔔 [Firestore 폴백] 새 알림 수신:', notification);
 
           // 중복 방지 목록에 추가
           recentIds.add(notificationId);
@@ -88,31 +79,34 @@ export const ElectronNotificationProvider: React.FC<ElectronNotificationProvider
             recentIds.delete(notificationId);
           }, 5000);
 
-          // Electron 커스텀 알림창 표시
+          // Electron 네이티브 알림창 표시 (인앱 알림 제거 - 중복 방지)
           try {
-            const result = await window.electron!.showNotification({
+            // 물류이동 알림 데이터 구성
+            const notificationPayload = {
               title: notification.title || '새 알림',
+              subtitle: notification.metadata?.productName || notification.subtitle, // 제품명을 subtitle에
               body: notification.body || notification.message || '',
               icon: notification.metadata?.senderAvatar || notification.senderAvatar,
               senderName: notification.metadata?.senderName || '시스템',
               senderAvatar: notification.metadata?.senderAvatar,
               timestamp: notification.createdAt?.toDate ? notification.createdAt.toDate().toISOString() : notification.createdAt,
               useCustom: true,
-            });
+              // 중앙 정보 표시용 (inbox에서 저장된 centerInfo 직접 사용)
+              centerInfo: notification.metadata?.centerInfo, // 중앙에 표시할 정보
+              // ✅ 알림 클릭 시 이동할 링크 추가
+              link: notification.link || null,
+            };
 
-            console.log('✅ [Firestore → Electron] 커스텀 알림 표시 완료');
+            await window.electron!.showNotification(notificationPayload);
           } catch (error) {
-            console.error('❌ [Firestore → Electron] 알림 표시 실패:', error);
+            console.error('❌ [Firestore → Electron] 네이티브 알림 표시 실패:', error);
           }
         }
       });
     });
 
-    console.log('✅ [Electron] Firestore 폴백 리스너 등록 완료');
-
     return () => {
       unsubscribe();
-      console.log('👋 [Electron] Firestore 리스너 해제');
     };
   }, [user?.uid]);
 

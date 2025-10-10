@@ -20,6 +20,33 @@ const nextConfig: NextConfig = {
   // 개발 서버 설정 - 외부 접속 허용
   experimental: {
     // 외부 접속을 위한 설정
+    // 개발 모드 최적화
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+  },
+  
+  // Turbopack 설정
+  turbopack: {
+    // 파일 감시 성능 최적화
+    resolveExtensions: ['.tsx', '.ts', '.jsx', '.js', '.mjs', '.json'],
+    // Path aliases
+    resolveAlias: {
+      '@': './src',
+    },
+  },
+  
+  // 개발 모드 성능 최적화
+  reactStrictMode: true,
+  
+  // webpack 설정 (Turbopack 미사용 시 폴백)
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Fast Refresh를 위한 설정
+      config.watchOptions = {
+        poll: 1000,
+        aggregateTimeout: 300,
+      };
+    }
+    return config;
   },
   
   // CORS 헤더 설정 (개발 환경에서만)

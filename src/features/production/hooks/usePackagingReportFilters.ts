@@ -9,24 +9,36 @@ import { PackagingReport, ProductionReportFilter } from '@/features/production/t
  * - 날짜/라인/발주처/제품명 필터링
  * - 투입/양품/불량 요약 계산
  * - 증착/코팅 라인별 그룹핑
+ * 
+ * @param reports - 표시할 보고서 목록
+ * @param onDateRangeChange - 날짜 범위 변경 시 호출될 콜백 (선택사항)
  */
-export const usePackagingReportFilters = (reports: PackagingReport[]) => {
+export const usePackagingReportFilters = (
+  reports: PackagingReport[],
+  onDateRangeChange?: (startDate: string, endDate: string) => void
+) => {
   // 날짜 유틸리티
   const formatDateForInput = (date: Date) => {
     return date.toISOString().split('T')[0];
   };
 
   const today = formatDateForInput(new Date());
+  
+  // 초기 날짜 범위 계산 (오늘)
+  const getInitialDateRange = () => {
+    return {
+      startDate: today,
+      endDate: today
+    };
+  };
 
   // 상태 관리
-  const [filters, setFilters] = useState<ProductionReportFilter>({
-    startDate: today,
-    endDate: today
-  });
+  const [filters, setFilters] = useState<ProductionReportFilter>(getInitialDateRange());
 
   const [inputValue, setInputValue] = useState(''); // 즉시 반영되는 입력값
   const [searchTerm, setSearchTerm] = useState(''); // 디바운스된 검색어
   const [isSummaryVisible, setIsSummaryVisible] = useState(false);
+  const [activeQuickFilter, setActiveQuickFilter] = useState<'today' | 'yesterday' | 'week' | 'month' | 'all' | null>('today'); // 기본값: 오늘
 
   // 검색어 디바운싱: 입력이 멈춘 후 300ms 뒤에 검색 실행
   useEffect(() => {
@@ -58,11 +70,36 @@ export const usePackagingReportFilters = (reports: PackagingReport[]) => {
     return formatDateForInput(monthAgo);
   };
 
+  // ✅ 필터 및 검색 변경 감지 → 서버 쿼리 전송 (통합)
+  useEffect(() => {
+    if (!onDateRangeChange) return;
+
+    // 검색어가 있는 경우: 전체 데이터에서 검색 (날짜 제한 없음)
+    if (searchTerm && searchTerm.trim() !== '') {
+      console.log(`🔍 [통합검색] 검색어: "${searchTerm}" - 전체 데이터 조회 (날짜 제한 없음)`);
+      
+      // 날짜 범위를 매우 넓게 설정 (사실상 전체 조회)
+      const today = new Date();
+      const tenYearsAgo = new Date();
+      tenYearsAgo.setFullYear(today.getFullYear() - 10);
+      
+      const endDate = formatDateForInput(today);
+      const startDate = formatDateForInput(tenYearsAgo);
+      
+      onDateRangeChange(startDate, endDate);
+    } 
+    // 검색어가 없는 경우: 날짜 필터 적용
+    else if (filters.startDate && filters.endDate) {
+      console.log(`🔍 [필터] 날짜 범위: ${filters.startDate} ~ ${filters.endDate}`);
+      onDateRangeChange(filters.startDate, filters.endDate);
+    }
+  }, [searchTerm, filters.startDate, filters.endDate, onDateRangeChange]);
+
   // 필터링된 보고서 목록
   const filteredReports = useMemo(() => {
     return reports.filter(report => {
-      // 통합 검색어 필터 (모든 데이터에서 검색, 필터와 독립적으로 작동)
-      if (searchTerm) {
+      // ✅ 통합 검색어가 있는 경우: 검색어로만 필터링 (서버에서 전체 데이터 가져옴)
+      if (searchTerm && searchTerm.trim() !== '') {
         const searchLower = searchTerm.toLowerCase();
         const matchesSearch = 
           report.productName.toLowerCase().includes(searchLower) ||
@@ -72,11 +109,11 @@ export const usePackagingReportFilters = (reports: PackagingReport[]) => {
           (report.partName && report.partName.toLowerCase().includes(searchLower)) ||
           (report.specification && report.specification.toLowerCase().includes(searchLower));
         
-        return matchesSearch; // 통합검색어가 있으면 검색 결과만 반환 (필터 무시)
+        return matchesSearch; // 검색어가 있으면 다른 필터 무시
       }
 
-      // 통합검색어가 없을 때만 다른 필터들 적용
-      // 날짜 필터
+      // ✅ 검색어가 없을 때만 다른 필터들 적용
+      // 날짜 필터 (서버에서 이미 필터링됨, 추가 안전장치)
       if (filters.startDate && report.workDate < filters.startDate) return false;
       if (filters.endDate && report.workDate > filters.endDate) return false;
 
@@ -161,40 +198,62 @@ export const usePackagingReportFilters = (reports: PackagingReport[]) => {
       startDate: startDate || undefined,
       endDate: endDate || undefined
     }));
+    // 수동으로 날짜 변경 시 빠른 필터 해제
+    setActiveQuickFilter(null);
+    // ✅ useEffect에서 자동으로 쿼리 전송
   };
 
   const handleQuickDateFilter = (type: 'today' | 'yesterday' | 'week' | 'month' | 'all') => {
+    // 활성 빠른 필터 설정
+    setActiveQuickFilter(type);
+    
+    let startDate: string;
+    let endDate: string = today;
+    
     switch (type) {
       case 'today':
-        handleDateRangeFilter(today, today);
+        startDate = today;
         break;
       case 'yesterday':
-        const yesterday = getYesterday();
-        handleDateRangeFilter(yesterday, yesterday);
+        startDate = getYesterday();
+        endDate = getYesterday();
         break;
       case 'week':
-        const weekAgo = getWeekAgo();
-        handleDateRangeFilter(weekAgo, today);
+        startDate = getWeekAgo();
         break;
       case 'month':
-        const monthAgo = getMonthAgo();
-        handleDateRangeFilter(monthAgo, today);
+        startDate = getMonthAgo();
         break;
       case 'all':
-        // 전체 기간 조회 (필터 제거)
-        handleDateRangeFilter('', '');
+        // ✅ 전체 기간 조회: 최근 6개월 데이터 조회
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+        startDate = formatDateForInput(sixMonthsAgo);
         break;
+      default:
+        startDate = today;
     }
+    
+    // 필터 상태 업데이트
+    setFilters(prev => ({
+      ...prev,
+      startDate,
+      endDate
+    }));
   };
 
   const clearFilters = () => {
-    // 초기화 시 오늘 날짜로 다시 설정
-    setFilters({
-      startDate: today,
-      endDate: today
-    });
-    setInputValue(''); // 입력값 초기화
-    setSearchTerm(''); // 검색어 초기화
+    console.log('🔄 [필터] 필터 초기화 - 오늘로 설정');
+    
+    // 검색어 먼저 초기화 (useEffect 트리거 순서 중요)
+    setInputValue(''); 
+    setSearchTerm('');
+    
+    // 빠른 필터를 '오늘'로 설정
+    setActiveQuickFilter('today');
+    
+    // 필터 초기화 (오늘로 설정)
+    setFilters(getInitialDateRange());
   };
 
   const toggleSummary = () => {
@@ -206,6 +265,7 @@ export const usePackagingReportFilters = (reports: PackagingReport[]) => {
     filters,
     searchTerm: inputValue, // UI에는 즉시 반영되는 값 사용
     isSummaryVisible,
+    activeQuickFilter, // 활성화된 빠른 필터
     
     // 계산된 데이터
     filteredReports,

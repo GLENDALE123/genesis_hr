@@ -118,10 +118,13 @@ export class PackagingReportsService {
 
   /**
    * 특정 날짜 범위의 packaging reports 가져오기
+   * 
+   * @param limitCount - 조회할 최대 문서 수 (기본값: 2000, 전체 검색용)
    */
   static async getPackagingReportsByDateRange(
     startDate: string, 
-    endDate: string
+    endDate: string,
+    limitCount: number = 2000
   ): Promise<PackagingReport[]> {
     try {
       if (!db) {
@@ -132,7 +135,8 @@ export class PackagingReportsService {
         collection(db, 'packaging-reports'),
         where('workDate', '>=', startDate),
         where('workDate', '<=', endDate),
-        orderBy('workDate', 'desc')
+        orderBy('workDate', 'desc'),
+        limit(limitCount)
       );
 
       const snapshot = await getDocs(q);
@@ -262,12 +266,15 @@ export class PackagingReportsService {
 
   /**
    * 날짜 범위별 실시간 업데이트 리스너 (성능 최적화)
+   * 
+   * @param limitCount - 조회할 최대 문서 수 (기본값: 2000, 전체 검색용)
    */
   static subscribeToPackagingReportsByDateRange(
     startDate: string,
     endDate: string,
     callback: (reports: PackagingReport[]) => void,
-    onError?: (error: Error) => void
+    onError?: (error: Error) => void,
+    limitCount: number = 2000
   ): () => void {
     if (!db) {
       const error = new Error('Firebase not initialized');
@@ -284,7 +291,8 @@ export class PackagingReportsService {
         collection(db, 'packaging-reports'),
         where('workDate', '>=', startDate),
         where('workDate', '<=', endDate),
-        orderBy('workDate', 'desc')
+        orderBy('workDate', 'desc'),
+        limit(limitCount)
       );
 
       return onSnapshot(

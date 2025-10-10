@@ -66,47 +66,52 @@ const PermissionSettingsButtonComponent: React.FC<PermissionSettingsButtonProps>
     }
 
     const fetchUsers = async () => {
-      console.log('🔍 [PermissionSettingsButton] Fetching users...');
       setLoading(true);
       try {
         // ✅ 공통 서비스 사용 (중복 제거)
         const usersList = await PermissionsService.getAllUserProfiles();
-        console.log('✅ [PermissionSettingsButton] Users loaded:', usersList.length);
 
         setUsers(usersList);
 
-        // 각 사용자의 권한 가져오기
+        // ✅ 병렬로 모든 사용자의 권한 가져오기
+        const permissionsPromises = usersList
+          .filter(user => user.uid)
+          .map(async (user) => {
+            const permissions = await PermissionsService.getUserPagePermissions(user.uid, pageId);
+            
+            // PagePermissions를 PermissionState로 변환
+            let permissionState: PermissionState;
+            if (permissions && permissions.crudPermissions && Array.isArray(permissions.crudPermissions)) {
+              permissionState = {
+                canRead: permissions.crudPermissions.includes('read'),
+                canCreate: permissions.crudPermissions.includes('create'),
+                canUpdate: permissions.crudPermissions.includes('update'),
+                canDelete: permissions.crudPermissions.includes('delete'),
+                custom: (permissions.customPermissions as Record<string, boolean>) || {},
+              };
+            } else {
+              // 권한 데이터가 없거나 잘못된 경우 기본 권한 설정
+              permissionState = {
+                canRead: true,
+                canCreate: true,
+                canUpdate: hasRole(user, 'Manager'), // Manager는 수정 권한 기본 허용
+                canDelete: false,
+                custom: {},
+              };
+            }
+            
+            return { uid: user.uid, permissions: permissionState };
+          });
+
+        const permissionsResults = await Promise.all(permissionsPromises);
+        
+        // 결과를 맵으로 변환
         const permissionsMap: Record<string, PermissionState> = {};
-        for (const user of usersList) {
-          if (!user.uid) {
-            console.warn('⚠️ User without UID:', user);
-            continue;
-          }
-          const permissions = await PermissionsService.getUserPagePermissions(user.uid, pageId);
-          console.log(`🔍 [${user.displayName}] 권한 데이터:`, permissions);
-          
-          // PagePermissions를 PermissionState로 변환
-          if (permissions && permissions.crudPermissions && Array.isArray(permissions.crudPermissions)) {
-            permissionsMap[user.uid] = {
-              canRead: permissions.crudPermissions.includes('read'),
-              canCreate: permissions.crudPermissions.includes('create'),
-              canUpdate: permissions.crudPermissions.includes('update'),
-              canDelete: permissions.crudPermissions.includes('delete'),
-              custom: (permissions.customPermissions as Record<string, boolean>) || {},
-            };
-          } else {
-            // 권한 데이터가 없거나 잘못된 경우 기본 권한 설정
-            permissionsMap[user.uid] = {
-              canRead: true,
-              canCreate: true,
-              canUpdate: hasRole(user, 'Manager'), // Manager는 수정 권한 기본 허용
-              canDelete: false,
-              custom: {},
-            };
-          }
-        }
+        permissionsResults.forEach(result => {
+          permissionsMap[result.uid] = result.permissions;
+        });
+        
         setUserPermissions(permissionsMap);
-        console.log('✅ [PermissionSettingsButton] Permissions loaded:', permissionsMap);
       } catch (error) {
         console.error('사용자 목록 가져오기 실패:', error);
       } finally {
@@ -119,8 +124,6 @@ const PermissionSettingsButtonComponent: React.FC<PermissionSettingsButtonProps>
 
   // 권한 설정 Sheet 열기
   const handleOpenPermissions = (user: UserProfile) => {
-    console.log('🔍 Opening permissions for user:', user.uid);
-    console.log('🔍 Current permissions:', userPermissions[user.uid]);
     setSelectedUser(user);
     setSheetOpen(true);
   };

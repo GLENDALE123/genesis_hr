@@ -61,6 +61,23 @@ contextBridge.exposeInMainWorld('electron', {
     resize: (options) => ipcRenderer.invoke('window-resize', options),
     getSize: () => ipcRenderer.invoke('window-get-size'),
   },
+
+  /**
+   * 알림 클릭 시 네비게이션 이벤트 수신
+   * @param {Function} callback - 링크를 받아서 처리할 콜백 함수
+   */
+  onNavigateTo: (callback) => {
+    const listener = (event, link) => {
+      console.log('🔗 [Preload] navigate-to 이벤트 수신:', link);
+      callback(link);
+    };
+    ipcRenderer.on('navigate-to', listener);
+    
+    // 리스너 제거 함수 반환
+    return () => {
+      ipcRenderer.removeListener('navigate-to', listener);
+    };
+  },
 });
 
 // Electron 환경임을 표시

@@ -4,6 +4,7 @@ import { User } from 'firebase/auth';
 import { onAuthStateChange } from '@/shared/services/firebase/auth';
 import { AuthService } from '@/features/auth/services';
 import { UserProfile } from '@/features/auth/types';
+import { usePermissionsStore } from './permissionsStore';
 
 interface AuthState {
   user: User | null;
@@ -38,7 +39,6 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           try {
             // Firebase 로그인 로직은 별도 서비스에서 처리
             // 여기서는 상태 관리만 담당
-            console.log('Login attempt:', emailOrLoginId);
             // 실제 로그인 로직은 authService에서 처리
           } catch (error) {
             set({ error: error instanceof Error ? error.message : '로그인에 실패했습니다.' });
@@ -53,7 +53,9 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             // 실제 Firebase 로그아웃 호출
             await AuthService.logout();
             set({ user: null, userProfile: null, error: null });
-            console.log('✅ 로그아웃 완료');
+            
+            // ✅ 권한 캐시 초기화
+            usePermissionsStore.getState().clearCache();
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : '로그아웃에 실패했습니다.';
             console.error('❌ 로그아웃 실패:', errorMessage);
@@ -72,8 +74,6 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         setError: (error: string | null) => set({ error }),
         
         initializeAuth: (): (() => void) => {
-          console.log('🔐 Firebase 인증 초기화 시작...');
-          
           // 초기 로딩 상태 설정
           set({ isLoading: true });
           
@@ -87,7 +87,6 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             // 타임아웃 해제
             clearTimeout(timeoutId);
             
-            console.log('🔐 Firebase 인증 상태 변경:', user ? '로그인됨' : '로그아웃됨');
             set({ user, isLoading: false, error: null });
             
             if (user) {
@@ -95,9 +94,6 @@ export const useAuthStore = create<AuthState & AuthActions>()(
               try {
                 const userProfile = await AuthService.getCurrentUserProfile();
                 set({ userProfile });
-                
-                // ✅ Prefetch 제거: 각 페이지가 필요할 때 자동으로 로드함
-                console.log('✅ [Auth] 로그인 성공 - 각 페이지는 필요할 때 데이터 로드');
               } catch (error) {
                 // 권한 에러는 조용히 처리 (로그인 전 상태)
                 const errorMessage = error instanceof Error ? error.message : '';
@@ -107,7 +103,9 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                 set({ userProfile: null });
               }
             } else {
+              // ✅ 로그아웃 시 권한 캐시 초기화
               set({ userProfile: null });
+              usePermissionsStore.getState().clearCache();
             }
           });
           

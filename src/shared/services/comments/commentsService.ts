@@ -314,12 +314,13 @@ export class CommentsService {
     // 제품명/부속명 추출
     const productName = requestData?.productName || '제품명';
     const partName = requestData?.partName || '부속명';
+    const productInfo = `${productName}/${partName}`;
     
-    // 알림 메시지 구성
+    // 알림 메시지 구성 (댓글 내용 그대로)
     const title = "생산관리부 요청사항";
-    const body = `${productName}/${partName} (@${commentData.user})${commentData.text}`;
+    const body = commentData.text;  // ✅ 댓글 원문 그대로 (멘션 포함)
     
-    // 사용자 프로필 이미지 가져오기 (실제 구현에서는 사용자 데이터에서 가져옴)
+    // 사용자 프로필 이미지 가져오기
     const senderAvatar = await this.getUserAvatar(commentData.uid);
     
     // Firebase Functions 호출
@@ -333,9 +334,10 @@ export class CommentsService {
       requestId: documentId,
       priority: 'normal',
       title: title,
+      subtitle: productInfo,  // ✅ 서브타이틀로 제품명 전달
       senderName: commentData.user,
       senderUid: commentData.uid,
-      senderAvatar: senderAvatar // 사용자 프로필 이미지 추가
+      senderAvatar: senderAvatar
     };
 
     try {
@@ -356,17 +358,23 @@ export class CommentsService {
   /**
    * 사용자 아바타 이미지 가져오기
    */
-  private static async getUserAvatar(userId: string): Promise<string> {
+  private static async getUserAvatar(userId: string): Promise<string | undefined> {
     try {
-      // 실제 구현에서는 Firestore에서 사용자 프로필 이미지 가져오기
-      // const userDoc = await getDoc(doc(db, 'users', userId));
-      // return userDoc.data()?.photoURL || '/default-avatar.png';
+      if (!db) return undefined;
       
-      // 임시: 기본 아바타 반환
-      return '/default-avatar.png';
+      // Firestore에서 사용자 프로필 이미지 가져오기
+      const { doc: firestoreDoc, getDoc } = await import('firebase/firestore');
+      const userDoc = await getDoc(firestoreDoc(db, 'users', userId));
+      
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        return userData?.photoURL || undefined;
+      }
+      
+      return undefined;
     } catch (error) {
       console.error('사용자 아바타 가져오기 실패:', error);
-      return '/default-avatar.png';
+      return undefined;
     }
   }
 }

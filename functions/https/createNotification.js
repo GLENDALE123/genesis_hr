@@ -38,7 +38,7 @@ exports.createNotification = onRequest(async (req, res) => {
     if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'Method not allowed' });
     
     const body = req.body || {};
-    const { message, requestId, type, subType, priority, targetUsers, actionRequired, relatedData, audience, ignoreRouting } = body;
+    const { message, requestId, type, subType, priority, targetUsers, actionRequired, relatedData, audience, ignoreRouting, senderName, senderUid, senderAvatar, subtitle } = body;
 
     if (!message || !requestId || !type) {
       return res.status(400).json({ ok: false, error: 'message, requestId, type are required' });
@@ -132,12 +132,13 @@ exports.createNotification = onRequest(async (req, res) => {
 
     // 사용자별 inbox에 알림 저장
     const metadata = {
-      senderName: relatedData?.senderName || '시스템'
+      senderName: senderName || relatedData?.senderName || '시스템',
+      senderUid: senderUid || relatedData?.senderUid
     };
     
     // senderAvatar가 있을 때만 추가 (undefined 방지)
-    if (relatedData?.senderAvatar) {
-      metadata.senderAvatar = relatedData.senderAvatar;
+    if (senderAvatar || relatedData?.senderAvatar) {
+      metadata.senderAvatar = senderAvatar || relatedData.senderAvatar;
     }
     
     const link = mapUrlByType(type, requestId); // 딥링크 URL 생성
@@ -149,6 +150,7 @@ exports.createNotification = onRequest(async (req, res) => {
       message: String(message || ''),
       title: String(title || ''),
       body: String(bodyText || ''),
+      subtitle: subtitle ? String(subtitle) : undefined,  // ✅ 서브타이틀 추가
       requestId: String(requestId || ''),
       priority: String(priority || 'normal'),
       actionRequired: Boolean(actionRequired || false),

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { PackagingReport, PackagingFormData } from '@/features/production/types';
 import { PackagingReportsService } from '@/features/production/services/packagingReportsService';
 import { waitForFirebaseInit } from '@/shared/services/firebase/config';
@@ -16,6 +16,10 @@ import { usePackagingReportsStore } from '@/features/production/store/packagingR
 export const usePackagingReports = () => {
   const { user } = useAuthStore();
   const [mounted, setMounted] = useState(false);
+  
+  // 현재 구독 중인 날짜 범위 (실시간 구독 관리용)
+  const [currentDateRange, setCurrentDateRange] = useState<{ startDate: string; endDate: string } | null>(null);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
   
   // Zustand 스토어 사용
   const {
@@ -38,25 +42,29 @@ export const usePackagingReports = () => {
     setMounted(true);
   }, []);
 
-  // 실시간 업데이트를 위한 구독 (클라이언트에서만)
+  // ✅ 초기 마운트 시 오늘 날짜로 실시간 구독 시작
   useEffect(() => {
     if (!mounted) return;
 
-    let unsubscribe: (() => void) | null = null;
+    const today = new Date().toISOString().split('T')[0];
+    setCurrentDateRange({ startDate: today, endDate: today });
+  }, [mounted]);
+
+  // ✅ 날짜 범위가 변경될 때마다 실시간 구독 재시작
+  useEffect(() => {
+    if (!mounted || !currentDateRange) return;
+
     let isCancelled = false;
+    const { startDate, endDate } = currentDateRange;
 
     const initSubscription = async () => {
-      console.log('🔄 생산일보 데이터 구독 시작...');
-      
-      // ✅ 간단하게: 최신 500건만 조회 (날짜 무관, 필터에서 처리)
-      console.log('📅 최신 500건 조회 시작...');
+      console.log(`🔄 생산일보 실시간 구독 시작: ${startDate} ~ ${endDate}`);
       
       // 로딩 시작
       setLoading(true);
       setError(null);
 
       // Firebase 초기화 대기
-      console.log('🔥 Firebase 초기화 확인 중...');
       const isFirebaseReady = await waitForFirebaseInit();
       
       if (isCancelled) return;
@@ -71,28 +79,33 @@ export const usePackagingReports = () => {
       
       console.log('✅ Firebase 초기화 완료 - 실시간 구독 시작');
 
-      // ✅ 간단하게: 최신 500건 실시간 구독
-      unsubscribe = PackagingReportsService.subscribeToPackagingReports(
+      // 기존 구독 해제
+      if (unsubscribeRef.current) {
+        console.log('🔄 기존 구독 해제');
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+
+      // 새로운 날짜 범위로 실시간 구독
+      unsubscribeRef.current = PackagingReportsService.subscribeToPackagingReportsByDateRange(
+        startDate,
+        endDate,
         (newReports) => {
           if (!isCancelled) {
-            console.log('✅ 생산일보 데이터 수신 성공:', `${newReports.length}건`);
+            console.log(`✅ 생산일보 데이터 수신 성공: ${newReports.length}건`);
             
-            // Zustand 스토어에 저장 (간단하게)
+            // Zustand 스토어에 저장
             const store = usePackagingReportsStore.getState();
-            store.setReports(newReports, '', ''); // 날짜 범위 없이 저장
+            store.setReports(newReports, startDate, endDate);
           }
         },
-        500, // 최신 500건
         (err) => {
-          // 에러 발생 시 처리
           if (!isCancelled) {
             console.error('❌ 생산일보 데이터 로드 실패:', err);
             const errorMessage = err instanceof Error ? err.message : '';
             
-            // 권한 에러 확인
             if (errorMessage.includes('permission') || errorMessage.includes('insufficient')) {
               console.warn('⚠️ 권한 에러 발생:', errorMessage);
-              // 권한 에러도 사용자에게 알림
               setError(new Error('생산일보 데이터를 불러올 권한이 없습니다. 관리자에게 문의하세요.'));
             } else {
               setError(err);
@@ -108,59 +121,34 @@ export const usePackagingReports = () => {
 
     return () => {
       isCancelled = true;
-      if (unsubscribe) {
-        unsubscribe();
+      // 컴포넌트 언마운트 또는 날짜 범위 변경 시 구독 해제
+      if (unsubscribeRef.current) {
+        console.log('🔄 구독 해제 (cleanup)');
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
       }
     };
-  }, [mounted, getCachedReports, setCachedReports, setLoading, setFetching, setError]);
+  }, [mounted, currentDateRange, setLoading, setFetching, setError]);
 
-  // 수동 새로고침
-  const refetch = useCallback(async () => {
+  // 수동 새로고침 (현재 날짜 범위 유지하면서 재구독)
+  const refetch = useCallback(() => {
+    if (!mounted || !currentDateRange) return;
+    
+    console.log('🔄 수동 새로고침: 구독 재시작');
+    
+    // 동일한 날짜 범위로 재설정 → useEffect가 구독 재시작
+    setCurrentDateRange({ ...currentDateRange });
+  }, [mounted, currentDateRange]);
+
+  // ✅ 특정 날짜 범위로 실시간 구독 변경
+  const getReportsByDateRange = useCallback((startDate: string, endDate: string) => {
     if (!mounted) return;
     
-    try {
-      setFetching(true);
-      setError(null);
-      
-      // 오늘 날짜 데이터 다시 가져오기
-      const today = new Date().toISOString().split('T')[0];
-      const newReports = await PackagingReportsService.getPackagingReportsByDateRange(today, today);
-      
-      // Zustand 스토어에 캐싱
-      setCachedReports(newReports, today, today);
-    } catch (err) {
-      setError(err as Error);
-    }
-  }, [mounted, setCachedReports, setFetching, setError]);
-
-  // 특정 날짜 범위로 필터링된 데이터 가져오기
-  const getReportsByDateRange = useCallback(async (startDate: string, endDate: string) => {
-    if (!mounted) return;
+    console.log(`📅 날짜 범위 변경 요청: ${startDate} ~ ${endDate}`);
     
-    try {
-      // 캐시 확인
-      const cachedData = getCachedReports(startDate, endDate);
-      
-      if (cachedData && cachedData.length > 0) {
-        console.log('⚡ 캐시된 날짜 범위 데이터 즉시 표시');
-        setFetching(true); // 백그라운드 fetching
-      } else {
-        setLoading(true);
-      }
-      
-      setError(null);
-      
-      const filteredReports = await PackagingReportsService.getPackagingReportsByDateRange(
-        startDate, 
-        endDate
-      );
-      
-      // Zustand 스토어에 캐싱
-      setCachedReports(filteredReports, startDate, endDate);
-    } catch (err) {
-      setError(err as Error);
-    }
-  }, [mounted, getCachedReports, setCachedReports, setLoading, setFetching, setError]);
+    // 날짜 범위 상태 변경 → useEffect가 자동으로 구독 재시작
+    setCurrentDateRange({ startDate, endDate });
+  }, [mounted]);
 
   // 특정 생산라인으로 필터링된 데이터 가져오기
   const getReportsByLine = useCallback(async (productionLine: string) => {

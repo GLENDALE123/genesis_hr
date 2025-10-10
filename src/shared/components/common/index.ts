@@ -9,3 +9,4 @@ export { ImagePreviewGrid, type ImagePreviewItem } from './ImagePreviewGrid';
 export { NotificationContainer, NotificationManager } from './CustomNotification';
 export { ElectronNotificationProvider } from './ElectronNotificationProvider';
 export { NotificationProviderWrapper } from './NotificationProviderWrapper';
+export { ElectronNavigationHandler } from './ElectronNavigationHandler';

@@ -17,11 +17,13 @@ const Checkbox = React.forwardRef<
       className
     )}
     {...props}
+    style={{ transition: 'none !important', animation: 'none !important' } as React.CSSProperties}
   >
     <CheckboxPrimitive.Indicator
       className={cn("flex items-center justify-center text-current")}
+      style={{ transition: 'none !important', animation: 'none !important' } as React.CSSProperties}
     >
-      <Check className="h-4 w-4" />
+      <Check className="h-4 w-4" style={{ transition: 'none !important' } as React.CSSProperties} />
     </CheckboxPrimitive.Indicator>
   </CheckboxPrimitive.Root>
 ))

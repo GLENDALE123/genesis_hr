@@ -42,6 +42,14 @@ const ProductionManagementCenterComponent: React.FC = () => {
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<ProductionRequest | null>(null);
 
+  // 컴포넌트 마운트 로그
+  useEffect(() => {
+    console.log('🏭 [생산관리부] ProductionManagementCenter 마운트');
+    return () => {
+      console.log('🏭 [생산관리부] ProductionManagementCenter 언마운트');
+    };
+  }, []);
+
   const filteredRequests = useMemo(() => {
     if (requestTypeFilter === 'all') return requests;
     return requests.filter(req => req.requestType === requestTypeFilter);

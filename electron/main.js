@@ -45,6 +45,24 @@ function createWindow() {
 
   mainWindow.loadURL(startUrl);
 
+  // 개발 모드에서 새로고침 단축키 등록
+  if (isDev) {
+    // F5, Ctrl+R, Cmd+R로 새로고침
+    mainWindow.webContents.on('before-input-event', (event, input) => {
+      if (input.key === 'F5' || (input.control && input.key === 'r') || (input.meta && input.key === 'r')) {
+        event.preventDefault();
+        mainWindow.reload();
+        console.log('🔄 페이지 새로고침');
+      }
+      // F12 또는 Ctrl+Shift+I로 개발자 도구 토글
+      if (input.key === 'F12' || (input.control && input.shift && input.key === 'i')) {
+        event.preventDefault();
+        mainWindow.webContents.toggleDevTools();
+        console.log('🔧 개발자 도구 토글');
+      }
+    });
+  }
+
   // 윈도우가 준비되면 표시
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
@@ -134,9 +152,9 @@ function createTray() {
  */
 ipcMain.handle('show-notification', async (event, options) => {
   try {
-    const { title, body, icon, useCustom = true } = options;
+    const { title, subtitle, body, icon, senderName, senderAvatar, timestamp, centerInfo, link, useCustom = true } = options;
     
-    console.log('📥 [Electron Main] show-notification 수신:', { title, body, useCustom });
+    console.log('📥 [Electron Main] show-notification 수신:', { title, subtitle, body, senderName, centerInfo, link, useCustom });
     
     // 커스텀 알림 사용
     if (useCustom) {
@@ -146,17 +164,28 @@ ipcMain.handle('show-notification', async (event, options) => {
         
         notificationWindow.createNotification({
           title: title || 'HS 인사관리 시스템',
+          subtitle: subtitle,  // ✅ 서브타이틀 추가
           body: body || '',
           icon: icon || path.join(__dirname, '../public/favicon.ico'),
+          senderName: senderName,
+          senderAvatar: senderAvatar,
+          timestamp: timestamp,
+          centerInfo: centerInfo,  // ✅ 중앙 정보 추가
           onClick: () => {
             if (mainWindow) {
               mainWindow.show();
               mainWindow.focus();
+              
+              // ✅ 알림 클릭 시 링크로 이동
+              if (link) {
+                console.log('🔗 [Electron Main] 알림 클릭 - 링크로 이동:', link);
+                mainWindow.webContents.send('navigate-to', link);
+              }
             }
           }
         });
         
-        console.log('✅ [Electron Main] 커스텀 알림 생성 완료:', { title, body });
+        console.log('✅ [Electron Main] 커스텀 알림 생성 완료:', { title, subtitle, body, senderName, link });
         return { success: true, type: 'custom' };
       } catch (customError) {
         console.error('❌ [Electron Main] 커스텀 알림 생성 실패, 네이티브 알림으로 폴백:', customError);
@@ -179,24 +208,20 @@ ipcMain.handle('show-notification', async (event, options) => {
       if (mainWindow) {
         mainWindow.show();
         mainWindow.focus();
+        
+        // ✅ 네이티브 알림도 링크 이동 지원
+        if (link) {
+          console.log('🔗 [Electron Main] 네이티브 알림 클릭 - 링크로 이동:', link);
+          mainWindow.webContents.send('navigate-to', link);
+        }
       }
     });
 
-    console.log('🔔 [Electron] 네이티브 알림 표시:', { title, body });
+    console.log('🔔 [Electron] 네이티브 알림 표시:', { title, body, link });
     return { success: true, type: 'native' };
   } catch (error) {
     console.error('❌ [Electron] 알림 표시 실패:', error);
     return { success: false, error: error.message };
-  }
-});
-
-/**
- * 알림 클릭 이벤트 처리
- */
-ipcMain.on('notification-clicked', () => {
-  if (mainWindow) {
-    mainWindow.show();
-    mainWindow.focus();
   }
 });
 
