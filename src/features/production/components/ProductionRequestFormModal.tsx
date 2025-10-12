@@ -6,7 +6,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import { Textarea } from '@/shared/components/ui/textarea';
-import { ImagePreviewGrid, ImagePreviewItem } from '@/shared/components/common';
+import { UploadingImageGrid, UploadingImageItem } from '@/shared/components/common';
 import {
   Select,
   SelectContent,
@@ -56,7 +56,7 @@ const ProductionRequestFormModalComponent: React.FC<ProductionRequestFormModalPr
     content: '',
   });
   const [isSaving, setIsSaving] = useState(false);
-  const [imagePreviewItems, setImagePreviewItems] = useState<ImagePreviewItem[]>([]);
+  const [imagePreviewItems, setImagePreviewItems] = useState<UploadingImageItem[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -96,6 +96,7 @@ const ProductionRequestFormModalComponent: React.FC<ProductionRequestFormModalPr
         content: '',
       });
       setImagePreviewItems([]);
+      setIsSaving(false); // 저장 상태 초기화
     }
   }, [isOpen, currentUserName]);
 
@@ -115,7 +116,7 @@ const ProductionRequestFormModalComponent: React.FC<ProductionRequestFormModalPr
       const files = Array.from(e.target.files);
       
       // 1단계: 즉시 로딩 상태로 추가 (preview: null)
-      const newItems: ImagePreviewItem[] = files.map(file => ({
+      const newItems: UploadingImageItem[] = files.map(file => ({
         file,
         preview: null, // null = 로딩 중
       }));
@@ -340,7 +341,7 @@ const ProductionRequestFormModalComponent: React.FC<ProductionRequestFormModalPr
                 사진 촬영
               </Button>
             </div>
-            <ImagePreviewGrid
+            <UploadingImageGrid
               items={imagePreviewItems}
               onRemove={removeImage}
             />

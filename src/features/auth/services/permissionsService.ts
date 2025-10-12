@@ -154,7 +154,6 @@ export class PermissionsService {
         
         // pagePermissions가 존재하고 객체 형태인지 확인
         if (!data || !data.pagePermissions || typeof data.pagePermissions !== 'object') {
-          console.warn(`Invalid permissions structure for user ${userId}`);
           return null;
         }
         
@@ -170,7 +169,7 @@ export class PermissionsService {
       }
       return null;
     } catch (error) {
-      console.error(`Error fetching permissions for user ${userId} on page ${pageId}:`, error);
+      console.error(`권한 조회 실패 (userId: ${userId}, pageId: ${pageId}):`, error);
       return null;
     }
   }

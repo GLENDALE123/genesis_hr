@@ -4,6 +4,7 @@ import React, { useEffect } from 'react';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
 import { db } from '@/shared/services/firebase/config';
+import { settingsService } from '@/shared/services/settings/settingsService';
 
 interface ElectronNotificationProviderProps {
   children: React.ReactNode;
@@ -79,12 +80,40 @@ export const ElectronNotificationProvider: React.FC<ElectronNotificationProvider
             recentIds.delete(notificationId);
           }, 5000);
 
+          // 설정 기반 필터링
+          try {
+            const settings = await settingsService.getSettings(user.uid);
+            const notificationType = notification.type || notification.metadata?.type || 'system';
+            const timestamp = notification.createdAt?.toDate ? notification.createdAt.toDate() : new Date();
+            
+            // 알림이 허용되는지 확인
+            const isAllowed = settingsService.isNotificationAllowed(
+              settings,
+              notificationType,
+              timestamp
+            );
+            
+            if (!isAllowed) {
+              return; // 알림 표시 안 함
+            }
+          } catch (error) {
+            console.error('❌ [Electron] 설정 확인 실패, 알림 표시:', error);
+            // 설정 확인 실패 시에도 알림 표시 (안전장치)
+          }
+
           // Electron 네이티브 알림창 표시 (인앱 알림 제거 - 중복 방지)
           try {
             // 물류이동 알림 데이터 구성
+            // subtitle: 발주처가 있으면 "발주처 제품명", 없으면 "제품명"
+            const supplier = notification.metadata?.supplier;
+            const productName = notification.metadata?.productName;
+            const subtitle = supplier && productName 
+              ? `${supplier} ${productName}`
+              : productName || notification.subtitle;
+
             const notificationPayload = {
               title: notification.title || '새 알림',
-              subtitle: notification.metadata?.productName || notification.subtitle, // 제품명을 subtitle에
+              subtitle: subtitle,
               body: notification.body || notification.message || '',
               icon: notification.metadata?.senderAvatar || notification.senderAvatar,
               senderName: notification.metadata?.senderName || '시스템',

@@ -8,33 +8,35 @@ interface NotificationProviderWrapperProps {
   children: React.ReactNode;
 }
 
+// Electron 환경에서는 FCM을 사용하지 않음
+// 웹 환경에서만 FCMProvider 사용
+
 /**
  * 환경별 알림 프로바이더 선택
- * - Electron: FCMProvider + ElectronNotificationProvider (하이브리드)
- * - Web: FCMProvider
+ * - Electron: ElectronNotificationProvider (Firestore 리스너만)
+ * - Web: FCMProvider (FCM 푸시 알림)
  */
 export const NotificationProviderWrapper: React.FC<NotificationProviderWrapperProps> = ({ children }) => {
-  const [isElectron, setIsElectron] = React.useState(false);
+  // 초기값을 바로 체크하여 설정 (useEffect 대기 없이)
+  const [isElectron] = React.useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.__ELECTRON__ !== undefined;
+  });
   
   React.useEffect(() => {
-    const checkElectron = typeof window !== 'undefined' && window.__ELECTRON__ !== undefined;
-    setIsElectron(checkElectron);
-    
-    if (checkElectron) {
-      console.log('🖥️ Electron 환경 감지 → FCM + Firestore 하이브리드 알림 사용');
+    if (isElectron) {
+      console.log('🖥️ Electron 환경 감지 → Firestore 실시간 리스너 알림 사용');
     } else {
       console.log('🌐 웹 환경 감지 → FCM 푸시 알림 사용');
     }
-  }, []);
+  }, [isElectron]);
 
-  // Electron: FCM + Firestore 리스너 모두 사용 (하이브리드)
+  // Electron: Firestore 리스너만 사용 (FCM 제거)
   if (isElectron) {
     return (
-      <FCMProvider>
-        <ElectronNotificationProvider>
-          {children}
-        </ElectronNotificationProvider>
-      </FCMProvider>
+      <ElectronNotificationProvider>
+        {children}
+      </ElectronNotificationProvider>
     );
   }
 

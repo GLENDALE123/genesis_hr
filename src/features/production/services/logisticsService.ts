@@ -3,7 +3,7 @@ import { collection, doc, runTransaction, query, orderBy, limit, getDocs } from 
 import { LogisticsRequest, ProductionRequestStatus, ProductionRequestType } from '@/features/production/types/logistics';
 import type { PackagingReport } from '@/features/production/types';
 import { LogisticsTransferData } from '@/features/production/components/LogisticsTransferModal';
-import { createLogisticsNotification } from './notificationService';
+import { createProductionRequestNotification } from './notificationService';
 
 /**
  * 물류이동 요청 생성
@@ -38,18 +38,18 @@ export const createLogisticsRequest = async (
   const content = `통합 물류 이동 요청 (${reports.length}건):\n` +
     reports.map(r => {
       const transfer = transferData.find(t => t.reportId === r.id);
-      const details = transfer?.details || '없음';
-      const destination = transfer?.destination || '미지정';
+      const details = (transfer && transfer.details) || '없음';
+      const destination = (transfer && transfer.destination) || '미지정';
       
       return `\n---------------------\n` +
              `- 제품: ${r.productName} / ${r.partName}\n` +
-             `- 발주번호: ${r.orderNumbers?.join(', ') || '-'}\n` +
+             `- 발주번호: ${(r.orderNumbers && r.orderNumbers.join(', ')) || '-'}\n` +
              `- 발주처: ${r.supplier}\n` +
              `- 사양: ${r.specification || '-'}\n` +
-             `- 양품수량: ${r.goodQuantity?.toLocaleString() || '0'} EA\n` +
-             `- 포장단위: ${r.packagingUnit?.toLocaleString() || '0'}\n` +
-             `- 박스수량: ${r.boxCount?.toLocaleString() || '0'}\n` +
-             `- 잔량: ${r.remainder?.toLocaleString() || '0'}\n` +
+             `- 양품수량: ${(r.goodQuantity && r.goodQuantity.toLocaleString()) || '0'} EA\n` +
+             `- 포장단위: ${(r.packagingUnit && r.packagingUnit.toLocaleString()) || '0'}\n` +
+             `- 박스수량: ${(r.boxCount && r.boxCount.toLocaleString()) || '0'}\n` +
+             `- 잔량: ${(r.remainder && r.remainder.toLocaleString()) || '0'}\n` +
              `- 도착처: ${destination}\n` +
              `- 추가 요청: ${details}`;
     }).join('');
@@ -62,7 +62,8 @@ export const createLogisticsRequest = async (
 
   const newId = await runTransaction(firestore, async (transaction) => {
     const counterDoc = await transaction.get(counterRef);
-    const newCount = (counterDoc.data()?.count || 0) + 1;
+    const counterData = counterDoc.data();
+    const newCount = ((counterData && counterData.count) || 0) + 1;
     const generatedId = `P-${dateString}-${newCount.toString().padStart(3, '0')}`;
     
     const newRequestRef = doc(firestore, 'production-requests', generatedId);
@@ -99,16 +100,17 @@ export const createLogisticsRequest = async (
   });
 
   // 알림 발송 (비동기, 실패해도 메인 로직에 영향 없음)
-  createLogisticsNotification(
+  createProductionRequestNotification(
     newId,
-    ProductionRequestType.LogisticsTransfer,
+    ProductionRequestType.LogisticsTransfer,  // "물류이동"
     userProfile.displayName,
     productNames.length > 1 
       ? `${productNames[0]} 외 ${productNames.length - 1}건` 
       : (productNames[0] || ''),
-    content,
-    userProfile.uid, // ✅ 작성자 UID 추가
-    userProfile.avatar || userProfile.photoURL || undefined
+    '물류이동',  // partName 대신 요청타입
+    content,  // ← 실제 메시지 내용
+    userProfile.uid, // ✅ 작성자 UID
+    userProfile.avatar || userProfile.photoURL || undefined  // ✅ 작성자 아바타
   ).catch(err => {
     console.error('알림 발송 실패 (무시됨):', err);
   });

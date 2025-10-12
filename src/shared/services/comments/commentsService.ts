@@ -71,7 +71,7 @@ export class CommentsService {
     const snapshot = await getDocs(
       query(collection(db, collectionName), where('__name__', '==', documentId))
     );
-    const currentData = snapshot.docs[0]?.data();
+    const currentData = (snapshot.docs[0] && snapshot.docs[0].data());
 
     const newComment: Comment = {
       id: `comment-${Date.now()}`,
@@ -83,18 +83,16 @@ export class CommentsService {
     };
 
     await updateDoc(docRef, {
-      comments: [...(currentData?.comments || []), newComment],
+      comments: [...((currentData && currentData.comments) || []), newComment],
     });
 
-    // 멘션 알림 전송
-    if (commentData.mentionedUserIds && commentData.mentionedUserIds.length > 0) {
-      await this.sendMentionNotifications(
-        collectionName,
-        documentId,
-        commentData,
-        currentData
-      );
-    }
+    // 댓글/멘션 알림 전송 (항상)
+    await this.sendMentionNotifications(
+      collectionName,
+      documentId,
+      commentData,
+      currentData
+    );
   }
 
   /**
@@ -122,9 +120,9 @@ export class CommentsService {
     const snapshot = await getDocs(
       query(collection(db, collectionName), where('__name__', '==', documentId))
     );
-    const currentData = snapshot.docs[0]?.data();
+    const currentData = (snapshot.docs[0] && snapshot.docs[0].data());
 
-    if (!currentData?.comments) return;
+    if (!currentData || !currentData.comments) return;
 
     // 댓글 찾아서 수정
     const updatedComments = currentData.comments.map((comment: Comment) =>
@@ -200,14 +198,17 @@ export class CommentsService {
     const snapshot = await getDocs(
       query(collection(db, collectionName), where('__name__', '==', documentId))
     );
-    const currentData = snapshot.docs[0]?.data();
+    const currentData = (snapshot.docs[0] && snapshot.docs[0].data());
 
-    if (!currentData?.comments) return;
+    if (!currentData || !currentData.comments) return;
 
-    // 댓글 찾아서 readBy 업데이트
+    // 댓글 찾아서 readBy 업데이트 (readBy가 없는 경우 빈 배열로 초기화)
     const updatedComments = currentData.comments.map((comment: Comment) => {
-      if (comment.id === commentId && !comment.readBy.includes(userId)) {
-        return { ...comment, readBy: [...comment.readBy, userId] };
+      if (comment.id === commentId) {
+        const readBy = comment.readBy || [];
+        if (!readBy.includes(userId)) {
+          return { ...comment, readBy: [...readBy, userId] };
+        }
       }
       return comment;
     });
@@ -237,14 +238,15 @@ export class CommentsService {
     const snapshot = await getDocs(
       query(collection(db, collectionName), where('__name__', '==', documentId))
     );
-    const currentData = snapshot.docs[0]?.data();
+    const currentData = (snapshot.docs[0] && snapshot.docs[0].data());
 
-    if (!currentData?.comments) return;
+    if (!currentData || !currentData.comments) return;
 
-    // 모든 댓글에 userId 추가
+    // 모든 댓글에 userId 추가 (readBy가 없는 경우 빈 배열로 초기화)
     const updatedComments = currentData.comments.map((comment: Comment) => {
-      if (!comment.readBy.includes(userId)) {
-        return { ...comment, readBy: [...comment.readBy, userId] };
+      const readBy = comment.readBy || [];
+      if (!readBy.includes(userId)) {
+        return { ...comment, readBy: [...readBy, userId] };
       }
       return comment;
     });
@@ -316,42 +318,62 @@ export class CommentsService {
     const partName = requestData?.partName || '부속명';
     const productInfo = `${productName}/${partName}`;
     
-    // 알림 메시지 구성 (댓글 내용 그대로)
-    const title = "생산관리부 요청사항";
+    // 알림 타입별 제목 생성
+    let baseTitle = "생산관리부 요청사항";
+    if (collectionName === 'sample-requests') {
+      baseTitle = "샘플 요청";
+    }
+    
+    // 알림 메시지 구성
+    const title = type === 'mention' 
+      ? `멘션 : ${baseTitle}`
+      : `댓글 : ${baseTitle}`;
     const body = commentData.text;  // ✅ 댓글 원문 그대로 (멘션 포함)
     
     // 사용자 프로필 이미지 가져오기
     const senderAvatar = await this.getUserAvatar(commentData.uid);
     
-    // Firebase Functions 호출
-    const baseUrl = 'https://us-central1-hs-jig-b2093.cloudfunctions.net';
+    // Firebase Functions URL 설정 (개발 환경에서는 에뮬레이터 사용)
+    const isDev = process.env.NODE_ENV === 'development';
+    const isLocalhost = typeof window !== 'undefined' && 
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    
+    const functionsUrl = (isDev && isLocalhost)
+      ? 'http://localhost:5001/control-6a11d/asia-northeast3'
+      : 'https://asia-northeast3-control-6a11d.cloudfunctions.net';
     
     const payload = {
       targetUsers: [userId],
       type: 'comment-mention',
-      subType: type,
-      message: body,
-      requestId: documentId,
-      priority: 'normal',
       title: title,
-      subtitle: productInfo,  // ✅ 서브타이틀로 제품명 전달
+      body: body,
+      requestId: documentId,
+      subtitle: productInfo,
       senderName: commentData.user,
       senderUid: commentData.uid,
-      senderAvatar: senderAvatar
+      senderAvatar: senderAvatar,
+      priority: 'normal'
     };
 
     try {
-      const response = await fetch(`${baseUrl}/createNotification`, {
+      console.log('🔍 [댓글 알림] 페이로드:', payload);
+      
+      const response = await fetch(`${functionsUrl}/createNotification`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
       if (!response.ok) {
-        console.error('알림 전송 실패:', response.status);
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('❌ [댓글 알림] 전송 실패:', response.status, errorData);
+        throw new Error(errorData.error || `알림 전송 실패: ${response.status}`);
       }
+      
+      console.log('✅ [댓글 알림] 전송 성공');
     } catch (error) {
-      console.error('알림 전송 중 오류:', error);
+      console.error('❌ [댓글 알림] 전송 중 오류:', error);
+      throw error;
     }
   }
 
@@ -375,6 +397,79 @@ export class CommentsService {
     } catch (error) {
       console.error('사용자 아바타 가져오기 실패:', error);
       return undefined;
+    }
+  }
+
+  /**
+   * 테스트 댓글 알림 전송 (개발용)
+   */
+  static async sendTestCommentNotification(
+    userName: string,
+    userUid: string,
+    userAvatar: string | undefined,
+    type: '생산관리부' | '샘플요청'
+  ): Promise<void> {
+    try {
+      // Firebase Functions URL 설정 (개발 환경에서는 에뮬레이터 사용)
+      const isDev = process.env.NODE_ENV === 'development';
+      const isLocalhost = typeof window !== 'undefined' && 
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      
+      const functionsUrl = (isDev && isLocalhost)
+        ? 'http://localhost:5001/control-6a11d/asia-northeast3'
+        : 'https://asia-northeast3-control-6a11d.cloudfunctions.net';
+      
+      const title = type === '생산관리부' 
+        ? '생산관리부 요청사항' 
+        : '샘플 요청';
+      
+      const body = type === '생산관리부'
+        ? '생산관리부 요청사항에 대한 댓글입니다. 확인 부탁드립니다.'
+        : '샘플 요청 건에 대한 피드백이 도착했습니다.';
+      
+      const productInfo = type === '생산관리부'
+        ? '테스트크림 / 외용기'
+        : '테스트샘플 / 내용기';
+
+      // Admin과 Manager에게 알림 발송 (테스트는 본인에게도 발송)
+      const usersRef = collection(db!, 'users');
+      const q = query(usersRef, where('role', 'in', ['Admin', 'Manager']));
+      const usersSnapshot = await getDocs(q);
+      
+      const targetUsers = usersSnapshot.docs.map(doc => doc.id);
+
+      if (targetUsers.length === 0) {
+        console.log('알림 대상이 없습니다.');
+        return;
+      }
+
+      const payload = {
+        targetUsers,
+        type: 'comment-mention',
+        title,
+        body: body,
+        requestId: 'TEST-COMMENT-001',
+        subtitle: productInfo,
+        senderName: userName,
+        senderUid: userUid,
+        senderAvatar: userAvatar,
+        priority: 'normal'
+      };
+
+      const response = await fetch(`${functionsUrl}/createNotification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`알림 전송 실패: ${response.status}`);
+      }
+
+      console.log('✅ 테스트 댓글 알림 발송 완료:', targetUsers.length, '명');
+    } catch (error) {
+      console.error('테스트 댓글 알림 전송 실패:', error);
+      throw error;
     }
   }
 }

@@ -46,7 +46,7 @@ class NotificationWindow {
    */
   showNotification(options) {
     try {
-      const { title, subtitle, body, icon, onClick } = options;
+      const { title, subtitle, body, icon, onClick, soundEnabled = true } = options;
 
       console.log('🔔 [NotificationWindow] 알림 표시:', { title, subtitle, body });
 
@@ -92,6 +92,7 @@ class NotificationWindow {
       console.log('📝 [NotificationWindow] 현재 윈도우 및 onClick 설정 완료');
 
       // HTML 로드 (URL에 데이터 전달)
+      // 소리는 main.js에서 재생되므로 soundEnabled는 전달하지 않아도 됨
       const dataToSend = {
         title,
         subtitle: options.subtitle,  // ✅ 서브타이틀 추가

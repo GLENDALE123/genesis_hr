@@ -18,7 +18,7 @@ import { AUTH_ERROR_MESSAGES } from '@/features/auth/constants';
 // 인증 서비스 클래스
 export class AuthService {
   /**
-   * 로그인 (이메일 또는 로그인 ID)
+   * 로그인 (이메일)
    * ✅ 공통 서비스 사용 + 추가 검증 레이어
    */
   static async signIn(loginData: LoginData): Promise<User> {
@@ -27,14 +27,14 @@ export class AuthService {
     }
 
     try {
-      const { emailOrLoginId, password } = loginData;
+      const { email, password } = loginData;
       
       // 간단한 폼 검증
-      if (!emailOrLoginId || !password) {
-        throw new Error('이메일 또는 로그인 ID와 비밀번호를 입력해주세요.');
+      if (!email || !password) {
+        throw new Error('이메일과 비밀번호를 입력해주세요.');
       }
       
-      // ✅ 공통 서비스 호출 (로그인 ID 지원 포함)
+      // ✅ 공통 서비스 호출
       const user = await sharedSignIn(loginData);
       
       return user;

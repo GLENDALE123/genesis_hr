@@ -102,6 +102,15 @@
       font-size: 0.6875rem;
       font-weight: 500;
       color: hsl(var(--card-foreground) / 0.6);
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .title-icon {
+      width: 12px;
+      height: 12px;
+      flex-shrink: 0;
     }
 
     .center-info {
@@ -181,6 +190,7 @@
       overflow: hidden;
       text-overflow: ellipsis;
       display: -webkit-box;
+      line-clamp: 2;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
       color: hsl(var(--card-foreground));
@@ -274,15 +284,31 @@
   <script>
     console.log('🚀 [Notification HTML] 스크립트 시작');
     
+    // 🔊 알림 소리는 Main 프로세스에서 재생되므로 여기서는 불필요
+    function playNotificationSound(soundEnabled = true) {
+      // Main 프로세스(main.js)에서 Windows 시스템 소리를 재생합니다
+      console.log('🔊 [Notification HTML] 알림 소리는 Main 프로세스에서 재생됨');
+    }
+    
     // URL에서 데이터 가져오기
     const urlParams = new URLSearchParams(window.location.search);
     const dataParam = urlParams.get('data');
     console.log('🔗 [Notification HTML] URL 파라미터:', dataParam);
     
+    // 소리 설정값 저장 (데이터에서 가져옴)
+    let notificationSoundEnabled = true;
+    
     if (dataParam) {
       try {
         const data = JSON.parse(decodeURIComponent(dataParam));
         console.log('📦 [Notification HTML] 받은 데이터:', data);
+        
+        // 소리 설정값 저장
+        notificationSoundEnabled = data.soundEnabled !== false;
+        console.log('🔊 [Notification HTML] 알림 소리 설정:', notificationSoundEnabled);
+        
+        // 페이지 로드 시 소리 재생 (설정값 확인)
+        playNotificationSound(notificationSoundEnabled);
         
         // 발신자 이름 설정
         if (data.senderName) {
@@ -329,8 +355,24 @@
           }
         }
         
-        // 제목 설정
-        document.getElementById('title').textContent = data.title || '알림';
+        // 제목 설정 (아이콘 포함)
+        const titleElement = document.getElementById('title');
+        const title = data.title || '알림';
+        
+        // 타이틀에 따라 루시드 아이콘 SVG 추가
+        let iconSvg = '';
+        if (title.includes('댓글 : 생산관리부 요청사항')) {
+          // 댓글 알림 - MessageSquare 아이콘 (파란색)
+          iconSvg = `<svg class="title-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
+        } else if (title.includes('생산관리부 요청사항')) {
+          // 기존 생산관리부 요청사항 - CalendarClock 아이콘 (파란색)
+          iconSvg = `<svg class="title-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h5"/><path d="M17.5 17.5 16 16.3V14"/><circle cx="16" cy="16" r="6"/></svg>`;
+        } else if (title.includes('부족분 신청')) {
+          // AlertTriangle 아이콘 (주황색)
+          iconSvg = `<svg class="title-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>`;
+        }
+        
+        titleElement.innerHTML = iconSvg + '<span>' + title + '</span>';
         
         // 중앙 정보 설정 (중앙 상단) - requestType, category, type 등 다양한 용도로 사용
         const centerInfoElement = document.getElementById('centerInfo');
@@ -368,6 +410,9 @@
       } catch (error) {
         console.error('알림 데이터 파싱 실패:', error);
       }
+    } else {
+      // 데이터가 없어도 기본 소리 재생 (설정값이 true일 때만)
+      playNotificationSound(notificationSoundEnabled);
     }
 
     // 알림 닫기 함수 (애니메이션 포함)

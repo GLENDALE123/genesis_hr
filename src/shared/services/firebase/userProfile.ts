@@ -6,7 +6,8 @@ import {
   collection, 
   where, 
   getDocs,
-  onSnapshot
+  onSnapshot,
+  updateDoc
 } from 'firebase/firestore';
 import { db } from './config';
 import { UserProfile, SignUpData } from '@/features/auth/types';
@@ -18,20 +19,31 @@ const USERS_COLLECTION = 'users';
 export const createUserProfile = async (userData: SignUpData, uid: string): Promise<UserProfile> => {
   if (!db) throw new Error('Firestore is not initialized');
   
-  const userProfile: UserProfile = {
+  // 기본 필수 필드
+  const userProfile: any = {
     uid,
     email: userData.email,
     name: userData.name,
-    displayName: userData.displayName || userData.name,  // displayName이 없으면 name 사용
-    role: userData.role || 'Member',  // 기본값은 Member
-    position: userData.position,
-    department: userData.department,
+    displayName: userData.displayName || userData.name,
+    role: userData.role || 'Member',
     createdAt: new Date(),
     updatedAt: new Date(),
   };
-
+  
+  // 선택 필드는 값이 있을 때만 추가 (undefined 제거)
+  if (userData.position) {
+    userProfile.position = userData.position;
+  }
+  if (userData.department) {
+    userProfile.department = userData.department;
+  }
+  if (userData.contact) {
+    userProfile.contact = userData.contact;
+  }
+  
   await setDoc(doc(db, USERS_COLLECTION, uid), userProfile);
-  return userProfile;
+  
+  return userProfile as UserProfile;
 };
 
 // 사용자 프로필 조회
@@ -188,6 +200,26 @@ export const updateLastLogin = async (uid: string): Promise<void> => {
     );
   } catch (error) {
     console.error('마지막 로그인 시간 업데이트 실패:', error);
+  }
+};
+
+// 사용자 프로필 업데이트
+export const updateUserProfile = async (
+  uid: string, 
+  data: Partial<Omit<UserProfile, 'uid' | 'email' | 'createdAt'>>
+): Promise<void> => {
+  if (!db) throw new Error('Firestore is not initialized');
+  
+  try {
+    const userRef = doc(db, USERS_COLLECTION, uid);
+    await updateDoc(userRef, {
+      ...data,
+      updatedAt: new Date(),
+    });
+    console.log('✅ 사용자 프로필 업데이트 완료:', uid);
+  } catch (error) {
+    console.error('❌ 사용자 프로필 업데이트 실패:', error);
+    throw error;
   }
 };
 

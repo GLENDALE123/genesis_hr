@@ -1,6 +1,6 @@
 import React from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
-import { MessageSquare, User } from 'lucide-react';
+import { MessageSquare, AtSign } from 'lucide-react';
 
 interface CommentNotificationProps {
   senderName: string;
@@ -20,9 +20,13 @@ export const CommentNotification: React.FC<CommentNotificationProps> = ({
   type
 }) => {
   const getTypeIcon = () => {
-    return type === 'mention' 
-      ? <MessageSquare className="h-4 w-4 text-blue-600" />
-      : <User className="h-4 w-4 text-green-600" />;
+    // 멘션 알림
+    if (type === 'mention' || title.includes('멘션')) {
+      return <AtSign className="h-4 w-4 text-blue-600" />;
+    }
+    
+    // 댓글 알림 (모두 MessageSquare)
+    return <MessageSquare className="h-4 w-4 text-primary" />;
   };
 
   return (

@@ -90,7 +90,7 @@ const ReportRow = React.memo<ReportRowProps>(({
       </TableCell>
       {/* 발주번호 */}
       <TableCell className="px-2 py-3 whitespace-nowrap">
-        {report.orderNumbers?.join(', ') || '-'}
+        {(report.orderNumbers && report.orderNumbers.join(', ')) || '-'}
       </TableCell>
       {/* 발주처 */}
       <TableCell className="px-2 py-3 whitespace-nowrap">{report.supplier}</TableCell>
@@ -99,18 +99,18 @@ const ReportRow = React.memo<ReportRowProps>(({
         {report.productName}{report.partName ? '/' + report.partName : ''}
       </TableCell>
       {/* 발주수량 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap text-right">{report.orderQuantity?.toLocaleString() || '-'}</TableCell>
+      <TableCell className="px-2 py-3 whitespace-nowrap text-right">{(report.orderQuantity && report.orderQuantity.toLocaleString()) || '-'}</TableCell>
       {/* 사양 */}
       <TableCell className="px-2 py-3 whitespace-nowrap">{report.specification || '-'}</TableCell>
       {/* 투입 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap text-right">{report.inputQuantity?.toLocaleString() || 0}</TableCell>
+      <TableCell className="px-2 py-3 whitespace-nowrap text-right">{(report.inputQuantity && report.inputQuantity.toLocaleString()) || 0}</TableCell>
       {/* 양품 */}
       <TableCell className="px-2 py-3 whitespace-nowrap text-green-600 font-medium text-right">
-        {report.goodQuantity?.toLocaleString() || 0}
+        {(report.goodQuantity && report.goodQuantity.toLocaleString()) || 0}
       </TableCell>
       {/* 불량 */}
       <TableCell className="px-2 py-3 whitespace-nowrap text-red-600 text-right">
-        {report.defectQuantity?.toLocaleString() || 0}
+        {(report.defectQuantity && report.defectQuantity.toLocaleString()) || 0}
       </TableCell>
       {/* 인원 */}
       <TableCell className="px-2 py-3 whitespace-nowrap text-right">{report.personnelCount || '-'}</TableCell>
@@ -138,7 +138,7 @@ const ReportRow = React.memo<ReportRowProps>(({
           onClick={() => onOpenProcessConditions(report)}
           className="w-full text-center p-1 h-auto hover:bg-accent transition-colors"
         >
-          {report.processConditions && Object.values(report.processConditions).some(v => v?.conditions || v?.remarks) ? (
+          {report.processConditions && Object.values(report.processConditions).some(v => (v && v.conditions) || (v && v.remarks)) ? (
             <span className="font-bold text-green-500 text-lg">O</span>
           ) : (
             <span className="text-muted-foreground">-</span>

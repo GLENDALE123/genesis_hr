@@ -10,31 +10,16 @@ import { auth } from './config';
 import { 
   createUserProfile, 
   getUserProfile,
-  getUserProfileByLoginId, 
-  updateLastLogin,
-  checkLoginIdExists,
-  checkEmailExists
+  updateLastLogin
 } from './userProfile';
 import { SignUpData, LoginData, UserProfile } from '@/features/auth/types';
+import { settingsService } from '../settings/settingsService';
 
-// 로그인 함수 (이메일 또는 로그인 아이디로 로그인)
+// 로그인 함수 (이메일로 로그인)
 export const signIn = async (loginData: LoginData) => {
   if (!auth) throw new Error('Firebase Auth is not initialized');
   try {
-    const { emailOrLoginId, password } = loginData;
-    
-    // 이메일 형식인지 확인
-    const isEmail = emailOrLoginId.includes('@');
-    let email = emailOrLoginId;
-    
-    if (!isEmail) {
-      // 로그인 아이디인 경우, 로그인 아이디로 이메일 찾기
-      const userProfile = await getUserProfileByLoginId(emailOrLoginId);
-      if (!userProfile) {
-        throw new Error('존재하지 않는 로그인 아이디입니다.');
-      }
-      email = userProfile.email;
-    }
+    const { email, password } = loginData;
     
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     
@@ -47,25 +32,13 @@ export const signIn = async (loginData: LoginData) => {
   }
 };
 
-// 회원가입 함수 (로그인 아이디 포함)
+// 회원가입 함수 (이메일 기반)
 export const signUp = async (signUpData: SignUpData) => {
   if (!auth) throw new Error('Firebase Auth is not initialized');
   try {
-    const { email, password, loginId, displayName } = signUpData;
+    const { email, password, displayName } = signUpData;
     
-    // 로그인 아이디 중복 확인
-    const loginIdExists = await checkLoginIdExists(loginId);
-    if (loginIdExists) {
-      throw new Error('이미 사용 중인 로그인 아이디입니다.');
-    }
-    
-    // 이메일 중복 확인
-    const emailExists = await checkEmailExists(email);
-    if (emailExists) {
-      throw new Error('이미 사용 중인 이메일입니다.');
-    }
-    
-    // Firebase Auth로 계정 생성
+    // Firebase Auth로 계정 생성 (이메일 중복은 Firebase Auth가 자동으로 체크)
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     
     // 사용자 프로필 업데이트
@@ -75,6 +48,16 @@ export const signUp = async (signUpData: SignUpData) => {
     
     // Firestore에 사용자 프로필 생성
     await createUserProfile(signUpData, userCredential.user.uid);
+    
+    // 기본 설정값 초기화
+    await settingsService.initializeSettings(userCredential.user.uid, {
+      profile: {
+        displayName: displayName || '',
+        photoURL: null,
+        phoneNumber: null,
+        department: null,
+      },
+    });
     
     return userCredential.user;
   } catch (error) {

@@ -38,8 +38,8 @@ export const LogisticsTransferModal: React.FC<LogisticsTransferModalProps> = ({
       ...prev,
       [reportId]: {
         ...prev[reportId],
-        destination: prev[reportId]?.destination || '',
-        details: prev[reportId]?.details || '',
+        destination: (prev[reportId] && prev[reportId].destination) || '',
+        details: (prev[reportId] && prev[reportId].details) || '',
         [field]: value
       }
     }));
@@ -48,8 +48,8 @@ export const LogisticsTransferModal: React.FC<LogisticsTransferModalProps> = ({
   const handleConfirm = () => {
     const data: LogisticsTransferData[] = selectedReports.map(report => ({
       reportId: report.id,
-      destination: transferData[report.id]?.destination || '',
-      details: transferData[report.id]?.details || ''
+      destination: (transferData[report.id] && transferData[report.id].destination) || '',
+      details: (transferData[report.id] && transferData[report.id].details) || ''
     }));
     onConfirm(data);
   };
@@ -93,7 +93,7 @@ export const LogisticsTransferModal: React.FC<LogisticsTransferModalProps> = ({
                 {selectedReports.map(report => (
                   <tr key={report.id} className="border-t hover:bg-muted/50">
                     <td className="p-2 font-mono text-xs">
-                      {report.orderNumbers?.join(', ') || '-'}
+                      {(report.orderNumbers && report.orderNumbers.join(', ')) || '-'}
                     </td>
                     <td className="p-2">{report.supplier}</td>
                     <td className="p-2 font-semibold">
@@ -101,21 +101,21 @@ export const LogisticsTransferModal: React.FC<LogisticsTransferModalProps> = ({
                     </td>
                     <td className="p-2">{report.specification || '-'}</td>
                     <td className="p-2 text-right font-medium text-green-600">
-                      {report.goodQuantity?.toLocaleString() || 0}
+                      {(report.goodQuantity && report.goodQuantity.toLocaleString()) || 0}
                     </td>
                     <td className="p-2 text-right">
-                      {report.packagingUnit?.toLocaleString() || '-'}
+                      {(report.packagingUnit && report.packagingUnit.toLocaleString()) || '-'}
                     </td>
                     <td className="p-2 text-right">
-                      {report.boxCount?.toLocaleString() || '-'}
+                      {(report.boxCount && report.boxCount.toLocaleString()) || '-'}
                     </td>
                     <td className="p-2 text-right">
-                      {report.remainder?.toLocaleString() || '-'}
+                      {(report.remainder && report.remainder.toLocaleString()) || '-'}
                     </td>
                     <td className="p-2">
                       <Input
                         type="text"
-                        value={transferData[report.id]?.destination || ''}
+                        value={(transferData[report.id] && transferData[report.id].destination) || ''}
                         onChange={(e) => handleChange(report.id, 'destination', e.target.value)}
                         placeholder="도착처 입력"
                         className="w-full"
@@ -124,7 +124,7 @@ export const LogisticsTransferModal: React.FC<LogisticsTransferModalProps> = ({
                     <td className="p-2">
                       <Input
                         type="text"
-                        value={transferData[report.id]?.details || ''}
+                        value={(transferData[report.id] && transferData[report.id].details) || ''}
                         onChange={(e) => handleChange(report.id, 'details', e.target.value)}
                         placeholder="추가 요청사항 입력"
                         className="w-full"

@@ -77,7 +77,7 @@ export class PackagingReportsService {
       reportData.packagedBoxes = formData.packagedBoxes.map(box => ({
         boxNumber: box.boxNumber || '',
         type: box.type || '',
-        quantity: parseNumber(box.quantity) ?? 0,
+        quantity: parseNumber(box.quantity) != null ? parseNumber(box.quantity) : 0,
         reason: box.reason || null
       }));
 

@@ -1,4 +1,4 @@
-import { initializeApp, getApps } from 'firebase/app';
+import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getStorage, connectStorageEmulator } from 'firebase/storage';
@@ -19,7 +19,7 @@ const isDevEnvironment = (): boolean => {
 
 // 에뮬레이터 사용 여부 확인
 // 1. 환경 변수로 명시적으로 설정
-// 2. Tauri 개발 환경 (localhost:3000)
+// 2. Electron 개발 환경 (localhost:3000)
 // 3. 웹 개발 환경 (localhost)
 const useEmulator = 
   process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true' ||
@@ -41,7 +41,7 @@ const firebaseConfig = {
 export const FIREBASE_VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || 'BJJPTFCxIgh2ddhl1vUAzQ-Cj_0RvUCx9xuxRdM9pb061G9YkCWqe9561VQDTnrPVm8j4SldzEl_2h0NPNlh_tE';
 
 // Firebase 앱이 이미 초기화되어 있는지 확인
-let app;
+let app: FirebaseApp;
 try {
   app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 } catch (error) {

@@ -12,6 +12,19 @@ console.log('🔐 [Preload] 스크립트 로드됨');
 // Electron API를 window.electron 객체로 노출
 contextBridge.exposeInMainWorld('electron', {
   /**
+   * IPC Renderer 노출 (electron-push-receiver용)
+   */
+  ipcRenderer: {
+    send: (channel, ...args) => ipcRenderer.send(channel, ...args),
+    on: (channel, listener) => {
+      ipcRenderer.on(channel, listener);
+    },
+    removeListener: (channel, listener) => {
+      ipcRenderer.removeListener(channel, listener);
+    },
+  },
+
+  /**
    * 플랫폼 정보
    */
   platform: process.platform,

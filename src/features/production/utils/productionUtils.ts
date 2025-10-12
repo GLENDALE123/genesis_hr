@@ -38,10 +38,20 @@ export const getStatusColorClass = (status: ProductionRequestStatus): string => 
  * 읽지 않은 댓글 확인
  */
 export const hasUnreadComments = (
-  comments: Array<{ readBy?: string[] }> | undefined,
+  comments: Array<{ readBy?: string[]; uid?: string }> | undefined,
   currentUserUid: string | undefined
 ): boolean => {
   if (!currentUserUid || !comments) return false;
-  return comments.some(c => c.readBy && !c.readBy.includes(currentUserUid));
+  
+  return comments.some(c => {
+    // readBy 배열이 없으면 빈 배열로 간주
+    const readBy = c.readBy || [];
+    
+    // 본인이 작성한 댓글은 읽은 것으로 간주
+    if (c.uid === currentUserUid) return false;
+    
+    // readBy 배열에 currentUserUid가 없으면 읽지 않은 댓글
+    return !readBy.includes(currentUserUid);
+  });
 };
 

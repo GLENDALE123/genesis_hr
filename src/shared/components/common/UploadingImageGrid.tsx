@@ -4,27 +4,27 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 
-export interface ImagePreviewItem {
+export interface UploadingImageItem {
   file: File;
   preview: string | null; // null이면 로딩 중
 }
 
-interface ImagePreviewGridProps {
-  items: ImagePreviewItem[];
+interface UploadingImageGridProps {
+  items: UploadingImageItem[];
   onRemove: (index: number) => void;
   gridClassName?: string;
   imageClassName?: string;
 }
 
 /**
- * 이미지 미리보기 그리드 공통 컴포넌트
+ * 이미지 업로드 중 미리보기 그리드 컴포넌트
  * - 로딩 상태: 스켈레톤 표시
  * - 로딩 완료: 실제 이미지 표시
  * - 삭제 버튼: 각 이미지에 X 버튼
  * 
  * @example
  * ```tsx
- * const [items, setItems] = useState<ImagePreviewItem[]>([]);
+ * const [items, setItems] = useState<UploadingImageItem[]>([]);
  * 
  * const handleFileSelect = async (files: File[]) => {
  *   // 1단계: 즉시 로딩 상태로 추가
@@ -43,13 +43,13 @@ interface ImagePreviewGridProps {
  *   }
  * };
  * 
- * <ImagePreviewGrid
+ * <UploadingImageGrid
  *   items={items}
  *   onRemove={(index) => setItems(prev => prev.filter((_, i) => i !== index))}
  * />
  * ```
  */
-export const ImagePreviewGrid: React.FC<ImagePreviewGridProps> = ({
+export const UploadingImageGrid: React.FC<UploadingImageGridProps> = ({
   items,
   onRemove,
   gridClassName = 'grid-cols-[repeat(auto-fill,minmax(100px,1fr))]',
@@ -65,14 +65,17 @@ export const ImagePreviewGrid: React.FC<ImagePreviewGridProps> = ({
         <div key={index} className="relative">
           {item.preview === null ? (
             // 로딩 중: 스켈레톤 표시
-            <Skeleton className={`w-full ${imageClassName} rounded border`} />
+            <Skeleton className={`w-full ${imageClassName} border`} style={{ borderRadius: 'var(--radius)' }} />
           ) : (
             // 로딩 완료: 실제 이미지 표시
             <>
               <img
                 src={item.preview}
                 alt={`preview ${index}`}
-                className={`w-full ${imageClassName} object-cover rounded border`}
+                className={`w-full ${imageClassName} object-cover border select-none`}
+                style={{ borderRadius: 'var(--radius)' }}
+                draggable={false}
+                onDragStart={(e) => e.preventDefault()}
               />
               <button
                 type="button"
@@ -89,6 +92,4 @@ export const ImagePreviewGrid: React.FC<ImagePreviewGridProps> = ({
     </div>
   );
 };
-
-
 

@@ -20,7 +20,12 @@ const { resolveAudience, loadRoutingRuleForType } = require('../lib/routing');
 const { logNotificationEvent, createPerformanceTimer, logError } = require('../lib/logging');
 
 // 클라이언트에서 알림 생성 요청 처리 (최적화된 버전)
-exports.createNotification = onRequest(async (req, res) => {
+exports.createNotification = onRequest({
+  memory: '512MiB',  // 메모리 증가 (기본 256MB → 512MB)
+  timeoutSeconds: 60,  // 타임아웃 60초
+  concurrency: 80,  // 동시 실행 인스턴스 수
+  region: 'asia-northeast3'  // 한국 리전
+}, async (req, res) => {
   const timer = createPerformanceTimer('createNotification');
   
   try {
@@ -38,10 +43,10 @@ exports.createNotification = onRequest(async (req, res) => {
     if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'Method not allowed' });
     
     const body = req.body || {};
-    const { message, requestId, type, subType, priority, targetUsers, actionRequired, relatedData, audience, ignoreRouting, senderName, senderUid, senderAvatar, subtitle } = body;
+    const { body: bodyText, requestId, type, subType, priority, targetUsers, actionRequired, relatedData, audience, ignoreRouting, senderName, senderUid, senderAvatar, subtitle, centerInfo, title } = body;
 
-    if (!message || !requestId || !type) {
-      return res.status(400).json({ ok: false, error: 'message, requestId, type are required' });
+    if (!bodyText || !requestId || !type) {
+      return res.status(400).json({ ok: false, error: 'body, requestId, type are required' });
     }
 
     // Firebase 초기화
@@ -83,9 +88,6 @@ exports.createNotification = onRequest(async (req, res) => {
 
     // Firestore에 알림 저장 및 FCM 푸시 발송
     const notifId = db.collection('notifications').doc().id; // Generate ID
-    const title = selectTitleByType(type, subType);
-    const bodyText = String(message || '');
-    const categoryKey = getCategoryKey(type, priority, subType);
 
     const data = {
       type: String(type || ''),
@@ -95,8 +97,8 @@ exports.createNotification = onRequest(async (req, res) => {
       actionRequired: String(Boolean(actionRequired)),
       url: mapUrlByType(type, requestId),
       inboxId: String(notifId || ''),
-      title: String(title || ''),
-      body: String(bodyText || ''),
+      title: String(title || ''),  // 클라이언트에서 받은 title 그대로 사용
+      body: String(bodyText || ''),  // 클라이언트에서 받은 body 그대로 사용
     };
 
     // Resolve target users from audience and targetUsers
@@ -130,120 +132,181 @@ exports.createNotification = onRequest(async (req, res) => {
       }
     }
 
-    // 사용자별 inbox에 알림 저장
+    // 메타데이터 구성 (실제 표시에 사용되는 필드만)
     const metadata = {
       senderName: senderName || relatedData?.senderName || '시스템',
-      senderUid: senderUid || relatedData?.senderUid
+      senderUid: senderUid || relatedData?.senderUid || ''
     };
     
-    // senderAvatar가 있을 때만 추가 (undefined 방지)
+    // 선택적 필드들 (값이 있을 때만 추가)
     if (senderAvatar || relatedData?.senderAvatar) {
       metadata.senderAvatar = senderAvatar || relatedData.senderAvatar;
     }
     
-    const link = mapUrlByType(type, requestId); // 딥링크 URL 생성
+    // centerInfo (요청 타입) - 알림 중앙에 표시
+    if (centerInfo || subType) {
+      metadata.centerInfo = String(centerInfo || subType);
+    }
     
+    // productName - subtitle 정보
+    if (subtitle) {
+      metadata.productName = String(subtitle);
+    }
+    
+    // supplier - 발주처 정보
+    if (relatedData?.supplier) {
+      metadata.supplier = String(relatedData.supplier);
+    }
+    
+    const link = mapUrlByType(type, requestId);
+    
+    // 최소 필드만 저장하는 알림 문서 (클라이언트 타임스탬프 사용)
+    const createdAtTimestamp = Date.now();
     const notificationDoc = {
       id: notifId,
       type: String(type || ''),
-      subType: String(subType || ''),
-      message: String(message || ''),
       title: String(title || ''),
       body: String(bodyText || ''),
-      subtitle: subtitle ? String(subtitle) : undefined,  // ✅ 서브타이틀 추가
-      requestId: String(requestId || ''),
-      priority: String(priority || 'normal'),
-      actionRequired: Boolean(actionRequired || false),
-      relatedData: relatedData || {},
-      link: String(link || '/dashboard'), // 딥링크 추가
-      createdAt: FieldValue ? FieldValue.serverTimestamp() : new Date(),
+      link: String(link || '/dashboard'),
+      createdAt: createdAtTimestamp, // 클라이언트 타임스탬프 (RTT 제거)
       read: false,
       metadata
     };
 
-    // 각 사용자의 inbox에 알림 저장 (배치 처리)
-    const batch = db.batch();
-    for (const userId of resolvedTargetUsers) {
-      const inboxRef = db.collection('users').doc(userId).collection('inbox').doc(notifId);
-      batch.set(inboxRef, notificationDoc);
+    // 최적화: 여러 배치로 나눠서 병렬 처리 (20명씩 2개 배치)
+    const WRITE_BATCH_SIZE = 20;
+    const userChunks = [];
+    for (let i = 0; i < resolvedTargetUsers.length; i += WRITE_BATCH_SIZE) {
+      userChunks.push(resolvedTargetUsers.slice(i, i + WRITE_BATCH_SIZE));
     }
-    await batch.commit();
     
-    console.log(`[createNotification] Notification saved to ${resolvedTargetUsers.length} user inboxes:`, notifId);
-
-    const tokenDocs = await collectTokensForTargets(resolvedTargetUsers);
-
-    // Platform-specific sending
-    const webDocs = tokenDocs.filter((d) => (String((d.data() || {}).platform || 'web').toLowerCase()) === 'web');
-    const androidDocs = tokenDocs.filter((d) => (String((d.data() || {}).platform || '').toLowerCase()) === 'android');
-    const iosDocs = tokenDocs.filter((d) => (String((d.data() || {}).platform || '').toLowerCase()) === 'ios');
-
-    // Collect recipient UIDs
-    const recipientUidsSet = new Set();
-    tokenDocs.forEach((doc) => {
-      const parent = doc.ref.parent && doc.ref.parent.parent;
-      if (parent && parent.id) recipientUidsSet.add(parent.id);
-    });
-    const recipientUids = Array.from(recipientUidsSet);
-
-    // Send FCM messages
-    const results = await Promise.all([
-      (async () => {
-        if (!webDocs.length) return null;
-        const tag = getCategoryKey(type, priority, subType);
-        return await sendToTokenDocs(webDocs, { title, body: bodyText }, { ...data, tag });
-      })(),
-      (async () => {
-        if (!androidDocs.length) return null;
-        const channelId = getAndroidChannelIdByTypeAndPriority(type, priority);
-        const categoryKey = getCategoryKey(type, priority, subType);
-        let successCount = 0;
-        let failureCount = 0;
-        for (const tokens of chunkArray(androidDocs.map((d) => d.id), 500)) {
-          const response = await messaging.sendEachForMulticast({
-            tokens,
-            notification: { title: String(title), body: String(bodyText) },
-            data: { ...data, tag: categoryKey, title: String(title), body: String(bodyText), channelId: String(channelId) },
-            android: { priority: 'high', notification: { channelId: String(channelId), icon: 'ic_notification', color: '#FF3B30' } },
-          });
-          successCount += response.successCount;
-          failureCount += response.failureCount;
+    const [_, tokenDocs] = await Promise.all([
+      // 1. Firestore 인박스 저장 (여러 배치 병렬 실행)
+      Promise.all(userChunks.map(async (chunk) => {
+        const batch = db.batch();
+        
+        for (const userId of chunk) {
+          // 인박스에 알림 저장만 수행 (카운터는 백그라운드로)
+          const inboxRef = db.collection('users').doc(userId).collection('inbox').doc(notifId);
+          batch.set(inboxRef, notificationDoc);
         }
-        return { successCount, failureCount };
-      })(),
+        
+        // 배치 commit
+        await batch.commit();
+      })).then(() => {
+        console.log(`[createNotification] Notification saved to ${resolvedTargetUsers.length} user inboxes:`, notifId);
+        
+        // 카운터 업데이트는 백그라운드로 처리 (비동기)
+        setImmediate(() => {
+          const counterBatch = db.batch();
+          for (const userId of resolvedTargetUsers) {
+            const counterRef = db.collection('users').doc(userId).collection('counters').doc('unread');
+            counterBatch.set(counterRef, { 
+              count: FieldValue.increment(1)
+            }, { merge: true });
+          }
+          counterBatch.commit().catch(err => {
+            console.error('[createNotification] Counter update failed:', err);
+          });
+        });
+      }),
+      
+      // 2. FCM 토큰 수집 (병렬 실행)
+      collectTokensForTargets(resolvedTargetUsers)
     ]);
 
-    if (iosDocs.length) {
-      console.log(`Skipping ${iosDocs.length} iOS tokens (APNs not configured).`);
-    }
-
-    // Update user inboxes and counters
-    try {
-      await upsertInboxAndCountersForUids(recipientUids, notifId, data, title, bodyText, categoryKey);
-    } catch (e) {
-      console.error('Inbox upsert failed:', e);
-    }
-
-    const duration = timer.end({
+    // 클라이언트에 즉시 응답 (인박스 저장 완료)
+    const inboxDuration = timer.end({
       notifId,
       type,
       targetCount: resolvedTargetUsers.length,
-      tokenCount: tokenDocs.length,
-      recipientCount: recipientUids.length,
-      results
+      phase: 'inbox_saved'
     });
 
-    logNotificationEvent('create_success', {
+    logNotificationEvent('inbox_saved', {
       notifId,
       type,
       targetCount: resolvedTargetUsers.length,
-      tokenCount: tokenDocs.length,
-      recipientCount: recipientUids.length,
-      duration,
-      results
+      duration: inboxDuration
     });
 
-    return res.json({ ok: true, id: notifId, sent: 'direct' });
+    // 응답 먼저 반환
+    res.json({ ok: true, id: notifId, sent: 'direct', duration: inboxDuration });
+
+    // FCM 전송은 백그라운드로 처리 (토큰은 이미 수집됨)
+    (async () => {
+      try {
+        const fcmTimer = createPerformanceTimer('fcm_send');
+
+        // Platform-specific sending (토큰은 이미 수집된 상태)
+        const webDocs = tokenDocs.filter((d) => (String((d.data() || {}).platform || 'web').toLowerCase()) === 'web');
+        const androidDocs = tokenDocs.filter((d) => (String((d.data() || {}).platform || '').toLowerCase()) === 'android');
+        const iosDocs = tokenDocs.filter((d) => (String((d.data() || {}).platform || '').toLowerCase()) === 'ios');
+
+        // Collect recipient UIDs
+        const recipientUidsSet = new Set();
+        tokenDocs.forEach((doc) => {
+          const parent = doc.ref.parent && doc.ref.parent.parent;
+          if (parent && parent.id) recipientUidsSet.add(parent.id);
+        });
+        const recipientUids = Array.from(recipientUidsSet);
+
+        // Send FCM messages (병렬 실행)
+        const results = await Promise.all([
+          (async () => {
+            if (!webDocs.length) return null;
+            const tag = getCategoryKey(type, priority, subType);
+            return await sendToTokenDocs(webDocs, { title, body: bodyText }, { ...data, tag });
+          })(),
+          (async () => {
+            if (!androidDocs.length) return null;
+            const channelId = getAndroidChannelIdByTypeAndPriority(type, priority);
+            const categoryKey = getCategoryKey(type, priority, subType);
+            let successCount = 0;
+            let failureCount = 0;
+            for (const tokens of chunkArray(androidDocs.map((d) => d.id), 500)) {
+              const response = await messaging.sendEachForMulticast({
+                tokens,
+                notification: { title: String(title), body: String(bodyText) },
+                data: { ...data, tag: categoryKey, title: String(title), body: String(bodyText), channelId: String(channelId) },
+                android: { priority: 'high', notification: { channelId: String(channelId), icon: 'ic_notification', color: '#FF3B30' } },
+              });
+              successCount += response.successCount;
+              failureCount += response.failureCount;
+            }
+            return { successCount, failureCount };
+          })(),
+        ]);
+
+        if (iosDocs.length) {
+          console.log(`Skipping ${iosDocs.length} iOS tokens (APNs not configured).`);
+        }
+
+        const fcmDuration = fcmTimer.end({
+          notifId,
+          type,
+          tokenCount: tokenDocs.length,
+          recipientCount: recipientUids.length,
+          results
+        });
+
+        logNotificationEvent('fcm_sent', {
+          notifId,
+          type,
+          tokenCount: tokenDocs.length,
+          recipientCount: recipientUids.length,
+          fcmDuration,
+          results
+        });
+      } catch (e) {
+        logError('fcm_background_send', e, {
+          notifId,
+          type
+        });
+      }
+    })();
+
+    return;
   } catch (e) {
     timer.end({ error: e?.message || String(e) });
     logError('createNotification', e, {

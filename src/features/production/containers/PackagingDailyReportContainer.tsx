@@ -629,7 +629,7 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
       <MemoModal
         isOpen={memoModalState.isOpen}
         onClose={() => setMemoModalState({ isOpen: false, report: null })}
-        memo={memoModalState.report?.memo || null}
+        memo={(memoModalState.report && memoModalState.report.memo) || null}
         reportInfo={memoModalState.report ? {
           productName: memoModalState.report.productName,
           partName: memoModalState.report.partName,

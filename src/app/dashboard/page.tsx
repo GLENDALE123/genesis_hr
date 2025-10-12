@@ -13,10 +13,10 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Badge } from '@/shared/components/ui/badge';
 import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { toast } from 'sonner';
-import { Spinner } from '@/shared/components/ui/spinner';
-import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
-import { Shield, Lock, TestTube, Bell, Send } from 'lucide-react';
+import { Shield, Lock, TestTube, Bell, Send, AlertTriangle } from 'lucide-react';
+import { createTestShortageNotification } from '@/features/production/services/notificationService';
 
 interface Todo {
   id: string;
@@ -35,6 +35,7 @@ export default function DashboardPage() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [newTodo, setNewTodo] = useState('');
   const [loading, setLoading] = useState(false);
+  const [selectedRequestType, setSelectedRequestType] = useState('물류이동');
 
   // 컴포넌트 마운트 로그
   useEffect(() => {
@@ -172,11 +173,62 @@ export default function DashboardPage() {
 
     try {
       const { createTestLogisticsNotification } = await import('@/features/production/services/notificationService');
-      await createTestLogisticsNotification(userProfile.displayName);
+      await createTestLogisticsNotification(userProfile.displayName, user.uid, user.photoURL || undefined);
       toast.success('물류이동 테스트 알림이 Admin/Manager에게 발송되었습니다!');
     } catch (error) {
       console.error('물류이동 알림 발송 실패:', error);
       toast.error('물류이동 알림 발송에 실패했습니다.');
+    }
+  };
+
+  // 부족분 알림 테스트
+  const testShortageNotification = async () => {
+    if (!user || !userProfile) {
+      toast.error('사용자 정보가 없습니다.');
+      return;
+    }
+
+    try {
+      const { createTestShortageNotification } = await import('@/features/production/services/notificationService');
+      await createTestShortageNotification(userProfile.displayName, user.uid, user.photoURL || undefined);
+      toast.success('부족분 신청 테스트 알림이 Admin/Manager에게 발송되었습니다!');
+    } catch (error) {
+      console.error('부족분 알림 테스트 실패:', error);
+      toast.error('알림 테스트에 실패했습니다.');
+    }
+  };
+
+  // 통합 알림 테스트 함수
+  const testNotification = async () => {
+    if (!user || !userProfile) {
+      toast.error('사용자 정보가 없습니다.');
+      return;
+    }
+
+    try {
+      if (selectedRequestType === '물류이동') {
+        const { createTestLogisticsNotification } = await import('@/features/production/services/notificationService');
+        await createTestLogisticsNotification(userProfile.displayName, user.uid, user.photoURL || undefined);
+      } else if (selectedRequestType === '부족분관리') {
+        const { createTestShortageNotification } = await import('@/features/production/services/notificationService');
+        await createTestShortageNotification(userProfile.displayName, user.uid, user.photoURL || undefined);
+      } else if (selectedRequestType === '생산관리부 댓글' || selectedRequestType === '샘플요청 댓글') {
+        // 댓글 알림 테스트 (Firebase Functions 통해 발송)
+        const { CommentsService } = await import('@/shared/services/comments/commentsService');
+        await CommentsService.sendTestCommentNotification(
+          userProfile.displayName,
+          user.uid,
+          user.photoURL || undefined,
+          selectedRequestType === '생산관리부 댓글' ? '생산관리부' : '샘플요청'
+        );
+      } else {
+        const { createTestProductionRequestNotification } = await import('@/features/production/services/notificationService');
+        await createTestProductionRequestNotification(userProfile.displayName, user.uid, user.photoURL || undefined, selectedRequestType);
+      }
+      toast.success(`${selectedRequestType} 테스트 알림이 발송되었습니다!`);
+    } catch (error) {
+      console.error('알림 발송 실패:', error);
+      toast.error('알림 발송에 실패했습니다.');
     }
   };
 
@@ -187,18 +239,7 @@ export default function DashboardPage() {
 
   return (
     <ProtectedRoute>
-      <div className="max-w-4xl mx-auto space-y-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-3xl font-bold">
-                대시보드
-              </CardTitle>
-              <CardDescription>
-                안녕하세요, {user?.email}님! Firebase Firestore를 사용한 간단한 할 일 관리 앱입니다.
-              </CardDescription>
-            </CardHeader>
-          </Card>
-
+      <div className="space-y-6 max-w-7xl mx-auto">
           {/* 권한별 UI 테스트 카드 (개발용) */}
           {checkIsAdmin(userProfile) && (
             <Card className="border-2 border-primary">
@@ -235,33 +276,93 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                {/* 물류이동 알림 테스트 버튼 */}
-                <div className="p-4 border-2 border-blue-200 rounded-lg bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800">
+                {/* 통합 알림 테스트 */}
+                <div className="p-4 border-2 border-purple-200 rounded-lg bg-purple-50 dark:bg-purple-950/20 dark:border-purple-800">
                   <div className="flex items-center gap-2 mb-3">
-                    <Send className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                    <h3 className="font-semibold text-blue-800 dark:text-blue-200">물류이동 알림 테스트</h3>
+                    <Send className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                    <h3 className="font-semibold text-purple-800 dark:text-purple-200">알림 테스트</h3>
                   </div>
-                  <div className="space-y-3 mb-3">
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <Select value={selectedRequestType} onValueChange={setSelectedRequestType}>
+                        <SelectTrigger className="w-[200px]">
+                          <SelectValue placeholder="요청유형 선택" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="물류이동">물류이동</SelectItem>
+                          <SelectItem value="긴급건">긴급건</SelectItem>
+                          <SelectItem value="영업부 긴급요청">영업부 긴급요청</SelectItem>
+                          <SelectItem value="부족분관리">부족분관리</SelectItem>
+                          <SelectItem value="생산관리부 댓글">생산관리부 댓글</SelectItem>
+                          <SelectItem value="샘플요청 댓글">샘플요청 댓글</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      
+                      <Button 
+                        onClick={testNotification}
+                        variant="default"
+                        size="sm"
+                        className="flex-1"
+                      >
+                        <Bell className="h-4 w-4 mr-2" />
+                        {selectedRequestType} 알림 발송
+                      </Button>
+                    </div>
+                    
                     <div className="text-sm space-y-1">
-                      <p className="font-medium text-blue-700 dark:text-blue-300">알림 내용:</p>
-                      <ul className="text-xs text-blue-600 dark:text-blue-400 space-y-1 ml-4 list-disc">
-                        <li><strong>요청유형:</strong> 물류이동</li>
-                        <li><strong>요청자:</strong> {userProfile?.displayName || '테스트 사용자'}</li>
-                        <li><strong>제품명:</strong> 테스트제품A 외 2건</li>
-                        <li><strong>요청내용:</strong> 3건의 물류이동 상세 정보</li>
+                      <p className="font-medium text-purple-700 dark:text-purple-300">알림 내용:</p>
+                      <ul className="text-xs text-purple-600 dark:text-purple-400 space-y-1 ml-4 list-disc">
+                        <li><strong>알림 타이틀:</strong> {
+                          selectedRequestType === '부족분관리' ? '부족분 신청' :
+                          selectedRequestType === '생산관리부 댓글' ? '새로운 댓글이 달렸습니다' :
+                          selectedRequestType === '샘플요청 댓글' ? '샘플 요청에 댓글이 달렸습니다' :
+                          '생산관리부 요청사항'
+                        }</li>
+                        {(selectedRequestType === '생산관리부 댓글' || selectedRequestType === '샘플요청 댓글') ? (
+                          <>
+                            <li><strong>발신자:</strong> {userProfile?.displayName || '테스트 사용자'}</li>
+                            <li><strong>댓글 내용:</strong> {
+                              selectedRequestType === '생산관리부 댓글' 
+                                ? '생산관리부 요청사항에 대한 댓글입니다.'
+                                : '샘플 요청 건에 대한 피드백이 도착했습니다.'
+                            }</li>
+                            <li><strong>알림 타입:</strong> 웹 UI 포그라운드 알림만 표시</li>
+                          </>
+                        ) : (
+                          <>
+                            <li><strong>요청유형:</strong> {selectedRequestType}</li>
+                            <li><strong>요청자:</strong> {userProfile?.displayName || '테스트 사용자'}</li>
+                            {selectedRequestType === '물류이동' && (
+                              <>
+                                <li><strong>제품명:</strong> 테스트제품A 외 2건</li>
+                                <li><strong>요청내용:</strong> 3건의 물류이동 상세 정보</li>
+                              </>
+                            )}
+                            {selectedRequestType === '긴급건' && (
+                              <>
+                                <li><strong>제품명:</strong> 테스트크림 / 외용기</li>
+                                <li><strong>요청내용:</strong> 긴급 생산 요청사항</li>
+                              </>
+                            )}
+                            {selectedRequestType === '영업부 긴급요청' && (
+                              <>
+                                <li><strong>제품명:</strong> 프리미엄로션 / 펌프</li>
+                                <li><strong>요청내용:</strong> 영업부 긴급 요청사항</li>
+                              </>
+                            )}
+                            {selectedRequestType === '부족분관리' && (
+                              <>
+                                <li><strong>제품명:</strong> 테스트크림 / 외용기</li>
+                                <li><strong>요청수량:</strong> 1,000 EA</li>
+                                <li><strong>사유:</strong> 테스트용 부족분 신청</li>
+                              </>
+                            )}
+                          </>
+                        )}
                       </ul>
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Button 
-                      onClick={testLogisticsNotification}
-                      variant="default"
-                      size="sm"
-                      className="w-full"
-                    >
-                      <Bell className="h-4 w-4 mr-2" />
-                      물류이동 알림 발송 (Admin/Manager에게)
-                    </Button>
+                    
                     <p className="text-xs text-muted-foreground">
                       Admin과 Manager의 inbox에 알림 추가
                     </p>
@@ -591,233 +692,6 @@ export default function DashboardPage() {
                 >
                   프로미스 알림
                 </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* 스피너 컴포넌트 테스트 */}
-          <Card>
-            <CardHeader>
-              <CardTitle>✅ 스피너 컴포넌트 통일 완료</CardTitle>
-              <CardDescription>
-                프로젝트 전체에서 통일된 2가지 스피너 컴포넌트 사용 중
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-8">
-              {/* 스피너 통일 완료 */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">✅ 스피너 통일 완료</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* 1. Spinner 컴포넌트 */}
-                  <div className="p-6 bg-muted/50 rounded-lg border-2 border-primary/20">
-                    <div className="flex flex-col items-center gap-4">
-                      <Spinner size="lg" />
-                      <div className="text-center">
-                        <h4 className="font-semibold text-sm">Spinner</h4>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Shadcn/ui 기반 원형 테두리 회전<br/>
-                          간단한 로딩 상태 표시<br/>
-                          <span className="text-green-600 font-semibold">✓ 표준 컴포넌트</span>
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 2. LoadingSpinner 컴포넌트 */}
-                  <div className="p-6 bg-muted/50 rounded-lg border-2 border-green-500/20">
-                    <div className="flex flex-col items-center gap-4">
-                      <LoadingSpinner size="lg" label="" />
-                      <div className="text-center">
-                        <h4 className="font-semibold text-sm">LoadingSpinner</h4>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Spinner 래퍼 컴포넌트<br/>
-                          레이블/오버레이/전체화면 지원<br/>
-                          <span className="text-green-600 font-semibold">✓ 고급 기능 제공</span>
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 사용 위치 정보 */}
-                <div className="mt-4 p-4 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
-                  <h4 className="font-semibold text-sm mb-2">✅ 스피너 사용 현황 (통일 완료)</h4>
-                  <ul className="text-xs space-y-1 text-muted-foreground">
-                    <li>✅ <strong>PackagingReportListView.tsx</strong> → LoadingSpinner 사용</li>
-                    <li>✅ <strong>PackagingDailyReportContainer.tsx</strong> → Spinner 사용 (DIV 스피너 제거)</li>
-                    <li>✅ <strong>PackagingReportForm.tsx</strong> → Spinner 사용 (SVG 스피너 제거)</li>
-                  </ul>
-                </div>
-
-                {/* 사용 가이드 */}
-                <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <h4 className="font-semibold text-sm mb-2">📖 사용 가이드</h4>
-                  <div className="space-y-2 text-xs text-muted-foreground">
-                    <div>
-                      <p className="font-semibold text-foreground mb-1">1. 간단한 로딩</p>
-                      <code className="bg-muted px-2 py-1 rounded block">{'<Spinner size="lg" label="로딩 중..." />'}</code>
-                    </div>
-                    <div>
-                      <p className="font-semibold text-foreground mb-1">2. 버튼 내부</p>
-                      <code className="bg-muted px-2 py-1 rounded block">{'<Spinner size="sm" className="mr-2" />'}</code>
-                    </div>
-                    <div>
-                      <p className="font-semibold text-foreground mb-1">3. 전체 화면 로딩</p>
-                      <code className="bg-muted px-2 py-1 rounded block">{'<LoadingSpinner fullScreen={true} />'}</code>
-                    </div>
-                    <div>
-                      <p className="font-semibold text-foreground mb-1">4. 오버레이 로딩</p>
-                      <code className="bg-muted px-2 py-1 rounded block">{'<LoadingSpinner overlay={true} label="저장 중..." />'}</code>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              {/* Spinner 컴포넌트 */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">1. Spinner (기본 스피너)</h3>
-                <p className="text-sm text-muted-foreground">
-                  Shadcn/ui 스타일의 원형 회전 스피너 - 다양한 크기와 색상 variant 지원
-                </p>
-                
-                {/* 크기별 */}
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium text-foreground">크기별 (Size)</h4>
-                  <div className="flex items-center gap-6 p-4 bg-muted/50 rounded-lg">
-                    <div className="flex flex-col items-center gap-2">
-                      <Spinner size="sm" />
-                      <span className="text-xs text-muted-foreground">Small</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-2">
-                      <Spinner size="default" />
-                      <span className="text-xs text-muted-foreground">Default</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-2">
-                      <Spinner size="lg" />
-                      <span className="text-xs text-muted-foreground">Large</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-2">
-                      <Spinner size="xl" />
-                      <span className="text-xs text-muted-foreground">XL</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 색상별 */}
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium text-foreground">색상별 (Variant)</h4>
-                  <div className="flex items-center gap-6 p-4 bg-muted/50 rounded-lg">
-                    <div className="flex flex-col items-center gap-2">
-                      <Spinner variant="default" />
-                      <span className="text-xs text-muted-foreground">Default</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-2">
-                      <Spinner variant="secondary" />
-                      <span className="text-xs text-muted-foreground">Secondary</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-2">
-                      <Spinner variant="muted" />
-                      <span className="text-xs text-muted-foreground">Muted</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-2">
-                      <Spinner variant="destructive" />
-                      <span className="text-xs text-muted-foreground">Destructive</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 레이블과 함께 */}
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium text-foreground">레이블과 함께</h4>
-                  <div className="p-4 bg-muted/50 rounded-lg">
-                    <Spinner size="lg" label="로딩 중..." />
-                  </div>
-                </div>
-              </div>
-
-              {/* LoadingSpinner 컴포넌트 */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">2. LoadingSpinner (고급 래퍼)</h3>
-                <p className="text-sm text-muted-foreground">
-                  Spinner를 래핑한 고급 컴포넌트 - 전체 화면, 오버레이 옵션 지원
-                </p>
-
-                {/* 기본 사용 */}
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium text-foreground">기본 사용</h4>
-                  <div className="p-8 bg-muted/50 rounded-lg">
-                    <LoadingSpinner label="데이터 로딩 중..." />
-                  </div>
-                </div>
-
-                {/* 크기별 */}
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium text-foreground">크기별 LoadingSpinner</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="p-6 bg-muted/50 rounded-lg">
-                      <LoadingSpinner size="sm" label="Small" />
-                    </div>
-                    <div className="p-6 bg-muted/50 rounded-lg">
-                      <LoadingSpinner size="default" label="Default" />
-                    </div>
-                    <div className="p-6 bg-muted/50 rounded-lg">
-                      <LoadingSpinner size="lg" label="Large" />
-                    </div>
-                    <div className="p-6 bg-muted/50 rounded-lg">
-                      <LoadingSpinner size="xl" label="XL" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* 색상별 */}
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium text-foreground">색상별 LoadingSpinner</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="p-6 bg-muted/50 rounded-lg">
-                      <LoadingSpinner variant="default" label="Default" />
-                    </div>
-                    <div className="p-6 bg-muted/50 rounded-lg">
-                      <LoadingSpinner variant="secondary" label="Secondary" />
-                    </div>
-                    <div className="p-6 bg-muted/50 rounded-lg">
-                      <LoadingSpinner variant="muted" label="Muted" />
-                    </div>
-                    <div className="p-6 bg-muted/50 rounded-lg">
-                      <LoadingSpinner variant="destructive" label="Error" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* 실제 사용 예시 */}
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium text-foreground">실제 사용 예시 - 카드 내부</h4>
-                  <Card className="min-h-[200px] relative">
-                    <CardContent className="p-0">
-                      <LoadingSpinner 
-                        size="lg"
-                        variant="default"
-                        label="데이터를 불러오는 중..."
-                        overlay={true}
-                      />
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-
-              {/* 코드 예시 */}
-              <div className="space-y-2">
-                <h3 className="text-lg font-semibold">코드 사용 예시</h3>
-                <div className="p-4 bg-slate-900 text-slate-50 rounded-lg font-mono text-xs space-y-2 overflow-x-auto">
-                  <div>
-                    <p className="text-green-400">// Spinner 사용</p>
-                    <p className="text-blue-300">import {'{'} Spinner {'}'} from '@/shared/components/ui/spinner';</p>
-                    <p className="text-yellow-200">&lt;Spinner size="lg" variant="default" label="로딩 중..." /&gt;</p>
-                  </div>
-                  <div className="pt-2">
-                    <p className="text-green-400">// LoadingSpinner 사용</p>
-                    <p className="text-blue-300">import {'{'} LoadingSpinner {'}'} from '@/shared/components/common/LoadingSpinner';</p>
-                    <p className="text-yellow-200">&lt;LoadingSpinner size="default" overlay={'{true}'} /&gt;</p>
-                  </div>
-                </div>
               </div>
             </CardContent>
           </Card>

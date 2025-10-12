@@ -41,7 +41,7 @@ export const ShortageRequestModal: React.FC<ShortageRequestModalProps> = ({
     if (isOpen) {
       if (existingRequest) {
         setReason(existingRequest.shortageReason || '');
-        setQuantity(existingRequest.requestedShortageQuantity?.toString() || '');
+        setQuantity((existingRequest.requestedShortageQuantity && existingRequest.requestedShortageQuantity.toString()) || '');
       } else {
         setReason('');
         setQuantity('');
@@ -108,7 +108,7 @@ export const ShortageRequestModal: React.FC<ShortageRequestModalProps> = ({
               </div>
               <div>
                 <span className="font-medium text-muted-foreground">발주번호:</span>
-                <span className="ml-2">{report.orderNumbers?.join(', ') || '-'}</span>
+                <span className="ml-2">{(report.orderNumbers && report.orderNumbers.join(', ')) || '-'}</span>
               </div>
               <div className="col-span-2">
                 <span className="font-medium text-muted-foreground">제품명/부속명:</span>
@@ -129,19 +129,19 @@ export const ShortageRequestModal: React.FC<ShortageRequestModalProps> = ({
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
               <div>
                 <span className="font-medium text-muted-foreground">발주수량:</span>
-                <span className="ml-2">{report.orderQuantity?.toLocaleString() || '-'}</span>
+                <span className="ml-2">{(report.orderQuantity && report.orderQuantity.toLocaleString()) || '-'}</span>
               </div>
               <div>
                 <span className="font-medium text-muted-foreground">투입수량:</span>
-                <span className="ml-2">{report.inputQuantity?.toLocaleString() || '-'}</span>
+                <span className="ml-2">{(report.inputQuantity && report.inputQuantity.toLocaleString()) || '-'}</span>
               </div>
               <div>
                 <span className="font-medium text-muted-foreground">양품수량:</span>
-                <span className="ml-2 text-green-600 font-semibold">{report.goodQuantity?.toLocaleString() || '-'}</span>
+                <span className="ml-2 text-green-600 font-semibold">{(report.goodQuantity && report.goodQuantity.toLocaleString()) || '-'}</span>
               </div>
               <div>
                 <span className="font-medium text-muted-foreground">불량수량:</span>
-                <span className="ml-2 text-red-600 font-semibold">{report.defectQuantity?.toLocaleString() || '-'}</span>
+                <span className="ml-2 text-red-600 font-semibold">{(report.defectQuantity && report.defectQuantity.toLocaleString()) || '-'}</span>
               </div>
             </div>
           </div>

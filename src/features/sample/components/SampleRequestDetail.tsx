@@ -1,0 +1,604 @@
+/**
+ * 샘플 요청 상세 보기 컴포넌트
+ * HS-Jig SampleRequestDetail 참고, Shadcn Dialog + Carousel 사용
+ */
+
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/shared/components/ui/dialog';
+import { Button } from '@/shared/components/ui/button';
+import { Badge } from '@/shared/components/ui/badge';
+import { Textarea } from '@/shared/components/ui/textarea';
+import { Label } from '@/shared/components/ui/label';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/shared/components/ui/table';
+import { Separator } from '@/shared/components/ui/separator';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/components/ui/collapsible';
+import { CommentsSection } from '@/shared/components/common/CommentsSection';
+import { ImageGalleryGrid } from '@/shared/components/common/ImageGalleryGrid';
+import { useComments } from '@/shared/hooks/useComments';
+import { CommentsService } from '@/shared/services/comments/commentsService';
+import { Edit, Trash2, Save, Upload, ChevronDown, ChevronUp } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
+import { SampleRequest, SampleStatus, WorkCoat } from '../types';
+import { SAMPLE_STATUS_COLORS, SAMPLE_REQUESTS_COLLECTION } from '../constants';
+
+interface SampleRequestDetailProps {
+  open: boolean;
+  request: SampleRequest | null;
+  onClose: () => void;
+  onUpdateStatus: (
+    id: string,
+    status: SampleStatus,
+    reason?: string,
+    workData?: SampleRequest['workData']
+  ) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+  onEdit: (request: SampleRequest) => void;
+  onUpdateWorkData: (id: string, workData: SampleRequest['workData']) => Promise<void>;
+  onUploadWorkImage: (id: string, file: File) => Promise<string>;
+  currentUserUid?: string;
+  isAdmin?: boolean;
+}
+
+export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
+  open,
+  request,
+  onClose,
+  onUpdateStatus,
+  onDelete,
+  onEdit,
+  onUpdateWorkData,
+  onUploadWorkImage,
+  currentUserUid = '',
+  isAdmin = false,
+}) => {
+  const [workData, setWorkData] = useState<NonNullable<SampleRequest['workData']>>(
+    (request && request.workData) || {}
+  );
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [statusChangeReason, setStatusChangeReason] = useState('');
+  const [changingStatus, setChangingStatus] = useState<SampleStatus | null>(null);
+  const [uploadingWorkImage, setUploadingWorkImage] = useState(false);
+  const workImageInputRef = React.useRef<HTMLInputElement>(null);
+
+  // 댓글 훅
+  const comments = useComments(SAMPLE_REQUESTS_COLLECTION);
+
+  // 모달이 열릴 때 읽지 않은 댓글 자동 읽음 처리
+  useEffect(() => {
+    if (open && request && currentUserUid && request.comments && request.comments.length > 0) {
+      const markCommentsAsRead = async () => {
+        try {
+          // 읽지 않은 댓글들 찾기 (hasUnreadComments와 동일한 로직)
+          const unreadComments = (request.comments || []).filter(comment => {
+            // readBy 배열이 없으면 빈 배열로 간주
+            const readBy = comment.readBy || [];
+            
+            // 본인이 작성한 댓글은 읽은 것으로 간주
+            if (comment.uid === currentUserUid) return false;
+            
+            // readBy 배열에 currentUserUid가 없으면 읽지 않은 댓글
+            return !readBy.includes(currentUserUid);
+          });
+
+          console.log(`🔍 [샘플요청 상세] 읽지 않은 댓글 확인:`, {
+            requestId: request.id,
+            totalComments: request.comments.length,
+            unreadCount: unreadComments.length,
+            currentUserUid,
+            allComments: request.comments.map(c => ({
+              id: c.id,
+              uid: c.uid,
+              readBy: c.readBy || [],
+              hasReadBy: !!c.readBy,
+              isRead: (c.readBy && c.readBy.includes(currentUserUid)) || false
+            }))
+          });
+
+          // 각 읽지 않은 댓글을 읽음 처리
+          for (const comment of unreadComments) {
+            console.log(`📝 [샘플요청] 댓글 읽음 처리 시작:`, {
+              commentId: comment.id,
+              beforeReadBy: comment.readBy || []
+            });
+            
+            await CommentsService.markAsRead(
+              SAMPLE_REQUESTS_COLLECTION,
+              request.id,
+              comment.id,
+              currentUserUid
+            );
+            
+            console.log(`✅ [샘플요청] 댓글 읽음 처리 완료:`, comment.id);
+          }
+
+          if (unreadComments.length > 0) {
+            console.log(`✅ [샘플요청] ${unreadComments.length}개의 댓글을 읽음 처리했습니다.`);
+          } else {
+            console.log(`ℹ️ [샘플요청] 읽지 않은 댓글이 없습니다.`);
+          }
+        } catch (error) {
+          console.error('❌ [샘플요청] 댓글 읽음 처리 실패:', error);
+        }
+      };
+
+      markCommentsAsRead();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, (request && request.id), currentUserUid]);
+
+  if (!request) return null;
+
+  const canManage = isAdmin;
+
+  // 작업 데이터가 비어있는지 확인
+  const isWorkDataEmpty = () => {
+    if (!request.workData) return true;
+    const { undercoat, midcoat, topcoat } = request.workData;
+    return (
+      (!undercoat || (!undercoat.conditions && !undercoat.remarks)) &&
+      (!midcoat || (!midcoat.conditions && !midcoat.remarks)) &&
+      (!topcoat || (!topcoat.conditions && !topcoat.remarks))
+    );
+  };
+
+  // 작업 이미지가 있는지 확인
+  const hasWorkImages = request.workImageUrls && request.workImageUrls.length > 0;
+
+  // 작업 정보가 비어있으면 자동으로 수정 모드 시작
+  const [isEditingWorkData, setIsEditingWorkData] = useState(isWorkDataEmpty() && !hasWorkImages);
+  
+  // 작업 데이터는 기본적으로 펼쳐진 상태
+  const [isWorkDataOpen, setIsWorkDataOpen] = useState(true);
+
+  // 작업 데이터 변경
+  const handleWorkDataChange = (
+    coat: 'undercoat' | 'midcoat' | 'topcoat',
+    field: 'conditions' | 'remarks',
+    value: string
+  ) => {
+    setWorkData((prev) => ({
+      ...prev,
+      [coat]: {
+        ...(prev[coat] || {}),
+        [field]: value,
+      },
+    }));
+  };
+
+  // 작업 데이터 저장
+  const handleSaveWorkData = async () => {
+    await onUpdateWorkData(request.id, workData);
+  };
+
+  // 상태 변경
+  const handleStatusChange = async (newStatus: SampleStatus) => {
+    if (newStatus === SampleStatus.OnHold || newStatus === SampleStatus.Rejected) {
+      setChangingStatus(newStatus);
+      return;
+    }
+
+    await onUpdateStatus(request.id, newStatus);
+  };
+
+  // 보류/반려 확인
+  const handleConfirmStatusChange = async () => {
+    if (!changingStatus) return;
+    
+    await onUpdateStatus(request.id, changingStatus, statusChangeReason, workData);
+    setChangingStatus(null);
+    setStatusChangeReason('');
+  };
+
+  // 삭제 확인
+  const handleConfirmDelete = async () => {
+    await onDelete(request.id);
+    setShowDeleteConfirm(false);
+    onClose();
+  };
+
+  // 댓글 추가
+  const handleAddComment = async (text: string, mentionedUserIds?: string[]) => {
+    const { user: authUser } = await import('@/features/auth/store/authStore').then(m => m.useAuthStore.getState());
+    const displayName = authUser?.displayName || authUser?.email || currentUserUid;
+    
+    await comments.addComment(request.id, {
+      text,
+      user: displayName, // 실제 사용자 이름
+      uid: currentUserUid,
+    });
+  };
+
+  // 작업 이미지 업로드
+  const handleWorkImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    
+    setUploadingWorkImage(true);
+    try {
+      const file = e.target.files[0];
+      await onUploadWorkImage(request.id, file);
+    } catch (error) {
+      console.error('작업 이미지 업로드 실패:', error);
+    } finally {
+      setUploadingWorkImage(false);
+      if (e.target) {
+        e.target.value = '';
+      }
+    }
+  };
+
+  // 작업 데이터 수정 모드 토글
+  const handleToggleEditMode = () => {
+    if (isEditingWorkData) {
+      // 수정 모드 종료 시 원본 데이터로 복원
+      setWorkData((request && request.workData) || {});
+    }
+    setIsEditingWorkData(!isEditingWorkData);
+  };
+
+  // 작업 데이터 저장
+  const handleSaveWorkDataClick = async () => {
+    await handleSaveWorkData();
+    setIsEditingWorkData(false);
+  };
+
+  const DetailItem: React.FC<{ label: string; value: string | number | React.ReactNode }> = ({ label, value }) => (
+    <div>
+      <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
+      <dd className="mt-1 text-base text-foreground">{value}</dd>
+    </div>
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b">
+          <div className="flex justify-between items-start">
+            <DialogTitle className="text-2xl font-bold">
+              {request.productName} ({request.clientName})
+            </DialogTitle>
+            <Badge className={`px-4 py-2 text-lg font-bold rounded-full ${SAMPLE_STATUS_COLORS[request.status]}`}>
+              {request.status}
+            </Badge>
+          </div>
+        </DialogHeader>
+
+        {/* 상세 정보 */}
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+          {/* Card 1: 요청사항 */}
+          <Card>
+            <CardHeader>
+              <CardTitle>요청사항</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* 기본 정보 */}
+              <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-6">
+                <DetailItem label="요청일" value={request.requestDate} />
+                <DetailItem label="납기요청일" value={request.dueDate} />
+                <DetailItem label="요청담당자" value={request.requesterName} />
+                <DetailItem label="연락처" value={request.contact} />
+              </dl>
+
+              <Separator />
+
+              {/* 요청 품목 */}
+              <div className="space-y-2">
+                <Label className="text-base font-semibold">요청 품목</Label>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>부속명</TableHead>
+                      <TableHead>색상(사양)</TableHead>
+                      <TableHead>코팅/증착 방식</TableHead>
+                      <TableHead>후가공</TableHead>
+                      <TableHead className="text-right">수량</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {request.items.map((item, index) => (
+                      <TableRow key={index}>
+                        <TableCell className="font-medium">{item.partName}</TableCell>
+                        <TableCell>{item.colorSpec}</TableCell>
+                        <TableCell>{item.coatingMethod}</TableCell>
+                        <TableCell>{item.postProcessing.join(', ') || '-'}</TableCell>
+                        <TableCell className="text-right">{item.quantity.toLocaleString()}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <Separator />
+
+              {/* 비고 */}
+              <div className="space-y-1.5">
+                <Label className="text-base font-semibold">비고</Label>
+                <div className="p-3 bg-muted rounded-md whitespace-pre-wrap text-sm">
+                  {request.remarks || '-'}
+                </div>
+              </div>
+
+              {/* 참고 이미지 */}
+              {request.imageUrls && request.imageUrls.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-base font-semibold">참고 이미지 ({request.imageUrls.length})</Label>
+                  <ImageGalleryGrid images={request.imageUrls} />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Card 2: 작업 정보 (진행중/완료/보류 상태일 때만 표시) */}
+          {(request.status === SampleStatus.InProgress || 
+            request.status === SampleStatus.Completed ||
+            request.status === SampleStatus.OnHold) && (
+            <Card>
+              <CardHeader>
+                <CardTitle>작업 정보</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* 작업 데이터 */}
+                <Collapsible open={isWorkDataOpen} onOpenChange={setIsWorkDataOpen}>
+                  <div className="space-y-2">
+                    <CollapsibleTrigger asChild>
+                      <div className="flex items-center justify-between cursor-pointer group">
+                        <Label className="text-base font-semibold cursor-pointer">작업 데이터</Label>
+                        {isWorkDataOpen ? (
+                          <ChevronUp className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                        )}
+                      </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="space-y-4 pt-2">
+                        {['undercoat', 'midcoat', 'topcoat'].map((coat) => {
+                          const coatKey = coat as 'undercoat' | 'midcoat' | 'topcoat';
+                          const coatData = workData[coatKey] || {};
+                          
+                          return (
+                            <div key={coat}>
+                              <h5 className="font-semibold mb-2">
+                                {coat === 'undercoat' ? '하도' : coat === 'midcoat' ? '중도' : '상도'}
+                              </h5>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <Label className="text-xs">작업조건</Label>
+                                  <Textarea
+                                    value={coatData.conditions || ''}
+                                    onChange={(e) =>
+                                      handleWorkDataChange(coatKey, 'conditions', e.target.value)
+                                    }
+                                    disabled={!isEditingWorkData}
+                                    rows={3}
+                                    className="mt-1"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs">특이사항</Label>
+                                  <Textarea
+                                    value={coatData.remarks || ''}
+                                    onChange={(e) =>
+                                      handleWorkDataChange(coatKey, 'remarks', e.target.value)
+                                    }
+                                    disabled={!isEditingWorkData}
+                                    rows={3}
+                                    className="mt-1"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </CollapsibleContent>
+                  </div>
+                </Collapsible>
+
+                {/* 작업 이미지 */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-base font-semibold">
+                      작업 이미지 {request.workImageUrls ? `(${request.workImageUrls.length})` : ''}
+                    </Label>
+                    {canManage && request.status === SampleStatus.InProgress && (
+                      <Button 
+                        onClick={() => workImageInputRef.current && workImageInputRef.current.click()} 
+                        size="sm" 
+                        variant="outline"
+                        disabled={uploadingWorkImage}
+                      >
+                        <Upload className="h-4 w-4 mr-1" />
+                        {uploadingWorkImage ? '업로드 중...' : '이미지 추가'}
+                      </Button>
+                    )}
+                  </div>
+                  {request.workImageUrls && request.workImageUrls.length > 0 ? (
+                    <ImageGalleryGrid images={request.workImageUrls} />
+                  ) : (
+                    <div className="text-sm text-muted-foreground text-center py-8 border border-dashed rounded-md">
+                      작업 이미지가 없습니다.
+                    </div>
+                  )}
+                </div>
+
+                {/* Card 하단 액션 버튼 */}
+                {canManage && (
+                  <div className="flex justify-end gap-2 pt-4 border-t">
+                    {!isEditingWorkData ? (
+                      // 작업 정보가 있으면 수정 버튼
+                      <Button onClick={handleToggleEditMode} size="sm" variant="outline">
+                        <Edit className="h-4 w-4 mr-1" />
+                        수정
+                      </Button>
+                    ) : (
+                      // 수정 모드
+                      <>
+                        {/* 작업 정보가 있을 때만 취소 버튼 표시 */}
+                        {(!isWorkDataEmpty() || hasWorkImages) && (
+                          <Button onClick={handleToggleEditMode} size="sm" variant="outline">
+                            취소
+                          </Button>
+                        )}
+                        <Button onClick={handleSaveWorkDataClick} size="sm">
+                          <Save className="h-4 w-4 mr-1" />
+                          저장
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* 처리 이력 (Card 밖에 별도 배치) */}
+          <div className="space-y-2">
+            <Label className="text-base font-semibold">처리 이력</Label>
+            <ul className="space-y-2 text-xs">
+              {request.history.map((item, index) => (
+                <li key={index} className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
+                  <span className="font-semibold">{new Date(item.date).toLocaleString('ko-KR')}</span>
+                  <Badge className={SAMPLE_STATUS_COLORS[item.status]}>
+                    {item.status}
+                  </Badge>
+                  <span>by {item.by}</span>
+                  {item.reason && <span className="text-muted-foreground">- {item.reason}</span>}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* 댓글 섹션 (Card 밖에 별도 배치) */}
+          <CommentsSection
+            comments={request.comments}
+            onAddComment={handleAddComment}
+            onDeleteComment={(commentId) => comments.deleteComment(request.id, commentId)}
+            onEditComment={(commentId, newText) =>
+              comments.updateComment(request.id, commentId, newText)
+            }
+            currentUserUid={currentUserUid}
+            isAdmin={isAdmin}
+          />
+        </div>
+
+        {/* Hidden file input for work images */}
+        <input
+          ref={workImageInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleWorkImageUpload}
+          className="hidden"
+        />
+
+        {/* 하단 액션 버튼 */}
+        <div className="flex-shrink-0 flex flex-wrap gap-2 px-6 py-4 border-t bg-muted/30">
+          <div className="flex gap-2">
+            {canManage && (
+              <>
+                <Button variant="outline" onClick={() => onEdit(request)}>
+                  <Edit className="h-4 w-4 mr-1" />
+                  수정
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => setShowDeleteConfirm(true)}
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  삭제
+                </Button>
+              </>
+            )}
+          </div>
+
+          <div className="flex gap-2 ml-auto">
+            {request.status === SampleStatus.Received && (
+              <Button onClick={() => handleStatusChange(SampleStatus.InProgress)}>
+                진행중으로 변경
+              </Button>
+            )}
+            {request.status === SampleStatus.InProgress && (
+              <>
+                <Button onClick={() => handleStatusChange(SampleStatus.Completed)}>
+                  완료
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => handleStatusChange(SampleStatus.OnHold)}
+                >
+                  보류
+                </Button>
+              </>
+            )}
+            {(request.status === SampleStatus.Received ||
+              request.status === SampleStatus.InProgress) && (
+              <Button
+                variant="destructive"
+                onClick={() => handleStatusChange(SampleStatus.Rejected)}
+              >
+                반려
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* 삭제 확인 다이얼로그 */}
+        <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>삭제 확인</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground">
+              정말 이 샘플 요청을 삭제하시겠습니까?
+            </p>
+            <div className="flex justify-end gap-2 mt-4">
+              <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
+                취소
+              </Button>
+              <Button variant="destructive" onClick={handleConfirmDelete}>
+                삭제
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* 보류/반려 사유 입력 */}
+        <Dialog open={!!changingStatus} onOpenChange={() => setChangingStatus(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{changingStatus} 사유</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <Textarea
+                value={statusChangeReason}
+                onChange={(e) => setStatusChangeReason(e.target.value)}
+                placeholder="사유를 입력하세요"
+                rows={4}
+              />
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setChangingStatus(null)}>
+                  취소
+                </Button>
+                <Button onClick={handleConfirmStatusChange}>확인</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </DialogContent>
+    </Dialog>
+  );
+};
+

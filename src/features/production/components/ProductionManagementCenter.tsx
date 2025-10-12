@@ -149,12 +149,12 @@ const ProductionManagementCenterComponent: React.FC = () => {
   }, [deleteComment]);
 
   return (
-    <div className="h-full flex flex-col bg-background rounded-lg shadow-sm p-4">
+    <div className="h-full flex flex-col bg-background rounded-lg shadow-sm">
       {/* 헤더 */}
       <header className="flex-shrink-0 mb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <h3 className="text-lg font-bold text-foreground">
-          생산관리부 요청사항 ({filteredRequests.length}건)
-        </h3>
+        <div className="text-sm text-muted-foreground">
+          총 {filteredRequests.length}건
+        </div>
         <div className="flex items-center gap-2">
           {/* 요청 타입 필터 */}
           <div className="flex items-center gap-1 bg-muted p-1 rounded-lg text-xs">
@@ -202,6 +202,7 @@ const ProductionManagementCenterComponent: React.FC = () => {
             <Table>
               <TableHeader className={TABLE_HEAD_STYLES.sticky}>
                 <TableRow>
+                  <TableHead className={TABLE_HEAD_STYLES.base}></TableHead>
                   {['요청일시', '요청유형', '상태', '요청자', '발주번호', '발주처', '제품명', '수량', '요청내용'].map(header => (
                     <TableHead key={header} className={TABLE_HEAD_STYLES.base}>{header}</TableHead>
                   ))}
@@ -209,8 +210,8 @@ const ProductionManagementCenterComponent: React.FC = () => {
               </TableHeader>
               <TableBody>
                 {filteredRequests.map(req => {
-                  const unread = checkUnreadComments(req.comments, userProfile?.uid);
-                  const commentCount = req.comments?.length || 0;
+                  const unread = checkUnreadComments(req.comments, (userProfile && userProfile.uid) || '');
+                  const commentCount = (req.comments && req.comments.length) || 0;
                   
                   return (
                     <TableRow 
@@ -218,6 +219,27 @@ const ProductionManagementCenterComponent: React.FC = () => {
                       onClick={() => handleSelectRequest(req)} 
                       className="cursor-pointer hover:bg-muted/50"
                     >
+                      {/* 댓글 컬럼 */}
+                      <TableCell className={TABLE_CELL_STYLES.base}>
+                        <div className="flex items-center gap-2">
+                          {unread ? (
+                            <span 
+                              title="새로운 댓글" 
+                              className="w-2.5 h-2.5 bg-blue-500 rounded-full animate-pulse"
+                            />
+                          ) : (
+                            <span className="w-2.5 h-2.5" />
+                          )}
+                          {commentCount > 0 && (
+                            <div className="flex items-center gap-1">
+                              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-xs font-medium text-muted-foreground">
+                                {commentCount}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell className={TABLE_CELL_STYLES.text}>
                         {new Date(req.createdAt).toLocaleString('ko-KR')}
                       </TableCell>
@@ -240,26 +262,8 @@ const ProductionManagementCenterComponent: React.FC = () => {
                       <TableCell className={TABLE_CELL_STYLES.right}>
                         {req.quantity.toLocaleString()}
                       </TableCell>
-                      <TableCell className={TABLE_CELL_STYLES.truncate} title={req.content}>
-                        <div className="flex items-center gap-2">
-                          {/* 댓글 개수 표시 */}
-                          {commentCount > 0 && (
-                            <div className="flex items-center gap-1 flex-shrink-0">
-                              <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-xs font-medium text-muted-foreground">
-                                {commentCount}
-                              </span>
-                            </div>
-                          )}
-                          {/* 새로운 댓글 표시 */}
-                          {unread && (
-                            <span 
-                              title="새로운 댓글" 
-                              className="flex-shrink-0 w-2.5 h-2.5 bg-blue-500 rounded-full animate-pulse"
-                            />
-                          )}
-                          <span className="truncate">{req.content}</span>
-                        </div>
+                      <TableCell className="text-xs max-w-xs whitespace-nowrap overflow-hidden text-ellipsis" title={req.content}>
+                        {req.content}
                       </TableCell>
                     </TableRow>
                   );
@@ -291,7 +295,7 @@ const ProductionManagementCenterComponent: React.FC = () => {
         onClose={() => setSelectedRequest(null)}
         request={selectedRequest}
         currentUserName={getUserDisplayName(userProfile)}
-        currentUserUid={userProfile?.uid || ''}
+        currentUserUid={(userProfile && userProfile.uid) || ''}
         isAdmin={isAdmin(userProfile)}
         isManager={isManager(userProfile)}
         onStatusUpdate={handleStatusUpdate}

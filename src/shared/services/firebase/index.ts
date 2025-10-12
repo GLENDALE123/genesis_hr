@@ -16,6 +16,7 @@ export {
   getUserProfile,
   getUserProfileByEmail,
   updateLastLogin,
+  updateUserProfile,
   getAllUsers,
   subscribeToUsers
 } from './userProfile';
@@ -39,7 +40,10 @@ export {
   getFileDownloadURL,
   deleteFile,
   listFiles,
-  getFileMetadata
+  getFileMetadata,
+  uploadProfilePhoto,
+  deleteProfilePhoto,
+  compressImage
 } from './storage';
 
 // Messaging 서비스

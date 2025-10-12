@@ -1,6 +1,7 @@
 const { onObjectFinalized } = require('firebase-functions/v2/storage');
 const { onCall } = require('firebase-functions/v2/https');
 const admin = require('firebase-admin');
+const { FieldValue } = require('firebase-admin/firestore');
 const sharp = require('sharp');
 const path = require('path');
 const os = require('os');
@@ -209,8 +210,8 @@ async function saveImageMetadata(originalPath, imageInfo, processedImages) {
     },
     originalFormat: imageInfo.format,
     processedImages: processedImages,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp()
   };
   
   await db.collection('imageMetadata').doc(imageId).set(imageMetadata);

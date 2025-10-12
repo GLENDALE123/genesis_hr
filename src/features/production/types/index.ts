@@ -197,3 +197,29 @@ export interface ShortageRequest {
     createdAt: string;
   }>;
 }
+
+// 생산일정 타입 (HS-Jig 호환)
+export interface ProductionSchedule {
+  id: string;
+  planDate: string;          // 계획일자 (YYYY-MM-DD)
+  progress?: string;          // 진행
+  shipping?: string;          // 출하
+  line?: string;              // 라인
+  injection?: string;         // 사출
+  orderNumber?: string;       // 발주번호
+  client: string;             // 발주처
+  productName: string;        // 제품명
+  partName: string;           // 부속명
+  orderQuantity: number;      // 발주
+  specification?: string;     // 사양
+  postProcess?: string;       // 후공정
+  remarks: string;            // 참고
+  manager?: string;           // 담당자
+  domesticOrExport?: string;  // 내/수
+  jigUsed?: string;           // 사용지그
+  newOrRe?: string;           // 신/재
+  shortageQuantity: number;   // 부족수량
+  createdAt: string;
+  updatedAt: string;
+  orderIndex?: number;        // 정렬 순서
+}

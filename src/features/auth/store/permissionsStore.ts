@@ -34,6 +34,9 @@ interface PermissionsActions {
   // 특정 페이지 권한 캐시 업데이트
   setPagePermission: (pageId: PageIdentifier, permission: PagePermissions | null) => void;
   
+  // 캐시 초기화 (userId 지정)
+  initializeCache: (userId: string) => void;
+  
   // 캐시 초기화
   clearCache: () => void;
   
@@ -75,7 +78,10 @@ export const usePermissionsStore = create<PermissionsState & PermissionsActions>
       
       setPagePermission: (pageId, permission) => {
         const { cache } = get();
-        if (!cache) return;
+        
+        if (!cache) {
+          return;
+        }
         
         set({
           cache: {
@@ -84,6 +90,18 @@ export const usePermissionsStore = create<PermissionsState & PermissionsActions>
               ...cache.permissions,
               [pageId]: permission,
             },
+            lastFetchedAt: new Date(), // 캐시 시간 갱신
+          },
+        });
+      },
+      
+      // 캐시 초기화 (userId 지정)
+      initializeCache: (userId: string) => {
+        set({
+          cache: {
+            userId,
+            permissions: {},
+            lastFetchedAt: new Date(),
           },
         });
       },

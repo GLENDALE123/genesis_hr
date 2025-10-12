@@ -1,0 +1,507 @@
+/**
+ * 알림 설정 탭
+ */
+
+'use client';
+
+import React, { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
+import { Switch } from '@/shared/components/ui/switch';
+import { Label } from '@/shared/components/ui/label';
+import { Button } from '@/shared/components/ui/button';
+import { Badge } from '@/shared/components/ui/badge';
+import { Separator } from '@/shared/components/ui/separator';
+import { Input } from '@/shared/components/ui/input';
+import { useSettings } from '../hooks/useSettings';
+import { useNotificationPermission } from '../hooks/useNotificationPermission';
+import { NOTIFICATION_CHANNELS, NotificationChannelType } from '@/shared/types/settings';
+import { 
+  Bell, 
+  Clock, 
+  Volume2, 
+  Vibrate, 
+  AlertCircle,
+  CheckCircle2,
+  Factory,
+  AlertTriangle,
+  MessageSquare,
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { cn } from '@/shared/lib/utils';
+
+// 아이콘 맵핑
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  Factory,
+  AlertTriangle,
+  MessageSquare,
+  Bell,
+};
+
+export const NotificationSettings: React.FC = () => {
+  const { settings, updateSettings, isLoading } = useSettings();
+  const { permission, platform, canRequest, requestPermission } = useNotificationPermission();
+  const [isSaving, setIsSaving] = useState(false);
+
+  // 전체 알림 ON/OFF
+  const handleToggleNotifications = async (enabled: boolean) => {
+    try {
+      setIsSaving(true);
+      await updateSettings({
+        notifications: {
+          ...settings.notifications,
+          enabled,
+        },
+      });
+      toast.success(enabled ? '알림이 활성화되었습니다.' : '알림이 비활성화되었습니다.');
+    } catch (error) {
+      toast.error('설정 저장에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 채널별 ON/OFF
+  const handleToggleChannel = async (channel: NotificationChannelType, enabled: boolean) => {
+    try {
+      setIsSaving(true);
+      await updateSettings({
+        notifications: {
+          ...settings.notifications,
+          channels: {
+            ...settings.notifications.channels,
+            [channel]: enabled,
+          },
+        },
+      });
+      toast.success(`${NOTIFICATION_CHANNELS[channel].label} 알림이 ${enabled ? '활성화' : '비활성화'}되었습니다.`);
+    } catch (error) {
+      toast.error('설정 저장에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 시간대 제한 ON/OFF
+  const handleToggleSchedule = async (enabled: boolean) => {
+    try {
+      setIsSaving(true);
+      await updateSettings({
+        notifications: {
+          ...settings.notifications,
+          schedule: {
+            ...settings.notifications.schedule,
+            enabled,
+          },
+        },
+      });
+      toast.success(enabled ? '시간대 제한이 활성화되었습니다.' : '시간대 제한이 비활성화되었습니다.');
+    } catch (error) {
+      toast.error('설정 저장에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 평일/주말 알림 ON/OFF
+  const handleToggleDayType = async (dayType: 'weekdays' | 'weekends', enabled: boolean) => {
+    try {
+      setIsSaving(true);
+      await updateSettings({
+        notifications: {
+          ...settings.notifications,
+          schedule: {
+            ...settings.notifications.schedule,
+            [dayType]: {
+              ...settings.notifications.schedule[dayType],
+              enabled,
+            },
+          },
+        },
+      });
+      const label = dayType === 'weekdays' ? '평일' : '주말';
+      toast.success(enabled ? `${label} 알림이 활성화되었습니다.` : `${label} 알림이 비활성화되었습니다.`);
+    } catch (error) {
+      toast.error('설정 저장에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 시간 설정 변경
+  const handleTimeChange = async (
+    dayType: 'weekdays' | 'weekends',
+    field: 'startTime' | 'endTime',
+    value: string
+  ) => {
+    try {
+      setIsSaving(true);
+      await updateSettings({
+        notifications: {
+          ...settings.notifications,
+          schedule: {
+            ...settings.notifications.schedule,
+            [dayType]: {
+              ...settings.notifications.schedule[dayType],
+              [field]: value,
+            },
+          },
+        },
+      });
+    } catch (error) {
+      toast.error('설정 저장에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 소리 ON/OFF
+  const handleToggleSound = async (enabled: boolean) => {
+    try {
+      setIsSaving(true);
+      await updateSettings({
+        notifications: {
+          ...settings.notifications,
+          sound: enabled,
+        },
+      });
+      toast.success(enabled ? '알림 소리가 활성화되었습니다.' : '알림 소리가 비활성화되었습니다.');
+    } catch (error) {
+      toast.error('설정 저장에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 진동 ON/OFF
+  const handleToggleVibration = async (enabled: boolean) => {
+    try {
+      setIsSaving(true);
+      await updateSettings({
+        notifications: {
+          ...settings.notifications,
+          vibration: enabled,
+        },
+      });
+      toast.success(enabled ? '진동이 활성화되었습니다.' : '진동이 비활성화되었습니다.');
+    } catch (error) {
+      toast.error('설정 저장에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 알림 권한 요청
+  const handleRequestPermission = async () => {
+    const granted = await requestPermission();
+    if (granted) {
+      toast.success('알림 권한이 허용되었습니다.');
+    } else {
+      toast.error('알림 권한이 거부되었습니다. 브라우저 설정에서 허용해주세요.');
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-muted-foreground">설정을 불러오는 중...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* 알림 권한 상태 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bell className="h-5 w-5" />
+            알림 권한
+          </CardTitle>
+          <CardDescription>
+            {platform === 'web' && '브라우저 알림 권한 상태입니다.'}
+            {platform === 'desktop' && 'Electron 데스크톱 알림이 활성화되어 있습니다.'}
+            {platform === 'mobile' && '모바일 앱 알림이 활성화되어 있습니다.'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {permission === 'granted' ? (
+                <>
+                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                  <span className="text-sm font-medium">허용됨</span>
+                  <Badge variant="default">정상</Badge>
+                </>
+              ) : permission === 'denied' ? (
+                <>
+                  <AlertCircle className="h-5 w-5 text-destructive" />
+                  <span className="text-sm font-medium">거부됨</span>
+                  <Badge variant="destructive">차단됨</Badge>
+                </>
+              ) : (
+                <>
+                  <AlertCircle className="h-5 w-5 text-yellow-500" />
+                  <span className="text-sm font-medium">대기 중</span>
+                  <Badge variant="secondary">설정 필요</Badge>
+                </>
+              )}
+            </div>
+            {canRequest && permission !== 'granted' && (
+              <Button onClick={handleRequestPermission} size="sm">
+                권한 요청
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 전체 알림 ON/OFF */}
+      <Card>
+        <CardHeader>
+          <CardTitle>전체 알림</CardTitle>
+          <CardDescription>
+            모든 알림을 한 번에 켜거나 끌 수 있습니다.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="notifications-enabled" className="text-base font-medium">
+              알림 활성화
+            </Label>
+            <Switch
+              id="notifications-enabled"
+              checked={settings.notifications.enabled}
+              onCheckedChange={handleToggleNotifications}
+              disabled={isSaving}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 채널별 알림 설정 */}
+      <Card>
+        <CardHeader>
+          <CardTitle>알림 종류</CardTitle>
+          <CardDescription>
+            받고 싶은 알림 종류를 선택하세요.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {Object.entries(NOTIFICATION_CHANNELS).map(([key, config], index) => {
+            const IconComponent = iconMap[config.icon] || Bell;
+            const isEnabled = settings.notifications.channels[key as NotificationChannelType];
+            
+            return (
+              <div key={key}>
+                {index > 0 && <Separator className="my-4" />}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3 flex-1">
+                    <IconComponent className={cn(
+                      "h-5 w-5 mt-0.5",
+                      isEnabled ? "text-primary" : "text-muted-foreground"
+                    )} />
+                    <div className="flex-1">
+                      <Label
+                        htmlFor={`channel-${key}`}
+                        className="text-base font-medium cursor-pointer"
+                      >
+                        {config.label}
+                      </Label>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {config.description}
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    id={`channel-${key}`}
+                    checked={isEnabled}
+                    onCheckedChange={(enabled) => handleToggleChannel(key as NotificationChannelType, enabled)}
+                    disabled={!settings.notifications.enabled || isSaving}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
+
+      {/* 시간대 제한 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            알림 시간 설정
+          </CardTitle>
+          <CardDescription>
+            특정 시간대에만 알림을 받을 수 있습니다.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="schedule-enabled" className="text-base font-medium">
+              시간대 제한
+            </Label>
+            <Switch
+              id="schedule-enabled"
+              checked={settings.notifications.schedule.enabled}
+              onCheckedChange={handleToggleSchedule}
+              disabled={!settings.notifications.enabled || isSaving}
+            />
+          </div>
+
+          {settings.notifications.schedule.enabled && (
+            <>
+              <Separator />
+              
+              {/* 평일 설정 */}
+              <div className="space-y-4 p-4 border rounded-lg">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="weekdays-enabled" className="text-base font-medium">
+                    평일 (월-금)
+                  </Label>
+                  <Switch
+                    id="weekdays-enabled"
+                    checked={settings.notifications.schedule.weekdays.enabled}
+                    onCheckedChange={(enabled) => handleToggleDayType('weekdays', enabled)}
+                    disabled={isSaving}
+                  />
+                </div>
+                
+                {settings.notifications.schedule.weekdays.enabled && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="weekdays-start-time" className="text-sm">시작 시간</Label>
+                      <Input
+                        id="weekdays-start-time"
+                        type="time"
+                        value={settings.notifications.schedule.weekdays.startTime}
+                        onChange={(e) => handleTimeChange('weekdays', 'startTime', e.target.value)}
+                        disabled={isSaving}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="weekdays-end-time" className="text-sm">종료 시간</Label>
+                      <Input
+                        id="weekdays-end-time"
+                        type="time"
+                        value={settings.notifications.schedule.weekdays.endTime}
+                        onChange={(e) => handleTimeChange('weekdays', 'endTime', e.target.value)}
+                        disabled={isSaving}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 주말 설정 */}
+              <div className="space-y-4 p-4 border rounded-lg">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="weekends-enabled" className="text-base font-medium">
+                    주말 (토-일)
+                  </Label>
+                  <Switch
+                    id="weekends-enabled"
+                    checked={settings.notifications.schedule.weekends.enabled}
+                    onCheckedChange={(enabled) => handleToggleDayType('weekends', enabled)}
+                    disabled={isSaving}
+                  />
+                </div>
+                
+                {settings.notifications.schedule.weekends.enabled && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="weekends-start-time" className="text-sm">시작 시간</Label>
+                      <Input
+                        id="weekends-start-time"
+                        type="time"
+                        value={settings.notifications.schedule.weekends.startTime}
+                        onChange={(e) => handleTimeChange('weekends', 'startTime', e.target.value)}
+                        disabled={isSaving}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="weekends-end-time" className="text-sm">종료 시간</Label>
+                      <Input
+                        id="weekends-end-time"
+                        type="time"
+                        value={settings.notifications.schedule.weekends.endTime}
+                        onChange={(e) => handleTimeChange('weekends', 'endTime', e.target.value)}
+                        disabled={isSaving}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 소리 및 진동 설정 */}
+      <Card>
+        <CardHeader>
+          <CardTitle>알림 효과</CardTitle>
+          <CardDescription>
+            알림 소리와 진동을 설정합니다.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* 소리 설정 */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Volume2 className={cn(
+                "h-5 w-5",
+                settings.notifications.sound ? "text-primary" : "text-muted-foreground"
+              )} />
+              <div>
+                <Label htmlFor="sound-enabled" className="text-base font-medium cursor-pointer">
+                  알림 소리
+                </Label>
+                {platform === 'web' && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    브라우저 설정에서 제어됩니다
+                  </p>
+                )}
+              </div>
+            </div>
+            <Switch
+              id="sound-enabled"
+              checked={settings.notifications.sound}
+              onCheckedChange={handleToggleSound}
+              disabled={!settings.notifications.enabled || platform === 'web' || isSaving}
+            />
+          </div>
+
+          <Separator />
+
+          {/* 진동 설정 */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Vibrate className={cn(
+                "h-5 w-5",
+                settings.notifications.vibration ? "text-primary" : "text-muted-foreground"
+              )} />
+              <div>
+                <Label htmlFor="vibration-enabled" className="text-base font-medium cursor-pointer">
+                  진동
+                </Label>
+                {platform !== 'mobile' && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    모바일 전용 기능입니다
+                  </p>
+                )}
+              </div>
+            </div>
+            <Switch
+              id="vibration-enabled"
+              checked={settings.notifications.vibration}
+              onCheckedChange={handleToggleVibration}
+              disabled={!settings.notifications.enabled || platform !== 'mobile' || isSaving}
+            />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+

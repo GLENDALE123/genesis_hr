@@ -2,7 +2,15 @@ import { getMessaging, getToken, onMessage, isSupported, Messaging } from 'fireb
 import app from './config';
 
 // VAPID 키 (Firebase Console에서 생성)
+// Firebase Console > Project Settings > Cloud Messaging > Web Push certificates에서 생성
 const VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || '';
+
+// VAPID 키 경고
+if (!VAPID_KEY && typeof window !== 'undefined') {
+  console.warn('⚠️ FIREBASE VAPID 키가 설정되지 않았습니다.');
+  console.warn('Firebase Console > Project Settings > Cloud Messaging > Web Push certificates에서 키를 생성하고');
+  console.warn('.env.local 파일에 NEXT_PUBLIC_FIREBASE_VAPID_KEY를 추가하세요.');
+}
 
 interface MessagePayload {
   notification?: {
@@ -44,6 +52,13 @@ export const getFCMToken = async (): Promise<string | null> => {
     const messagingService = await getMessagingService();
     if (!messagingService) return null;
 
+    // VAPID 키 확인
+    if (!VAPID_KEY) {
+      console.error('❌ VAPID 키가 설정되지 않았습니다. FCM 토큰을 가져올 수 없습니다.');
+      console.error('Firebase Console에서 Web Push 인증서를 생성하고 .env.local에 추가하세요.');
+      return null;
+    }
+
     // 알림 권한 요청
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') {
@@ -57,7 +72,7 @@ export const getFCMToken = async (): Promise<string | null> => {
     });
 
     if (token) {
-      console.log('FCM 토큰:', token);
+      console.log('✅ FCM 토큰 발급 완료:', token.substring(0, 20) + '...');
       return token;
     } else {
       console.warn('FCM 토큰을 가져올 수 없습니다.');
@@ -69,7 +84,7 @@ export const getFCMToken = async (): Promise<string | null> => {
       // 권한 거부 에러는 로그 출력 안 함
       return null;
     }
-    console.error('FCM 토큰 가져오기 실패:', error);
+    console.error('❌ FCM 토큰 가져오기 실패:', error);
     return null;
   }
 };
@@ -111,17 +126,30 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
 export const registerServiceWorker = async (): Promise<ServiceWorkerRegistration | null> => {
   if (typeof window === 'undefined') return null;
 
-  // Electron 환경에서는 서비스 워커 사용 안 함
-  // (렌더러 프로세스가 항상 실행 중이므로 Firestore 리스너만 사용)
-  if (window.__ELECTRON__) {
-    console.log('🖥️ Electron 환경: 서비스 워커 등록 건너뛰기 (Firestore 리스너 사용)');
-    return null;
-  }
-
   try {
     if ('serviceWorker' in navigator) {
-      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-      console.log('서비스 워커 등록 성공:', registration);
+      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+        scope: '/'
+      });
+      
+      // 서비스 워커가 활성화될 때까지 대기
+      if (registration.installing) {
+        await new Promise((resolve) => {
+          const installingWorker = registration.installing;
+          if (installingWorker) {
+            installingWorker.addEventListener('statechange', (e) => {
+              if ((e.target as ServiceWorker).state === 'activated') {
+                resolve(true);
+              }
+            });
+          } else {
+            resolve(true);
+          }
+        });
+      }
+      
+      const isElectron = typeof window !== 'undefined' && window.__ELECTRON__;
+      console.log(`✅ 서비스 워커 등록 성공 (${isElectron ? 'Electron' : '웹'} 환경):`, registration);
       return registration;
     } else {
       console.warn('이 브라우저는 서비스 워커를 지원하지 않습니다.');
@@ -129,6 +157,11 @@ export const registerServiceWorker = async (): Promise<ServiceWorkerRegistration
     }
   } catch (error) {
     console.error('서비스 워커 등록 실패:', error);
+    // Electron 환경에서 Service Worker 등록 실패 시 null 반환 (FCM 토큰은 여전히 시도)
+    if (typeof window !== 'undefined' && window.__ELECTRON__) {
+      console.log('⚠️ Electron 환경에서 Service Worker 등록 실패, FCM 토큰은 계속 시도합니다.');
+      return null;
+    }
     return null;
   }
 };

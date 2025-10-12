@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, CalendarClock, AlertTriangle } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
 import { CommentNotification, LogisticsNotification } from './notifications';
@@ -19,6 +19,7 @@ export interface NotificationData {
   metadata?: {
     requestType?: string;
     productName?: string;
+    supplier?: string;
   };
 }
 
@@ -120,6 +121,7 @@ export const CustomNotification: React.FC<CustomNotificationProps> = ({
               requester={notification.senderName}
               requesterAvatar={notification.senderAvatar}
               productName={notification.metadata.productName || ''}
+              supplier={notification.metadata.supplier}
               content={notification.body}
               timestamp={notification.timestamp}
             />
@@ -167,6 +169,25 @@ export class NotificationManager {
     this.isAppInForeground = isForeground;
   }
 
+  // 설정에서 알림 소리 설정 가져오기
+  static getSoundSettings(): boolean {
+    try {
+      // localStorage에서 설정 가져오기
+      const settings = localStorage.getItem('user-settings');
+      if (settings) {
+        const parsedSettings = JSON.parse(settings);
+        // settings.notifications.sound 경로로 확인
+        return parsedSettings?.state?.notifications?.sound !== false;
+      }
+      // 기본값: 소리 켜짐
+      return true;
+    } catch (error) {
+      console.error('❌ [NotificationManager] 설정 읽기 실패:', error);
+      // 에러 시 기본값: 소리 켜짐
+      return true;
+    }
+  }
+
   static async notify(notification: Omit<NotificationData, 'id' | 'timestamp'>) {
     const newNotification: NotificationData = {
       ...notification,
@@ -180,10 +201,22 @@ export class NotificationManager {
     // Electron 환경에서는 네이티브 알림 사용
     if (isElectron && window.electron) {
       try {
+        // 알림 타이틀에 아이콘 추가
+        let iconPrefix = '';
+        if (newNotification.title.includes('생산관리부 요청사항')) {
+          iconPrefix = '📅 ';
+        } else if (newNotification.title.includes('부족분 신청')) {
+          iconPrefix = '⚠️ ';
+        }
+        
+        // 설정에서 알림 소리 설정 가져오기
+        const soundEnabled = this.getSoundSettings();
+        
         await window.electron.showNotification({
-          title: newNotification.title,
+          title: iconPrefix + newNotification.title,
           body: newNotification.body,
-          icon: newNotification.senderAvatar
+          icon: newNotification.senderAvatar,
+          soundEnabled: soundEnabled  // ✅ 소리 설정 전달
         });
         return;
       } catch (error) {
@@ -215,12 +248,26 @@ export class NotificationManager {
   // 시스템 알림 전송
   private static async sendSystemNotification(notification: NotificationData) {
     try {
+      // 알림 타이틀에 아이콘 추가
+      let iconPrefix = '';
+      if (notification.title.includes('생산관리부 요청사항')) {
+        iconPrefix = '📅 ';
+      } else if (notification.title.includes('부족분 신청')) {
+        iconPrefix = '⚠️ ';
+      }
+      
+      const titleWithIcon = iconPrefix + notification.title;
+      
       // Electron 환경 - 네이티브 알림 사용
       if (typeof window !== 'undefined' && window.__ELECTRON__ && window.electron) {
+        // 설정에서 알림 소리 설정 가져오기
+        const soundEnabled = this.getSoundSettings();
+        
         await window.electron.showNotification({
-          title: notification.title,
+          title: titleWithIcon,
           body: notification.body,
-          icon: notification.senderAvatar
+          icon: notification.senderAvatar,
+          soundEnabled: soundEnabled  // ✅ 소리 설정 전달
         });
         return;
       }
@@ -228,7 +275,7 @@ export class NotificationManager {
       // 웹 브라우저 환경 - 시스템 알림 사용
       if ('Notification' in window) {
         if (Notification.permission === 'granted') {
-          new Notification(notification.title, {
+          new Notification(titleWithIcon, {
             body: notification.body,
             icon: notification.senderAvatar || '/favicon.ico',
             tag: 'mention-notification',
@@ -239,7 +286,7 @@ export class NotificationManager {
         } else if (Notification.permission !== 'denied') {
           const permission = await Notification.requestPermission();
           if (permission === 'granted') {
-            new Notification(notification.title, {
+            new Notification(titleWithIcon, {
               body: notification.body,
               icon: notification.senderAvatar || '/favicon.ico',
               tag: 'mention-notification',
@@ -267,45 +314,98 @@ export class NotificationManager {
     this.listeners.forEach(listener => listener([...this.notifications]));
   }
 
-  // 알림 읽음 처리
+  // 알림 읽음 처리 (Firebase Functions 호출)
   static async markAsRead(userId: string, notificationId: string) {
     try {
-      const { doc, updateDoc } = await import('firebase/firestore');
-      const { db } = await import('@/shared/services/firebase/config');
+      // Firebase Functions URL 설정
+      const isDev = process.env.NODE_ENV === 'development';
+      const isLocalhost = typeof window !== 'undefined' && 
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
       
-      if (db) {
-        const inboxRef = doc(db, `users/${userId}/inbox`, notificationId);
-        await updateDoc(inboxRef, { read: true });
+      const functionsUrl = (isDev && isLocalhost)
+        ? 'http://localhost:5001/control-6a11d/asia-northeast3'
+        : 'https://asia-northeast3-control-6a11d.cloudfunctions.net';
+      
+      // Functions 호출 - 읽음 처리만 (서버가 3일 후 자동 삭제)
+      const response = await fetch(`${functionsUrl}/markNotificationRead`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid: userId, inboxId: notificationId })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`읽음 처리 실패: ${response.status}`);
       }
+      
+      console.log('✅ [NotificationManager] 알림 읽음 처리 완료:', notificationId);
     } catch (error) {
       console.error('❌ [NotificationManager] 읽음 처리 실패:', error);
+      throw error;
     }
   }
 
-  // 모든 알림 읽음 처리
+  // 모든 알림 읽음 처리 (서버가 3일 후 자동 삭제)
   static async markAllAsRead(userId: string) {
+    const startTime = Date.now();
+    
     try {
-      const { collection, query, where, getDocs, writeBatch } = await import('firebase/firestore');
+      const { collection, query, where, getDocs } = await import('firebase/firestore');
       const { db } = await import('@/shared/services/firebase/config');
       
-      if (db) {
-        // 미읽은 알림 조회
-        const q = query(
-          collection(db, `users/${userId}/inbox`),
-          where('read', '==', false)
-        );
-        
-        const snapshot = await getDocs(q);
-        const batch = writeBatch(db);
-        
-        snapshot.forEach((document) => {
-          batch.update(document.ref, { read: true });
-        });
-        
-        await batch.commit();
+      if (!db) {
+        throw new Error('Firestore가 초기화되지 않았습니다.');
       }
+      
+      // Firebase Functions URL 설정
+      const isDev = process.env.NODE_ENV === 'development';
+      const isLocalhost = typeof window !== 'undefined' && 
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      
+      const functionsUrl = (isDev && isLocalhost)
+        ? 'http://localhost:5001/control-6a11d/asia-northeast3'
+        : 'https://asia-northeast3-control-6a11d.cloudfunctions.net';
+      
+      // 미읽은 알림 ID 조회
+      const snapshot = await getDocs(query(
+        collection(db, `users/${userId}/inbox`),
+        where('read', '==', false)
+      ));
+      
+      const inboxIds = snapshot.docs.map(doc => doc.id);
+      
+      if (inboxIds.length === 0) {
+        console.log('✅ [NotificationManager] 읽을 알림이 없습니다.');
+        return { marked: 0, duration: Date.now() - startTime };
+      }
+      
+      console.log(`📤 [NotificationManager] ${inboxIds.length}개 알림 읽음 처리 시작...`);
+      
+      // Functions 호출 - 읽음 처리만 (서버가 3일 후 자동 삭제)
+      const response = await fetch(`${functionsUrl}/markNotificationsReadBulk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid: userId, inboxIds })
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`읽음 처리 실패 (${response.status}): ${errorText}`);
+      }
+      
+      const result = await response.json();
+      const duration = Date.now() - startTime;
+      
+      console.log(`✅ [NotificationManager] ${result.marked}개 알림 읽음 처리 완료 (${duration}ms)`);
+      
+      return {
+        marked: result.marked,
+        duration,
+        totalRequested: inboxIds.length
+      };
     } catch (error) {
-      console.error('❌ [NotificationManager] 모든 알림 읽음 처리 실패:', error);
+      const duration = Date.now() - startTime;
+      console.error(`❌ [NotificationManager] 모든 알림 읽음 처리 실패 (${duration}ms):`, error);
+      throw error;
     }
   }
 }

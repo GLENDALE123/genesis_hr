@@ -24,8 +24,10 @@ import {
   PieChart,
   Factory,
   CalendarDays,
+  CalendarClock,
   ClipboardList,
-  AlertTriangle
+  AlertTriangle,
+  TestTube
 } from 'lucide-react';
 
 interface AppSidebarProps {
@@ -55,38 +57,16 @@ const mainNavigationItems: NavItem[] = [
     children: [
       { title: '생산일보', href: '/production/daily-report', icon: FileText },
       { title: '생산일정', href: '/production/schedule', icon: CalendarDays },
-      { title: '생산관리부', href: '/production/management', icon: ClipboardList },
+      { title: '생산관리부', href: '/production/management', icon: CalendarClock },
       { title: '부족분관리', href: '/production/shortage-management', icon: AlertTriangle },
     ],
   },
   {
-    title: '직원 관리',
-    href: '/employees',
-    icon: Users,
+    title: '샘플센터',
+    href: '/sample-center',
+    icon: TestTube,
     children: [
-      { title: '직원 목록', href: '/employees', icon: UserCheck },
-      { title: '부서 관리', href: '/employees/departments', icon: Building },
-      { title: '직급 관리', href: '/employees/positions', icon: UserCheck },
-    ],
-  },
-  {
-    title: '급여 관리',
-    href: '/payroll',
-    icon: CreditCard,
-    children: [
-      { title: '급여 계산', href: '/payroll/calculate', icon: PieChart },
-      { title: '급여 내역', href: '/payroll/history', icon: FileText },
-      { title: '세금 관리', href: '/payroll/taxes', icon: CreditCard },
-    ],
-  },
-  {
-    title: '보고서',
-    href: '/reports',
-    icon: BarChart3,
-    children: [
-      { title: '인사 보고서', href: '/reports/hr', icon: FileText },
-      { title: '급여 보고서', href: '/reports/payroll', icon: BarChart3 },
-      { title: '통계 분석', href: '/reports/analytics', icon: PieChart },
+      { title: '요청목록', href: '/sample-center/requests', icon: ClipboardList },
     ],
   },
 ];

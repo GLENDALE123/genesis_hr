@@ -1,10 +1,14 @@
-const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, Notification } = require('electron');
+const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, Notification, shell } = require('electron');
 const path = require('path');
+const { exec } = require('child_process');
 const registerIpcHandlers = require('./ipc-handlers');
 const notificationWindow = require('./notification-window');
 
 // 개발 모드 체크
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+
+// Electron 환경에서는 Firestore 리스너 방식 사용 (FCM 미사용)
+console.log('✅ [Electron] Firestore 실시간 알림 시스템 사용');
 
 let mainWindow;
 let tray;
@@ -21,7 +25,10 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, 'preload.js'),
+      // Service Worker 및 알림 활성화
+      enableRemoteModule: false,
+      webSecurity: true,
     },
     icon: path.join(__dirname, '../public/favicon.ico'),
     show: false, // 로딩 완료 후 표시
@@ -44,6 +51,18 @@ function createWindow() {
     : `file://${path.join(__dirname, '../out/index.html')}`;
 
   mainWindow.loadURL(startUrl);
+
+  // 알림 권한 자동 허용
+  const { session } = mainWindow.webContents;
+  session.setPermissionRequestHandler((webContents, permission, callback) => {
+    // 알림 권한 자동 허용 (Firestore 리스너 방식)
+    if (permission === 'notifications') {
+      callback(true);
+      console.log('✅ [Electron] 알림 권한 허용됨');
+    } else {
+      callback(false);
+    }
+  });
 
   // 개발 모드에서 새로고침 단축키 등록
   if (isDev) {
@@ -148,13 +167,56 @@ function createTray() {
 }
 
 /**
+ * Windows 시스템 알림 소리 재생
+ */
+function playSystemNotificationSound() {
+  try {
+    if (process.platform === 'win32') {
+      // PowerShell을 사용하여 Windows 시스템 알림 소리 재생
+      const command = `powershell -c "(New-Object Media.SoundPlayer 'C:\\Windows\\Media\\Windows Notify System Generic.wav').PlaySync();"`;
+      
+      exec(command, (error) => {
+        if (error) {
+          console.error('❌ [Electron Main] 시스템 소리 재생 실패:', error);
+        } else {
+          console.log('🔊 [Electron Main] Windows 시스템 알림 소리 재생 완료');
+        }
+      });
+    }
+  } catch (error) {
+    console.error('❌ [Electron Main] 시스템 소리 재생 오류:', error);
+  }
+}
+
+/**
  * 커스텀 알림 표시
  */
 ipcMain.handle('show-notification', async (event, options) => {
   try {
-    const { title, subtitle, body, icon, senderName, senderAvatar, timestamp, centerInfo, link, useCustom = true } = options;
+    const { title, subtitle, body, icon, senderName, senderAvatar, timestamp, centerInfo, link, useCustom = true, soundEnabled = true } = options;
     
     console.log('📥 [Electron Main] show-notification 수신:', { title, subtitle, body, senderName, centerInfo, link, useCustom });
+    
+    // 🔔 작업 표시줄 깜빡임 (메인 윈도우가 포커스되지 않았을 때)
+    if (mainWindow && !mainWindow.isFocused()) {
+      mainWindow.flashFrame(true); // 깜빡임 시작
+      console.log('✨ [Electron Main] 작업 표시줄 깜빡임 시작');
+      
+      // 윈도우가 포커스되면 깜빡임 중지
+      mainWindow.once('focus', () => {
+        if (mainWindow) {
+          mainWindow.flashFrame(false);
+          console.log('⏹️ [Electron Main] 작업 표시줄 깜빡임 중지');
+        }
+      });
+    }
+    
+    // 🔊 Windows 시스템 알림 소리 재생 (설정 확인)
+    if (soundEnabled) {
+      playSystemNotificationSound();
+    } else {
+      console.log('🔇 [Electron Main] 알림 소리 비활성화됨 (설정에서 꺼짐)');
+    }
     
     // 커스텀 알림 사용
     if (useCustom) {
@@ -171,6 +233,7 @@ ipcMain.handle('show-notification', async (event, options) => {
           senderAvatar: senderAvatar,
           timestamp: timestamp,
           centerInfo: centerInfo,  // ✅ 중앙 정보 추가
+          soundEnabled: soundEnabled,  // ✅ 소리 설정 추가
           onClick: () => {
             if (mainWindow) {
               mainWindow.show();

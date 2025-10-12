@@ -33,14 +33,16 @@ export const usePagePermissions = (pageId: PageIdentifier) => {
     isCacheValid,
     getPagePermission,
     setPagePermission,
+    initializeCache,
     setLoading,
     setError,
   } = usePermissionsStore();
 
   const [localLoading, setLocalLoading] = useState(false);
 
-  // Admin은 모든 권한 자동 부여 (userProfile에서 role 확인)
+  // Admin/Manager는 기본 권한 자동 부여 (userProfile에서 role 확인)
   const isAdmin = userProfile?.role === 'Admin';
+  const isManager = userProfile?.role === 'Manager';
 
   // 권한 데이터 가져오기 (캐싱 활용)
   useEffect(() => {
@@ -49,7 +51,7 @@ export const usePagePermissions = (pageId: PageIdentifier) => {
       return;
     }
 
-    // Admin은 권한 조회 불필요
+    // Admin만 권한 조회 불필요 (Manager는 커스텀 권한 설정을 받을 수 있음)
     if (isAdmin) {
       return;
     }
@@ -66,6 +68,11 @@ export const usePagePermissions = (pageId: PageIdentifier) => {
       setLoading(true);
 
       try {
+        // 캐시가 없으면 먼저 초기화
+        if (!cache) {
+          initializeCache(user.uid);
+        }
+        
         const permissions = await PermissionsService.getUserPagePermissions(user.uid, pageId);
         setPagePermission(pageId, permissions);
       } catch (error) {
@@ -78,10 +85,7 @@ export const usePagePermissions = (pageId: PageIdentifier) => {
     };
 
     fetchPermissions();
-  }, [user, userProfile, pageId, isAdmin, isCacheValid, getPagePermission, setPagePermission, setLoading, setError]);
-
-  // 캐시에서 권한 가져오기
-  const pagePermissions = isAdmin ? null : getPagePermission(pageId);
+  }, [user, userProfile, pageId, isAdmin, isManager, cache, isCacheValid, getPagePermission, setPagePermission, initializeCache, setLoading, setError]);
 
   // CRUD 권한 체크 헬퍼 함수
   const hasPermission = useCallback(
@@ -89,28 +93,41 @@ export const usePagePermissions = (pageId: PageIdentifier) => {
       // Admin은 모든 권한 보유
       if (isAdmin) return true;
 
-      // 권한 데이터가 없으면 false
-      if (!pagePermissions) return false;
+      // 캐시에서 권한 가져오기 (함수 내부에서 최신 캐시 조회)
+      const currentPermissions = getPagePermission(pageId);
+      
+      // 커스텀 권한 설정이 있으면 우선 적용
+      if (currentPermissions) {
+        return currentPermissions.crudPermissions.includes(permission);
+      }
 
-      // 권한 배열에 포함되어 있는지 확인
-      return pagePermissions.crudPermissions.includes(permission);
+      // 권한 설정이 없는 경우 Manager는 기본 권한 부여 (delete 제외)
+      if (isManager) {
+        return permission !== 'delete';
+      }
+
+      // 권한 데이터가 없으면 false
+      return false;
     },
-    [isAdmin, pagePermissions]
+    [isAdmin, isManager, getPagePermission, pageId]
   );
 
   // 커스텀 권한 체크 헬퍼 함수
   const hasCustomPermission = useCallback(
     (customPermissionKey: string): boolean => {
-      // Admin은 모든 권한 보유
-      if (isAdmin) return true;
+      // Admin/Manager는 모든 커스텀 권한 보유
+      if (isAdmin || isManager) return true;
 
+      // 캐시에서 권한 가져오기 (함수 내부에서 최신 캐시 조회)
+      const currentPermissions = getPagePermission(pageId);
+      
       // 권한 데이터가 없으면 false
-      if (!pagePermissions || !pagePermissions.customPermissions) return false;
+      if (!currentPermissions || !currentPermissions.customPermissions) return false;
 
       // 커스텀 권한 객체에서 값 확인
-      return (pagePermissions.customPermissions as any)[customPermissionKey] === true;
+      return (currentPermissions.customPermissions as any)[customPermissionKey] === true;
     },
-    [isAdmin, pagePermissions]
+    [isAdmin, isManager, getPagePermission, pageId]
   );
 
   return {
@@ -127,9 +144,10 @@ export const usePagePermissions = (pageId: PageIdentifier) => {
     loading: localLoading || storeLoading,
 
     // 권한 데이터 (디버깅용)
-    permissions: pagePermissions,
+    permissions: getPagePermission(pageId),
 
-    // Admin 여부
+    // 역할 여부
     isAdmin,
+    isManager,
   };
 };

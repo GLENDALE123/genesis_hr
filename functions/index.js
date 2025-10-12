@@ -20,8 +20,11 @@ logger.info('Firebase Functions initialized');
 // Firestore 트리거들
 const notificationTriggers = require('./triggers/notifications');
 
-// Storage 트리거들
-const imageTriggers = require('./triggers/imageOptimization');
+// Storage 트리거들 (리전 충돌로 임시 비활성화)
+// const imageTriggers = require('./triggers/imageOptimization');
+
+// Scheduled 트리거들
+const cleanupTriggers = require('./triggers/cleanupReadNotifications');
 
 // HTTPS 함수들
 const notificationHttps = require('./https/notifications');
@@ -33,7 +36,8 @@ const getUnreadNotificationsHttps = require('./https/getUnreadNotifications');
 module.exports = {
   // 트리거
   ...notificationTriggers,
-  ...imageTriggers,
+  // ...imageTriggers, // 리전 충돌로 임시 비활성화
+  ...cleanupTriggers,
   
   // HTTPS 함수들
   ...notificationHttps,

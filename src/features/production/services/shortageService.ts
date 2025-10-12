@@ -1,22 +1,19 @@
 /**
  * 부족분 신청 서비스
  * Firestore의 shortage-requests 컬렉션 관리
+ * 
+ * 규칙 준수: shared/services/firebase/firestore.ts의 공통 함수만 사용
  */
 
 import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  query, 
-  orderBy, 
-  getDocs,
-  Timestamp,
-  arrayUnion
-} from 'firebase/firestore';
-import { db } from '@/shared/services/firebase';
+  addDocument,
+  updateDocument,
+  deleteDocument,
+  getDocumentsWithQuery,
+  getDocument
+} from '@/shared/services/firebase/firestore';
 import { ShortageRequest, PackagingReport } from '@/features/production/types';
+import { createShortageNotification } from './notificationService';
 
 const SHORTAGE_REQUESTS_COLLECTION = 'shortage-requests';
 
@@ -31,10 +28,6 @@ export const createShortageRequest = async (
   },
   author: { uid: string; displayName: string }
 ): Promise<string> => {
-  if (!db) {
-    throw new Error('Firestore가 초기화되지 않았습니다.');
-  }
-
   try {
     const now = new Date().toISOString();
     
@@ -66,12 +59,26 @@ export const createShortageRequest = async (
       comments: []
     };
     
-    const docRef = await addDoc(
-      collection(db, SHORTAGE_REQUESTS_COLLECTION),
-      shortageRequest
-    );
+    const docId = await addDocument(SHORTAGE_REQUESTS_COLLECTION, shortageRequest);
     
-    return docRef.id;
+    // 부족분 신청 알림 발송
+    try {
+      await createShortageNotification(
+        docId,
+        author.displayName,
+        report.productName,
+        report.partName,
+        report.supplier,
+        shortageData.requestedShortageQuantity,
+        shortageData.shortageReason,
+        author.uid
+      );
+    } catch (notificationError) {
+      console.error('부족분 신청 알림 발송 실패:', notificationError);
+      // 알림 실패해도 부족분 신청은 성공으로 처리
+    }
+    
+    return docId;
   } catch (error) {
     console.error('❌ [ShortageService] 부족분 신청 생성 실패:', error);
     throw error;
@@ -89,23 +96,30 @@ export const updateShortageRequest = async (
   },
   author: { uid: string; displayName: string }
 ): Promise<void> => {
-  if (!db) {
-    throw new Error('Firestore가 초기화되지 않았습니다.');
-  }
-
   try {
     const now = new Date().toISOString();
-    const docRef = doc(db, SHORTAGE_REQUESTS_COLLECTION, requestId);
     
-    await updateDoc(docRef, {
-      shortageReason: shortageData.shortageReason,
-      requestedShortageQuantity: shortageData.requestedShortageQuantity,
-      history: arrayUnion({
+    // 기존 데이터 가져오기
+    const existingDoc = await getDocument(SHORTAGE_REQUESTS_COLLECTION, requestId) as ShortageRequest | null;
+    if (!existingDoc) {
+      throw new Error('부족분 신청을 찾을 수 없습니다.');
+    }
+    
+    // history 배열에 새 항목 추가
+    const updatedHistory = [
+      ...(existingDoc.history || []),
+      {
         status: '수정',
         date: now,
         user: author.displayName,
         reason: '부족분 신청 수정됨'
-      })
+      }
+    ];
+    
+    await updateDocument(SHORTAGE_REQUESTS_COLLECTION, requestId, {
+      shortageReason: shortageData.shortageReason,
+      requestedShortageQuantity: shortageData.requestedShortageQuantity,
+      history: updatedHistory
     });
   } catch (error) {
     console.error('❌ [ShortageService] 부족분 신청 업데이트 실패:', error);
@@ -121,22 +135,29 @@ export const updateShortageStatus = async (
   newStatus: 'requested' | 'completed',
   author: { uid: string; displayName: string }
 ): Promise<void> => {
-  if (!db) {
-    throw new Error('Firestore가 초기화되지 않았습니다.');
-  }
-
   try {
     const now = new Date().toISOString();
-    const docRef = doc(db, SHORTAGE_REQUESTS_COLLECTION, requestId);
     
-    await updateDoc(docRef, {
-      status: newStatus,
-      history: arrayUnion({
+    // 기존 데이터 가져오기
+    const existingDoc = await getDocument(SHORTAGE_REQUESTS_COLLECTION, requestId) as ShortageRequest | null;
+    if (!existingDoc) {
+      throw new Error('부족분 신청을 찾을 수 없습니다.');
+    }
+    
+    // history 배열에 새 항목 추가
+    const updatedHistory = [
+      ...(existingDoc.history || []),
+      {
         status: newStatus === 'completed' ? '완료 처리' : '요청 상태로 복원',
         date: now,
         user: author.displayName,
         reason: newStatus === 'completed' ? '관리자 완료 처리' : '상태 복원'
-      })
+      }
+    ];
+    
+    await updateDocument(SHORTAGE_REQUESTS_COLLECTION, requestId, {
+      status: newStatus,
+      history: updatedHistory
     });
   } catch (error) {
     console.error('❌ [ShortageService] 부족분 신청 상태 변경 실패:', error);
@@ -148,13 +169,8 @@ export const updateShortageStatus = async (
  * 부족분 신청 삭제
  */
 export const deleteShortageRequest = async (requestId: string): Promise<void> => {
-  if (!db) {
-    throw new Error('Firestore가 초기화되지 않았습니다.');
-  }
-
   try {
-    const docRef = doc(db, SHORTAGE_REQUESTS_COLLECTION, requestId);
-    await deleteDoc(docRef);
+    await deleteDocument(SHORTAGE_REQUESTS_COLLECTION, requestId);
   } catch (error) {
     console.error('❌ [ShortageService] 부족분 신청 삭제 실패:', error);
     throw error;
@@ -167,21 +183,13 @@ export const deleteShortageRequest = async (requestId: string): Promise<void> =>
 export const getShortageRequestByReportId = async (
   reportId: string
 ): Promise<ShortageRequest | null> => {
-  if (!db) {
-    throw new Error('Firestore가 초기화되지 않았습니다.');
-  }
-
   try {
-    const q = query(
-      collection(db, SHORTAGE_REQUESTS_COLLECTION),
-      orderBy('createdAt', 'desc')
-    );
-    
-    const querySnapshot = await getDocs(q);
-    const requests = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as ShortageRequest[];
+    const requests = await getDocumentsWithQuery(
+      SHORTAGE_REQUESTS_COLLECTION,
+      [],
+      'createdAt',
+      'desc'
+    ) as ShortageRequest[];
     
     // sourceReportId가 일치하는 첫 번째 요청 반환
     const request = requests.find(req => req.sourceReportId === reportId);
@@ -196,21 +204,13 @@ export const getShortageRequestByReportId = async (
  * 모든 부족분 신청 조회
  */
 export const getAllShortageRequests = async (): Promise<ShortageRequest[]> => {
-  if (!db) {
-    throw new Error('Firestore가 초기화되지 않았습니다.');
-  }
-
   try {
-    const q = query(
-      collection(db, SHORTAGE_REQUESTS_COLLECTION),
-      orderBy('createdAt', 'desc')
-    );
-    
-    const querySnapshot = await getDocs(q);
-    const requests = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as ShortageRequest[];
+    const requests = await getDocumentsWithQuery(
+      SHORTAGE_REQUESTS_COLLECTION,
+      [],
+      'createdAt',
+      'desc'
+    ) as ShortageRequest[];
     
     return requests;
   } catch (error) {

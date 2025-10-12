@@ -3,7 +3,7 @@
 */
 
 const admin = require('firebase-admin');
-const { getFirestore } = require('firebase-admin/firestore');
+const { getFirestore, FieldValue: FirestoreFieldValue } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
 
 // Firebase 초기화는 index.js에서 수행되므로 여기서는 참조만
@@ -14,7 +14,7 @@ function initializeFirebase() {
   if (!db) {
     db = getFirestore();
     messaging = getMessaging();
-    FieldValue = admin.firestore.FieldValue;
+    FieldValue = FirestoreFieldValue;
     console.log('Firebase initialized:', { 
       hasDb: !!db, 
       hasMessaging: !!messaging, 
@@ -38,10 +38,14 @@ function selectTitleByType(type, subType) {
       return '생산관리부 요청사항';
     case 'production-request-comment':
       return '생산관리부 요청사항';
-    case 'comment-mention':
-      return '생산관리부 요청사항';
+    case 'shortage-request':
+      return '부족분 신청';
     case 'production-daily-report':
       return '생산일보';
+    
+    // ==================== 댓글/멘션 ====================
+    case 'comment-mention':
+      return '댓글';
     
     // ==================== 시스템 ====================
     case 'announcement':
@@ -64,9 +68,10 @@ function getAndroidChannelIdByTypeAndPriority(type, priority) {
 
   if (p === 'urgent') return 'urgent';
   if (t === 'announcement') return 'announcements';
-  if (t.includes('production')) return 'production';
+  if (t.includes('production') || t.includes('shortage')) return 'operations';
+  if (t.includes('comment') || t.includes('mention')) return 'operations';
   
-  return 'default';
+  return 'system';
 }
 
 /**
@@ -95,9 +100,10 @@ function getCategoryKey(type, priority, subType) {
   if (p === 'urgent') return 'urgent';
   if (t === 'announcement') return 'announcements';
   if (t.includes('production')) return 'production';
+  if (t.includes('shortage')) return 'shortage';
   if (t.includes('comment') || t.includes('mention')) return 'comments';
   
-  return 'default';
+  return 'system';
 }
 
 // 딥링크 URL 매핑
@@ -115,11 +121,17 @@ function mapUrlByType(type, requestId) {
     // ==================== 생산 관리 ====================
     case 'production-request':
     case 'production-request-comment':
-    case 'comment-mention':
       return `/production/management?requestId=${id}`;
+    
+    case 'shortage-request':
+      return `/production/shortage-management?requestId=${id}`;
     
     case 'production-daily-report':
       return `/production/daily-report?reportId=${id}`;
+    
+    // ==================== 댓글/멘션 ====================
+    case 'comment-mention':
+      return `/production/management?requestId=${id}`;
     
     // ==================== 기타 ====================
     case 'announcement':

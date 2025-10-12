@@ -46,7 +46,7 @@ const ShortageManagementContainerComponent: React.FC = () => {
   }>({ isOpen: false, request: null });
 
   // 관리 권한 확인 (Manager, Admin)
-  const canManage = userProfile?.role === 'Manager' || userProfile?.role === 'Admin';
+  const canManage = (userProfile && userProfile.role === 'Manager') || (userProfile && userProfile.role === 'Admin');
 
   // 부족분 신청 목록 조회
   useEffect(() => {
@@ -134,7 +134,7 @@ const ShortageManagementContainerComponent: React.FC = () => {
       setRequests(data);
       
       // 상세 정보가 열려있던 항목이면 닫기
-      if (selectedRequest?.id === deleteConfirmState.request.id) {
+      if ((selectedRequest && selectedRequest.id) === deleteConfirmState.request.id) {
         setSelectedRequest(null);
       }
       
@@ -209,7 +209,7 @@ const ShortageManagementContainerComponent: React.FC = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>부족분 요청 삭제</AlertDialogTitle>
             <AlertDialogDescription>
-              정말로 '{deleteConfirmState.request?.productName}' 부족분 요청을 삭제하시겠습니까? 
+              정말로 '{(deleteConfirmState.request && deleteConfirmState.request.productName) || ''}' 부족분 요청을 삭제하시겠습니까? 
               이 작업은 되돌릴 수 없습니다.
             </AlertDialogDescription>
           </AlertDialogHeader>

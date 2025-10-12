@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/components/ui/table';
 import { ShortageRequest } from '@/features/production/types';
 import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
-import { Search, X, CheckCircle2, RotateCcw, Trash2 } from 'lucide-react';
+import { Search, X, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 
 interface ShortageManagementListViewProps {
@@ -71,7 +71,6 @@ export const ShortageManagementListView: React.FC<ShortageManagementListViewProp
       <Card className="flex-shrink-0">
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-bold text-foreground">부족분 관리</h1>
             <span className="text-sm text-muted-foreground">
               총 {requests.length}건
             </span>
@@ -134,13 +133,13 @@ export const ShortageManagementListView: React.FC<ShortageManagementListViewProp
                       <TableHead className="whitespace-nowrap">제품명/부속명</TableHead>
                       <TableHead className="whitespace-nowrap">부족분 사유</TableHead>
                       <TableHead className="whitespace-nowrap text-right">요청수량</TableHead>
-                      <TableHead className="whitespace-nowrap text-center">작업</TableHead>
+                      {(canManage || canDelete) && <TableHead className="whitespace-nowrap text-center">작업</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {requests.map((request) => {
                       const isCompleted = request.status === 'completed';
-                      const isSelected = selectedRequest?.id === request.id;
+                      const isSelected = (selectedRequest && selectedRequest.id) === request.id;
 
                       return (
                         <TableRow
@@ -179,41 +178,41 @@ export const ShortageManagementListView: React.FC<ShortageManagementListViewProp
                           <TableCell className="whitespace-nowrap text-right font-semibold text-red-600 dark:text-red-400">
                             {request.requestedShortageQuantity.toLocaleString()}
                           </TableCell>
-                          <TableCell className="whitespace-nowrap text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              {canManage && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onStatusUpdate(request.id, isCompleted ? 'requested' : 'completed');
-                                  }}
-                                  className={isCompleted 
-                                    ? 'text-yellow-600 hover:text-yellow-700 dark:text-yellow-400' 
-                                    : 'text-green-600 hover:text-green-700 dark:text-green-400'
-                                  }
-                                  title={isCompleted ? '요청으로 복원' : '완료 처리'}
-                                >
-                                  {isCompleted ? <RotateCcw className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
-                                </Button>
-                              )}
-                              {canDelete && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onDelete(request);
-                                  }}
-                                  className="text-red-600 hover:text-red-700 dark:text-red-400"
-                                  title="삭제"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              )}
-                            </div>
-                          </TableCell>
+                          {(canManage || canDelete) && (
+                            <TableCell className="whitespace-nowrap text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                {canManage && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onStatusUpdate(request.id, isCompleted ? 'requested' : 'completed');
+                                    }}
+                                    className={isCompleted 
+                                      ? 'text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50 dark:text-yellow-400 dark:hover:bg-yellow-900/20' 
+                                      : 'text-green-600 hover:text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/20'
+                                    }
+                                  >
+                                    {isCompleted ? '요청으로' : '완료'}
+                                  </Button>
+                                )}
+                                {canDelete && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onDelete(request);
+                                    }}
+                                    title="부족분 요청 삭제"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          )}
                         </TableRow>
                       );
                     })}
@@ -281,10 +280,10 @@ export const ShortageManagementListView: React.FC<ShortageManagementListViewProp
                 <div>
                   <span className="font-medium text-muted-foreground text-sm">생산 수량 정보:</span>
                   <div className="mt-2 p-3 bg-muted rounded-lg space-y-2 text-sm">
-                    <p><strong>발주수량:</strong> {selectedRequest.orderQuantity?.toLocaleString() || '-'}</p>
-                    <p><strong>투입수량:</strong> {selectedRequest.inputQuantity?.toLocaleString() || '-'}</p>
-                    <p><strong>양품수량:</strong> {selectedRequest.goodQuantity?.toLocaleString() || '-'}</p>
-                    <p><strong>불량수량:</strong> {selectedRequest.defectQuantity?.toLocaleString() || '-'}</p>
+                    <p><strong>발주수량:</strong> {(selectedRequest.orderQuantity && selectedRequest.orderQuantity.toLocaleString()) || '-'}</p>
+                    <p><strong>투입수량:</strong> {(selectedRequest.inputQuantity && selectedRequest.inputQuantity.toLocaleString()) || '-'}</p>
+                    <p><strong>양품수량:</strong> {(selectedRequest.goodQuantity && selectedRequest.goodQuantity.toLocaleString()) || '-'}</p>
+                    <p><strong>불량수량:</strong> {(selectedRequest.defectQuantity && selectedRequest.defectQuantity.toLocaleString()) || '-'}</p>
                     <p className="text-red-600 dark:text-red-400 font-semibold">
                       <strong>부족분 요청수량:</strong> {selectedRequest.requestedShortageQuantity.toLocaleString()}
                     </p>

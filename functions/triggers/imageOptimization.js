@@ -14,7 +14,7 @@ const fs = require('fs');
  * - 총 파일: 2개 (원본 + 썸네일) - 비용 효율적
  */
 exports.generateImageThumbnail = onObjectFinalized({
-  region: 'asia-northeast3',
+  region: 'asia-northeast3', // 한국 리전
   memory: '512MiB', // 썸네일만 생성하므로 메모리 절약
   timeoutSeconds: 60,
 }, async (event) => {

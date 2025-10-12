@@ -19,6 +19,7 @@ import {
 } from '@/shared/components/ui/sheet';
 import { Settings, Shield, User, Check, X } from 'lucide-react';
 import { useIsAdmin } from '@/features/auth/hooks';
+import { usePermissionsStore } from '@/features/auth/store/permissionsStore';
 import { Badge } from '@/shared/components/ui/badge';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { Switch } from '@/shared/components/ui/switch';
@@ -51,6 +52,7 @@ const PermissionSettingsButtonComponent: React.FC<PermissionSettingsButtonProps>
   pageName
 }) => {
   const isAdmin = useIsAdmin();
+  const { clearCache } = usePermissionsStore();
   const [open, setOpen] = useState(false);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(false);
@@ -165,12 +167,15 @@ const PermissionSettingsButtonComponent: React.FC<PermissionSettingsButtonProps>
 
       await PermissionsService.setUserPagePermissions(selectedUser.uid, pageId, pagePermissions);
       
+      // ✅ 권한 캐시 초기화 (변경사항 즉시 반영)
+      clearCache();
+      
       setUserPermissions((prev) => ({
         ...prev,
         [selectedUser.uid]: updatedPermissions,
       }));
 
-      toast.success('권한이 업데이트되었습니다.');
+      toast.success('권한이 업데이트되었습니다. 페이지를 새로고침하면 반영됩니다.');
     } catch (error) {
       console.error('권한 업데이트 실패:', error);
       toast.error('권한 업데이트에 실패했습니다.');

@@ -130,6 +130,11 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 
   // 멘션 텍스트 파싱 및 스타일링
   const renderCommentText = (text: string, isMyComment: boolean) => {
+    // text가 undefined이거나 null인 경우 빈 문자열로 처리
+    if (!text) {
+      return <span className="text-muted-foreground">내용 없음</span>;
+    }
+    
     // @[DisplayName](UID) 형태와 @username 형태 모두 지원
     // @[DisplayName](UID) 패턴을 먼저 찾고, 없으면 @username 패턴 사용
     const mentionWithIdPattern = /@\[([^\]]+)\]\(([^\)]+)\)/g;
@@ -333,7 +338,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
                           : 'bg-card text-foreground border-border rounded-e-xl rounded-es-xl'
                       }`}>
                         <div className="text-sm font-normal">
-                          {renderCommentText(comment.text, isMyComment)}
+                          {renderCommentText(comment.text || '', isMyComment)}
                         </div>
                       </div>
                     )}

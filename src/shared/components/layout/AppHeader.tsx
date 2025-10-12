@@ -28,11 +28,23 @@ import {
   Menu,
   Sun,
   Moon,
-  Shield
+  Shield,
+  Settings,
+  LayoutDashboard,
+  Factory,
+  FileText,
+  CalendarDays,
+  CalendarClock,
+  AlertTriangle,
+  TestTube,
+  ClipboardList,
+  Calendar,
+  MessageSquare,
+  HelpCircle
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { logout } from '@/shared/services/firebase/auth';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { cn } from '@/shared/lib/utils';
 import { getUserDisplayName, getUserInitial, getUserRoleBadgeVariant, getUserRoleText, isAdmin as checkIsAdmin } from '@/shared/utils/userUtils';
 import { ThemeCustomizer } from '@/shared/components/common';
@@ -44,18 +56,94 @@ interface AppHeaderProps {
   onMenuClick?: () => void;
 }
 
+// 경로에 따라 메뉴 이름 반환하는 함수
+const getPageTitle = (pathname: string): string => {
+  // 정확한 매칭 먼저 확인
+  const exactMatches: Record<string, string> = {
+    '/dashboard': '대시보드',
+    '/production/daily-report': '생산일보',
+    '/production/schedule': '생산일정',
+    '/production/management': '생산관리부',
+    '/production/shortage-management': '부족분관리',
+    '/sample-center': '샘플센터',
+    '/sample-center/requests': '샘플 요청목록',
+    '/calendar': '일정 관리',
+    '/notifications': '알림',
+    '/messages': '메시지',
+    '/settings': '설정',
+    '/help': '도움말',
+    '/profile': '프로필',
+  };
+
+  // 정확히 일치하는 경로가 있으면 반환
+  if (exactMatches[pathname]) {
+    return exactMatches[pathname];
+  }
+
+  // 부분 매칭 (상위 경로 확인)
+  if (pathname.startsWith('/production')) {
+    return '생산센터';
+  }
+  if (pathname.startsWith('/sample-center')) {
+    return '샘플센터';
+  }
+
+  return '대시보드';
+};
+
+// 경로에 따라 아이콘 반환하는 함수
+const getPageIcon = (pathname: string) => {
+  // 정확한 매칭 먼저 확인
+  const exactMatches: Record<string, React.ComponentType<{ className?: string }>> = {
+    '/dashboard': LayoutDashboard,
+    '/production/daily-report': FileText,
+    '/production/schedule': CalendarDays,
+    '/production/management': CalendarClock,
+    '/production/shortage-management': AlertTriangle,
+    '/sample-center': TestTube,
+    '/sample-center/requests': ClipboardList,
+    '/calendar': Calendar,
+    '/notifications': Bell,
+    '/messages': MessageSquare,
+    '/settings': Settings,
+    '/help': HelpCircle,
+    '/profile': User,
+  };
+
+  // 정확히 일치하는 경로가 있으면 반환
+  if (exactMatches[pathname]) {
+    return exactMatches[pathname];
+  }
+
+  // 부분 매칭 (상위 경로 확인)
+  if (pathname.startsWith('/production')) {
+    return Factory;
+  }
+  if (pathname.startsWith('/sample-center')) {
+    return TestTube;
+  }
+
+  return LayoutDashboard;
+};
+
 export const AppHeader: React.FC<AppHeaderProps> = ({ 
   className,
   onMenuClick 
 }) => {
   const { user, userProfile } = useAuthStore();
   const router = useRouter();
+  const pathname = usePathname();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const { dummyRole, setDummyRole, clearDummyRole } = useDevStore();
   
   const [notifications, setNotifications] = React.useState<any[]>([]);
   const [unreadCount, setUnreadCount] = React.useState(0);
   const [isNotificationOpen, setIsNotificationOpen] = React.useState(false);
+  const [isMarkingAllRead, setIsMarkingAllRead] = React.useState(false);
+  
+  // 현재 페이지 제목 및 아이콘 가져오기
+  const pageTitle = getPageTitle(pathname);
+  const PageIcon = getPageIcon(pathname);
 
   // 실시간 알림 조회
   React.useEffect(() => {
@@ -125,6 +213,14 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           >
             <Menu className="h-5 w-5" />
           </Button>
+          
+          {/* Current Page Title */}
+          <div className="hidden sm:flex sm:items-center sm:gap-2">
+            <PageIcon className="h-5 w-5 text-foreground" />
+            <h1 className="text-lg font-semibold text-foreground">
+              {pageTitle}
+            </h1>
+          </div>
         </div>
 
         {/* Center Section - Search */}
@@ -167,21 +263,31 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                     variant="ghost"
                     size="sm"
                     className="h-7 text-xs px-2"
+                    disabled={isMarkingAllRead}
                     onClick={async (e) => {
                       e.stopPropagation();
-                      if (user?.uid) {
-                        try {
-                          const { NotificationManager } = await import('@/shared/components/common/CustomNotification');
-                          await NotificationManager.markAllAsRead(user.uid);
-                          toast.success(`${unreadCount}개의 알림을 읽음 처리했습니다.`);
-                        } catch (error) {
-                          console.error('모든 알림 읽음 처리 실패:', error);
-                          toast.error('알림 읽음 처리에 실패했습니다.');
-                        }
+                      if (!user?.uid || isMarkingAllRead) return;
+                      
+                      // 즉시 UI 업데이트 (낙관적 업데이트)
+                      setNotifications([]);
+                      setUnreadCount(0);
+                      setIsNotificationOpen(false);
+                      toast.success('모든 알림을 읽음 처리했습니다.');
+                      
+                      // 백그라운드에서 읽음 처리 (서버는 3일 후 자동 삭제)
+                      setIsMarkingAllRead(true);
+                      try {
+                        const { NotificationManager } = await import('@/shared/components/common/CustomNotification');
+                        await NotificationManager.markAllAsRead(user.uid);
+                        console.log('✅ 백그라운드 읽음 처리 완료 (3일 후 자동 삭제)');
+                      } catch (error) {
+                        console.error('❌ 백그라운드 읽음 처리 실패:', error);
+                      } finally {
+                        setIsMarkingAllRead(false);
                       }
                     }}
                   >
-                    모두 읽음
+                    {isMarkingAllRead ? '처리 중...' : '모두 읽음'}
                   </Button>
                 )}
               </div>
@@ -191,41 +297,107 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                     알림이 없습니다
                   </div>
                 ) : (
-                  notifications.map((notif) => (
-                    <Link
-                      key={notif.id}
-                      href={notif.link || '#'}
-                      className="block px-3 py-2 border-b cursor-pointer hover:bg-accent transition-colors bg-primary/5"
-                      onClick={async (e) => {
-                        if (!notif.link) {
-                          e.preventDefault();
-                        }
-                        if (user?.uid) {
-                          const { NotificationManager } = await import('@/shared/components/common/CustomNotification');
-                          await NotificationManager.markAsRead(user.uid, notif.id);
-                          setIsNotificationOpen(false);
-                        }
-                      }}
-                    >
-                      <div className="flex items-start gap-2">
-                        <div className="flex-shrink-0 mt-0.5">
-                          <Bell className="h-3.5 w-3.5 text-primary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium leading-tight">{notif.title}</p>
-                          <p className="text-xs text-muted-foreground line-clamp-2 leading-tight mt-0.5">
-                            {notif.body}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5 leading-tight opacity-70">
-                            {notif.metadata?.senderName || '시스템'}
-                          </p>
-                        </div>
-                        <div className="flex-shrink-0">
-                          <div className="w-2 h-2 bg-primary rounded-full mt-1" />
-                        </div>
-                      </div>
-                    </Link>
-                  ))
+                  notifications.map((notif) => {
+                    // 알림 타입 감지 (실제 표시되는 필드)
+                    const requestType = notif.metadata?.centerInfo;
+                    const isLogisticsType = requestType || notif.title?.includes('생산관리부') || notif.title?.includes('부족분');
+                    const timestamp = notif.createdAt?.toDate ? notif.createdAt.toDate() : new Date(notif.createdAt || Date.now());
+                    const senderName = notif.metadata?.senderName || '시스템';
+                    const senderAvatar = notif.metadata?.senderAvatar;
+                    const productName = notif.metadata?.productName;
+                    const supplier = notif.metadata?.supplier;
+                    
+                    return (
+                      <Link
+                        key={notif.id}
+                        href={notif.link || '#'}
+                        className="block px-3 py-3 border-b cursor-pointer hover:bg-accent transition-colors bg-primary/5"
+                        onClick={async (e) => {
+                          if (!notif.link) {
+                            e.preventDefault();
+                          }
+                          if (user?.uid) {
+                            // 즉시 UI에서 제거 (낙관적 업데이트)
+                            setNotifications(prev => prev.filter(n => n.id !== notif.id));
+                            setUnreadCount(prev => Math.max(0, prev - 1));
+                            
+                            // 백그라운드에서 읽음 처리 (서버는 3일 후 자동 삭제)
+                            const { NotificationManager } = await import('@/shared/components/common/CustomNotification');
+                            NotificationManager.markAsRead(user.uid, notif.id).catch(err => {
+                              console.error('❌ 알림 읽음 처리 실패:', err);
+                            });
+                            
+                            setIsNotificationOpen(false);
+                          }
+                        }}
+                      >
+                        {isLogisticsType ? (
+                          /* 물류이동/생산요청 알림 */
+                          <>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                                {notif.title?.includes('댓글 : 생산관리부') && <MessageSquare className="h-3.5 w-3.5 text-blue-500" />}
+                                {notif.title?.includes('생산관리부') && !notif.title?.includes('댓글 :') && <CalendarClock className="h-3.5 w-3.5 text-blue-500" />}
+                                {notif.title?.includes('부족분') && <AlertTriangle className="h-3.5 w-3.5 text-orange-500" />}
+                                {notif.title}
+                              </span>
+                              {requestType && (
+                                <span className="text-xs font-semibold text-primary">
+                                  {requestType}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-start gap-3">
+                              <Avatar className="h-10 w-10 flex-shrink-0">
+                                <AvatarImage src={senderAvatar} alt={senderName} />
+                                <AvatarFallback className="bg-muted">
+                                  {senderName.charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-sm font-semibold text-foreground">{senderName}</span>
+                                  <span className="text-xs text-muted-foreground">•</span>
+                                  <span className="text-sm font-medium text-foreground truncate">
+                                    {supplier && `${supplier} `}{productName}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground ml-auto">
+                                    {timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-muted-foreground line-clamp-3 whitespace-pre-line">{notif.body}</p>
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          /* 댓글/멘션 알림 */
+                          <div className="flex items-start gap-3">
+                            <Avatar className="h-10 w-10 flex-shrink-0">
+                              <AvatarImage src={senderAvatar} alt={senderName} />
+                              <AvatarFallback className="bg-muted">
+                                {senderName.charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                {notif.type === 'mention' ? (
+                                  <MessageSquare className="h-4 w-4 text-blue-600" />
+                                ) : (
+                                  <User className="h-4 w-4 text-green-600" />
+                                )}
+                                <span className="text-sm font-semibold text-foreground truncate">{senderName}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                              <p className="text-sm font-medium text-foreground mb-1">{notif.title}</p>
+                              <p className="text-sm text-muted-foreground line-clamp-2">{notif.body}</p>
+                            </div>
+                          </div>
+                        )}
+                      </Link>
+                    );
+                  })
                 )}
               </div>
             </PopoverContent>
@@ -280,21 +452,27 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                   ) : (
                     <Sun className="mr-2 h-4 w-4" />
                   )}
-                  <span>다크 모드</span>
+                  <span>
+                    {(resolvedTheme || theme) === 'dark' ? '다크 모드' : '라이트 모드'}
+                  </span>
                 </div>
                 <Switch
                   checked={(resolvedTheme || theme) === 'dark'}
                   onCheckedChange={(checked) => {
-                    console.log('테마 변경:', checked ? 'dark' : 'light');
-                    setTheme(checked ? 'dark' : 'light');
+                    const newTheme = checked ? 'dark' : 'light';
+                    console.log('테마 변경:', newTheme);
+                    
+                    // next-themes만 업데이트 (localStorage 자동 저장)
+                    // 기기별로 독립적인 테마 설정
+                    setTheme(newTheme);
                   }}
                 />
               </div>
-              {/* Settings menu - 임시 비활성화 */}
-              {/* <DropdownMenuItem onClick={() => router.push('/settings')}>
+              {/* Settings menu */}
+              <DropdownMenuItem onClick={() => router.push('/settings')}>
                 <Settings className="mr-2 h-4 w-4" />
                 <span>설정</span>
-              </DropdownMenuItem> */}
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               
               {/* Admin 전용: 권한 테스트 모드 */}

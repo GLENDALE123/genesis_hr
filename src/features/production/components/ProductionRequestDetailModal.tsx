@@ -80,10 +80,17 @@ const ProductionRequestDetailModalComponent: React.FC<ProductionRequestDetailMod
     if (isOpen && request && currentUserUid && request.comments && request.comments.length > 0) {
       const markCommentsAsRead = async () => {
         try {
-          // 읽지 않은 댓글들 찾기
-          const unreadComments = (request.comments || []).filter(
-            comment => comment.readBy && !comment.readBy.includes(currentUserUid)
-          );
+          // 읽지 않은 댓글들 찾기 (hasUnreadComments와 동일한 로직)
+          const unreadComments = (request.comments || []).filter(comment => {
+            // readBy 배열이 없으면 빈 배열로 간주
+            const readBy = comment.readBy || [];
+            
+            // 본인이 작성한 댓글은 읽은 것으로 간주
+            if (comment.uid === currentUserUid) return false;
+            
+            // readBy 배열에 currentUserUid가 없으면 읽지 않은 댓글
+            return !readBy.includes(currentUserUid);
+          });
 
           // 각 읽지 않은 댓글을 읽음 처리
           for (const comment of unreadComments) {
@@ -94,6 +101,10 @@ const ProductionRequestDetailModalComponent: React.FC<ProductionRequestDetailMod
               currentUserUid
             );
           }
+
+          if (unreadComments.length > 0) {
+            console.log(`✅ [생산관리부] ${unreadComments.length}개의 댓글을 읽음 처리했습니다.`);
+          }
         } catch (error) {
           console.error('댓글 읽음 처리 실패:', error);
         }
@@ -101,7 +112,7 @@ const ProductionRequestDetailModalComponent: React.FC<ProductionRequestDetailMod
 
       markCommentsAsRead();
     }
-  }, [isOpen, request?.id, currentUserUid]);
+  }, [isOpen, (request && request.id), currentUserUid]);
 
   if (!request) return null;
 

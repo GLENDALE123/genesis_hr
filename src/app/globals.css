@@ -68,6 +68,8 @@
     --status-completed-foreground: 142.1 70.6% 25.3%;  /* green-800 */
     --status-rejected: 0 85.7% 92.9%;             /* red-100 */
     --status-rejected-foreground: 0 72.2% 30.6%;  /* red-800 */
+    --status-pending: 215.4 16.3% 96.1%;          /* slate-100 */
+    --status-pending-foreground: 215.3 25% 26.7%; /* slate-700 */
   }
 
   .dark {
@@ -125,6 +127,8 @@
     --status-completed-foreground: 141.2 84.2% 70.8%;  /* green-200 */
     --status-rejected: 0 62.8% 20.6%;             /* red-900/50 */
     --status-rejected-foreground: 0 84.2% 72.9%;  /* red-200 */
+    --status-pending: 215.4 16.3% 25.1%;          /* slate-800 */
+    --status-pending-foreground: 215.4 20.2% 85.1%; /* slate-200 */
   }
 }
 

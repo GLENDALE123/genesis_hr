@@ -17,6 +17,11 @@ import {
   CARD_TEXTS,
   AUTH_ERROR_MESSAGES 
 } from '@/features/auth/constants';
+import { 
+  validateEmail, 
+  validatePassword, 
+  validateName 
+} from '@/features/auth/utils';
 import { Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -33,6 +38,18 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordMismatch, setPasswordMismatch] = useState(false);
+  
+  // 필드별 에러 상태
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [nameError, setNameError] = useState('');
+  
+  // shake 애니메이션 트리거 상태
+  const [shakeEmail, setShakeEmail] = useState(false);
+  const [shakePassword, setShakePassword] = useState(false);
+  const [shakeName, setShakeName] = useState(false);
+  const [shakeConfirmPassword, setShakeConfirmPassword] = useState(false);
+  
   const router = useRouter();
   const { user } = useAuthStore();
 
@@ -57,20 +74,66 @@ export function LoginForm() {
     return null;
   }
 
+  // shake 애니메이션 트리거 함수
+  const triggerShake = (field: 'email' | 'password' | 'name' | 'confirmPassword') => {
+    if (field === 'email') {
+      setShakeEmail(true);
+      setTimeout(() => setShakeEmail(false), 500);
+    } else if (field === 'password') {
+      setShakePassword(true);
+      setTimeout(() => setShakePassword(false), 500);
+    } else if (field === 'name') {
+      setShakeName(true);
+      setTimeout(() => setShakeName(false), 500);
+    } else if (field === 'confirmPassword') {
+      setShakeConfirmPassword(true);
+      setTimeout(() => setShakeConfirmPassword(false), 500);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setEmailError('');
+    setPasswordError('');
+    setNameError('');
 
     try {
       if (isSignUp) {
+        // 회원가입 필드 검증
+        const emailValidation = validateEmail(email);
+        if (!emailValidation.isValid) {
+          setEmailError(emailValidation.error || '');
+          triggerShake('email');
+          throw new Error(emailValidation.error);
+        }
+        
+        const passwordValidation = validatePassword(password);
+        if (!passwordValidation.isValid) {
+          setPasswordError(passwordValidation.error || '');
+          triggerShake('password');
+          throw new Error(passwordValidation.error);
+        }
+        
+        if (password !== confirmPassword) {
+          triggerShake('confirmPassword');
+          throw new Error('비밀번호가 일치하지 않습니다.');
+        }
+        
+        const nameValidation = validateName(name);
+        if (!nameValidation.isValid) {
+          setNameError(nameValidation.error || '');
+          triggerShake('name');
+          throw new Error(nameValidation.error);
+        }
+        
         await AuthService.signUp({
           email: email.trim(),
           password,
           confirmPassword,
           name: name.trim(),
           displayName: name.trim(),
-          loginId: email.trim().split('@')[0], // 이메일의 @ 앞부분을 기본 로그인 ID로 사용
           position: position.trim() || undefined,
           department: department.trim() || undefined,
         });
@@ -79,10 +142,24 @@ export function LoginForm() {
         });
         router.push('/dashboard');
       } else {
+        // 로그인 필드 검증
+        const emailValidation = validateEmail(email);
+        if (!emailValidation.isValid) {
+          setEmailError(emailValidation.error || '');
+          triggerShake('email');
+          throw new Error(emailValidation.error);
+        }
+        
+        if (!password) {
+          setPasswordError('비밀번호를 입력해주세요.');
+          triggerShake('password');
+          throw new Error('비밀번호를 입력해주세요.');
+        }
+        
         // 로그인 시도
         try {
           await AuthService.signIn({
-            emailOrLoginId: email.trim(),
+            email: email.trim(),
             password,
           });
           toast.success('로그인되었습니다!');
@@ -153,9 +230,16 @@ export function LoginForm() {
               type="email"
               placeholder={FORM_PLACEHOLDERS.EMAIL}
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setEmailError('');
+              }}
+              className={`${emailError ? 'border-destructive focus-visible:ring-destructive' : ''} ${shakeEmail ? 'animate-shake' : ''}`}
               required
             />
+            {emailError && (
+              <p className="text-sm text-destructive">{emailError}</p>
+            )}
           </div>
           
           <div className="space-y-2">
@@ -167,8 +251,11 @@ export function LoginForm() {
                 type={showPassword ? "text" : "password"}
                 placeholder={FORM_PLACEHOLDERS.PASSWORD}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="pr-10"
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setPasswordError('');
+                }}
+                className={`pr-10 ${passwordError ? 'border-destructive focus-visible:ring-destructive' : ''} ${shakePassword ? 'animate-shake' : ''}`}
                 required
               />
               <Button
@@ -185,6 +272,9 @@ export function LoginForm() {
                 )}
               </Button>
             </div>
+            {passwordError && (
+              <p className="text-sm text-destructive">{passwordError}</p>
+            )}
           </div>
           
           {isSignUp && (
@@ -199,7 +289,7 @@ export function LoginForm() {
                     placeholder={FORM_PLACEHOLDERS.CONFIRM_PASSWORD}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className={passwordMismatch ? "pr-10 border-destructive focus-visible:ring-destructive" : "pr-10"}
+                    className={`pr-10 ${passwordMismatch ? 'border-destructive focus-visible:ring-destructive' : ''} ${shakeConfirmPassword ? 'animate-shake' : ''}`}
                     required
                   />
                   <Button
@@ -231,9 +321,16 @@ export function LoginForm() {
                   type="text"
                   placeholder={FORM_PLACEHOLDERS.NAME}
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    setNameError('');
+                  }}
+                  className={`${nameError ? 'border-destructive focus-visible:ring-destructive' : ''} ${shakeName ? 'animate-shake' : ''}`}
                   required
                 />
+                {nameError && (
+                  <p className="text-sm text-destructive">{nameError}</p>
+                )}
               </div>
               
               <div className="space-y-2">

@@ -12,6 +12,7 @@ export interface UserProfile {
   role: UserRole;           // 역할 (Admin/Manager/Member)
   position?: string;        // 직책 (선택사항)
   department?: string;      // 부서 (선택사항)
+  contact?: string;         // 연락처 (선택사항)
   photoURL?: string;        // 프로필 사진 URL (선택사항)
   createdAt: Date;          // 계정 생성일
   updatedAt: Date;          // 마지막 업데이트일
@@ -25,15 +26,15 @@ export interface SignUpData {
   confirmPassword: string;
   name: string;
   displayName: string;
-  loginId: string;          // 로그인 아이디
   role?: UserRole;          // 회원가입 시 역할 (기본값: Member)
   position?: string;
   department?: string;
+  contact?: string;         // 연락처
 }
 
 // 로그인 시 사용할 데이터
 export interface LoginData {
-  emailOrLoginId: string;   // 이메일 또는 로그인 아이디
+  email: string;            // 이메일
   password: string;
 }
 

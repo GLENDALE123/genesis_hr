@@ -9,6 +9,7 @@ import {
   onForegroundMessage, 
   requestNotificationPermission 
 } from '@/shared/services/firebase';
+import { settingsService } from '@/shared/services/settings/settingsService';
 
 interface FCMContextType {
   token: string | null;
@@ -41,7 +42,7 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
     error: null as string | null,
   });
 
-  // FCM 초기화 (로그인 후에만, 웹 환경만)
+  // FCM 초기화 (로그인 후에만)
   useEffect(() => {
     if (!user) {
       // 로그인하지 않은 경우 상태 초기화
@@ -52,18 +53,6 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
         isLoading: false,
         error: null,
       });
-      return;
-    }
-
-    // Electron 환경에서는 FCM 토큰 불필요 (Firestore만 사용)
-    const isElectron = typeof window !== 'undefined' && window.__ELECTRON__;
-    if (isElectron) {
-      console.log('🖥️ Electron 환경: FCM 초기화 건너뛰기 (Firestore 리스너 사용)');
-      setState(prev => ({
-        ...prev,
-        isInitialized: true,
-        isLoading: false,
-      }));
       return;
     }
 
@@ -81,7 +70,8 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
           isLoading: false,
         }));
         
-        console.log('🌐 웹 환경: FCM 초기화 완료');
+        const isElectron = typeof window !== 'undefined' && window.__ELECTRON__;
+        console.log(`✅ FCM 초기화 완료 (${isElectron ? 'Electron' : '웹'} 환경)`);
       } catch (error) {
         console.error('FCM 초기화 실패:', error);
         setState(prev => ({
@@ -95,60 +85,275 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
     initialize();
   }, [user]);
 
-  // 포그라운드 메시지 처리 (한 번만 등록)
+  // 포그라운드 메시지 처리 (FCM + Firestore 하이브리드)
   useEffect(() => {
     if (!state.isInitialized || !user) return;
 
-    // Electron 환경 체크
-    const isElectron = typeof window !== 'undefined' && window.__ELECTRON__ && window.electron;
+    const isElectron = typeof window !== 'undefined' && window.__ELECTRON__;
 
-    // 메시지 핸들러 등록 (Firebase onMessage는 unsubscribe를 반환하지 않음)
-    // 대신 isInitialized가 true일 때 한 번만 등록됨
+    // 1. FCM 메시지 처리 (우선)
     onForegroundMessage(async (payload) => {
-      console.log('📬 FCM 포그라운드 메시지 수신:', payload);
+      console.log('📨 [FCM] 메시지 수신:', payload);
       
-      // Electron 환경: 커스텀 알림창 표시
-      if (isElectron) {
-        try {
-          await window.electron!.showNotification({
-            title: payload.notification?.title || '새로운 알림',
-            body: payload.notification?.body || '새로운 메시지가 도착했습니다.',
-            icon: payload.notification?.image,
-            useCustom: true, // 커스텀 알림창 사용
-          });
-          console.log('✅ [FCM → Electron] 커스텀 알림 표시');
-        } catch (error) {
-          console.error('❌ [FCM → Electron] 알림 표시 실패:', error);
-          // 폴백: 토스트 표시
-          toast({
-            title: payload.notification?.title || '새로운 알림',
-            description: payload.notification?.body || '새로운 메시지가 도착했습니다.',
-            duration: 5000,
-          });
+      // 설정 기반 필터링
+      try {
+        const settings = await settingsService.getSettings(user.uid);
+        const notificationType = payload.data?.type || 'system';
+        
+        const isAllowed = settingsService.isNotificationAllowed(
+          settings,
+          notificationType,
+          new Date()
+        );
+        
+        if (!isAllowed) {
+          return;
         }
-      } else {
-        // 웹 환경: 토스트 알림 표시
-        toast({
-          title: payload.notification?.title || '새로운 알림',
-          description: payload.notification?.body || '새로운 메시지가 도착했습니다.',
-          duration: 5000,
-        });
+      } catch (error) {
+        console.error('❌ 설정 확인 실패, 알림 표시:', error);
       }
+      
+      const title = payload.notification?.title || '새로운 알림';
+      const body = payload.notification?.body || '새로운 메시지가 도착했습니다.';
+      
+      // Electron 환경: window.electron API 사용
+      if (isElectron && window.electron?.showNotification) {
+        window.electron.showNotification({
+          title,
+          body,
+          data: payload.data || {},
+        });
+        console.log('✅ [FCM] Electron 알림 표시:', title);
+        return;
+      }
+      
+      // 웹 환경: 브라우저 네이티브 알림 시도 → 실패 시 커스텀 알림
+      let browserNotificationShown = false;
+      
+      // 브라우저 네이티브 알림 시도
+      if (Notification.permission === 'granted') {
+        try {
+          const notification = new Notification(title, {
+            body,
+            icon: '/favicon.ico',
+            badge: '/favicon.ico',
+            tag: 'fcm-notification',
+            requireInteraction: false,
+            data: payload.data || {},
+          });
+          
+          notification.onclick = () => {
+            window.focus();
+            notification.close();
+            if (payload.data?.link) {
+              window.location.href = payload.data.link;
+            }
+          };
+          
+          browserNotificationShown = true;
+          console.log('✅ [FCM] 브라우저 네이티브 알림 표시:', title);
+        } catch (error) {
+          console.warn('⚠️ [FCM] 브라우저 알림 실패, 커스텀 알림으로 폴백:', error);
+          browserNotificationShown = false;
+        }
+      }
+      
+      // 브라우저 알림 실패 시 커스텀 알림 사용
+      if (!browserNotificationShown) {
+        const { NotificationManager } = await import('./CustomNotification');
+        NotificationManager.notify({
+          title,
+          body,
+          senderName: payload.data?.senderName || '시스템',
+          senderAvatar: payload.data?.senderAvatar,
+          type: 'info',
+          onClick: () => {
+            if (payload.data?.link) {
+              window.location.href = payload.data.link;
+            }
+          }
+        });
+        console.log('✅ [FCM] 커스텀 알림 표시:', title);
+      }
+      
+      // Toast도 표시
+      toast({
+        title,
+        description: body,
+        duration: 5000,
+      });
     });
 
-    // Firebase Messaging의 onMessage는 cleanup 함수를 제공하지 않음
-    // 메시징 인스턴스가 cleanup되면 자동으로 정리됨
+    // 2. Firestore 리스너 폴백 (FCM 실패 시 또는 에뮬레이터)
+    // 웹 환경에서도 Firestore inbox 감지하여 알림 표시
+    if (!isElectron) {
+      const setupFirestoreListener = async () => {
+        const { collection, query, where, onSnapshot, orderBy, limit } = await import('firebase/firestore');
+        const { db } = await import('@/shared/services/firebase/config');
+        
+        if (!db) return;
+        
+        const inboxRef = collection(db, `users/${user.uid}/inbox`);
+        const q = query(
+          inboxRef,
+          where('read', '==', false),
+          orderBy('createdAt', 'desc'),
+          limit(10)
+        );
+
+        let isFirstSnapshot = true;
+        const recentIds = getRecentNotificationIds();
+
+        const unsubscribe = onSnapshot(q, async (snapshot) => {
+          if (isFirstSnapshot) {
+            isFirstSnapshot = false;
+            return;
+          }
+
+          snapshot.docChanges().forEach(async (change) => {
+            if (change.type === 'added') {
+              const notification = change.doc.data();
+              const notificationId = change.doc.id;
+              
+              if (recentIds.has(notificationId)) {
+                return;
+              }
+
+              recentIds.add(notificationId);
+              setTimeout(() => recentIds.delete(notificationId), 5000);
+
+              // 설정 확인
+              try {
+                const settings = await settingsService.getSettings(user.uid);
+                const notificationType = notification.type || notification.metadata?.type || 'system';
+                const timestamp = notification.createdAt?.toDate ? notification.createdAt.toDate() : new Date();
+                
+                const isAllowed = settingsService.isNotificationAllowed(
+                  settings,
+                  notificationType,
+                  timestamp
+                );
+                
+                if (!isAllowed) {
+                  return;
+                }
+              } catch (error) {
+                console.error('❌ 설정 확인 실패, 알림 표시:', error);
+              }
+
+              // 브라우저 네이티브 알림 시도
+              const title = notification.title || '새 알림';
+              const body = notification.body || notification.message || '';
+              
+              let browserNotificationShown = false;
+              
+              if (Notification.permission === 'granted') {
+                try {
+                  const browserNotification = new Notification(title, {
+                    body,
+                    icon: '/favicon.ico',
+                    tag: `firestore-${notificationId}`,
+                    requireInteraction: false,
+                  });
+                  
+                  browserNotification.onclick = () => {
+                    window.focus();
+                    browserNotification.close();
+                    if (notification.link) {
+                      window.location.href = notification.link;
+                    }
+                  };
+                  
+                  browserNotificationShown = true;
+                } catch (error) {
+                  console.warn('⚠️ 브라우저 알림 실패, 커스텀 알림으로 폴백:', error);
+                  browserNotificationShown = false;
+                }
+              }
+              
+              // 브라우저 알림 실패 시 커스텀 알림 사용
+              if (!browserNotificationShown) {
+                const { NotificationManager } = await import('./CustomNotification');
+                NotificationManager.notify({
+                  title,
+                  body,
+                  senderName: notification.metadata?.senderName || notification.senderName || '시스템',
+                  senderAvatar: notification.metadata?.senderAvatar || notification.senderAvatar,
+                  type: 'info',
+                  onClick: () => {
+                    if (notification.link) {
+                      window.location.href = notification.link;
+                    }
+                  },
+                  metadata: notification.metadata
+                });
+                console.log('✅ [Firestore 폴백] 커스텀 알림 표시:', title);
+              } else {
+                console.log('✅ [Firestore 폴백] 브라우저 알림 표시:', title);
+              }
+              
+              // Toast도 표시
+              toast({
+                title,
+                description: body,
+                duration: 5000,
+              });
+            }
+          });
+        });
+
+        return unsubscribe;
+      };
+      
+      setupFirestoreListener();
+    }
   }, [state.isInitialized, user]);
 
-  // 초기화 완료 시 토큰 정보 로그
+const getRecentNotificationIds = () => {
+  if (typeof window !== 'undefined') {
+    return (window as any).__recentNotificationIds as Set<string>;
+  }
+  return new Set<string>();
+};
+
+  // 초기화 완료 시 토큰을 Firestore에 저장 (에뮬레이터/프로덕션 모두)
   useEffect(() => {
-    if (state.isInitialized && state.token) {
-      console.log('FCM 토큰:', state.token);
-      
-      // 여기서 서버에 토큰을 전송할 수 있습니다
-      // 예: sendTokenToServer(state.token);
-    }
-  }, [state.isInitialized, state.token]);
+    if (!state.isInitialized || !state.token || !user?.uid) return;
+    
+    const saveTokenToFirestore = async () => {
+      try {
+        const { doc, setDoc } = await import('firebase/firestore');
+        const { db } = await import('@/shared/services/firebase/config');
+        
+        if (!db) {
+          console.error('❌ Firestore가 초기화되지 않았습니다.');
+          return;
+        }
+        
+        if (!state.token) {
+          console.error('❌ FCM 토큰이 없습니다.');
+          return;
+        }
+        
+        // 현재 환경의 Firestore에 저장 (에뮬레이터 또는 프로덕션)
+        const tokenRef = doc(db, 'users', user.uid, 'fcmTokens', state.token);
+        await setDoc(tokenRef, {
+          token: state.token,
+          enabled: true,
+          platform: typeof window !== 'undefined' && window.__ELECTRON__ ? 'electron' : 'web',
+          userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }, { merge: true });
+        
+        console.log('✅ FCM 토큰 Firestore에 저장 완료:', state.token.substring(0, 20) + '...');
+      } catch (error) {
+        console.error('❌ FCM 토큰 저장 실패:', error);
+      }
+    };
+    
+    saveTokenToFirestore();
+  }, [state.isInitialized, state.token, user?.uid]);
 
   // 에러 발생 시 토스트 표시
   useEffect(() => {

@@ -1,9 +1,9 @@
 // Firebase 메시징 서비스 워커
 // 이 파일은 Firebase Cloud Messaging (FCM)을 위한 서비스 워커입니다.
 
-// Firebase SDK import (ES6 모듈 방식)
-importScripts('https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js');
+// Firebase SDK import (최신 버전 사용)
+importScripts('https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging-compat.js');
 
 // Firebase 설정 (환경변수 또는 기본값 사용)
 const firebaseConfig = {

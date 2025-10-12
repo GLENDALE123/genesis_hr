@@ -5,21 +5,14 @@ service cloud.firestore {
     
     // 사용자 프로필 컬렉션
     match /users/{userId} {
-      // 로그인하지 않은 사용자도 이메일로 프로필 조회 가능 (마이그레이션용)
-      allow read: if true;
+      // 로그인한 사용자는 자신의 프로필 읽기/쓰기 가능
+      allow read, write: if request.auth != null && request.auth.uid == userId;
       
-      // 자신의 프로필만 수정 가능
-      allow update: if request.auth != null && request.auth.uid == userId;
-      
-      // 마이그레이션: 같은 이메일이면 삭제 가능 (기존 UID → 새 UID 마이그레이션)
-      allow delete: if request.auth != null && 
-        (request.auth.uid == userId || 
-         request.auth.token.email == resource.data.email);
-      
-      // 회원가입 및 마이그레이션: 같은 이메일이면 생성 가능
-      allow create: if request.auth != null && 
-        (request.auth.uid == userId || 
-         request.auth.token.email == request.resource.data.email);
+      // 사용자별 설정 서브컬렉션
+      match /settings/{docId} {
+        // 자신의 설정만 읽기/쓰기 가능
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
       
       // 사용자별 알림 inbox 서브컬렉션
       match /inbox/{notificationId} {
@@ -34,6 +27,12 @@ service cloud.firestore {
         
         // 자신의 inbox만 삭제 가능
         allow delete: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      // 사용자별 FCM 토큰 서브컬렉션
+      match /fcmTokens/{tokenId} {
+        // 자신의 FCM 토큰만 읽기/쓰기 가능
+        allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
     
@@ -57,9 +56,10 @@ service cloud.firestore {
     
     // 생산 일보 컬렉션 (이중 보호: 역할 + 권한 설정)
     match /packaging-reports/{reportId} {
-      // 📖 읽기: Admin은 무조건 허용, 나머지는 user-permissions 체크
+      // 📖 읽기: Admin/Manager는 무조건 허용, 나머지는 user-permissions 체크
       allow read: if request.auth != null && (
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Manager' ||
         exists(/databases/$(database)/documents/user-permissions/$(request.auth.uid))
       );
       

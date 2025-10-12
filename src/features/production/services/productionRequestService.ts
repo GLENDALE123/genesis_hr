@@ -35,6 +35,7 @@ export interface ProductionRequest {
   author: {
     uid: string;
     displayName: string;
+    avatar?: string;
   };
   requester: string;
   requestType: ProductionRequestType;
@@ -160,6 +161,24 @@ export const ProductionRequestService = {
         },
       ],
     });
+
+    // 알림 발송 (물류이동 제외)
+    if (requestData.requestType !== ProductionRequestType.LogisticsTransfer) {
+      const { createProductionRequestNotification } = await import('./notificationService');
+      createProductionRequestNotification(
+        docRef.id,
+        requestData.requestType,
+        requestData.author.displayName,
+        requestData.productName,
+        requestData.partName,
+        requestData.content,
+        requestData.author.uid,
+        requestData.author.avatar
+      ).catch(err => {
+        console.error('알림 발송 실패 (무시됨):', err);
+      });
+    }
+
     return docRef.id;
   },
 
@@ -181,7 +200,7 @@ export const ProductionRequestService = {
     const snapshot = await getDocs(
       query(collection(db, COLLECTION_NAME), where('__name__', '==', requestId))
     );
-    const currentData = snapshot.docs[0]?.data() as ProductionRequest;
+    const currentData = (snapshot.docs[0] && snapshot.docs[0].data()) as ProductionRequest;
 
     const newHistoryEntry = {
       status,
@@ -192,7 +211,7 @@ export const ProductionRequestService = {
 
     await updateDoc(docRef, {
       status,
-      history: [...(currentData?.history || []), newHistoryEntry],
+      history: [...((currentData && currentData.history) || []), newHistoryEntry],
       updatedAt: now,
     });
   },

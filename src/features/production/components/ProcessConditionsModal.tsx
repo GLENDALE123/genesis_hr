@@ -89,7 +89,7 @@ export const ProcessConditionsModal: React.FC<ProcessConditionsModalProps> = ({
                 </Label>
                 <Textarea
                   id="undercoat-conditions"
-                  value={conditionsData.undercoat?.conditions || ''}
+                  value={(conditionsData.undercoat && conditionsData.undercoat.conditions) || ''}
                   onChange={(e) => handleChange('undercoat', 'conditions', e.target.value)}
                   disabled={!canManage}
                   rows={4}
@@ -103,7 +103,7 @@ export const ProcessConditionsModal: React.FC<ProcessConditionsModalProps> = ({
                 </Label>
                 <Textarea
                   id="undercoat-remarks"
-                  value={conditionsData.undercoat?.remarks || ''}
+                  value={(conditionsData.undercoat && conditionsData.undercoat.remarks) || ''}
                   onChange={(e) => handleChange('undercoat', 'remarks', e.target.value)}
                   disabled={!canManage}
                   rows={4}
@@ -124,7 +124,7 @@ export const ProcessConditionsModal: React.FC<ProcessConditionsModalProps> = ({
                 </Label>
                 <Textarea
                   id="midcoat-conditions"
-                  value={conditionsData.midcoat?.conditions || ''}
+                  value={(conditionsData.midcoat && conditionsData.midcoat.conditions) || ''}
                   onChange={(e) => handleChange('midcoat', 'conditions', e.target.value)}
                   disabled={!canManage}
                   rows={4}
@@ -138,7 +138,7 @@ export const ProcessConditionsModal: React.FC<ProcessConditionsModalProps> = ({
                 </Label>
                 <Textarea
                   id="midcoat-remarks"
-                  value={conditionsData.midcoat?.remarks || ''}
+                  value={(conditionsData.midcoat && conditionsData.midcoat.remarks) || ''}
                   onChange={(e) => handleChange('midcoat', 'remarks', e.target.value)}
                   disabled={!canManage}
                   rows={4}
@@ -159,7 +159,7 @@ export const ProcessConditionsModal: React.FC<ProcessConditionsModalProps> = ({
                 </Label>
                 <Textarea
                   id="topcoat-conditions"
-                  value={conditionsData.topcoat?.conditions || ''}
+                  value={(conditionsData.topcoat && conditionsData.topcoat.conditions) || ''}
                   onChange={(e) => handleChange('topcoat', 'conditions', e.target.value)}
                   disabled={!canManage}
                   rows={4}
@@ -173,7 +173,7 @@ export const ProcessConditionsModal: React.FC<ProcessConditionsModalProps> = ({
                 </Label>
                 <Textarea
                   id="topcoat-remarks"
-                  value={conditionsData.topcoat?.remarks || ''}
+                  value={(conditionsData.topcoat && conditionsData.topcoat.remarks) || ''}
                   onChange={(e) => handleChange('topcoat', 'remarks', e.target.value)}
                   disabled={!canManage}
                   rows={4}

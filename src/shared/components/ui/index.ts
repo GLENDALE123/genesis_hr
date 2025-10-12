@@ -8,7 +8,6 @@ export { Breadcrumb, BreadcrumbEllipsis, BreadcrumbItem, BreadcrumbLink, Breadcr
 export { Button, buttonVariants } from './button';
 export { Calendar } from './calendar';
 export { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './card';
-export { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from './carousel';
 export { Checkbox } from './checkbox';
 export { Collapsible, CollapsibleContent, CollapsibleTrigger } from './collapsible';
 export { Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut } from './command';
