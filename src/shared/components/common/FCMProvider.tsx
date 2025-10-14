@@ -161,10 +161,7 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
         return;
       }
       
-      // 웹 환경: 브라우저 네이티브 알림 시도 → 실패 시 커스텀 알림
-      let browserNotificationShown = false;
-      
-      // 브라우저 네이티브 알림 시도
+      // 웹 환경: 브라우저 네이티브 알림만 사용
       if (Notification.permission === 'granted') {
         try {
           const notification = new Notification(title, {
@@ -184,30 +181,12 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
             }
           };
           
-          browserNotificationShown = true;
           console.log('✅ [FCM] 브라우저 네이티브 알림 표시:', title);
         } catch (error) {
-          console.warn('⚠️ [FCM] 브라우저 알림 실패, 커스텀 알림으로 폴백:', error);
-          browserNotificationShown = false;
+          console.warn('⚠️ [FCM] 브라우저 알림 실패:', error);
         }
-      }
-      
-      // 브라우저 알림 실패 시 커스텀 알림 사용
-      if (!browserNotificationShown) {
-        const { NotificationManager } = await import('./CustomNotification');
-        NotificationManager.notify({
-          title,
-          body,
-          senderName: payload.data?.senderName || '시스템',
-          senderAvatar: payload.data?.senderAvatar,
-          type: 'info',
-          onClick: () => {
-            if (payload.data?.link) {
-              window.location.href = payload.data.link;
-            }
-          }
-        });
-        console.log('✅ [FCM] 커스텀 알림 표시:', title);
+      } else {
+        console.log('⚠️ [FCM] 알림 권한이 허용되지 않아 브라우저 알림을 표시할 수 없습니다.');
       }
       
       // Toast도 표시
@@ -275,11 +254,9 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
                 console.error('❌ 설정 확인 실패, 알림 표시:', error);
               }
 
-              // 브라우저 네이티브 알림 시도
+              // 브라우저 네이티브 알림만 사용
               const title = notification.title || '새 알림';
               const body = notification.body || notification.message || '';
-              
-              let browserNotificationShown = false;
               
               if (Notification.permission === 'granted') {
                 try {
@@ -298,32 +275,12 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
                     }
                   };
                   
-                  browserNotificationShown = true;
+                  console.log('✅ [Firestore 폴백] 브라우저 알림 표시:', title);
                 } catch (error) {
-                  console.warn('⚠️ 브라우저 알림 실패, 커스텀 알림으로 폴백:', error);
-                  browserNotificationShown = false;
+                  console.warn('⚠️ [Firestore 폴백] 브라우저 알림 실패:', error);
                 }
-              }
-              
-              // 브라우저 알림 실패 시 커스텀 알림 사용
-              if (!browserNotificationShown) {
-                const { NotificationManager } = await import('./CustomNotification');
-                NotificationManager.notify({
-                  title,
-                  body,
-                  senderName: notification.metadata?.senderName || notification.senderName || '시스템',
-                  senderAvatar: notification.metadata?.senderAvatar || notification.senderAvatar,
-                  type: 'info',
-                  onClick: () => {
-                    if (notification.link) {
-                      window.location.href = notification.link;
-                    }
-                  },
-                  metadata: notification.metadata
-                });
-                console.log('✅ [Firestore 폴백] 커스텀 알림 표시:', title);
               } else {
-                console.log('✅ [Firestore 폴백] 브라우저 알림 표시:', title);
+                console.log('⚠️ [Firestore 폴백] 알림 권한이 허용되지 않아 브라우저 알림을 표시할 수 없습니다.');
               }
               
               // Toast도 표시
