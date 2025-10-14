@@ -404,7 +404,7 @@ const getRecentNotificationIds = () => {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const handlePermissionChange = () => {
+    const handlePermissionChange = async () => {
       const currentPermission = checkNotificationPermission();
       if (currentPermission !== state.permission) {
         setState(prev => ({
@@ -415,7 +415,15 @@ const getRecentNotificationIds = () => {
         
         // 권한이 허용되면 토큰 새로고침
         if (currentPermission === 'granted' && !state.token) {
-          refreshToken();
+          try {
+            const token = await getFCMToken();
+            setState(prev => ({
+              ...prev,
+              token,
+            }));
+          } catch (error) {
+            console.error('토큰 새로고침 실패:', error);
+          }
         }
       }
     };
@@ -437,7 +445,7 @@ const getRecentNotificationIds = () => {
       const interval = setInterval(handlePermissionChange, 2000);
       return () => clearInterval(interval);
     }
-  }, [state.permission, state.token, refreshToken]);
+  }, [state.permission, state.token]);
 
   // 알림 권한 요청
   const requestPermission = async (): Promise<boolean> => {
