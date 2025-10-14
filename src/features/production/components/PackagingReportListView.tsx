@@ -139,7 +139,7 @@ const ReportRow = React.memo<ReportRowProps>(({
           className="w-full text-center p-1 h-auto hover:bg-accent transition-colors"
         >
           {report.processConditions && Object.values(report.processConditions).some(v => (v && v.conditions) || (v && v.remarks)) ? (
-            <span className="font-bold text-green-500 text-lg">O</span>
+            <span className="font-bold text-green-500 text-base">O</span>
           ) : (
             <span className="text-muted-foreground">-</span>
           )}
@@ -322,7 +322,7 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
               <Package className="h-12 w-12 text-destructive" />
             </div>
             <div>
-              <p className="text-lg font-semibold text-foreground mb-2">
+              <p className="text-base font-semibold text-foreground mb-2">
                 데이터를 불러올 수 없습니다
               </p>
               <p className="text-sm text-muted-foreground mb-1">
@@ -502,7 +502,7 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
               onClick={onSummaryToggle}
             >
               <div className="flex items-center gap-2">
-                <h3 className="text-lg font-semibold text-foreground">
+                <h3 className="text-base font-semibold text-foreground">
                   생산 요약
                   {summaryData && (
                     <span className="text-sm font-normal text-muted-foreground ml-2">

@@ -157,7 +157,7 @@ const ShortageManagementContainerComponent: React.FC = () => {
     return (
       <div className="flex flex-col items-center justify-center h-64 space-y-4">
         <div className="text-center">
-          <h3 className="text-lg font-semibold text-muted-foreground">접근 권한 없음</h3>
+          <h3 className="text-base font-semibold text-muted-foreground">접근 권한 없음</h3>
           <p className="text-sm text-muted-foreground mt-2">
             부족분 관리 페이지에 접근할 권한이 없습니다.
           </p>

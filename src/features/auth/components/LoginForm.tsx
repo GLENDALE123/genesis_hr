@@ -213,7 +213,7 @@ export function LoginForm() {
   return (
     <Card>
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold">
+        <CardTitle className="text-xl font-bold">
           {isSignUp ? CARD_TEXTS.SIGNUP_TITLE : CARD_TEXTS.LOGIN_TITLE}
         </CardTitle>
         <CardDescription>

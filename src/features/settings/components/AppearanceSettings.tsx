@@ -189,7 +189,7 @@ export const AppearanceSettings: React.FC = () => {
                     : "border-transparent hover:bg-accent"
                 )}
               >
-                <p className="font-medium text-lg">크게</p>
+                <p className="font-medium text-base">크게</p>
                 <p className="text-base text-muted-foreground">더 편한 가독성</p>
               </Label>
             </div>

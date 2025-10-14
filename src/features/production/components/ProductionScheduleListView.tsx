@@ -442,7 +442,7 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
                   <React.Fragment key={date}>
                     {/* 날짜 헤더 행 */}
                     <TableRow className="bg-muted/50">
-                      <TableCell colSpan={18 + (canManage ? 1 : 0)} className="whitespace-nowrap font-bold text-lg">
+                      <TableCell colSpan={18 + (canManage ? 1 : 0)} className="whitespace-nowrap font-bold text-base">
                         <div className="flex items-center gap-4">
                           <span>
                             {date} ({new Date(date + 'T00:00:00').toLocaleDateString('ko-KR', { weekday: 'long' })})

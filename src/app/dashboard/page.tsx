@@ -570,7 +570,7 @@ export default function DashboardPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
+                <div className="text-xl font-bold">
                   {dashboardLoading ? (
                     <Skeleton className="h-8 w-16" />
                   ) : (
@@ -587,7 +587,7 @@ export default function DashboardPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
+                <div className="text-xl font-bold">
                   {dashboardLoading ? (
                     <Skeleton className="h-8 w-16" />
                   ) : (
@@ -604,7 +604,7 @@ export default function DashboardPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
+                <div className="text-xl font-bold">
                   {dashboardLoading ? (
                     <Skeleton className="h-8 w-20" />
                   ) : (
@@ -621,7 +621,7 @@ export default function DashboardPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
+                <div className="text-xl font-bold">
                   {dashboardLoading ? (
                     <Skeleton className="h-8 w-20" />
                   ) : (

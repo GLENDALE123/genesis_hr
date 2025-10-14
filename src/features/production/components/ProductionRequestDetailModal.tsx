@@ -165,14 +165,14 @@ const ProductionRequestDetailModalComponent: React.FC<ProductionRequestDetailMod
           <DialogHeader className="px-6 pt-6 pb-4 border-b">
             <div className="flex justify-between items-start">
               <div>
-                <DialogTitle className="text-2xl font-bold">
+                <DialogTitle className="text-xl font-bold">
                   {request.productName} ({request.partName})
                 </DialogTitle>
                 <p className="text-sm text-muted-foreground mt-1">
                   {request.requestType}
                 </p>
               </div>
-              <span className={`px-4 py-2 text-lg font-bold rounded-full ${getStatusColorClass(request.status)}`}>
+              <span className={`px-4 py-2 text-base font-bold rounded-full ${getStatusColorClass(request.status)}`}>
                 {request.status}
               </span>
             </div>

@@ -267,10 +267,10 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
       <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0">
         <DialogHeader className="px-6 pt-6 pb-4 border-b">
           <div className="flex justify-between items-start">
-            <DialogTitle className="text-2xl font-bold">
+            <DialogTitle className="text-xl font-bold">
               {request.productName} ({request.clientName})
             </DialogTitle>
-            <Badge className={`px-4 py-2 text-lg font-bold rounded-full ${SAMPLE_STATUS_COLORS[request.status]}`}>
+            <Badge className={`px-4 py-2 text-base font-bold rounded-full ${SAMPLE_STATUS_COLORS[request.status]}`}>
               {request.status}
             </Badge>
           </div>

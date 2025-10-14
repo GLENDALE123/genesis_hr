@@ -150,6 +150,8 @@
     text-rendering: optimizeLegibility;
     font-weight: 400;
     overflow: hidden;
+    font-size: 0.875rem; /* 14px - 기본 폰트 크기 축소 */
+    line-height: 1.5;
   }
   
   /* SVG 아이콘 안티앨리어싱 최적화 */
