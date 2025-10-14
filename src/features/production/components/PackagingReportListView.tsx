@@ -574,8 +574,8 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
               </div>
             </div>
           ) : (
-            /* 스크롤 가능한 테이블 전체 */
-            <div className="flex-1 overflow-auto">
+            /* 스크롤 가능한 테이블 전체 - 높이 고정 */
+            <div className="flex-1 overflow-auto h-[600px]">
               <Table className="w-full text-sm text-left text-gray-500 dark:text-slate-400 min-w-[2000px]">
                 {/* 고정 헤더 */}
                 <TableHeader className="sticky top-0 z-10 bg-background">
