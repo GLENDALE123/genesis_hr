@@ -347,146 +347,152 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
       {/* 필터 및 검색 */}
       <Card className="flex-shrink-0">
         <CardContent className="p-4">
-          {/* 완전 반응형 필터 섹션 - 데스크톱은 한 행 유지 */}
-          <div className="flex flex-col md:flex-row gap-4 items-start md:items-end">
-            {/* 조회기간 */}
-            <div className="w-full md:w-auto space-y-1">
-              <label className="text-sm font-medium text-card-foreground flex items-center gap-2">
-                <CalendarDays className="h-4 w-4 text-muted-foreground" />
-                조회기간
-              </label>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="date"
-                  placeholder="시작일"
-                  value={filters.startDate || ''}
-                  onChange={(e) => onFilterChange('startDate', e.target.value)}
-                  className="w-full sm:w-auto sm:min-w-[8.75rem]"
-                />
-                <span className="text-muted-foreground">~</span>
-                <Input
-                  type="date"
-                  placeholder="종료일"
-                  value={filters.endDate || ''}
-                  onChange={(e) => onFilterChange('endDate', e.target.value)}
-                  className="w-full sm:w-auto sm:min-w-[8.75rem]"
-                />
+          {/* 완전 반응형 필터 섹션 - 1700px 이하에서는 2행으로 배치 */}
+          <div className="space-y-4">
+            {/* 첫 번째 행: 조회기간 + 빠른 필터 */}
+            <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-end">
+              {/* 조회기간 */}
+              <div className="w-full lg:w-auto space-y-1">
+                <label className="text-sm font-medium text-card-foreground flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                  조회기간
+                </label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="date"
+                    placeholder="시작일"
+                    value={filters.startDate || ''}
+                    onChange={(e) => onFilterChange('startDate', e.target.value)}
+                    className="w-full lg:w-auto lg:min-w-[8.75rem]"
+                  />
+                  <span className="text-muted-foreground">~</span>
+                  <Input
+                    type="date"
+                    placeholder="종료일"
+                    value={filters.endDate || ''}
+                    onChange={(e) => onFilterChange('endDate', e.target.value)}
+                    className="w-full lg:w-auto lg:min-w-[8.75rem]"
+                  />
+                </div>
+              </div>
+
+              {/* 빠른 필터 */}
+              <div className="w-full lg:w-auto space-y-1">
+                <label className="text-sm font-medium text-foreground">빠른 필터</label>
+                <div className="flex items-center gap-1 flex-wrap">
+                  <Button
+                    variant={activeQuickFilter === 'today' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => onQuickDateFilter('today')}
+                    className="text-xs px-4 py-1"
+                  >
+                    오늘
+                  </Button>
+                  <Button
+                    variant={activeQuickFilter === 'yesterday' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => onQuickDateFilter('yesterday')}
+                    className="text-xs px-4 py-1"
+                  >
+                    어제
+                  </Button>
+                  <Button
+                    variant={activeQuickFilter === 'week' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => onQuickDateFilter('week')}
+                    className="text-xs px-4 py-1"
+                  >
+                    최근 7일
+                  </Button>
+                  <Button
+                    variant={activeQuickFilter === 'month' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => onQuickDateFilter('month')}
+                    className="text-xs px-4 py-1"
+                  >
+                    최근 30일
+                  </Button>
+                  <Button
+                    variant={activeQuickFilter === 'all' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => onQuickDateFilter('all')}
+                    className="text-xs px-4 py-1"
+                  >
+                    전체
+                  </Button>
+                </div>
               </div>
             </div>
 
-            {/* 빠른 필터 */}
-            <div className="w-full md:w-auto space-y-1">
-              <label className="text-sm font-medium text-foreground">빠른 필터</label>
-              <div className="flex items-center gap-1 flex-wrap">
-                <Button
-                  variant={activeQuickFilter === 'today' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => onQuickDateFilter('today')}
-                  className="text-xs px-4 py-1"
+            {/* 두 번째 행: 상태, 생산라인, 통합검색, 초기화 버튼 */}
+            <div className="flex flex-col 3xl:flex-row gap-4 items-start 3xl:items-end">
+              {/* 상태 드롭다운 */}
+              <div className="w-full lg:w-auto lg:min-w-[10rem] space-y-1">
+                <label className="text-sm font-medium text-foreground">상태</label>
+                <Select
+                  value={filters.status || 'all'}
+                  onValueChange={(value) => onFilterChange('status', value === 'all' ? '' : value)}
                 >
-                  오늘
-                </Button>
-                <Button
-                  variant={activeQuickFilter === 'yesterday' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => onQuickDateFilter('yesterday')}
-                  className="text-xs px-4 py-1"
-                >
-                  어제
-                </Button>
-                <Button
-                  variant={activeQuickFilter === 'week' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => onQuickDateFilter('week')}
-                  className="text-xs px-4 py-1"
-                >
-                  최근 7일
-                </Button>
-                <Button
-                  variant={activeQuickFilter === 'month' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => onQuickDateFilter('month')}
-                  className="text-xs px-4 py-1"
-                >
-                  최근 30일
-                </Button>
-                <Button
-                  variant={activeQuickFilter === 'all' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => onQuickDateFilter('all')}
-                  className="text-xs px-4 py-1"
-                >
-                  전체
-                </Button>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="상태 선택" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">전체</SelectItem>
+                    <SelectItem value="completed">생산완료</SelectItem>
+                    <SelectItem value="in_progress">작업중</SelectItem>
+                    <SelectItem value="pending">대기</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </div>
 
-            {/* 상태 드롭다운 */}
-            <div className="w-full md:w-auto md:min-w-[10rem] space-y-1">
-              <label className="text-sm font-medium text-foreground">상태</label>
-              <Select
-                value={filters.status || 'all'}
-                onValueChange={(value) => onFilterChange('status', value === 'all' ? '' : value)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="상태 선택" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">전체</SelectItem>
-                  <SelectItem value="completed">생산완료</SelectItem>
-                  <SelectItem value="in_progress">작업중</SelectItem>
-                  <SelectItem value="pending">대기</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* 생산라인 드롭다운 */}
-            <div className="w-full md:w-auto md:min-w-[10rem] space-y-1">
-              <label className="text-sm font-medium text-foreground">생산라인</label>
-              <Select
-                value={filters.productionLine || 'all'}
-                onValueChange={(value) => onFilterChange('productionLine', value === 'all' ? '' : value)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="생산라인 선택" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">전체</SelectItem>
-                  {PRODUCTION_LINE_OPTIONS.map(line => (
-                    <SelectItem key={line} value={line}>{line}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* 통합검색 */}
-            <div className="w-full md:flex-1 space-y-1">
-              <label className="text-sm font-medium text-foreground">통합검색</label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="제품명, 발주처, 발주번호 검색..."
-                  value={searchTerm}
-                  onChange={(e) => onSearchChange(e.target.value)}
-                  className="pl-10"
-                />
+              {/* 생산라인 드롭다운 */}
+              <div className="w-full lg:w-auto lg:min-w-[10rem] space-y-1">
+                <label className="text-sm font-medium text-foreground">생산라인</label>
+                <Select
+                  value={filters.productionLine || 'all'}
+                  onValueChange={(value) => onFilterChange('productionLine', value === 'all' ? '' : value)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="생산라인 선택" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">전체</SelectItem>
+                    {PRODUCTION_LINE_OPTIONS.map(line => (
+                      <SelectItem key={line} value={line}>{line}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </div>
 
-            {/* 초기화 버튼 + 총 건수 */}
-            <div className="w-full md:w-auto flex items-center justify-between md:justify-end gap-3">
-              <Button 
-                variant="outline" 
-                onClick={onClearFilters}
-                className="flex items-center gap-2"
-              >
-                <RotateCcw className="h-4 w-4" />
-                초기화
-              </Button>
-              
-              <span className="text-sm text-muted-foreground whitespace-nowrap">
-                총 {reports.length}건
-              </span>
+              {/* 통합검색 */}
+              <div className="w-full lg:flex-1 space-y-1">
+                <label className="text-sm font-medium text-foreground">통합검색</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="제품명, 발주처, 발주번호 검색..."
+                    value={searchTerm}
+                    onChange={(e) => onSearchChange(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              {/* 초기화 버튼 + 총 건수 */}
+              <div className="w-full lg:w-auto flex items-center justify-between lg:justify-end gap-3">
+                <Button 
+                  variant="outline" 
+                  onClick={onClearFilters}
+                  className="flex items-center gap-2"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  초기화
+                </Button>
+                
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                  총 {reports.length}건
+                </span>
+              </div>
             </div>
           </div>
         </CardContent>
