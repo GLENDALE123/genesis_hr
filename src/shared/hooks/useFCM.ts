@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useContext } from 'react';
 import { 
   initializeFCM, 
   getFCMToken, 
@@ -6,6 +6,7 @@ import {
   checkNotificationPermission,
   requestNotificationPermission 
 } from '@/shared/services/firebase';
+import { FCMContext } from '@/shared/components/common/FCMProvider';
 
 interface MessagePayload {
   notification?: {

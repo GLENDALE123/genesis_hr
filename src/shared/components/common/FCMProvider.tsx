@@ -20,9 +20,11 @@ interface FCMContextType {
   error: string | null;
   requestPermission: () => Promise<boolean>;
   refreshToken: () => Promise<string | null>;
+  checkPermission: () => NotificationPermission;
+  refreshPermission: () => void;
 }
 
-const FCMContext = createContext<FCMContextType | undefined>(undefined);
+export const FCMContext = createContext<FCMContextType | undefined>(undefined);
 
 interface FCMProviderProps {
   children: ReactNode;
@@ -398,6 +400,45 @@ const getRecentNotificationIds = () => {
     }
   }, [state.error]);
 
+  // 알림 권한 변경 감지 (웹 브라우저)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handlePermissionChange = () => {
+      const currentPermission = checkNotificationPermission();
+      if (currentPermission !== state.permission) {
+        setState(prev => ({
+          ...prev,
+          permission: currentPermission,
+        }));
+        console.log('🔔 알림 권한 변경 감지:', currentPermission);
+        
+        // 권한이 허용되면 토큰 새로고침
+        if (currentPermission === 'granted' && !state.token) {
+          refreshToken();
+        }
+      }
+    };
+
+    // 권한 변경 이벤트 리스너 (일부 브라우저에서 지원)
+    if ('permissions' in navigator) {
+      navigator.permissions.query({ name: 'notifications' as PermissionName }).then((result) => {
+        result.addEventListener('change', handlePermissionChange);
+        return () => {
+          result.removeEventListener('change', handlePermissionChange);
+        };
+      }).catch(() => {
+        // 권한 API를 지원하지 않는 경우 폴링으로 대체
+        const interval = setInterval(handlePermissionChange, 2000);
+        return () => clearInterval(interval);
+      });
+    } else {
+      // 권한 API를 지원하지 않는 경우 폴링으로 대체
+      const interval = setInterval(handlePermissionChange, 2000);
+      return () => clearInterval(interval);
+    }
+  }, [state.permission, state.token, refreshToken]);
+
   // 알림 권한 요청
   const requestPermission = async (): Promise<boolean> => {
     try {
@@ -448,6 +489,21 @@ const getRecentNotificationIds = () => {
     }
   };
 
+  // 권한 상태 확인
+  const checkPermission = (): NotificationPermission => {
+    return checkNotificationPermission();
+  };
+
+  // 권한 상태 새로고침
+  const refreshPermission = () => {
+    const currentPermission = checkNotificationPermission();
+    setState(prev => ({
+      ...prev,
+      permission: currentPermission,
+    }));
+    console.log('🔄 알림 권한 상태 새로고침:', currentPermission);
+  };
+
   const value: FCMContextType = {
     token: state.token,
     permission: state.permission,
@@ -456,6 +512,8 @@ const getRecentNotificationIds = () => {
     error: state.error,
     requestPermission,
     refreshToken,
+    checkPermission,
+    refreshPermission,
   };
 
   return (
