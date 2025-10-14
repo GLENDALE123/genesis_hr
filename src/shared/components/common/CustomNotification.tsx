@@ -318,13 +318,7 @@ export class NotificationManager {
   static async markAsRead(userId: string, notificationId: string) {
     try {
       // Firebase Functions URL 설정
-      const isDev = process.env.NODE_ENV === 'development';
-      const isLocalhost = typeof window !== 'undefined' && 
-        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      
-      const functionsUrl = (isDev && isLocalhost)
-        ? 'http://localhost:5001/control-6a11d/asia-northeast3'
-        : 'https://asia-northeast3-control-6a11d.cloudfunctions.net';
+      const functionsUrl = 'https://asia-northeast3-hs-jig-b2093.cloudfunctions.net';
       
       // Functions 호출 - 읽음 처리만 (서버가 3일 후 자동 삭제)
       const response = await fetch(`${functionsUrl}/markNotificationRead`, {
@@ -357,13 +351,7 @@ export class NotificationManager {
       }
       
       // Firebase Functions URL 설정
-      const isDev = process.env.NODE_ENV === 'development';
-      const isLocalhost = typeof window !== 'undefined' && 
-        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      
-      const functionsUrl = (isDev && isLocalhost)
-        ? 'http://localhost:5001/control-6a11d/asia-northeast3'
-        : 'https://asia-northeast3-control-6a11d.cloudfunctions.net';
+      const functionsUrl = 'https://asia-northeast3-hs-jig-b2093.cloudfunctions.net';
       
       // 미읽은 알림 ID 조회
       const snapshot = await getDocs(query(

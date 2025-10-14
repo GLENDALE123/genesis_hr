@@ -1,20 +1,10 @@
 import { db } from '@/shared/services/firebase/config';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 
-// Firebase Functions URL 설정 (개발 환경에서는 에뮬레이터 사용)
+// Firebase Functions URL 설정
 const getFunctionsUrl = () => {
-  if (typeof window === 'undefined') return '';
-  
-  const isDev = process.env.NODE_ENV === 'development';
-  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  
-  if (isDev && isLocalhost) {
-    // 개발 환경: Firebase Emulator
-    return 'http://localhost:5001/control-6a11d/asia-northeast3';
-  } else {
-    // 프로덕션 환경: Firebase Functions (asia-northeast3 리전)
-    return 'https://asia-northeast3-control-6a11d.cloudfunctions.net';
-  }
+  // 프로덕션 환경: Firebase Functions (asia-northeast3 리전)
+  return 'https://asia-northeast3-hs-jig-b2093.cloudfunctions.net';
 };
 
 /**

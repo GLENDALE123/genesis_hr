@@ -6,8 +6,6 @@
   "scripts": {
     "dev": "next dev --turbo",
     "dev:external": "next dev --turbo -H 0.0.0.0 -p 3000",
-    "dev:emulator": "cross-env NEXT_PUBLIC_USE_FIREBASE_EMULATOR=true next dev --turbo",
-    "dev:emulator:external": "cross-env NEXT_PUBLIC_USE_FIREBASE_EMULATOR=true next dev --turbo -H 0.0.0.0 -p 3000",
     "build": "next build",
     "start": "next start",
     "start:external": "next start -H 0.0.0.0 -p 3000",
@@ -18,13 +16,7 @@
     "format": "prettier --write .",
     "test": "vitest",
     "test:e2e": "playwright test",
-    "build-storybook": "storybook build",
-    "firebase:emulators": "firebase emulators:start --import=./backup-data/backup-20250101-120000 --export-on-exit=./emulator-data",
-    "firebase:emulators:ui": "firebase emulators:start --only ui",
-    "firebase:emulators:auth": "firebase emulators:start --only auth --import=./backup-data/backup-20250101-120000 --export-on-exit=./emulator-data",
-    "firebase:emulators:firestore": "firebase emulators:start --only firestore --import=./backup-data/backup-20250101-120000 --export-on-exit=./emulator-data",
-    "firebase:emulators:storage": "firebase emulators:start --only storage --import=./backup-data/backup-20250101-120000 --export-on-exit=./emulator-data",
-    "firebase:emulators:functions": "firebase emulators:start --only functions"
+    "build-storybook": "storybook build"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

@@ -333,14 +333,8 @@ export class CommentsService {
     // 사용자 프로필 이미지 가져오기
     const senderAvatar = await this.getUserAvatar(commentData.uid);
     
-    // Firebase Functions URL 설정 (개발 환경에서는 에뮬레이터 사용)
-    const isDev = process.env.NODE_ENV === 'development';
-    const isLocalhost = typeof window !== 'undefined' && 
-      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-    
-    const functionsUrl = (isDev && isLocalhost)
-      ? 'http://localhost:5001/control-6a11d/asia-northeast3'
-      : 'https://asia-northeast3-control-6a11d.cloudfunctions.net';
+    // Firebase Functions URL 설정
+    const functionsUrl = 'https://asia-northeast3-hs-jig-b2093.cloudfunctions.net';
     
     const payload = {
       targetUsers: [userId],
@@ -410,14 +404,8 @@ export class CommentsService {
     type: '생산관리부' | '샘플요청'
   ): Promise<void> {
     try {
-      // Firebase Functions URL 설정 (개발 환경에서는 에뮬레이터 사용)
-      const isDev = process.env.NODE_ENV === 'development';
-      const isLocalhost = typeof window !== 'undefined' && 
-        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      
-      const functionsUrl = (isDev && isLocalhost)
-        ? 'http://localhost:5001/control-6a11d/asia-northeast3'
-        : 'https://asia-northeast3-control-6a11d.cloudfunctions.net';
+      // Firebase Functions URL 설정
+      const functionsUrl = 'https://asia-northeast3-hs-jig-b2093.cloudfunctions.net';
       
       const title = type === '생산관리부' 
         ? '생산관리부 요청사항' 

@@ -58,8 +58,6 @@ NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your_measurement_id
 # Firebase VAPID 키 (FCM 푸시 알림용)
 NEXT_PUBLIC_FIREBASE_VAPID_KEY=your_vapid_key_here
 
-# Firebase 에뮬레이터 사용 여부 (개발 환경에서만 true)
-NEXT_PUBLIC_USE_FIREBASE_EMULATOR=false
 ```
 
 #### VAPID 키 생성 방법

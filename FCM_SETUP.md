@@ -36,7 +36,7 @@
 ### 1단계: Firebase Console에서 VAPID 키 생성
 
 1. **Firebase Console 접속**: https://console.firebase.google.com
-2. **프로젝트 선택**: `control-6a11d`
+2. **프로젝트 선택**: `hs-jig-b2093`
 3. **프로젝트 설정 > Cloud Messaging** 탭 이동
 4. **Web Push certificates** 섹션 찾기
 5. **키 페어 생성** 버튼 클릭

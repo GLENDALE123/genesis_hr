@@ -7,12 +7,12 @@ importScripts('https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging-com
 
 // Firebase 설정 (환경변수 또는 기본값 사용)
 const firebaseConfig = {
-  apiKey: "AIzaSyAFdnBgl1jlKGUYEvK2zNncm4T_z5t2kBc",
-  authDomain: "control-6a11d.firebaseapp.com",
-  projectId: "control-6a11d",
-  storageBucket: "control-6a11d.firebasestorage.app",
-  messagingSenderId: "739974091539",
-  appId: "1:739974091539:web:6de6536e2178ed3d0440e6",
+  apiKey: "AIzaSyB4nSpGhucC0NR57Zpu_syg86sjdFtLtaU",
+  authDomain: "hs-jig-b2093.firebaseapp.com",
+  projectId: "hs-jig-b2093",
+  storageBucket: "hs-jig-b2093.firebasestorage.app",
+  messagingSenderId: "117861579792",
+  appId: "1:117861579792:web:93de9aeca7771940745e95",
   measurementId: "G-YDJBRPW5BY"
 };
 

@@ -248,13 +248,7 @@ export class SampleService {
       }
       
       // Functions URL
-      const isDev = process.env.NODE_ENV === 'development';
-      const isLocalhost = typeof window !== 'undefined' && 
-        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      
-      const functionsUrl = (isDev && isLocalhost)
-        ? 'http://localhost:5001/control-6a11d/asia-northeast3'
-        : 'https://asia-northeast3-control-6a11d.cloudfunctions.net';
+      const functionsUrl = 'https://asia-northeast3-hs-jig-b2093.cloudfunctions.net';
       
       const payload = {
         targetUsers,
