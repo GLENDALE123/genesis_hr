@@ -1,9 +1,22 @@
 // Firebase 메시징 서비스 워커
 // 이 파일은 Firebase Cloud Messaging (FCM)을 위한 서비스 워커입니다.
 
+console.log('🔥 Firebase 메시징 서비스 워커 로딩 시작...');
+
 // Firebase SDK import (최신 버전 사용)
-importScripts('https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging-compat.js');
+try {
+  importScripts('https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js');
+  console.log('✅ Firebase App SDK 로드 완료');
+} catch (error) {
+  console.error('❌ Firebase App SDK 로드 실패:', error);
+}
+
+try {
+  importScripts('https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging-compat.js');
+  console.log('✅ Firebase Messaging SDK 로드 완료');
+} catch (error) {
+  console.error('❌ Firebase Messaging SDK 로드 실패:', error);
+}
 
 // Firebase 설정 (환경변수 또는 기본값 사용)
 const firebaseConfig = {
@@ -17,37 +30,63 @@ const firebaseConfig = {
 };
 
 // Firebase 초기화
-firebase.initializeApp(firebaseConfig);
+try {
+  firebase.initializeApp(firebaseConfig);
+  console.log('✅ Firebase 앱 초기화 완료');
+} catch (error) {
+  console.error('❌ Firebase 앱 초기화 실패:', error);
+}
 
 // 메시징 서비스 가져오기
-const messaging = firebase.messaging();
+let messaging;
+try {
+  messaging = firebase.messaging();
+  console.log('✅ Firebase 메시징 서비스 초기화 완료');
+} catch (error) {
+  console.error('❌ Firebase 메시징 서비스 초기화 실패:', error);
+}
 
 // 백그라운드 메시지 처리
-messaging.onBackgroundMessage((payload) => {
-  console.log('백그라운드 메시지 수신:', payload);
-  
-  const notificationTitle = payload.notification?.title || '새로운 알림';
-  const notificationOptions = {
-    body: payload.notification?.body || '새로운 메시지가 도착했습니다.',
-    icon: '/favicon.ico',
-    badge: '/favicon.ico',
-    tag: 'firebase-notification',
-    requireInteraction: true,
-    actions: [
-      {
-        action: 'open',
-        title: '열기'
-      },
-      {
-        action: 'close',
-        title: '닫기'
-      }
-    ]
-  };
+if (messaging) {
+  messaging.onBackgroundMessage((payload) => {
+    console.log('📨 백그라운드 메시지 수신:', payload);
+    
+    const notificationTitle = payload.notification?.title || payload.data?.title || '새로운 알림';
+    const notificationBody = payload.notification?.body || payload.data?.body || '새로운 메시지가 도착했습니다.';
+    
+    const notificationOptions = {
+      body: notificationBody,
+      icon: '/favicon.ico',
+      badge: '/favicon.ico',
+      tag: 'firebase-notification',
+      requireInteraction: true,
+      data: payload.data || {},
+      actions: [
+        {
+          action: 'open',
+          title: '열기'
+        },
+        {
+          action: 'close',
+          title: '닫기'
+        }
+      ]
+    };
 
-  // 알림 표시
-  self.registration.showNotification(notificationTitle, notificationOptions);
-});
+    console.log('🔔 알림 표시:', { title: notificationTitle, options: notificationOptions });
+
+    // 알림 표시
+    self.registration.showNotification(notificationTitle, notificationOptions)
+      .then(() => {
+        console.log('✅ 알림 표시 성공');
+      })
+      .catch((error) => {
+        console.error('❌ 알림 표시 실패:', error);
+      });
+  });
+} else {
+  console.error('❌ Firebase 메시징 서비스가 초기화되지 않았습니다.');
+}
 
 // 알림 클릭 처리
 self.addEventListener('notificationclick', (event) => {

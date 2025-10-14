@@ -7,7 +7,8 @@ import {
   initializeFCM, 
   getFCMToken, 
   onForegroundMessage, 
-  requestNotificationPermission 
+  requestNotificationPermission,
+  checkNotificationPermission
 } from '@/shared/services/firebase';
 import { settingsService } from '@/shared/services/settings/settingsService';
 
@@ -60,7 +61,39 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
       try {
         setState(prev => ({ ...prev, isLoading: true, error: null }));
         
+        console.log('🔥 FCM 초기화 시작...');
+        
+        // 환경 확인
+        const isElectron = typeof window !== 'undefined' && window.__ELECTRON__;
+        console.log(`🌐 환경: ${isElectron ? 'Electron' : '웹 브라우저'}`);
+        
+        // 서비스 워커 지원 확인
+        if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+          console.log('✅ Service Worker 지원됨');
+        } else {
+          console.warn('⚠️ Service Worker 미지원');
+        }
+        
+        // 알림 권한 확인
+        const currentPermission = checkNotificationPermission();
+        console.log(`🔔 현재 알림 권한: ${currentPermission}`);
+        
         const result = await initializeFCM();
+        
+        console.log('📊 FCM 초기화 결과:', {
+          hasToken: !!result.token,
+          permission: result.permission,
+          hasRegistration: !!result.registration,
+          tokenPreview: result.token ? result.token.substring(0, 20) + '...' : null
+        });
+        
+        if (result.token) {
+          console.log('✅ FCM 토큰 발급 완료:', result.token.substring(0, 20) + '...');
+          
+          // Firestore에 FCM 토큰 저장은 useEffect에서 처리됨
+        } else {
+          console.warn('⚠️ FCM 토큰을 가져올 수 없습니다.');
+        }
         
         setState(prev => ({
           ...prev,
@@ -70,10 +103,9 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
           isLoading: false,
         }));
         
-        const isElectron = typeof window !== 'undefined' && window.__ELECTRON__;
         console.log(`✅ FCM 초기화 완료 (${isElectron ? 'Electron' : '웹'} 환경)`);
       } catch (error) {
-        console.error('FCM 초기화 실패:', error);
+        console.error('❌ FCM 초기화 실패:', error);
         setState(prev => ({
           ...prev,
           error: error instanceof Error ? error.message : 'FCM 초기화 실패',
