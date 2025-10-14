@@ -33,10 +33,10 @@ export const useNotificationPermission = (): UseNotificationPermissionReturn => 
   const isSupported = typeof window !== 'undefined' && 'Notification' in window;
 
   // 권한 요청 가능 여부
-  // - 웹: Notification API 지원 + denied 아님
+  // - 웹: Notification API 지원 (denied 상태도 포함 - 브라우저 설정으로 재허용 가능)
   // - Electron: 항상 가능 (네이티브 알림)
   // - Mobile: 앱에서 처리
-  const canRequest = isSupported && permission !== 'denied';
+  const canRequest = isSupported;
 
   // 권한 확인
   const checkPermission = useCallback((): NotificationPermission => {

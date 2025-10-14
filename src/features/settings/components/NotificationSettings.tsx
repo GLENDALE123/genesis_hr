@@ -192,6 +192,14 @@ export const NotificationSettings: React.FC = () => {
 
   // 알림 권한 요청
   const handleRequestPermission = async () => {
+    // 이미 거부된 상태라면 브라우저 설정 안내
+    if (permission === 'denied') {
+      toast.info('브라우저 설정에서 알림을 허용해주세요.\n주소창 옆의 자물쇠 아이콘을 클릭하거나 브라우저 설정 > 사이트 설정 > 알림에서 허용할 수 있습니다.', {
+        duration: 8000,
+      });
+      return;
+    }
+
     const granted = await requestPermission();
     if (granted) {
       toast.success('알림 권한이 허용되었습니다.');
@@ -247,13 +255,50 @@ export const NotificationSettings: React.FC = () => {
               )}
             </div>
             {canRequest && permission !== 'granted' && (
-              <Button onClick={handleRequestPermission} size="sm">
-                권한 요청
-              </Button>
+              <div className="flex flex-col gap-2">
+                <Button onClick={handleRequestPermission} size="sm">
+                  {permission === 'denied' ? '브라우저 설정 열기' : '권한 요청'}
+                </Button>
+                {permission === 'denied' && (
+                  <p className="text-xs text-muted-foreground">
+                    브라우저 설정에서 알림을 허용해주세요
+                  </p>
+                )}
+              </div>
             )}
           </div>
         </CardContent>
       </Card>
+
+      {/* 권한이 거부된 경우 안내 카드 */}
+      {permission === 'denied' && (
+        <Card className="border-destructive/20 bg-destructive/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="h-5 w-5" />
+              알림 권한이 거부되었습니다
+            </CardTitle>
+            <CardDescription>
+              브라우저 설정에서 알림을 허용해야 알림을 받을 수 있습니다.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <h4 className="font-medium">권한 허용 방법:</h4>
+              <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
+                <li>주소창 왼쪽의 자물쇠 아이콘을 클릭합니다</li>
+                <li>"알림" 항목을 찾아 "허용"으로 변경합니다</li>
+                <li>또는 브라우저 설정 → 사이트 설정 → 알림에서 허용할 수 있습니다</li>
+              </ol>
+            </div>
+            <div className="p-3 bg-muted rounded-lg">
+              <p className="text-sm text-muted-foreground">
+                💡 권한을 허용한 후 이 페이지를 새로고침하면 알림 설정이 활성화됩니다.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* 전체 알림 ON/OFF */}
       <Card>
