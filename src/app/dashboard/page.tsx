@@ -14,8 +14,10 @@ import { Input } from '@/shared/components/ui/input';
 import { Badge } from '@/shared/components/ui/badge';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/shared/components/ui/radio-group';
+import { Label } from '@/shared/components/ui/label';
 import { toast } from 'sonner';
-import { Shield, Lock, TestTube, Bell, Send, AlertTriangle } from 'lucide-react';
+import { Shield, Lock, TestTube, Bell, Send, AlertTriangle, Users, User } from 'lucide-react';
 import { createTestShortageNotification } from '@/features/production/services/notificationService';
 
 interface Todo {
@@ -36,6 +38,7 @@ export default function DashboardPage() {
   const [newTodo, setNewTodo] = useState('');
   const [loading, setLoading] = useState(false);
   const [selectedRequestType, setSelectedRequestType] = useState('물류이동');
+  const [notificationTarget, setNotificationTarget] = useState<'admin-manager' | 'current-user'>('admin-manager');
 
   // 컴포넌트 마운트 로그
   useEffect(() => {
@@ -198,6 +201,47 @@ export default function DashboardPage() {
     }
   };
 
+  // 로그인한 사용자에게만 알림을 보내는 함수
+  const sendNotificationToCurrentUser = async (type: string, content: any) => {
+    if (!user || !userProfile) {
+      toast.error('사용자 정보가 없습니다.');
+      return;
+    }
+
+    try {
+      // Firebase Functions URL 설정
+      const functionsUrl = 'https://asia-northeast3-hs-jig-b2093.cloudfunctions.net';
+      
+      const payload = {
+        targetUsers: [user.uid], // 로그인한 사용자에게만
+        type: type,
+        title: content.title,
+        body: content.body,
+        requestId: `TEST-${Date.now()}`,
+        subtitle: content.subtitle,
+        senderName: userProfile.displayName,
+        senderUid: user.uid,
+        senderAvatar: user.photoURL || undefined,
+        priority: 'normal'
+      };
+
+      const response = await fetch(`${functionsUrl}/createNotification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`알림 전송 실패: ${response.status}`);
+      }
+
+      toast.success(`${selectedRequestType} 테스트 알림이 본인에게 발송되었습니다!`);
+    } catch (error) {
+      console.error('알림 발송 실패:', error);
+      toast.error('알림 발송에 실패했습니다.');
+    }
+  };
+
   // 통합 알림 테스트 함수
   const testNotification = async () => {
     if (!user || !userProfile) {
@@ -206,6 +250,32 @@ export default function DashboardPage() {
     }
 
     try {
+      // 로그인한 사용자에게만 보내는 경우
+      if (notificationTarget === 'current-user') {
+        const notificationContent = {
+          title: selectedRequestType === '부족분관리' ? '부족분 신청' :
+                selectedRequestType === '생산관리부 댓글' ? '생산관리부 요청사항' :
+                selectedRequestType === '샘플요청 댓글' ? '샘플 요청' :
+                '생산관리부 요청사항',
+          body: selectedRequestType === '생산관리부 댓글' 
+            ? '생산관리부 요청사항에 대한 댓글입니다. 확인 부탁드립니다.'
+            : selectedRequestType === '샘플요청 댓글'
+            ? '샘플 요청 건에 대한 피드백이 도착했습니다.'
+            : `${selectedRequestType} 테스트 알림입니다.`,
+          subtitle: selectedRequestType === '물류이동' ? '테스트제품A 외 2건' :
+                   selectedRequestType === '긴급건' ? '테스트크림 / 외용기' :
+                   selectedRequestType === '영업부 긴급요청' ? '프리미엄로션 / 펌프' :
+                   selectedRequestType === '부족분관리' ? '테스트크림 / 외용기' :
+                   selectedRequestType === '생산관리부 댓글' ? '테스트크림 / 외용기' :
+                   selectedRequestType === '샘플요청 댓글' ? '테스트샘플 / 내용기' :
+                   '테스트 제품'
+        };
+
+        await sendNotificationToCurrentUser('comment-mention', notificationContent);
+        return;
+      }
+
+      // 기존 로직 (Admin/Manager에게 보내기)
       if (selectedRequestType === '물류이동') {
         const { createTestLogisticsNotification } = await import('@/features/production/services/notificationService');
         await createTestLogisticsNotification(userProfile.displayName, user.uid, user.photoURL || undefined);
@@ -225,7 +295,7 @@ export default function DashboardPage() {
         const { createTestProductionRequestNotification } = await import('@/features/production/services/notificationService');
         await createTestProductionRequestNotification(userProfile.displayName, user.uid, user.photoURL || undefined, selectedRequestType);
       }
-      toast.success(`${selectedRequestType} 테스트 알림이 발송되었습니다!`);
+      toast.success(`${selectedRequestType} 테스트 알림이 Admin/Manager에게 발송되었습니다!`);
     } catch (error) {
       console.error('알림 발송 실패:', error);
       toast.error('알림 발송에 실패했습니다.');
@@ -284,6 +354,33 @@ export default function DashboardPage() {
                   </div>
                   
                   <div className="space-y-3">
+                    {/* 알림 대상 선택 라디오 버튼 */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-purple-700 dark:text-purple-300">
+                        알림 대상 선택
+                      </Label>
+                      <RadioGroup
+                        value={notificationTarget}
+                        onValueChange={(value) => setNotificationTarget(value as 'admin-manager' | 'current-user')}
+                        className="flex gap-4"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="admin-manager" id="admin-manager" />
+                          <Label htmlFor="admin-manager" className="flex items-center gap-2 cursor-pointer">
+                            <Users className="h-4 w-4" />
+                            <span>Admin/Manager에게 발송</span>
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="current-user" id="current-user" />
+                          <Label htmlFor="current-user" className="flex items-center gap-2 cursor-pointer">
+                            <User className="h-4 w-4" />
+                            <span>본인에게만 발송</span>
+                          </Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+
                     <div className="flex items-center gap-3">
                       <Select value={selectedRequestType} onValueChange={setSelectedRequestType}>
                         <SelectTrigger className="w-[200px]">
@@ -307,6 +404,9 @@ export default function DashboardPage() {
                       >
                         <Bell className="h-4 w-4 mr-2" />
                         {selectedRequestType} 알림 발송
+                        {notificationTarget === 'current-user' && (
+                          <span className="ml-2 text-xs opacity-75">(본인에게)</span>
+                        )}
                       </Button>
                     </div>
                     
@@ -315,24 +415,23 @@ export default function DashboardPage() {
                       <ul className="text-xs text-purple-600 dark:text-purple-400 space-y-1 ml-4 list-disc">
                         <li><strong>알림 타이틀:</strong> {
                           selectedRequestType === '부족분관리' ? '부족분 신청' :
-                          selectedRequestType === '생산관리부 댓글' ? '새로운 댓글이 달렸습니다' :
-                          selectedRequestType === '샘플요청 댓글' ? '샘플 요청에 댓글이 달렸습니다' :
+                          selectedRequestType === '생산관리부 댓글' ? '생산관리부 요청사항' :
+                          selectedRequestType === '샘플요청 댓글' ? '샘플 요청' :
                           '생산관리부 요청사항'
                         }</li>
+                        <li><strong>발신자:</strong> {userProfile?.displayName || '테스트 사용자'}</li>
                         {(selectedRequestType === '생산관리부 댓글' || selectedRequestType === '샘플요청 댓글') ? (
                           <>
-                            <li><strong>발신자:</strong> {userProfile?.displayName || '테스트 사용자'}</li>
                             <li><strong>댓글 내용:</strong> {
                               selectedRequestType === '생산관리부 댓글' 
-                                ? '생산관리부 요청사항에 대한 댓글입니다.'
+                                ? '생산관리부 요청사항에 대한 댓글입니다. 확인 부탁드립니다.'
                                 : '샘플 요청 건에 대한 피드백이 도착했습니다.'
                             }</li>
-                            <li><strong>알림 타입:</strong> 웹 UI 포그라운드 알림만 표시</li>
+                            <li><strong>알림 타입:</strong> 웹 UI 포그라운드 알림</li>
                           </>
                         ) : (
                           <>
                             <li><strong>요청유형:</strong> {selectedRequestType}</li>
-                            <li><strong>요청자:</strong> {userProfile?.displayName || '테스트 사용자'}</li>
                             {selectedRequestType === '물류이동' && (
                               <>
                                 <li><strong>제품명:</strong> 테스트제품A 외 2건</li>
@@ -364,7 +463,10 @@ export default function DashboardPage() {
                     </div>
                     
                     <p className="text-xs text-muted-foreground">
-                      Admin과 Manager의 inbox에 알림 추가
+                      {notificationTarget === 'admin-manager' 
+                        ? 'Admin과 Manager의 inbox에 알림 추가'
+                        : '본인의 inbox에 알림 추가 (테스트용)'
+                      }
                     </p>
                   </div>
                 </div>
