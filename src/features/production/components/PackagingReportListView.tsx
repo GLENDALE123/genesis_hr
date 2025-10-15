@@ -347,10 +347,10 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
       {/* 필터 및 검색 */}
       <Card className="flex-shrink-0">
         <CardContent className="p-4">
-          {/* 완전 반응형 필터 섹션 - 1700px 이상에서는 1행, 이하는 2행 */}
+          {/* CSS Grid 기반 반응형 필터 섹션 */}
           <div className="space-y-3 3xl:space-y-0">
-            {/* 1700px 이상: 모든 요소를 한 행에 배치 */}
-            <div className="hidden 3xl:flex gap-4 items-end">
+            {/* 1700px 이상: 1행 6컬럼 그리드 */}
+            <div className="hidden 3xl:grid grid-cols-[auto_auto_1fr_1fr_2fr_auto] gap-4 items-end">
               {/* 조회기간 */}
               <div className="space-y-1">
                 <label className="text-sm font-medium text-card-foreground flex items-center gap-2">
@@ -424,7 +424,7 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
               </div>
 
               {/* 상태 드롭다운 */}
-              <div className="min-w-[10rem] space-y-1">
+              <div className="space-y-1">
                 <label className="text-sm font-medium text-foreground">상태</label>
                 <Select
                   value={filters.status || 'all'}
@@ -443,7 +443,7 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
               </div>
 
               {/* 생산라인 드롭다운 */}
-              <div className="min-w-[10rem] space-y-1">
+              <div className="space-y-1">
                 <label className="text-sm font-medium text-foreground">생산라인</label>
                 <Select
                   value={filters.productionLine || 'all'}
@@ -462,7 +462,7 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
               </div>
 
               {/* 통합검색 */}
-              <div className="flex-1 min-w-[200px] space-y-1">
+              <div className="space-y-1">
                 <label className="text-sm font-medium text-foreground">통합검색</label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -492,12 +492,12 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
               </div>
             </div>
 
-            {/* 1700px 미만: 2행으로 배치 */}
-            <div className="3xl:hidden">
-              {/* 첫 번째 행: 조회기간, 빠른 필터, 상태, 생산라인 */}
-              <div className="flex flex-wrap gap-4 items-end mb-3">
+            {/* 1700px 미만: 2행 그리드 */}
+            <div className="3xl:hidden grid grid-rows-2 gap-3">
+              {/* 첫 번째 행: 4컬럼 그리드 */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
                 {/* 조회기간 */}
-                <div className="w-full sm:w-auto space-y-1">
+                <div className="space-y-1">
                   <label className="text-sm font-medium text-card-foreground flex items-center gap-2">
                     <CalendarDays className="h-4 w-4 text-muted-foreground" />
                     조회기간
@@ -522,7 +522,7 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
                 </div>
 
                 {/* 빠른 필터 */}
-                <div className="w-full sm:w-auto space-y-1">
+                <div className="space-y-1">
                   <label className="text-sm font-medium text-foreground">빠른 필터</label>
                   <div className="flex items-center gap-1 flex-wrap">
                     <Button
@@ -569,7 +569,7 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
                 </div>
 
                 {/* 상태 드롭다운 */}
-                <div className="w-full sm:w-auto sm:min-w-[10rem] space-y-1">
+                <div className="space-y-1">
                   <label className="text-sm font-medium text-foreground">상태</label>
                   <Select
                     value={filters.status || 'all'}
@@ -588,7 +588,7 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
                 </div>
 
                 {/* 생산라인 드롭다운 */}
-                <div className="w-full sm:w-auto sm:min-w-[10rem] space-y-1">
+                <div className="space-y-1">
                   <label className="text-sm font-medium text-foreground">생산라인</label>
                   <Select
                     value={filters.productionLine || 'all'}
@@ -607,10 +607,10 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
                 </div>
               </div>
 
-              {/* 두 번째 행: 통합검색, 초기화 버튼 */}
-              <div className="flex flex-wrap gap-4 items-end">
+              {/* 두 번째 행: 2컬럼 그리드 */}
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-4 items-end">
                 {/* 통합검색 */}
-                <div className="flex-1 min-w-[200px] space-y-1">
+                <div className="space-y-1">
                   <label className="text-sm font-medium text-foreground">통합검색</label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -624,7 +624,7 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
                 </div>
 
                 {/* 초기화 버튼 + 총 건수 */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 justify-end">
                   <Button 
                     variant="outline" 
                     onClick={onClearFilters}
