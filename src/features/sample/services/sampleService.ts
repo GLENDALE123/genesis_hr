@@ -227,7 +227,7 @@ export class SampleService {
   /**
    * 샘플 신규 요청 알림 전송
    */
-  private static async sendNewSampleRequestNotification(
+  public static async sendNewSampleRequestNotification(
     requestId: string,
     formData: SampleFormData,
     user: RequestUser

@@ -14,6 +14,7 @@ import {
 } from '@/shared/services/firebase/firestore';
 import { ProductionSchedule } from '@/features/production/types';
 import { QuerySnapshot, DocumentData } from 'firebase/firestore';
+import { sendProductionScheduleNotification, sendBulkScheduleNotification } from './productionScheduleNotificationService';
 
 const PRODUCTION_SCHEDULES_COLLECTION = 'production-schedules';
 
@@ -96,7 +97,12 @@ export const getSchedulesByDateRange = async (
  * 생산일정 일괄 등록
  */
 export const createSchedules = async (
-  schedules: Omit<ProductionSchedule, 'id' | 'createdAt' | 'updatedAt'>[]
+  schedules: Omit<ProductionSchedule, 'id' | 'createdAt' | 'updatedAt'>[],
+  user?: {
+    uid: string;
+    displayName: string;
+    photoURL?: string;
+  }
 ): Promise<string[]> => {
   try {
     const now = new Date().toISOString();
@@ -115,6 +121,17 @@ export const createSchedules = async (
     }
     
     console.log(`✅ [ProductionScheduleService] ${createdIds.length}개 일정 등록 완료`);
+    
+    // 알림 전송 (사용자 정보가 제공된 경우에만)
+    if (user) {
+      try {
+        await sendBulkScheduleNotification(schedules, user);
+      } catch (error) {
+        console.error('❌ 생산일정 알림 전송 실패:', error);
+        // 알림 실패는 메인 로직에 영향 없음
+      }
+    }
+    
     return createdIds;
   } catch (error) {
     console.error('❌ [ProductionScheduleService] 일정 등록 실패:', error);
@@ -138,7 +155,14 @@ export const deleteSchedule = async (scheduleId: string): Promise<void> => {
 /**
  * 특정 날짜의 모든 생산일정 삭제
  */
-export const deleteSchedulesByDate = async (date: string): Promise<void> => {
+export const deleteSchedulesByDate = async (
+  date: string,
+  user?: {
+    uid: string;
+    displayName: string;
+    photoURL?: string;
+  }
+): Promise<void> => {
   try {
     // 해당 날짜의 모든 일정 조회
     const schedules = await getDocumentsWithQuery(
@@ -153,6 +177,28 @@ export const deleteSchedulesByDate = async (date: string): Promise<void> => {
     
     await Promise.all(deletePromises);
     console.log(`✅ [ProductionScheduleService] ${date} 날짜 전체 삭제 완료: ${schedules.length}개`);
+    
+    // 알림 전송 (사용자 정보가 제공된 경우에만)
+    if (user && schedules.length > 0) {
+      try {
+        // 첫 번째 일정 정보를 사용하여 삭제 알림 전송
+        const firstSchedule = schedules[0];
+        await sendProductionScheduleNotification(
+          'deleted',
+          {
+            planDate: firstSchedule.planDate,
+            productionLine: firstSchedule.productionLine,
+            productName: firstSchedule.productName,
+            partName: firstSchedule.partName,
+            planQuantity: firstSchedule.planQuantity
+          },
+          user
+        );
+      } catch (error) {
+        console.error('❌ 생산일정 삭제 알림 전송 실패:', error);
+        // 알림 실패는 메인 로직에 영향 없음
+      }
+    }
   } catch (error) {
     console.error('❌ [ProductionScheduleService] 날짜별 삭제 실패:', error);
     throw error;

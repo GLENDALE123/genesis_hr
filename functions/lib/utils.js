@@ -40,8 +40,14 @@ function selectTitleByType(type, subType) {
       return '생산관리부 요청사항';
     case 'shortage-request':
       return '부족분 신청';
+    case 'production-schedule':
+      return '생산일정';
     case 'production-daily-report':
       return '생산일보';
+    
+    // ==================== 샘플 관리 ====================
+    case 'sample-request':
+      return '샘플 요청';
     
     // ==================== 댓글/멘션 ====================
     case 'comment-mention':

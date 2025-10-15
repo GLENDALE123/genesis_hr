@@ -45,6 +45,9 @@ exports.createNotification = onRequest({
     const body = req.body || {};
     const { body: bodyText, requestId, type, subType, priority, targetUsers, actionRequired, relatedData, audience, ignoreRouting, senderName, senderUid, senderAvatar, subtitle, centerInfo, title } = body;
 
+    // 디버깅을 위한 로그 추가
+    console.log('[createNotification] 받은 데이터:', { type, title, bodyText, requestId });
+
     if (!bodyText || !requestId || !type) {
       return res.status(400).json({ ok: false, error: 'body, requestId, type are required' });
     }

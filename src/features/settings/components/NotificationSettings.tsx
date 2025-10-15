@@ -25,16 +25,20 @@ import {
   Factory,
   AlertTriangle,
   MessageSquare,
+  CalendarClock,
+  TestTube,
+  CalendarDays,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
 
 // 아이콘 맵핑
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-  Factory,
+  CalendarClock,
   AlertTriangle,
+  CalendarDays,
   MessageSquare,
-  Bell,
+  TestTube,
 };
 
 export const NotificationSettings: React.FC = () => {
@@ -331,42 +335,71 @@ export const NotificationSettings: React.FC = () => {
             받고 싶은 알림 종류를 선택하세요.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {Object.entries(NOTIFICATION_CHANNELS).map(([key, config], index) => {
-            const IconComponent = iconMap[config.icon] || Bell;
-            const isEnabled = settings.notifications.channels[key as NotificationChannelType];
-            
-            return (
-              <div key={key}>
-                {index > 0 && <Separator className="my-4" />}
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-start gap-3 flex-1">
-                    <IconComponent className={cn(
-                      "h-5 w-5 mt-0.5",
-                      isEnabled ? "text-primary" : "text-muted-foreground"
-                    )} />
-                    <div className="flex-1">
-                      <Label
-                        htmlFor={`channel-${key}`}
-                        className="text-base font-medium cursor-pointer"
-                      >
-                        {config.label}
-                      </Label>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {config.description}
-                      </p>
+        <CardContent className="space-y-6">
+          {/* 섹션별로 그룹화 */}
+          {[
+            {
+              title: '생산센터',
+              icon: Factory,
+              channels: Object.entries(NOTIFICATION_CHANNELS).filter(([_, config]) => config.section === 'production-center')
+            },
+            {
+              title: '샘플센터',
+              icon: Bell,
+              channels: Object.entries(NOTIFICATION_CHANNELS).filter(([_, config]) => config.section === 'sample-center')
+            },
+            {
+              title: '소통',
+              icon: MessageSquare,
+              channels: Object.entries(NOTIFICATION_CHANNELS).filter(([_, config]) => config.section === 'communication')
+            }
+          ].map((section, sectionIndex) => (
+            <div key={section.title} className="space-y-3">
+              {/* 섹션 제목 */}
+              <div className="pb-2 border-b">
+                <h4 className="font-semibold text-lg">{section.title}</h4>
+              </div>
+              
+              {/* 섹션 내 채널들 */}
+              {section.channels.map(([key, config], index) => {
+                const IconComponent = iconMap[config.icon] || Bell;
+                const isEnabled = settings.notifications.channels[key as NotificationChannelType];
+                
+                return (
+                  <div key={key} className="pl-6">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-3 flex-1">
+                        <IconComponent className={cn(
+                          "h-5 w-5 mt-0.5",
+                          isEnabled ? "text-primary" : "text-muted-foreground"
+                        )} />
+                        <div className="flex-1">
+                          <Label
+                            htmlFor={`channel-${key}`}
+                            className="text-base font-medium cursor-pointer"
+                          >
+                            {config.label}
+                          </Label>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {config.description}
+                          </p>
+                        </div>
+                      </div>
+                      <Switch
+                        id={`channel-${key}`}
+                        checked={isEnabled}
+                        onCheckedChange={(enabled) => handleToggleChannel(key as NotificationChannelType, enabled)}
+                        disabled={!settings.notifications.enabled || isSaving}
+                      />
                     </div>
                   </div>
-                  <Switch
-                    id={`channel-${key}`}
-                    checked={isEnabled}
-                    onCheckedChange={(enabled) => handleToggleChannel(key as NotificationChannelType, enabled)}
-                    disabled={!settings.notifications.enabled || isSaving}
-                  />
-                </div>
-              </div>
-            );
-          })}
+                );
+              })}
+              
+              {/* 섹션 간 구분선 */}
+              {sectionIndex < 2 && <Separator className="my-4" />}
+            </div>
+          ))}
         </CardContent>
       </Card>
 

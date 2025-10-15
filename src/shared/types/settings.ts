@@ -8,18 +8,33 @@
 export const NOTIFICATION_CHANNELS = {
   'production-request': {
     label: '생산관리부 요청사항',
-    icon: 'Factory',
-    description: '생산관리부 요청사항 알림',
+    icon: 'CalendarClock',
+    description: '생산관리부 요청 등록 알림',
+    section: 'production-center',
   },
   'shortage-request': {
     label: '부족분 신청',
     icon: 'AlertTriangle',
     description: '부족분 신청 알림',
+    section: 'production-center',
+  },
+  'production-schedule': {
+    label: '생산일정 변경',
+    icon: 'CalendarDays',
+    description: '생산일정 변경 알림',
+    section: 'production-center',
+  },
+  'sample-request': {
+    label: '샘플 요청',
+    icon: 'TestTube',
+    description: '샘플 요청 등록 알림',
+    section: 'sample-center',
   },
   'comment-mention': {
     label: '댓글',
     icon: 'MessageSquare',
     description: '댓글 및 멘션 알림',
+    section: 'communication',
   },
   // 🆕 새 채널 추가 시 여기만 수정하면 UI 자동 업데이트
 } as const;
@@ -84,6 +99,8 @@ export const DEFAULT_SETTINGS: UserSettings = {
     channels: {
       'production-request': true,
       'shortage-request': true,
+      'production-schedule': true,
+      'sample-request': true,
       'comment-mention': true,
     },
     schedule: {

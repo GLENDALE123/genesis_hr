@@ -250,55 +250,250 @@ export default function DashboardPage() {
     }
 
     try {
-      // 로그인한 사용자에게만 보내는 경우
+      // 본인에게만 발송하는 경우 - 실제 비즈니스 로직을 사용하되 targetUsers를 본인으로만 제한
       if (notificationTarget === 'current-user') {
-        const notificationContent = {
-          title: selectedRequestType === '부족분관리' ? '부족분 신청' :
-                selectedRequestType === '생산관리부 댓글' ? '생산관리부 요청사항' :
-                selectedRequestType === '샘플요청 댓글' ? '샘플 요청' :
-                '생산관리부 요청사항',
-          body: selectedRequestType === '생산관리부 댓글' 
-            ? '생산관리부 요청사항에 대한 댓글입니다. 확인 부탁드립니다.'
-            : selectedRequestType === '샘플요청 댓글'
-            ? '샘플 요청 건에 대한 피드백이 도착했습니다.'
-            : `${selectedRequestType} 테스트 알림입니다.`,
-          subtitle: selectedRequestType === '물류이동' ? '테스트제품A 외 2건' :
-                   selectedRequestType === '긴급건' ? '테스트크림 / 외용기' :
-                   selectedRequestType === '영업부 긴급요청' ? '프리미엄로션 / 펌프' :
-                   selectedRequestType === '부족분관리' ? '테스트크림 / 외용기' :
-                   selectedRequestType === '생산관리부 댓글' ? '테스트크림 / 외용기' :
-                   selectedRequestType === '샘플요청 댓글' ? '테스트샘플 / 내용기' :
-                   '테스트 제품'
-        };
+        const functionsUrl = 'https://asia-northeast3-hs-jig-b2093.cloudfunctions.net';
+        
+        // 실제 비즈니스 로직에서 생성할 payload 데이터
+        let payload: any = {};
+        
+        if (selectedRequestType === '물류이동') {
+          payload = {
+            targetUsers: [user.uid], // 본인에게만
+            type: 'production-request',
+            title: '생산관리부 요청사항',
+            body: `통합 물류 이동 요청 (3건):
+---------------------
+- 제품: 테스트제품A / 부속A
+- 발주번호: PO-TEST-001
+- 발주처: 테스트공급사
+- 사양: 테스트사양
+- 양품수량: 10,000 EA
+- 포장단위: 100
+- 박스수량: 100
+- 잔량: 0
+- 도착처: 군포공장
+- 추가 요청: 긴급 배송 요청
 
-        await sendNotificationToCurrentUser('comment-mention', notificationContent);
+---------------------
+- 제품: 테스트제품B / 부속B
+- 발주번호: PO-TEST-002
+- 발주처: 테스트공급사2
+- 사양: 테스트사양2
+- 양품수량: 5,000 EA
+- 포장단위: 50
+- 박스수량: 100
+- 잔량: 0
+- 도착처: 화성공장
+- 추가 요청: 오후 3시까지 도착 요망`,
+            requestId: 'P-TEST-001',
+            subtitle: '테스트제품A 외 2건',
+            centerInfo: '물류이동 요청',
+            senderName: userProfile.displayName,
+            senderUid: user.uid,
+            senderAvatar: user.photoURL || undefined
+          };
+        } else if (selectedRequestType === '부족분관리') {
+          payload = {
+            targetUsers: [user.uid], // 본인에게만
+            type: 'shortage-request',
+            title: '부족분 신청',
+            body: '1,000EA, 사유: 테스트용 부족분 신청입니다.',
+            requestId: 'TEST-SHORTAGE-001',
+            subtitle: '테스트크림 / 외용기',
+            centerInfo: '부족분 신청',
+            senderName: userProfile.displayName,
+            senderUid: user.uid,
+            senderAvatar: user.photoURL || undefined
+          };
+        } else if (selectedRequestType === '긴급건') {
+          payload = {
+            targetUsers: [user.uid], // 본인에게만
+            type: 'production-request',
+            title: '생산관리부 요청사항',
+            body: `긴급 생산 요청사항입니다.
+
+제품: 테스트크림 / 외용기
+발주번호: PO-URGENT-001
+발주처: 긴급테스트공급사
+수량: 5,000 EA
+
+긴급 처리 요청드립니다.`,
+            requestId: 'P-TEST-001',
+            subtitle: '테스트크림 / 외용기',
+            centerInfo: '긴급건',
+            senderName: userProfile.displayName,
+            senderUid: user.uid,
+            senderAvatar: user.photoURL || undefined
+          };
+        } else if (selectedRequestType === '영업부 긴급요청') {
+          payload = {
+            targetUsers: [user.uid], // 본인에게만
+            type: 'production-request',
+            title: '생산관리부 요청사항',
+            body: `영업부 긴급 요청사항입니다.
+
+제품: 프리미엄로션 / 펌프
+발주번호: PO-SALES-001
+발주처: 영업테스트공급사
+수량: 3,000 EA
+
+고객 납기 요청으로 긴급 처리 필요합니다.`,
+            requestId: 'P-TEST-001',
+            subtitle: '프리미엄로션 / 펌프',
+            centerInfo: '영업부 긴급요청',
+            senderName: userProfile.displayName,
+            senderUid: user.uid,
+            senderAvatar: user.photoURL || undefined
+          };
+        } else if (selectedRequestType === '생산일정') {
+          payload = {
+            targetUsers: [user.uid], // 본인에게만
+            type: 'production-schedule',
+            title: '생산일정',
+            body: `${userProfile.displayName}님이 생산일정을 변경했습니다.`,
+            requestId: `TEST-SCHEDULE-${Date.now()}`,
+            subtitle: '테스트제품A 생산일정',
+            senderName: userProfile.displayName,
+            senderUid: user.uid,
+            priority: 'normal'
+          };
+        } else if (selectedRequestType === '샘플 요청') {
+          payload = {
+            targetUsers: [user.uid], // 본인에게만
+            type: 'sample-request',
+            title: '샘플 요청',
+            body: `${userProfile.displayName}님이 샘플 요청을 등록했습니다.`,
+            requestId: `TEST-SAMPLE-${Date.now()}`,
+            subtitle: '테스트크림 / 외용기',
+            senderName: userProfile.displayName,
+            senderUid: user.uid,
+            priority: 'normal'
+          };
+        } else if (selectedRequestType === '생산관리부 댓글') {
+          payload = {
+            targetUsers: [user.uid], // 본인에게만
+            type: 'comment-mention',
+            title: '생산관리부 요청사항',
+            body: `${userProfile.displayName}님이 생산관리부 요청사항에 댓글을 남겼습니다.`,
+            requestId: `TEST-COMMENT-${Date.now()}`,
+            subtitle: '테스트크림 / 외용기',
+            senderName: userProfile.displayName,
+            senderUid: user.uid,
+            priority: 'normal'
+          };
+        } else if (selectedRequestType === '샘플요청 댓글') {
+          payload = {
+            targetUsers: [user.uid], // 본인에게만
+            type: 'comment-mention',
+            title: '샘플 요청',
+            body: `${userProfile.displayName}님이 샘플 요청에 댓글을 남겼습니다.`,
+            requestId: `TEST-SAMPLE-COMMENT-${Date.now()}`,
+            subtitle: '테스트샘플 / 내용기',
+            senderName: userProfile.displayName,
+            senderUid: user.uid,
+            priority: 'normal'
+          };
+        }
+
+        // Firebase Functions로 직접 전송
+        const response = await fetch(`${functionsUrl}/createNotification`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          throw new Error(`알림 전송 실패: ${response.status}`);
+        }
+
+        toast.success(`${selectedRequestType} 테스트 알림이 본인에게 발송되었습니다!`);
         return;
       }
 
-      // 기존 로직 (Admin/Manager에게 보내기)
+      // Admin/Manager에게 발송하는 경우 - 실제 비즈니스 로직 서비스들을 호출
+      const { 
+        createTestLogisticsNotification,
+        createTestShortageNotification,
+        createTestProductionRequestNotification
+      } = await import('@/features/production/services/notificationService');
+
       if (selectedRequestType === '물류이동') {
-        const { createTestLogisticsNotification } = await import('@/features/production/services/notificationService');
         await createTestLogisticsNotification(userProfile.displayName, user.uid, user.photoURL || undefined);
       } else if (selectedRequestType === '부족분관리') {
-        const { createTestShortageNotification } = await import('@/features/production/services/notificationService');
         await createTestShortageNotification(userProfile.displayName, user.uid, user.photoURL || undefined);
-      } else if (selectedRequestType === '생산관리부 댓글' || selectedRequestType === '샘플요청 댓글') {
-        // 댓글 알림 테스트 (Firebase Functions 통해 발송)
+      } else if (selectedRequestType === '긴급건') {
+        await createTestProductionRequestNotification(userProfile.displayName, user.uid, user.photoURL || undefined, '긴급건');
+      } else if (selectedRequestType === '영업부 긴급요청') {
+        await createTestProductionRequestNotification(userProfile.displayName, user.uid, user.photoURL || undefined, '영업부 긴급요청');
+      } else if (selectedRequestType === '생산일정') {
+        // 생산일정 알림 테스트 - 실제 비즈니스 로직 호출
+        const { sendProductionScheduleNotification } = await import('@/features/production/services/productionScheduleNotificationService');
+        await sendProductionScheduleNotification(
+          'created',
+          {
+            productName: '테스트제품A',
+            partName: '부속A',
+            planDate: '2024-01-15',
+            planQuantity: 1000,
+            productionLine: '라인1'
+          },
+          {
+            uid: user.uid,
+            displayName: userProfile.displayName,
+            photoURL: user.photoURL || undefined
+          }
+        );
+      } else if (selectedRequestType === '샘플 요청') {
+        // 샘플 요청 알림 테스트 - 실제 비즈니스 로직 호출
+        const { SampleService } = await import('@/features/sample/services/sampleService');
+        await SampleService.sendNewSampleRequestNotification(
+          `TEST-SAMPLE-${Date.now()}`,
+          {
+            productName: '테스트크림',
+            items: [{
+              partName: '외용기',
+              colorSpec: '테스트 색상',
+              quantity: 100,
+              postProcessing: ['인쇄'],
+              coatingMethod: '스프레이'
+            }],
+            requestDate: new Date().toISOString().split('T')[0],
+            requesterName: userProfile.displayName,
+            contact: '010-1234-5678',
+            clientName: '테스트 고객사',
+            dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            remarks: '테스트 알림용 샘플 요청입니다.'
+          },
+          {
+            uid: user.uid,
+            displayName: userProfile.displayName
+          }
+        );
+      } else if (selectedRequestType === '생산관리부 댓글') {
+        // 댓글 알림 테스트 - 실제 비즈니스 로직 호출
         const { CommentsService } = await import('@/shared/services/comments/commentsService');
         await CommentsService.sendTestCommentNotification(
           userProfile.displayName,
           user.uid,
           user.photoURL || undefined,
-          selectedRequestType === '생산관리부 댓글' ? '생산관리부' : '샘플요청'
+          '생산관리부'
         );
-      } else {
-        const { createTestProductionRequestNotification } = await import('@/features/production/services/notificationService');
-        await createTestProductionRequestNotification(userProfile.displayName, user.uid, user.photoURL || undefined, selectedRequestType);
+      } else if (selectedRequestType === '샘플요청 댓글') {
+        // 샘플요청 댓글 알림 테스트 - 실제 비즈니스 로직 호출
+        const { CommentsService } = await import('@/shared/services/comments/commentsService');
+        await CommentsService.sendTestCommentNotification(
+          userProfile.displayName,
+          user.uid,
+          user.photoURL || undefined,
+          '샘플요청'
+        );
       }
-      toast.success(`${selectedRequestType} 테스트 알림이 Admin/Manager에게 발송되었습니다!`);
+
+      toast.success(`${selectedRequestType} 테스트 알림이 성공적으로 발송되었습니다!`);
     } catch (error) {
-      console.error('알림 발송 실패:', error);
-      toast.error('알림 발송에 실패했습니다.');
+      console.error('알림 테스트 실패:', error);
+      toast.error('알림 테스트에 실패했습니다.');
     }
   };
 
@@ -375,7 +570,7 @@ export default function DashboardPage() {
                           <RadioGroupItem value="current-user" id="current-user" />
                           <Label htmlFor="current-user" className="flex items-center gap-2 cursor-pointer">
                             <User className="h-4 w-4" />
-                            <span>본인에게만 발송</span>
+                            <span>본인에게만 발송 (임시용)</span>
                           </Label>
                         </div>
                       </RadioGroup>
@@ -391,6 +586,8 @@ export default function DashboardPage() {
                           <SelectItem value="긴급건">긴급건</SelectItem>
                           <SelectItem value="영업부 긴급요청">영업부 긴급요청</SelectItem>
                           <SelectItem value="부족분관리">부족분관리</SelectItem>
+                          <SelectItem value="생산일정">생산일정</SelectItem>
+                          <SelectItem value="샘플 요청">샘플 요청</SelectItem>
                           <SelectItem value="생산관리부 댓글">생산관리부 댓글</SelectItem>
                           <SelectItem value="샘플요청 댓글">샘플요청 댓글</SelectItem>
                         </SelectContent>
@@ -415,6 +612,8 @@ export default function DashboardPage() {
                       <ul className="text-xs text-purple-600 dark:text-purple-400 space-y-1 ml-4 list-disc">
                         <li><strong>알림 타이틀:</strong> {
                           selectedRequestType === '부족분관리' ? '부족분 신청' :
+                          selectedRequestType === '생산일정' ? '생산일정' :
+                          selectedRequestType === '샘플 요청' ? '샘플 요청' :
                           selectedRequestType === '생산관리부 댓글' ? '생산관리부 요청사항' :
                           selectedRequestType === '샘플요청 댓글' ? '샘플 요청' :
                           '생산관리부 요청사항'
@@ -450,6 +649,19 @@ export default function DashboardPage() {
                                 <li><strong>요청내용:</strong> 영업부 긴급 요청사항</li>
                               </>
                             )}
+                            {selectedRequestType === '생산일정' && (
+                              <>
+                                <li><strong>제품명:</strong> 테스트제품A</li>
+                                <li><strong>일정내용:</strong> 생산일정 변경</li>
+                                <li><strong>변경일시:</strong> 2024-01-15 14:30</li>
+                              </>
+                            )}
+                            {selectedRequestType === '샘플 요청' && (
+                              <>
+                                <li><strong>제품명:</strong> 테스트크림 / 외용기</li>
+                                <li><strong>요청내용:</strong> 샘플 요청 등록</li>
+                              </>
+                            )}
                             {selectedRequestType === '부족분관리' && (
                               <>
                                 <li><strong>제품명:</strong> 테스트크림 / 외용기</li>
@@ -464,8 +676,8 @@ export default function DashboardPage() {
                     
                     <p className="text-xs text-muted-foreground">
                       {notificationTarget === 'admin-manager' 
-                        ? 'Admin과 Manager의 inbox에 알림 추가'
-                        : '본인의 inbox에 알림 추가 (테스트용)'
+                        ? '실제 비즈니스 로직을 통해 Admin과 Manager에게 알림 발송'
+                        : '실제 비즈니스 로직을 사용하되 본인에게만 발송 (임시용)'
                       }
                     </p>
                   </div>

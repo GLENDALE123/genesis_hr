@@ -5,7 +5,6 @@
 const { onDocumentCreated } = require('firebase-functions/v2/firestore');
 const { 
   initializeFirebase,
-  selectTitleByType, 
   getAndroidChannelIdByTypeAndPriority, 
   getCategoryKey, 
   mapUrlByType,
@@ -24,7 +23,7 @@ exports.onNotificationCreated = onDocumentCreated('notifications/{notificationId
   const snap = event.data;
   const n = (snap && snap.data()) || {};
   console.log('[onNotificationCreated] begin', { id: event.params.notificationId, type: n.type, hasTargetUsers: Array.isArray(n.targetUsers) && n.targetUsers.length > 0 });
-  const title = selectTitleByType(n.type, n.subType);
+  const title = n.title || '알림'; // 클라이언트 title 그대로 사용
   const body = typeof n.message === 'string' ? n.message : '';
   const targetUsers = Array.isArray(n.targetUsers) ? n.targetUsers : [];
   const notifId = event.params.notificationId;
