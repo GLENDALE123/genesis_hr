@@ -133,7 +133,13 @@ function mapUrlByType(type, requestId) {
       return `/production/shortage-management?requestId=${id}`;
     
     case 'production-daily-report':
-      return `/production/daily-report?reportId=${id}`;
+    case 'daily-report':
+      return `/production/daily-report`;
+    
+    // ==================== 샘플센터 ====================
+    case 'sample-status':
+    case 'sample-request':
+      return `/sample?requestId=${id}`;
     
     // ==================== 댓글/멘션 ====================
     case 'comment-mention':

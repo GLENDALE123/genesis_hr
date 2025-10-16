@@ -287,6 +287,65 @@ export const getFileMetadata = async (path: string): Promise<any> => {
   }
 };
 
+/**
+ * 여러 이미지 파일 업로드
+ * @param files - 업로드할 파일 배열
+ * @param folderPath - 업로드할 폴더 경로
+ * @returns 업로드된 이미지들의 다운로드 URL 배열
+ */
+export const uploadImageFiles = async (
+  files: File[],
+  folderPath: string
+): Promise<string[]> => {
+  if (!storage) {
+    throw new Error('Firebase Storage가 초기화되지 않았습니다.');
+  }
+
+  try {
+    const uploadPromises = files.map(async (file, index) => {
+      // 파일 크기 제한 (10MB)
+      const MAX_FILE_SIZE = 10 * 1024 * 1024;
+      if (file.size > MAX_FILE_SIZE) {
+        throw new Error(`파일 ${file.name}의 크기는 10MB 이하여야 합니다.`);
+      }
+
+      // 파일 확장자 확인
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif'];
+      if (!allowedTypes.includes(file.type)) {
+        throw new Error(`지원되지 않는 파일 형식입니다: ${file.type}`);
+      }
+
+      // 파일명 생성 (타임스탬프 + 인덱스)
+      const timestamp = Date.now();
+      const fileExtension = file.name.split('.').pop() || 'jpg';
+      const fileName = `image_${timestamp}_${index}.${fileExtension}`;
+      
+      // Storage 경로
+      const storageRef = ref(storage, `${folderPath}/${fileName}`);
+
+      // 파일 업로드
+      console.log(`🔄 이미지 업로드 중... (${index + 1}/${files.length})`, fileName);
+      await uploadBytes(storageRef, file, {
+        contentType: file.type,
+      });
+
+      // 다운로드 URL 가져오기
+      const downloadURL = await getDownloadURL(storageRef);
+      console.log(`✅ 이미지 업로드 완료 (${index + 1}/${files.length}):`, downloadURL);
+
+      return downloadURL;
+    });
+
+    const downloadURLs = await Promise.all(uploadPromises);
+    console.log(`✅ 모든 이미지 업로드 완료 (${files.length}개)`);
+
+    return downloadURLs;
+  } catch (error) {
+    console.error('❌ 이미지 업로드 실패:', error);
+    throw error;
+  }
+};
+
 const storageService = {
   uploadProfilePhoto,
   deleteProfilePhoto,
@@ -296,6 +355,7 @@ const storageService = {
   deleteFile,
   listFiles,
   getFileMetadata,
+  uploadImageFiles,
 };
 
 export default storageService;

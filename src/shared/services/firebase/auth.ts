@@ -17,17 +17,61 @@ import { settingsService } from '../settings/settingsService';
 
 // 로그인 함수 (이메일로 로그인)
 export const signIn = async (loginData: LoginData) => {
-  if (!auth) throw new Error('Firebase Auth is not initialized');
+  console.log('🔐 [Firebase Auth] 로그인 시도 시작...');
+  console.log('🔧 [Firebase Auth] Auth 서비스 상태:', {
+    authInitialized: !!auth,
+    authCurrentUser: auth?.currentUser?.email || 'none',
+    environment: typeof window !== 'undefined' ? 'browser' : 'server'
+  });
+  
+  if (!auth) {
+    console.error('❌ [Firebase Auth] Auth 서비스가 초기화되지 않음');
+    throw new Error('Firebase Auth is not initialized');
+  }
+  
   try {
     const { email, password } = loginData;
+    console.log('📧 [Firebase Auth] 로그인 정보:', {
+      email: email,
+      passwordLength: password?.length || 0,
+      hasPassword: !!password
+    });
     
+    console.log('🚀 [Firebase Auth] signInWithEmailAndPassword 호출 중...');
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    console.log('✅ [Firebase Auth] 로그인 성공:', {
+      uid: userCredential.user.uid,
+      email: userCredential.user.email,
+      emailVerified: userCredential.user.emailVerified
+    });
     
     // 마지막 로그인 시간 업데이트
+    console.log('⏰ [Firebase Auth] 마지막 로그인 시간 업데이트 중...');
     await updateLastLogin(userCredential.user.uid);
+    console.log('✅ [Firebase Auth] 마지막 로그인 시간 업데이트 완료');
     
     return userCredential.user;
-  } catch (error) {
+  } catch (error: any) {
+    console.error('❌ [Firebase Auth] 로그인 실패:', {
+      code: error.code,
+      message: error.message,
+      email: loginData.email
+    });
+    
+    // 상세한 에러 정보 로깅
+    if (error.code) {
+      const errorMessages: Record<string, string> = {
+        'auth/user-not-found': '사용자를 찾을 수 없음',
+        'auth/wrong-password': '잘못된 비밀번호',
+        'auth/invalid-email': '잘못된 이메일 형식',
+        'auth/invalid-credential': '잘못된 이메일 또는 비밀번호',
+        'auth/user-disabled': '비활성화된 사용자',
+        'auth/too-many-requests': '너무 많은 요청',
+        'auth/network-request-failed': '네트워크 오류'
+      };
+      console.error('🔍 [Firebase Auth] 에러 코드 분석:', errorMessages[error.code] || '알 수 없는 오류');
+    }
+    
     throw error;
   }
 };
@@ -80,8 +124,26 @@ export const logout = async () => {
 
 // 인증 상태 변경 감지
 export const onAuthStateChange = (callback: (user: User | null) => void) => {
-  if (!auth) throw new Error('Firebase Auth is not initialized');
-  return onAuthStateChanged(auth, callback);
+  console.log('👁️ [Firebase Auth] 인증 상태 변경 리스너 설정 중...');
+  
+  if (!auth) {
+    console.error('❌ [Firebase Auth] Auth 서비스가 초기화되지 않음');
+    throw new Error('Firebase Auth is not initialized');
+  }
+  
+  console.log('✅ [Firebase Auth] 인증 상태 변경 리스너 설정 완료');
+  return onAuthStateChanged(auth, (user) => {
+    console.log('🔄 [Firebase Auth] 인증 상태 변경 감지:', {
+      user: user ? {
+        uid: user.uid,
+        email: user.email,
+        emailVerified: user.emailVerified,
+        displayName: user.displayName
+      } : null,
+      timestamp: new Date().toISOString()
+    });
+    callback(user);
+  });
 };
 
 // 현재 사용자의 프로필 조회

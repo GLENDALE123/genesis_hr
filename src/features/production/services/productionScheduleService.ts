@@ -14,7 +14,7 @@ import {
 } from '@/shared/services/firebase/firestore';
 import { ProductionSchedule } from '@/features/production/types';
 import { QuerySnapshot, DocumentData } from 'firebase/firestore';
-import { sendProductionScheduleNotification, sendBulkScheduleNotification } from './productionScheduleNotificationService';
+import { sendProductionScheduleNotification, sendBulkScheduleNotification } from './notificationService';
 
 const PRODUCTION_SCHEDULES_COLLECTION = 'production-schedules';
 

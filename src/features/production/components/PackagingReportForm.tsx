@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Save, X, Clock, CalendarIcon, Minus, Plus } from 'lucide-react';
+import { Clock, CalendarIcon, Minus, Plus } from 'lucide-react';
 import { PackagingReport, PackagingFormData } from '@/features/production/types';
 import {
   Select,
@@ -71,8 +71,11 @@ export const PackagingReportForm: React.FC<PackagingReportFormProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col">
-      <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto scrollbar-hide p-6 space-y-4">
+    <form 
+      id="packaging-report-form"
+      onSubmit={handleSubmit} 
+      className="space-y-4"
+    >
         {/* 기본 정보 행 */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div className="space-y-1.5">
@@ -426,38 +429,6 @@ export const PackagingReportForm: React.FC<PackagingReportFormProps> = ({
             rows={3}
           />
         </div>
-      </form>
-
-      {/* 버튼 */}
-      <div className="flex-shrink-0 p-4 border-t dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm flex justify-end gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
-          disabled={isSaving}
-        >
-          <X className="h-4 w-4 mr-2" />
-          취소
-        </Button>
-        <Button
-          type="submit"
-          onClick={handleSubmit}
-          disabled={isSaving}
-          className="min-w-[120px]"
-        >
-          {isSaving ? (
-            <>
-              <Spinner size="sm" className="-ml-1 mr-3" />
-              저장 중...
-            </>
-          ) : (
-            <>
-              <Save className="h-4 w-4 mr-2" />
-              {isEditMode ? '수정 저장' : '저장하기'}
-            </>
-          )}
-        </Button>
-      </div>
-    </div>
+    </form>
   );
 };

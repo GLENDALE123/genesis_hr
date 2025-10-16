@@ -9,6 +9,13 @@ export interface PackagedBox {
   reason?: string;
 }
 
+// 생산일보 작업 상태
+export enum ProductionStatus {
+  Pending = '대기',
+  InProgress = '작업중',
+  Completed = '생산완료',
+}
+
 // 폼에서 사용하는 PackagedBox (quantity가 string)
 export interface PackagedBoxFormData {
   boxNumber: string;
@@ -57,6 +64,7 @@ export interface PackagingReport {
   };
   memo?: string;
   imageUrls?: string[];
+  status?: ProductionStatus; // 작업 상태 추가
 }
 
 // 엑셀에서 업로드된 생산일보 데이터 구조

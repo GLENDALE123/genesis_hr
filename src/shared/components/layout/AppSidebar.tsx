@@ -8,26 +8,14 @@ import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import Link from 'next/link';
+import { ROUTE_ICONS } from '@/shared/constants/navigation';
 import {
-  Users,
-  FileText,
-  BarChart3,
-  Settings,
-  Calendar,
-  MessageSquare,
-  Bell,
-  HelpCircle,
-  LayoutDashboard,
-  UserCheck,
-  CreditCard,
-  Building,
-  PieChart,
   Factory,
-  CalendarDays,
-  CalendarClock,
-  ClipboardList,
-  AlertTriangle,
-  TestTube
+  TestTube,
+  Shield,
+  LayoutDashboard,
+  Settings,
+  HelpCircle
 } from 'lucide-react';
 
 interface AppSidebarProps {
@@ -55,10 +43,19 @@ const mainNavigationItems: NavItem[] = [
     href: '/production/daily-report',
     icon: Factory,
     children: [
-      { title: '생산일보', href: '/production/daily-report', icon: FileText },
-      { title: '생산일정', href: '/production/schedule', icon: CalendarDays },
-      { title: '생산관리부', href: '/production/management', icon: CalendarClock },
-      { title: '부족분관리', href: '/production/shortage-management', icon: AlertTriangle },
+      { title: '생산일보', href: '/production/daily-report', icon: ROUTE_ICONS['/production/daily-report'] },
+      { title: '생산일정', href: '/production/schedule', icon: ROUTE_ICONS['/production/schedule'] },
+      { title: '생산관리부', href: '/production/management', icon: ROUTE_ICONS['/production/management'] },
+      { title: '부족분관리', href: '/production/shortage-management', icon: ROUTE_ICONS['/production/shortage-management'] },
+    ],
+  },
+  {
+    title: '품질센터',
+    href: '/quality/issues',
+    icon: Shield,
+    children: [
+      { title: '품질이슈', href: '/quality/issues', icon: ROUTE_ICONS['/quality/issues'] },
+      { title: '품질 종합 이력', href: '/quality/history', icon: ROUTE_ICONS['/quality/history'] },
     ],
   },
   {
@@ -66,7 +63,7 @@ const mainNavigationItems: NavItem[] = [
     href: '/sample-center',
     icon: TestTube,
     children: [
-      { title: '요청목록', href: '/sample-center/requests', icon: ClipboardList },
+      { title: '요청목록', href: '/sample-center/requests', icon: ROUTE_ICONS['/sample-center/requests'] },
     ],
   },
 ];
@@ -76,18 +73,18 @@ const subNavigationItems: NavItem[] = [
   {
     title: '일정 관리',
     href: '/calendar',
-    icon: Calendar,
+    icon: ROUTE_ICONS['/calendar'],
   },
   {
     title: '알림',
     href: '/notifications',
-    icon: Bell,
+    icon: ROUTE_ICONS['/notifications'],
     badge: '3',
   },
   {
     title: '메시지',
     href: '/messages',
-    icon: MessageSquare,
+    icon: ROUTE_ICONS['/messages'],
     badge: '12',
   },
 ];

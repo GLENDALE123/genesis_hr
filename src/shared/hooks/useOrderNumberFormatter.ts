@@ -23,7 +23,7 @@ interface UseOrderNumberFormatterProps {
  * - 500ms 디바운싱
  */
 export const useOrderNumberFormatter = ({ onAutoFill, onClear }: UseOrderNumberFormatterProps) => {
-  const autoFillTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const autoFillTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 컴포넌트 언마운트 시 타이머 정리
   useEffect(() => {

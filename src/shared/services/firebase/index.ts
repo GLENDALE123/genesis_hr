@@ -43,7 +43,8 @@ export {
   getFileMetadata,
   uploadProfilePhoto,
   deleteProfilePhoto,
-  compressImage
+  compressImage,
+  uploadImageFiles
 } from './storage';
 
 // Messaging 서비스

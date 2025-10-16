@@ -24,6 +24,18 @@ export const NOTIFICATION_CHANNELS = {
     description: '생산일정 변경 알림',
     section: 'production-center',
   },
+  'daily-report': {
+    label: '생산일보 상태 변경',
+    icon: 'FileText',
+    description: '생산일보 상태 변경 알림',
+    section: 'production-center',
+  },
+  'sample-status': {
+    label: '샘플 요청 상태 변경',
+    icon: 'TestTube',
+    description: '샘플 요청 상태 변경 알림',
+    section: 'sample-center',
+  },
   'sample-request': {
     label: '샘플 요청',
     icon: 'TestTube',
@@ -97,11 +109,13 @@ export const DEFAULT_SETTINGS: UserSettings = {
   notifications: {
     enabled: true,
     channels: {
-      'production-request': true,
-      'shortage-request': true,
-      'production-schedule': true,
-      'sample-request': true,
-      'comment-mention': true,
+        'production-request': true,
+        'shortage-request': true,
+        'production-schedule': true,
+        'daily-report': true,
+        'sample-request': true,
+        'sample-status': true,
+        'comment-mention': true,
     },
     schedule: {
       enabled: false,

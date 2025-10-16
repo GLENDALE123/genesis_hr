@@ -358,6 +358,44 @@ export default function DashboardPage() {
             senderUid: user.uid,
             priority: 'normal'
           };
+        } else if (selectedRequestType === '생산일보 상태 변경') {
+          payload = {
+            targetUsers: [user.uid], // 본인에게만
+            type: 'daily-report',
+            title: '생산일보 상태 변경',
+            body: `${userProfile.displayName}님이 생산일보 상태를 "작업중"으로 변경했습니다.
+
+제품: 테스트제품 / 테스트부속
+라인: 증착1
+작업일: ${new Date().toISOString().split('T')[0]}
+이전 상태: 대기
+현재 상태: 작업중`,
+            requestId: `TEST-DAILY-REPORT-STATUS-${Date.now()}`,
+            subtitle: '테스트제품 / 증착1',
+            senderName: userProfile.displayName,
+            senderUid: user.uid,
+            priority: 'normal',
+            centerInfo: '생산일보 상태 변경'
+          };
+        } else if (selectedRequestType === '샘플 요청 상태 변경') {
+          payload = {
+            targetUsers: [user.uid], // 본인에게만
+            type: 'sample-status',
+            title: '샘플 요청 상태 변경',
+            body: `${userProfile.displayName}님이 샘플 요청 상태를 "진행중"으로 변경했습니다.
+
+제품: 테스트제품
+고객사: 테스트고객사
+요청일: ${new Date().toISOString().split('T')[0]}
+이전 상태: 접수
+현재 상태: 진행중`,
+            requestId: `TEST-SAMPLE-STATUS-${Date.now()}`,
+            subtitle: '테스트제품 / 테스트고객사',
+            senderName: userProfile.displayName,
+            senderUid: user.uid,
+            priority: 'normal',
+            centerInfo: '샘플 요청 상태 변경'
+          };
         } else if (selectedRequestType === '샘플 요청') {
           payload = {
             targetUsers: [user.uid], // 본인에게만
@@ -428,7 +466,7 @@ export default function DashboardPage() {
         await createTestProductionRequestNotification(userProfile.displayName, user.uid, user.photoURL || undefined, '영업부 긴급요청');
       } else if (selectedRequestType === '생산일정') {
         // 생산일정 알림 테스트 - 실제 비즈니스 로직 호출
-        const { sendProductionScheduleNotification } = await import('@/features/production/services/productionScheduleNotificationService');
+        const { sendProductionScheduleNotification } = await import('@/features/production/services/notificationService');
         await sendProductionScheduleNotification(
           'created',
           {
@@ -438,6 +476,32 @@ export default function DashboardPage() {
             planQuantity: 1000,
             productionLine: '라인1'
           },
+          {
+            uid: user.uid,
+            displayName: userProfile.displayName,
+            photoURL: user.photoURL || undefined
+          }
+        );
+      } else if (selectedRequestType === '생산일보 상태 변경') {
+        // 생산일보 상태 변경 알림 테스트 - 실제 비즈니스 로직 호출
+        const { DailyReportNotificationService } = await import('@/features/production/services/notificationService');
+        const { ProductionStatus } = await import('@/features/production/types');
+        await DailyReportNotificationService.sendTestDailyReportStatusNotification(
+          ProductionStatus.Pending,
+          ProductionStatus.InProgress,
+          {
+            uid: user.uid,
+            displayName: userProfile.displayName,
+            photoURL: user.photoURL || undefined
+          }
+        );
+      } else if (selectedRequestType === '샘플 요청 상태 변경') {
+        // 샘플 요청 상태 변경 알림 테스트 - 실제 비즈니스 로직 호출
+        const { SampleStatusNotificationService } = await import('@/features/sample/services/sampleStatusNotificationService');
+        const { SampleStatus } = await import('@/features/sample/types/sample.types');
+        await SampleStatusNotificationService.sendTestSampleStatusNotification(
+          SampleStatus.Received,
+          SampleStatus.InProgress,
           {
             uid: user.uid,
             displayName: userProfile.displayName,
@@ -587,6 +651,8 @@ export default function DashboardPage() {
                           <SelectItem value="영업부 긴급요청">영업부 긴급요청</SelectItem>
                           <SelectItem value="부족분관리">부족분관리</SelectItem>
                           <SelectItem value="생산일정">생산일정</SelectItem>
+                          <SelectItem value="생산일보 상태 변경">생산일보 상태 변경</SelectItem>
+        <SelectItem value="샘플 요청 상태 변경">샘플 요청 상태 변경</SelectItem>
                           <SelectItem value="샘플 요청">샘플 요청</SelectItem>
                           <SelectItem value="생산관리부 댓글">생산관리부 댓글</SelectItem>
                           <SelectItem value="샘플요청 댓글">샘플요청 댓글</SelectItem>
@@ -610,14 +676,16 @@ export default function DashboardPage() {
                     <div className="text-sm space-y-1">
                       <p className="font-medium text-purple-700 dark:text-purple-300">알림 내용:</p>
                       <ul className="text-xs text-purple-600 dark:text-purple-400 space-y-1 ml-4 list-disc">
-                        <li><strong>알림 타이틀:</strong> {
-                          selectedRequestType === '부족분관리' ? '부족분 신청' :
-                          selectedRequestType === '생산일정' ? '생산일정' :
-                          selectedRequestType === '샘플 요청' ? '샘플 요청' :
-                          selectedRequestType === '생산관리부 댓글' ? '생산관리부 요청사항' :
-                          selectedRequestType === '샘플요청 댓글' ? '샘플 요청' :
-                          '생산관리부 요청사항'
-                        }</li>
+            <li><strong>알림 타이틀:</strong> {
+              selectedRequestType === '부족분관리' ? '부족분 신청' :
+              selectedRequestType === '생산일정' ? '생산일정' :
+              selectedRequestType === '생산일보 상태 변경' ? '생산일보 상태 변경' :
+              selectedRequestType === '샘플 요청 상태 변경' ? '샘플 요청 상태 변경' :
+              selectedRequestType === '샘플 요청' ? '샘플 요청' :
+              selectedRequestType === '생산관리부 댓글' ? '생산관리부 요청사항' :
+              selectedRequestType === '샘플요청 댓글' ? '샘플 요청' :
+              '생산관리부 요청사항'
+            }</li>
                         <li><strong>발신자:</strong> {userProfile?.displayName || '테스트 사용자'}</li>
                         {(selectedRequestType === '생산관리부 댓글' || selectedRequestType === '샘플요청 댓글') ? (
                           <>
@@ -654,6 +722,22 @@ export default function DashboardPage() {
                                 <li><strong>제품명:</strong> 테스트제품A</li>
                                 <li><strong>일정내용:</strong> 생산일정 변경</li>
                                 <li><strong>변경일시:</strong> 2024-01-15 14:30</li>
+                              </>
+                            )}
+                            {selectedRequestType === '생산일보 상태 변경' && (
+                              <>
+                                <li><strong>제품명:</strong> 테스트제품 / 테스트부속</li>
+                                <li><strong>라인:</strong> 증착1</li>
+                                <li><strong>상태변경:</strong> 대기 → 작업중</li>
+                                <li><strong>변경일시:</strong> {new Date().toLocaleString()}</li>
+                              </>
+                            )}
+                            {selectedRequestType === '샘플 요청 상태 변경' && (
+                              <>
+                                <li><strong>제품명:</strong> 테스트제품</li>
+                                <li><strong>고객사:</strong> 테스트고객사</li>
+                                <li><strong>상태변경:</strong> 접수 → 진행중</li>
+                                <li><strong>변경일시:</strong> {new Date().toLocaleString()}</li>
                               </>
                             )}
                             {selectedRequestType === '샘플 요청' && (

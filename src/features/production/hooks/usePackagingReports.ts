@@ -169,28 +169,48 @@ export const usePackagingReports = () => {
   }, [mounted, setLoading, setError]);
 
   // 보고서 삭제
-  const deleteReport = useCallback(async (reportId: string) => {
+  const deleteReport = useCallback(async (reportId: string, reportData?: PackagingReport) => {
+    if (!user) {
+      const error = new Error('로그인이 필요합니다.');
+      setError(error);
+      throw error;
+    }
+
     try {
-      await PackagingReportsService.deletePackagingReport(reportId);
+      await PackagingReportsService.deletePackagingReport(reportId, {
+        uid: user.uid,
+        displayName: user.displayName,
+        email: user.email
+      }, reportData);
       // Zustand 스토어에서도 제거 (캐시 동기화)
       deleteCachedReport(reportId);
     } catch (err) {
       setError(err as Error);
       throw err;
     }
-  }, [deleteCachedReport, setError]);
+  }, [user, deleteCachedReport, setError]);
 
   // 보고서 업데이트
   const updateReport = useCallback(async (reportId: string, updateData: Partial<PackagingReport>) => {
+    if (!user) {
+      const error = new Error('로그인이 필요합니다.');
+      setError(error);
+      throw error;
+    }
+
     try {
-      await PackagingReportsService.updatePackagingReport(reportId, updateData);
+      await PackagingReportsService.updatePackagingReport(reportId, updateData, {
+        uid: user.uid,
+        displayName: user.displayName,
+        email: user.email
+      });
       // Zustand 스토어에서도 업데이트 (캐시 동기화)
       updateCachedReport(reportId, updateData);
     } catch (err) {
       setError(err as Error);
       throw err;
     }
-  }, [updateCachedReport, setError]);
+  }, [user, updateCachedReport, setError]);
 
   // 보고서 생성
   const createReport = useCallback(async (formData: PackagingFormData) => {

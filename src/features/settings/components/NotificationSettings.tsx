@@ -28,6 +28,7 @@ import {
   CalendarClock,
   TestTube,
   CalendarDays,
+  FileText,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
@@ -37,6 +38,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   CalendarClock,
   AlertTriangle,
   CalendarDays,
+  FileText,
   MessageSquare,
   TestTube,
 };

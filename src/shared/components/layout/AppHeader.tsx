@@ -28,19 +28,11 @@ import {
   Menu,
   Sun,
   Moon,
-  Shield,
   Settings,
-  LayoutDashboard,
-  Factory,
-  FileText,
-  CalendarDays,
+  MessageSquare,
   CalendarClock,
   AlertTriangle,
-  TestTube,
-  ClipboardList,
-  Calendar,
-  MessageSquare,
-  HelpCircle
+  Shield
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { logout } from '@/shared/services/firebase/auth';
@@ -50,81 +42,13 @@ import { getUserDisplayName, getUserInitial, getUserRoleBadgeVariant, getUserRol
 import { ThemeCustomizer } from '@/shared/components/common';
 import { useDevStore } from '@/app/store';
 import { toast } from 'sonner';
+import { getRouteIcon, getRouteTitle } from '@/shared/constants/navigation';
 
 interface AppHeaderProps {
   className?: string;
   onMenuClick?: () => void;
 }
 
-// 경로에 따라 메뉴 이름 반환하는 함수
-const getPageTitle = (pathname: string): string => {
-  // 정확한 매칭 먼저 확인
-  const exactMatches: Record<string, string> = {
-    '/dashboard': '대시보드',
-    '/production/daily-report': '생산일보',
-    '/production/schedule': '생산일정',
-    '/production/management': '생산관리부',
-    '/production/shortage-management': '부족분관리',
-    '/sample-center': '샘플센터',
-    '/sample-center/requests': '샘플 요청목록',
-    '/calendar': '일정 관리',
-    '/notifications': '알림',
-    '/messages': '메시지',
-    '/settings': '설정',
-    '/help': '도움말',
-    '/profile': '프로필',
-  };
-
-  // 정확히 일치하는 경로가 있으면 반환
-  if (exactMatches[pathname]) {
-    return exactMatches[pathname];
-  }
-
-  // 부분 매칭 (상위 경로 확인)
-  if (pathname.startsWith('/production')) {
-    return '생산센터';
-  }
-  if (pathname.startsWith('/sample-center')) {
-    return '샘플센터';
-  }
-
-  return '대시보드';
-};
-
-// 경로에 따라 아이콘 반환하는 함수
-const getPageIcon = (pathname: string) => {
-  // 정확한 매칭 먼저 확인
-  const exactMatches: Record<string, React.ComponentType<{ className?: string }>> = {
-    '/dashboard': LayoutDashboard,
-    '/production/daily-report': FileText,
-    '/production/schedule': CalendarDays,
-    '/production/management': CalendarClock,
-    '/production/shortage-management': AlertTriangle,
-    '/sample-center': TestTube,
-    '/sample-center/requests': ClipboardList,
-    '/calendar': Calendar,
-    '/notifications': Bell,
-    '/messages': MessageSquare,
-    '/settings': Settings,
-    '/help': HelpCircle,
-    '/profile': User,
-  };
-
-  // 정확히 일치하는 경로가 있으면 반환
-  if (exactMatches[pathname]) {
-    return exactMatches[pathname];
-  }
-
-  // 부분 매칭 (상위 경로 확인)
-  if (pathname.startsWith('/production')) {
-    return Factory;
-  }
-  if (pathname.startsWith('/sample-center')) {
-    return TestTube;
-  }
-
-  return LayoutDashboard;
-};
 
 export const AppHeader: React.FC<AppHeaderProps> = ({ 
   className,
@@ -142,8 +66,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const [isMarkingAllRead, setIsMarkingAllRead] = React.useState(false);
   
   // 현재 페이지 제목 및 아이콘 가져오기
-  const pageTitle = getPageTitle(pathname);
-  const PageIcon = getPageIcon(pathname);
+  const pageTitle = getRouteTitle(pathname);
+  const PageIcon = getRouteIcon(pathname);
 
   // 실시간 알림 조회
   React.useEffect(() => {
@@ -406,20 +330,23 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={user?.photoURL || ''} alt={getUserDisplayName(user, '')} />
+              <Button variant="ghost" className="relative h-10 px-3 rounded-full flex items-center gap-2">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={user?.photoURL || ''} alt={getUserDisplayName(userProfile || user, '')} />
                   <AvatarFallback>
-                    {getUserInitial(user, 'U')}
+                    {getUserInitial(userProfile || user, 'U')}
                   </AvatarFallback>
                 </Avatar>
+                <span className="hidden sm:block text-sm font-medium">
+                  {getUserDisplayName(userProfile || user, '사용자')}
+                </span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-medium leading-none">
-                    {getUserDisplayName(user, '사용자')}
+                    {getUserDisplayName(userProfile || user, '사용자')}
                   </p>
                   <p className="text-xs leading-none text-muted-foreground">
                     {user?.email}

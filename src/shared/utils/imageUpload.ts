@@ -72,13 +72,15 @@ export const revokePreviewUrl = (url: string): void => {
 const compressImageQuick = async (file: File): Promise<File> => {
   const MAX_WIDTH = 1920;
   const MAX_HEIGHT = 1920;
-  const MAX_SIZE_MB = 2;  // 2MB 이하는 압축하지 않음
   const QUALITY = 0.85;
 
-  // 작은 파일은 압축 건너뛰기
-  if (file.size <= MAX_SIZE_MB * 1024 * 1024) {
+  // HEIF/HEIC 파일은 압축 건너뛰기 (Functions에서 변환 처리)
+  if (file.type.includes('heic') || file.type.includes('heif')) {
+    console.log('📱 HEIF/HEIC 파일 감지: 압축 건너뛰고 원본 업로드');
     return file;
   }
+
+  // 일반 이미지 압축 (품질이슈 증거 이미지 최적화)
 
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -137,26 +139,53 @@ const compressImageQuick = async (file: File): Promise<File> => {
  * 이미지 파일을 업로드합니다.
  * 
  * 처리 흐름:
- * 1. 클라이언트: 빠른 압축 (2MB 이상만)
- * 2. 업로드: Firebase Storage에 저장
+ * 1. 클라이언트: 모든 이미지 압축 (품질 최적화)
+ * 2. 업로드: Firebase Storage에 저장 (재시도 로직 포함)
  * 3. 서버(Functions): 백그라운드에서 썸네일 생성 (300px WebP)
  * 
  * @param file - 업로드할 이미지 파일
  * @param folder - 저장할 폴더 경로
+ * @param maxRetries - 최대 재시도 횟수 (기본값: 3)
  * @returns 업로드된 이미지의 다운로드 URL
  */
-export const uploadImage = async (file: File, folder: string): Promise<string> => {
-  // 1단계: 클라이언트 압축 (빠른 업로드)
-  const compressedFile = await compressImageQuick(file);
-
-  const timestamp = Date.now();
-  const fileName = `${timestamp}_${file.name}`;
-  const path = `${folder}/${fileName}`;
-
-  // 2단계: Storage 업로드 (Functions 트리거 자동 실행)
-  const downloadURL = await uploadFile(compressedFile, path);
+export const uploadImage = async (
+  file: File, 
+  folder: string, 
+  maxRetries: number = 3
+): Promise<string> => {
+  let lastError: Error | null = null;
   
-  return downloadURL;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      // 1단계: 클라이언트 압축 (모든 이미지)
+      const compressedFile = await compressImageQuick(file);
+
+      const timestamp = Date.now();
+      const fileName = `${timestamp}_${file.name}`;
+      const path = `${folder}/${fileName}`;
+
+      // 2단계: Storage 업로드 (Functions 트리거 자동 실행)
+      const downloadURL = await uploadFile(compressedFile, path);
+      
+      console.log(`✅ 이미지 업로드 성공 (시도 ${attempt}/${maxRetries}):`, fileName);
+      return downloadURL;
+      
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error('알 수 없는 오류');
+      console.warn(`⚠️ 이미지 업로드 실패 (시도 ${attempt}/${maxRetries}):`, lastError.message);
+      
+      // 마지막 시도가 아니면 잠시 대기 후 재시도
+      if (attempt < maxRetries) {
+        const delay = Math.pow(2, attempt - 1) * 1000; // 지수 백오프: 1초, 2초, 4초...
+        console.log(`⏳ ${delay}ms 후 재시도...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  
+  // 모든 재시도 실패
+  console.error(`❌ 이미지 업로드 최종 실패 (${maxRetries}회 시도):`, lastError?.message);
+  throw new Error(`이미지 업로드 실패: ${lastError?.message || '알 수 없는 오류'}`);
 };
 
 /**
@@ -200,6 +229,124 @@ export const getThumbnailUrl = (originalUrl: string): string => {
   urlParts[urlParts.length - 1] = thumbnailFileName;
   return urlParts.join('/');
 };
+
+/**
+ * 이미지 캐싱 시스템
+ * - 로컬 스토리지에 이미지 URL 저장
+ * - 재방문 시 빠른 로딩
+ */
+export class ImageCache {
+  private static readonly CACHE_KEY = 'hs_image_cache';
+  private static readonly MAX_CACHE_SIZE = 100; // 최대 100개 이미지
+  private static readonly CACHE_EXPIRY = 7 * 24 * 60 * 60 * 1000; // 7일
+
+  /**
+   * 이미지 URL을 캐시에 저장
+   */
+  static setImage(url: string, metadata?: { size?: number; type?: string }): void {
+    try {
+      const cache = this.getCache();
+      const now = Date.now();
+      
+      // 캐시 크기 제한 (오래된 것부터 삭제)
+      if (Object.keys(cache).length >= this.MAX_CACHE_SIZE) {
+        const oldestKey = Object.keys(cache).reduce((oldest, key) => 
+          cache[key].timestamp < cache[oldest].timestamp ? key : oldest
+        );
+        delete cache[oldestKey];
+      }
+      
+      // URL 해시를 키로 사용 (보안상 URL 자체는 저장하지 않음)
+      const urlHash = this.hashUrl(url);
+      cache[urlHash] = {
+        url,
+        timestamp: now,
+        metadata: metadata || {}
+      };
+      
+      localStorage.setItem(this.CACHE_KEY, JSON.stringify(cache));
+      console.log(`📦 이미지 캐시 저장: ${urlHash}`);
+    } catch (error) {
+      console.warn('캐시 저장 실패:', error);
+    }
+  }
+
+  /**
+   * 캐시에서 이미지 URL 조회
+   */
+  static getImage(url: string): string | null {
+    try {
+      const cache = this.getCache();
+      const urlHash = this.hashUrl(url);
+      const cached = cache[urlHash];
+      
+      if (cached) {
+        // 만료 확인
+        const now = Date.now();
+        if (now - cached.timestamp < this.CACHE_EXPIRY) {
+          console.log(`⚡ 캐시 히트: ${urlHash}`);
+          return cached.url;
+        } else {
+          // 만료된 캐시 삭제
+          delete cache[urlHash];
+          localStorage.setItem(this.CACHE_KEY, JSON.stringify(cache));
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.warn('캐시 조회 실패:', error);
+      return null;
+    }
+  }
+
+  /**
+   * 캐시 초기화
+   */
+  static clearCache(): void {
+    try {
+      localStorage.removeItem(this.CACHE_KEY);
+      console.log('🗑️ 이미지 캐시 초기화');
+    } catch (error) {
+      console.warn('캐시 초기화 실패:', error);
+    }
+  }
+
+  /**
+   * 캐시 상태 조회
+   */
+  static getCacheInfo(): { size: number; keys: string[] } {
+    try {
+      const cache = this.getCache();
+      return {
+        size: Object.keys(cache).length,
+        keys: Object.keys(cache)
+      };
+    } catch (error) {
+      return { size: 0, keys: [] };
+    }
+  }
+
+  private static getCache(): Record<string, any> {
+    try {
+      const cached = localStorage.getItem(this.CACHE_KEY);
+      return cached ? JSON.parse(cached) : {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  private static hashUrl(url: string): string {
+    // 간단한 해시 함수 (실제로는 crypto.subtle.digest 사용 권장)
+    let hash = 0;
+    for (let i = 0; i < url.length; i++) {
+      const char = url.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // 32bit 정수로 변환
+    }
+    return Math.abs(hash).toString(36);
+  }
+}
 
 /**
  * 이미지 업로드 상태

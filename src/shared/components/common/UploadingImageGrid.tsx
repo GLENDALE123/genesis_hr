@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 
@@ -55,6 +55,27 @@ export const UploadingImageGrid: React.FC<UploadingImageGridProps> = ({
   gridClassName = 'grid-cols-[repeat(auto-fill,minmax(100px,1fr))]',
   imageClassName = 'h-24',
 }) => {
+  // cleanup 함수 추가
+  const handleRemove = (index: number) => {
+    const item = items[index];
+    // preview URL이 blob URL이라면 해제
+    if (item.preview && item.preview.startsWith('blob:')) {
+      URL.revokeObjectURL(item.preview);
+    }
+    onRemove(index);
+  };
+
+  // 컴포넌트 언마운트 시 모든 blob URL 정리
+  useEffect(() => {
+    return () => {
+      items.forEach(item => {
+        if (item.preview && item.preview.startsWith('blob:')) {
+          URL.revokeObjectURL(item.preview);
+        }
+      });
+    };
+  }, [items]);
+
   if (items.length === 0) {
     return null;
   }
@@ -79,7 +100,7 @@ export const UploadingImageGrid: React.FC<UploadingImageGridProps> = ({
               />
               <button
                 type="button"
-                onClick={() => onRemove(index)}
+                onClick={() => handleRemove(index)}
                 className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-destructive/90"
                 aria-label="이미지 삭제"
               >

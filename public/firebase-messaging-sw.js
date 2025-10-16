@@ -94,18 +94,24 @@ self.addEventListener('notificationclick', (event) => {
   
   event.notification.close();
 
+  // 알림 데이터에서 딥링크 URL 가져오기
+  const notificationData = event.notification.data || {};
+  const deepLinkUrl = notificationData.url || '/';
+  
+  console.log('딥링크 URL:', deepLinkUrl);
+
   if (event.action === 'open') {
-    // 앱 열기
+    // 앱 열기 (딥링크 URL 사용)
     event.waitUntil(
-      clients.openWindow('/')
+      clients.openWindow(deepLinkUrl)
     );
   } else if (event.action === 'close') {
     // 알림 닫기 (이미 위에서 닫았음)
     return;
   } else {
-    // 기본 동작: 앱 열기
+    // 기본 동작: 딥링크 URL로 이동
     event.waitUntil(
-      clients.openWindow('/')
+      clients.openWindow(deepLinkUrl)
     );
   }
 });

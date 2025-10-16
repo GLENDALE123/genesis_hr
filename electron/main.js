@@ -9,6 +9,7 @@ const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
 // Electron 환경에서는 Firestore 리스너 방식 사용 (FCM 미사용)
 console.log('✅ [Electron] Firestore 실시간 알림 시스템 사용');
+console.log('🔧 [Electron] Firebase 디버그 모드 활성화');
 
 let mainWindow;
 let tray;
@@ -28,7 +29,8 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       // Service Worker 및 알림 활성화
       enableRemoteModule: false,
-      webSecurity: true,
+      webSecurity: false, // Firebase API 호출을 위해 비활성화
+      allowRunningInsecureContent: true, // Firebase API 호출을 위해 허용
     },
     icon: path.join(__dirname, '../public/favicon.ico'),
     show: false, // 로딩 완료 후 표시
@@ -78,6 +80,15 @@ function createWindow() {
         event.preventDefault();
         mainWindow.webContents.toggleDevTools();
         console.log('🔧 개발자 도구 토글');
+      }
+      // Ctrl+Shift+R로 캐시 클리어 후 새로고침
+      if (input.control && input.shift && input.key === 'r') {
+        event.preventDefault();
+        mainWindow.webContents.session.clearCache().then(() => {
+          console.log('🧹 캐시 클리어 완료');
+          mainWindow.reload();
+          console.log('🔄 캐시 클리어 후 새로고침');
+        });
       }
     });
   }

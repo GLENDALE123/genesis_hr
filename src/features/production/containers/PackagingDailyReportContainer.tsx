@@ -22,7 +22,9 @@ import {
 import { 
   Plus, 
   Download, 
-  Upload
+  Upload,
+  Save,
+  X
 } from 'lucide-react';
 import { PackagingReportListView } from '@/features/production/components/PackagingReportListView';
 import { PackagingReportForm } from '@/features/production/components/PackagingReportForm';
@@ -195,7 +197,7 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
     const reportToDelete = reports.find(r => r.id === deleteConfirmState.reportId);
     
     try {
-      await deleteReport(deleteConfirmState.reportId);
+      await deleteReport(deleteConfirmState.reportId, reportToDelete || undefined);
       
       // 제품 정보 포함한 성공 메시지
       if (reportToDelete) {
@@ -596,17 +598,39 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
       {/* 등록/수정 모달 */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent 
-          className="max-w-7xl max-h-[90vh] overflow-y-auto"
+          className="max-w-7xl max-h-[90vh]"
+          stickyHeader={
+            <DialogHeader>
+              <DialogTitle>
+                {isEditMode ? '생산일보 수정' : '생산일보 등록'}
+              </DialogTitle>
+            </DialogHeader>
+          }
+          stickyFooter={
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleFormCancel}
+              >
+                <X className="h-4 w-4 mr-2" />
+                취소
+              </Button>
+              <Button
+                type="submit"
+                form="packaging-report-form"
+                className="min-w-[120px]"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {isEditMode ? '수정 저장' : '저장하기'}
+              </Button>
+            </div>
+          }
           onInteractOutside={(e) => {
             // 외부 클릭 시 모달 닫기 방지 (실수로 닫히는 것 방지)
             e.preventDefault();
           }}
         >
-          <DialogHeader>
-            <DialogTitle>
-              {isEditMode ? '생산일보 수정' : '생산일보 등록'}
-            </DialogTitle>
-          </DialogHeader>
           <PackagingReportForm
             report={selectedReport}
             isEditMode={isEditMode}

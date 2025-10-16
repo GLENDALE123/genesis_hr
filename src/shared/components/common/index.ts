@@ -12,3 +12,4 @@ export { NotificationContainer, NotificationManager } from './CustomNotification
 export { ElectronNotificationProvider } from './ElectronNotificationProvider';
 export { NotificationProviderWrapper } from './NotificationProviderWrapper';
 export { ElectronNavigationHandler } from './ElectronNavigationHandler';
+export { InputSelect } from './InputSelect';

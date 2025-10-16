@@ -139,17 +139,25 @@ export const useFCM = (): FCMHook => {
     // 초기 권한 확인
     checkPermission();
 
+    let permissionCleanup: (() => void) | null = null;
+
     // 권한 변경 감지 (일부 브라우저에서 지원)
     if ('permissions' in navigator) {
       navigator.permissions.query({ name: 'notifications' as PermissionName })
         .then(permission => {
           permission.addEventListener('change', checkPermission);
-          return () => permission.removeEventListener('change', checkPermission);
+          permissionCleanup = () => permission.removeEventListener('change', checkPermission);
         })
         .catch(() => {
           // 권한 API를 지원하지 않는 브라우저
         });
     }
+
+    return () => {
+      if (permissionCleanup) {
+        permissionCleanup();
+      }
+    };
   }, []);
 
   return {

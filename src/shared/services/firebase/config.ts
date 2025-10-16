@@ -3,6 +3,10 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getAnalytics } from 'firebase/analytics';
+import { getFunctions } from 'firebase/functions';
+
+// 일렉트론 환경 감지
+const isElectron = typeof window !== 'undefined' && (window as any).__ELECTRON__;
 
 
 const firebaseConfig = {
@@ -21,19 +25,129 @@ export const FIREBASE_VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || 
 
 // Firebase 앱이 이미 초기화되어 있는지 확인
 let app: FirebaseApp;
+console.log('🔥 [Firebase Config] 초기화 시작...');
+console.log('🔧 [Firebase Config] 환경 정보:', {
+  isElectron,
+  hasWindow: typeof window !== 'undefined',
+  nodeEnv: process.env.NODE_ENV,
+  platform: process.platform
+});
+
 try {
-  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+  if (getApps().length === 0) {
+    console.log('🚀 [Firebase Config] 새로운 Firebase 앱 초기화 중...');
+    app = initializeApp(firebaseConfig);
+    console.log('✅ [Firebase Config] Firebase 앱 초기화 성공');
+  } else {
+    app = getApps()[0];
+    console.log('♻️ [Firebase Config] 기존 Firebase 앱 사용');
+  }
+  
+  console.log('📋 [Firebase Config] 앱 설정 정보:', {
+    projectId: firebaseConfig.projectId,
+    authDomain: firebaseConfig.authDomain,
+    apiKey: firebaseConfig.apiKey?.substring(0, 10) + '...',
+    messagingSenderId: firebaseConfig.messagingSenderId,
+    appId: firebaseConfig.appId?.substring(0, 10) + '...'
+  });
 } catch (error) {
-  console.warn('Firebase initialization failed:', error);
+  console.error('❌ [Firebase Config] Firebase 초기화 실패:', error);
+  console.warn('⚠️ [Firebase Config] 폴백으로 빌드용 앱 생성 시도...');
   // 빌드 시에는 더미 앱 생성
   app = getApps()[0] || initializeApp(firebaseConfig);
+  console.log('🔄 [Firebase Config] 폴백 앱 생성 완료');
 }
 
-// Firebase 서비스들 초기화
-export const auth = typeof window !== 'undefined' ? getAuth(app) : null;
-export const db = typeof window !== 'undefined' ? getFirestore(app) : null;
-export const storage = typeof window !== 'undefined' ? getStorage(app) : null;
-export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
+// Firebase 서비스들 초기화 (일렉트론 환경 포함)
+console.log('🔧 [Firebase Config] 서비스 초기화 시작...');
+
+export const auth = (() => {
+  try {
+    if (typeof window !== 'undefined') {
+      const authService = getAuth(app);
+      console.log('✅ [Firebase Config] Auth 서비스 초기화 성공');
+      return authService;
+    } else {
+      console.log('⏭️ [Firebase Config] Auth 서비스 초기화 스킵 (브라우저 환경 아님)');
+      return null;
+    }
+  } catch (error) {
+    console.error('❌ [Firebase Config] Auth 서비스 초기화 실패:', error);
+    return null;
+  }
+})();
+
+export const db = (() => {
+  try {
+    if (typeof window !== 'undefined') {
+      const dbService = getFirestore(app);
+      console.log('✅ [Firebase Config] Firestore 서비스 초기화 성공');
+      return dbService;
+    } else {
+      console.log('⏭️ [Firebase Config] Firestore 서비스 초기화 스킵 (브라우저 환경 아님)');
+      return null;
+    }
+  } catch (error) {
+    console.error('❌ [Firebase Config] Firestore 서비스 초기화 실패:', error);
+    return null;
+  }
+})();
+
+export const storage = (() => {
+  try {
+    if (typeof window !== 'undefined') {
+      const storageService = getStorage(app);
+      console.log('✅ [Firebase Config] Storage 서비스 초기화 성공');
+      return storageService;
+    } else {
+      console.log('⏭️ [Firebase Config] Storage 서비스 초기화 스킵 (브라우저 환경 아님)');
+      return null;
+    }
+  } catch (error) {
+    console.error('❌ [Firebase Config] Storage 서비스 초기화 실패:', error);
+    return null;
+  }
+})();
+
+export const analytics = (() => {
+  try {
+    if (typeof window !== 'undefined' && !isElectron) {
+      const analyticsService = getAnalytics(app);
+      console.log('✅ [Firebase Config] Analytics 서비스 초기화 성공');
+      return analyticsService;
+    } else {
+      console.log('⏭️ [Firebase Config] Analytics 서비스 초기화 스킵 (일렉트론 환경 또는 브라우저 아님)');
+      return null;
+    }
+  } catch (error) {
+    console.error('❌ [Firebase Config] Analytics 서비스 초기화 실패:', error);
+    return null;
+  }
+})();
+
+export const functions = (() => {
+  try {
+    if (typeof window !== 'undefined') {
+      const functionsService = getFunctions(app);
+      console.log('✅ [Firebase Config] Functions 서비스 초기화 성공');
+      return functionsService;
+    } else {
+      console.log('⏭️ [Firebase Config] Functions 서비스 초기화 스킵 (브라우저 환경 아님)');
+      return null;
+    }
+  } catch (error) {
+    console.error('❌ [Firebase Config] Functions 서비스 초기화 실패:', error);
+    return null;
+  }
+})();
+
+console.log('🎯 [Firebase Config] 모든 서비스 초기화 완료:', {
+  auth: !!auth,
+  db: !!db,
+  storage: !!storage,
+  analytics: !!analytics,
+  functions: !!functions
+});
 
 // Firebase 초기화 대기 유틸리티
 export const waitForFirebaseInit = (maxWaitTime: number = 5000): Promise<boolean> => {

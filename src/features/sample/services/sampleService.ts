@@ -29,6 +29,7 @@ import {
   WorkCoat
 } from '../types';
 import { SAMPLE_REQUESTS_COLLECTION } from '../constants';
+import { SampleStatusNotificationService } from './sampleStatusNotificationService';
 
 interface RequestUser {
   uid: string;
@@ -90,9 +91,20 @@ export class SampleService {
 
       console.log('✅ 샘플 요청 생성 완료:', docRef.id);
       
-      // 알림 전송 (Admin/Manager에게)
+      // 상태변경 알림 전송 (Admin/Manager에게)
       try {
-        await this.sendNewSampleRequestNotification(docRef.id, formData, user);
+        const createdRequest: SampleRequest = {
+          id: docRef.id,
+          ...requestData
+        };
+        await SampleStatusNotificationService.sendSampleActionNotification(
+          'created',
+          createdRequest,
+          {
+            uid: user.uid,
+            displayName: getUserDisplayName(user, '알 수 없음')
+          }
+        );
       } catch (error) {
         console.error('❌ 샘플 요청 알림 전송 실패:', error);
         // 알림 실패는 요청 생성에 영향 없음
@@ -153,6 +165,15 @@ export class SampleService {
 
       const docRef = doc(db, SAMPLE_REQUESTS_COLLECTION, id);
       
+      // 현재 상태 조회
+      const currentDoc = await getDoc(docRef);
+      if (!currentDoc.exists()) {
+        throw new Error('샘플 요청을 찾을 수 없습니다.');
+      }
+      
+      const currentData = currentDoc.data() as SampleRequest;
+      const oldStatus = currentData.status;
+      
       const historyItem: SampleHistoryItem = {
         status,
         date: new Date().toISOString(),
@@ -173,6 +194,29 @@ export class SampleService {
       await updateDoc(docRef, updateData);
 
       console.log('✅ 샘플 요청 상태 변경 완료:', id, status);
+      
+      // 상태변경 알림 전송
+      try {
+        const updatedRequest: SampleRequest = {
+          ...currentData,
+          id,
+          status,
+          workData: workData || currentData.workData
+        };
+        
+        await SampleStatusNotificationService.sendSampleStatusChangeNotification(
+          oldStatus,
+          status,
+          updatedRequest,
+          {
+            uid: user.uid,
+            displayName: getUserDisplayName(user, '알 수 없음')
+          }
+        );
+      } catch (error) {
+        console.error('❌ 샘플 상태변경 알림 전송 실패:', error);
+        // 알림 실패는 상태 변경에 영향 없음
+      }
     } catch (error) {
       console.error('❌ 샘플 요청 상태 변경 실패:', error);
       throw error;
@@ -208,16 +252,47 @@ export class SampleService {
   /**
    * 샘플 요청 삭제
    */
-  static async deleteSampleRequest(id: string): Promise<void> {
+  static async deleteSampleRequest(
+    id: string,
+    user?: RequestUser,
+    sampleRequest?: SampleRequest
+  ): Promise<void> {
     try {
       if (!db) {
         throw new Error('Firebase not initialized');
+      }
+
+      // 삭제 전 데이터 조회 (알림용)
+      let requestData = sampleRequest;
+      if (!requestData) {
+        const docRef = doc(db, SAMPLE_REQUESTS_COLLECTION, id);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          requestData = { id, ...docSnap.data() } as SampleRequest;
+        }
       }
 
       const docRef = doc(db, SAMPLE_REQUESTS_COLLECTION, id);
       await deleteDoc(docRef);
 
       console.log('✅ 샘플 요청 삭제 완료:', id);
+      
+      // 삭제 알림 전송
+      if (requestData && user) {
+        try {
+          await SampleStatusNotificationService.sendSampleActionNotification(
+            'deleted',
+            requestData,
+            {
+              uid: user.uid,
+              displayName: getUserDisplayName(user, '알 수 없음')
+            }
+          );
+        } catch (error) {
+          console.error('❌ 샘플 삭제 알림 전송 실패:', error);
+          // 알림 실패는 삭제에 영향 없음
+        }
+      }
     } catch (error) {
       console.error('❌ 샘플 요청 삭제 실패:', error);
       throw error;

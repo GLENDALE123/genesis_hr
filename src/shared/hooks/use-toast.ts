@@ -26,7 +26,7 @@ const actionTypes = {
   REMOVE_TOAST: "REMOVE_TOAST",
 } as const;
 
-type ActionType = typeof actionTypes;
+type ActionType = typeof actionTypes
 
 let count = 0
 
@@ -34,8 +34,6 @@ function genId() {
   count = (count + 1) % Number.MAX_SAFE_INTEGER
   return count.toString()
 }
-
-type ActionType = typeof actionTypes
 
 type Action =
   | {
@@ -77,6 +75,13 @@ const addToRemoveQueue = (toastId: string) => {
   toastTimeouts.set(toastId, timeout)
 }
 
+const clearToastTimeout = (toastId: string) => {
+  if (toastTimeouts.has(toastId)) {
+    clearTimeout(toastTimeouts.get(toastId)!)
+    toastTimeouts.delete(toastId)
+  }
+}
+
 export const reducer = (state: State, action: Action): State => {
   switch (action.type) {
     case "ADD_TOAST":
@@ -99,9 +104,12 @@ export const reducer = (state: State, action: Action): State => {
       // ! Side effects ! - This could be extracted into a dismissToast() action,
       // but I'll keep it here for simplicity
       if (toastId) {
+        // 토스트가 수동으로 dismiss될 때 timeout 정리
+        clearToastTimeout(toastId)
         addToRemoveQueue(toastId)
       } else {
         state.toasts.forEach((toast) => {
+          clearToastTimeout(toast.id)
           addToRemoveQueue(toast.id)
         })
       }

@@ -373,6 +373,12 @@
         } else if (title.includes('부족분 신청')) {
           // AlertTriangle 아이콘 (주황색)
           iconSvg = `<svg class="title-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>`;
+        } else if (title.includes('생산일보')) {
+          // 생산일보 - FileText 아이콘 (초록색)
+          iconSvg = `<svg class="title-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg>`;
+        } else if (title.includes('샘플') && title.includes('상태')) {
+          // 샘플 요청 상태 변경 - TestTube 아이콘 (파란색)
+          iconSvg = `<svg class="title-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6l-2 4v6a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-6l-2-4V2"/><path d="M9 2h6"/><path d="M9 8h6"/></svg>`;
         } else if (title.includes('샘플 요청')) {
           // 샘플 요청 - TestTube 아이콘 (보라색)
           iconSvg = `<svg class="title-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6l-2 2v8a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-8l-2-2V2"/><path d="M9 2h6"/><path d="M12 10v4"/></svg>`;

@@ -74,6 +74,9 @@ const initialState: GlobalState = {
   lastSyncTime: null,
 };
 
+// 알림 timeout ID를 저장하는 Map
+const notificationTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
+
 export const useGlobalStore = create<GlobalState & GlobalActions>()(
   devtools(
     persist(
@@ -101,19 +104,36 @@ export const useGlobalStore = create<GlobalState & GlobalActions>()(
           
           // 자동 제거 (duration이 설정된 경우)
           if (notificationData.duration && notificationData.duration > 0) {
-            setTimeout(() => {
+            const timeoutId = setTimeout(() => {
               get().removeNotification(notification.id);
             }, notificationData.duration);
+            
+            // timeout ID 저장
+            notificationTimeouts.set(notification.id, timeoutId);
           }
         },
         
         removeNotification: (id: string) => {
+          // timeout이 있다면 정리
+          if (notificationTimeouts.has(id)) {
+            clearTimeout(notificationTimeouts.get(id)!);
+            notificationTimeouts.delete(id);
+          }
+          
           set((state) => ({
             notifications: state.notifications.filter(n => n.id !== id)
           }));
         },
         
-        clearNotifications: () => set({ notifications: [] }),
+        clearNotifications: () => {
+          // 모든 timeout 정리
+          notificationTimeouts.forEach((timeoutId) => {
+            clearTimeout(timeoutId);
+          });
+          notificationTimeouts.clear();
+          
+          set({ notifications: [] });
+        },
         
         // Preferences Actions
         updatePreferences: (newPreferences) => {

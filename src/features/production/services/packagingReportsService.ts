@@ -12,8 +12,20 @@ import {
   updateDoc,
   addDoc
 } from 'firebase/firestore';
-import { PackagingReport, PackagingFormData, PackagedBoxFormData } from '@/features/production/types';
+import { PackagingReport, PackagingFormData, PackagedBoxFormData, ProductionStatus } from '@/features/production/types';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
+import { DailyReportNotificationService } from './notificationService';
+
+// 기존 상태 계산 함수 (startTime, endTime 기반)
+const calculateStatus = (startTime: string, endTime: string): ProductionStatus => {
+  if (endTime && endTime.trim() !== '') {
+    return ProductionStatus.Completed; // 생산완료
+  } else if (startTime && startTime.trim() !== '') {
+    return ProductionStatus.InProgress; // 작업중
+  } else {
+    return ProductionStatus.Pending; // 대기
+  }
+};
 
 interface ReportUser {
   uid: string;
@@ -60,6 +72,7 @@ export class PackagingReportsService {
         endTime: formData.endTime || '',
         memo: formData.memo || '',
         imageUrls: [],
+        status: calculateStatus(formData.startTime || '', formData.endTime || ''), // 시간 기반 상태 계산
         // 숫자 필드들 (null 허용)
         orderQuantity: parseNumber(formData.orderQuantity),
         productionPerMinute: parseNumber(formData.productionPerMinute),
@@ -82,6 +95,27 @@ export class PackagingReportsService {
       }));
 
       const docRef = await addDoc(collection(db, 'packaging-reports'), reportData);
+      
+      // 생산일보 생성 알림 전송
+      try {
+        const createdReport: PackagingReport = {
+          id: docRef.id,
+          ...reportData
+        };
+        await DailyReportNotificationService.sendDailyReportActionNotification(
+          'created',
+          createdReport,
+          {
+            uid: user.uid,
+            displayName: user.displayName || 'Unknown User',
+            photoURL: undefined
+          }
+        );
+      } catch (notificationError) {
+        console.error('생산일보 생성 알림 전송 실패:', notificationError);
+        // 알림 실패해도 생성은 성공으로 처리
+      }
+      
       return docRef.id;
     } catch (error) {
       console.error('Error creating packaging report:', error);
@@ -357,13 +391,35 @@ export class PackagingReportsService {
   /**
    * 특정 packaging report 삭제
    */
-  static async deletePackagingReport(reportId: string): Promise<void> {
+  static async deletePackagingReport(
+    reportId: string,
+    user?: ReportUser,
+    reportData?: PackagingReport
+  ): Promise<void> {
     try {
       if (!db) {
         throw new Error('Firebase not initialized');
       }
 
       await deleteDoc(doc(db, 'packaging-reports', reportId));
+      
+      // 생산일보 삭제 알림 전송 (user와 reportData 정보가 있을 때만)
+      if (user && reportData) {
+        try {
+          await DailyReportNotificationService.sendDailyReportActionNotification(
+            'deleted',
+            reportData,
+            {
+              uid: user.uid,
+              displayName: user.displayName || 'Unknown User',
+              photoURL: undefined
+            }
+          );
+        } catch (notificationError) {
+          console.error('생산일보 삭제 알림 전송 실패:', notificationError);
+          // 알림 실패해도 삭제는 성공으로 처리
+        }
+      }
     } catch (error) {
       console.error('Error deleting packaging report:', error);
       throw error;
@@ -375,7 +431,8 @@ export class PackagingReportsService {
    */
   static async updatePackagingReport(
     reportId: string, 
-    updateData: Partial<PackagingReport>
+    updateData: Partial<PackagingReport>,
+    user?: ReportUser
   ): Promise<void> {
     try {
       if (!db) {
@@ -391,8 +448,126 @@ export class PackagingReportsService {
       );
 
       await updateDoc(doc(db, 'packaging-reports', reportId), cleanedData);
+      
+      // 생산일보 수정 알림 전송 (user 정보가 있을 때만)
+      if (user) {
+        try {
+          // 현재 보고서 정보 조회 (이전 상태 확인용)
+          const currentReportDoc = await getDocs(query(
+            collection(db, 'packaging-reports'),
+            where('__name__', '==', reportId)
+          ));
+          
+          if (!currentReportDoc.empty) {
+            const currentReport = { id: reportId, ...currentReportDoc.docs[0].data() } as PackagingReport;
+            
+            // 시간 필드가 변경되었는지 확인
+            const oldStartTime = currentReport.startTime || '';
+            const oldEndTime = currentReport.endTime || '';
+            const newStartTime = cleanedData.startTime || oldStartTime;
+            const newEndTime = cleanedData.endTime || oldEndTime;
+            
+            // 상태 변경 확인
+            const oldStatus = calculateStatus(oldStartTime, oldEndTime);
+            const newStatus = calculateStatus(String(newStartTime), String(newEndTime));
+            
+            // 상태가 변경된 경우에만 상태 변경 알림 발송
+            if (oldStatus !== newStatus) {
+              const updatedReport: PackagingReport = {
+                ...currentReport,
+                ...cleanedData,
+                status: newStatus
+              };
+              
+              await DailyReportNotificationService.sendDailyReportStatusChangeNotification(
+                oldStatus,
+                newStatus,
+                updatedReport,
+                {
+                  uid: user.uid,
+                  displayName: user.displayName || 'Unknown User',
+                  photoURL: undefined
+                }
+              );
+            } else {
+              // 상태 변경이 없으면 일반 수정 알림 발송
+              const updatedReport: PackagingReport = {
+                id: reportId,
+                ...cleanedData
+              } as PackagingReport;
+              
+              await DailyReportNotificationService.sendDailyReportActionNotification(
+                'updated',
+                updatedReport,
+                {
+                  uid: user.uid,
+                  displayName: user.displayName || 'Unknown User',
+                  photoURL: undefined
+                }
+              );
+            }
+          }
+        } catch (notificationError) {
+          console.error('생산일보 수정 알림 전송 실패:', notificationError);
+          // 알림 실패해도 수정은 성공으로 처리
+        }
+      }
     } catch (error) {
       console.error('Error updating packaging report:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 생산일보 작업 상태 변경
+   */
+  static async updatePackagingReportStatus(
+    reportId: string,
+    newStatus: ProductionStatus,
+    user: ReportUser
+  ): Promise<void> {
+    try {
+      if (!db) {
+        throw new Error('Firebase not initialized');
+      }
+
+      // 현재 상태 조회
+      const reportDoc = await getDocs(query(
+        collection(db, 'packaging-reports'),
+        where('__name__', '==', reportId)
+      ));
+      
+      if (reportDoc.empty) {
+        throw new Error('Report not found');
+      }
+
+      const currentReport = { id: reportId, ...reportDoc.docs[0].data() } as PackagingReport;
+      const oldStatus = currentReport.status;
+
+      // 상태 업데이트
+      await updateDoc(doc(db, 'packaging-reports', reportId), {
+        status: newStatus
+      });
+
+      // 상태 변경 알림 전송
+      try {
+        const updatedReport = { ...currentReport, status: newStatus };
+        await DailyReportNotificationService.sendDailyReportStatusChangeNotification(
+          oldStatus,
+          newStatus,
+          updatedReport,
+          {
+            uid: user.uid,
+            displayName: user.displayName || 'Unknown User',
+            photoURL: undefined
+          }
+        );
+      } catch (notificationError) {
+        console.error('생산일보 상태 변경 알림 전송 실패:', notificationError);
+        // 알림 실패해도 상태 변경은 성공으로 처리
+      }
+    } catch (error) {
+      console.error('Error updating packaging report status:', error);
       throw error;
     }
   }
