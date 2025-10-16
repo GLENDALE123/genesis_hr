@@ -40,12 +40,6 @@ export default function DashboardPage() {
   const [selectedRequestType, setSelectedRequestType] = useState('물류이동');
   const [notificationTarget, setNotificationTarget] = useState<'admin-manager' | 'current-user'>('admin-manager');
 
-  // 컴포넌트 마운트 로그
-  useEffect(() => {
-    return () => {
-    };
-  }, []);
-
   // UserProfile 콘솔 로그
   useEffect(() => {
     // UserProfile이 null인 경우 수동으로 프로필 조회 시도
@@ -432,6 +426,32 @@ export default function DashboardPage() {
             senderUid: user.uid,
             priority: 'normal'
           };
+        } else if (selectedRequestType === '품질이슈 등록') {
+          payload = {
+            targetUsers: [user.uid],
+            type: 'quality-issue-created',
+            title: '품질이슈 등록',
+            body: `${userProfile.displayName}님이 품질이슈를 등록했습니다.`,
+            requestId: `TEST-QUALITY-${Date.now()}`,
+            subtitle: '테스트제품 / 테스트부속',
+            centerInfo: '미해결',
+            senderName: userProfile.displayName,
+            senderUid: user.uid,
+            priority: 'normal'
+          };
+        } else if (selectedRequestType === '품질이슈사항 추가') {
+          payload = {
+            targetUsers: [user.uid],
+            type: 'quality-issue-item-added',
+            title: '품질이슈사항 추가',
+            body: `${userProfile.displayName}님이 품질이슈사항을 추가했습니다.`,
+            requestId: `TEST-QUALITY-ITEM-${Date.now()}`,
+            subtitle: '테스트제품 / 테스트부속',
+            centerInfo: '진행중',
+            senderName: userProfile.displayName,
+            senderUid: user.uid,
+            priority: 'normal'
+          };
         }
 
         // Firebase Functions로 직접 전송
@@ -552,6 +572,22 @@ export default function DashboardPage() {
           user.photoURL || undefined,
           '샘플요청'
         );
+      } else if (selectedRequestType === '품질이슈 등록') {
+        // 품질이슈 등록 알림 테스트 - 실제 비즈니스 로직 호출
+        const { QualityIssueNotificationService } = await import('@/features/quality/services/qualityIssueNotificationService');
+        await QualityIssueNotificationService.sendTestQualityIssueCreatedNotification({
+          uid: user.uid,
+          displayName: userProfile.displayName,
+          photoURL: user.photoURL || undefined
+        });
+      } else if (selectedRequestType === '품질이슈사항 추가') {
+        // 품질이슈사항 추가 알림 테스트 - 실제 비즈니스 로직 호출
+        const { QualityIssueNotificationService } = await import('@/features/quality/services/qualityIssueNotificationService');
+        await QualityIssueNotificationService.sendTestQualityIssueItemAddedNotification({
+          uid: user.uid,
+          displayName: userProfile.displayName,
+          photoURL: user.photoURL || undefined
+        });
       }
 
       toast.success(`${selectedRequestType} 테스트 알림이 성공적으로 발송되었습니다!`);
@@ -656,6 +692,8 @@ export default function DashboardPage() {
                           <SelectItem value="샘플 요청">샘플 요청</SelectItem>
                           <SelectItem value="생산관리부 댓글">생산관리부 댓글</SelectItem>
                           <SelectItem value="샘플요청 댓글">샘플요청 댓글</SelectItem>
+                          <SelectItem value="품질이슈 등록">품질이슈 등록</SelectItem>
+                          <SelectItem value="품질이슈사항 추가">품질이슈사항 추가</SelectItem>
                         </SelectContent>
                       </Select>
                       
@@ -684,6 +722,8 @@ export default function DashboardPage() {
               selectedRequestType === '샘플 요청' ? '샘플 요청' :
               selectedRequestType === '생산관리부 댓글' ? '생산관리부 요청사항' :
               selectedRequestType === '샘플요청 댓글' ? '샘플 요청' :
+              selectedRequestType === '품질이슈 등록' ? '품질이슈 등록' :
+              selectedRequestType === '품질이슈사항 추가' ? '품질이슈사항 추가' :
               '생산관리부 요청사항'
             }</li>
                         <li><strong>발신자:</strong> {userProfile?.displayName || '테스트 사용자'}</li>

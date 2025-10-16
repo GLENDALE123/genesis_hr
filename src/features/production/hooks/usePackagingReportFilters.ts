@@ -120,8 +120,23 @@ export const usePackagingReportFilters = (
       // 생산라인 필터
       if (filters.productionLine && report.productionLine !== filters.productionLine) return false;
 
-      // 상태 필터 (기본적으로 모든 보고서는 'completed' 상태로 간주)
-      if (filters.status && filters.status !== 'completed') return false;
+      // 상태 필터 (endTime과 startTime 기반으로 동적 상태 계산)
+      if (filters.status) {
+        const statusMapping: Record<string, string> = {
+          'completed': '생산완료',
+          'in_progress': '작업중',
+          'pending': '대기'
+        };
+        
+        const filterStatusKorean = statusMapping[filters.status] || filters.status;
+        
+        // 실제 상태 계산 로직 (UI와 동일)
+        const reportStatus = report.endTime ? '생산완료' : (report.startTime ? '작업중' : '대기');
+        
+        console.log(`🔍 [상태 필터] 리포트 ${report.id}: 계산된 상태="${reportStatus}", 필터 상태="${filterStatusKorean}", 매치=${reportStatus === filterStatusKorean}`);
+        
+        if (reportStatus !== filterStatusKorean) return false;
+      }
 
       // 발주처 필터
       if (filters.supplier && !report.supplier.toLowerCase().includes(filters.supplier.toLowerCase())) return false;

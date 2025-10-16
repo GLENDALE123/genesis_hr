@@ -290,40 +290,30 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
                     const thumbnailUrl = useThumbnails ? getThumbnailUrl(url) : null;
                     
                     if (currentSrc === thumbnailUrl) {
-                      // 썸네일 로드 실패 - 원본을 압축해서 폴백
-                      console.log('썸네일 로드 실패, 원본 압축해서 폴백:', currentSrc, '→', url);
+                      // 썸네일 로드 실패 - 원본을 직접 사용하거나 CORS 우회 시도
+                      console.log('썸네일 로드 실패, 원본으로 폴백:', currentSrc, '→', url);
                       
-                      try {
-                        // 원본 이미지를 fetch로 가져와서 압축
-                        const response = await fetch(url);
-                        if (response.ok) {
-                          const blob = await response.blob();
-                          const compressedUrl = await compressImageToThumbnailSize(blob);
-                          
-                          // 압축된 이미지를 캐시에 저장
-                          ImageCache.setImage(url, { 
-                            size: blob.size, 
-                            type: 'image/webp'
+                      // 원본 URL을 직접 사용 (CORS 문제 우회)
+                      setCachedImages(prev => {
+                        const newImages = [...prev];
+                        newImages[index] = url;
+                        return newImages;
+                      });
+                      
+                      // 원본도 실패할 경우를 대비해 에러 상태 설정
+                      setTimeout(() => {
+                        const img = new Image();
+                        img.onerror = () => {
+                          console.log('원본 이미지도 로드 실패:', url);
+                          setErrorImages(prev => {
+                            const newErrors = [...prev];
+                            newErrors[index] = true;
+                            return newErrors;
                           });
-                          
-                          setCachedImages(prev => {
-                            const newImages = [...prev];
-                            newImages[index] = compressedUrl;
-                            return newImages;
-                          });
-                          console.log('원본 압축 완료 및 캐시 저장:', compressedUrl);
-                        } else {
-                          throw new Error('원본 이미지 fetch 실패');
-                        }
-                      } catch (error) {
-                        console.log('원본 압축 실패, 원본 URL 직접 사용:', error);
-                        // 압축 실패시 원본 URL 직접 사용
-                        setCachedImages(prev => {
-                          const newImages = [...prev];
-                          newImages[index] = url;
-                          return newImages;
-                        });
-                      }
+                        };
+                        img.src = url;
+                      }, 1000);
+                      
                     } else {
                       // 원본도 실패한 경우 - 에러 상태로 표시
                       console.log('원본 이미지도 로드 실패:', url);

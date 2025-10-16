@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/components/ui/table';
 import { Input } from '@/shared/components/ui/input';
@@ -18,7 +18,7 @@ interface QualityIssueTableProps {
   onOpenFormModal?: () => void;
 }
 
-// 헬퍼 함수들
+// 헬퍼 함수들 - 컴포넌트 외부로 이동하여 재생성 방지
 const formatDate = (dateString: string | Date) => {
   const dateObj = typeof dateString === 'string' ? new Date(dateString) : dateString;
   return dateObj.toLocaleDateString('ko-KR', {
@@ -53,6 +53,95 @@ const getStatusBadge = (status: QualityIssue['status']) => {
     </Badge>
   );
 };
+
+// 테이블 행 컴포넌트를 별도로 분리하여 최적화
+const QualityIssueRow = React.memo<{
+  issue: QualityIssue;
+  onSelectIssue?: (issue: QualityIssue) => void;
+}>(({ issue, onSelectIssue }) => {
+  const handleClick = useCallback(() => {
+    onSelectIssue?.(issue);
+  }, [issue, onSelectIssue]);
+
+  // 최근 이슈 정보를 미리 계산
+  const lastIssue = useMemo(() => {
+    return issue.issues[issue.issues.length - 1];
+  }, [issue.issues]);
+
+  // 상태 배지 렌더링 최적화
+  const statusBadge = useMemo(() => {
+    if (lastIssue && typeof lastIssue === 'object' && lastIssue.status) {
+      return getStatusBadge(lastIssue.status as any);
+    }
+    return getStatusBadge(issue.status || '해결완료');
+  }, [lastIssue, issue.status]);
+
+  // 이슈 내용 렌더링 최적화
+  const issueContent = useMemo(() => {
+    if (lastIssue) {
+      return typeof lastIssue === 'string' ? lastIssue : lastIssue.content;
+    }
+    return '이슈 없음';
+  }, [lastIssue]);
+
+  // 이미지 개수 렌더링 최적화
+  const imageCount = useMemo(() => {
+    return issue.imageUrls && issue.imageUrls.length > 0 ? issue.imageUrls.length : 0;
+  }, [issue.imageUrls]);
+
+  // 작성자 이름 렌더링 최적화
+  const authorName = useMemo(() => {
+    return typeof issue.author === 'string' 
+      ? issue.author 
+      : issue.author?.displayName || issue.author?.email || 'N/A';
+  }, [issue.author]);
+
+  return (
+    <TableRow 
+      className="border-b cursor-pointer hover:bg-muted/50"
+      onClick={handleClick}
+    >
+      <TableCell className="px-2 py-3 whitespace-nowrap font-mono">{issue.orderNumber}</TableCell>
+      <TableCell className="px-2 py-3 whitespace-nowrap">
+        <Badge variant="secondary" className={`text-xs ${getDepartmentColor(issue.department)}`}>
+          {issue.department || '미지정'}
+        </Badge>
+      </TableCell>
+      <TableCell className="px-2 py-3 whitespace-nowrap">
+        <Badge variant="outline" className="text-xs bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200">
+          {issue.registrationKeyword || '미지정'}
+        </Badge>
+      </TableCell>
+      <TableCell className="px-2 py-3 whitespace-nowrap">
+        {statusBadge}
+      </TableCell>
+      <TableCell className="px-2 py-3 whitespace-nowrap font-semibold">{issue.productName}</TableCell>
+      <TableCell className="px-2 py-3 whitespace-nowrap">{issue.partName}</TableCell>
+      <TableCell className="px-2 py-3 whitespace-nowrap">{issue.supplier}</TableCell>
+      <TableCell className="px-2 py-3 whitespace-nowrap truncate max-w-sm">
+        {issueContent}
+      </TableCell>
+      <TableCell className="px-2 py-3 whitespace-nowrap">
+        {imageCount > 0 ? (
+          <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
+            <span className="text-xs">{imageCount}</span>
+          </div>
+        ) : (
+          <span className="text-gray-400 dark:text-slate-500 text-xs">없음</span>
+        )}
+      </TableCell>
+      <TableCell className="px-2 py-3 whitespace-nowrap">
+        {authorName}
+      </TableCell>
+      <TableCell className="px-2 py-3 whitespace-nowrap">{formatDate(issue.createdAt)}</TableCell>
+    </TableRow>
+  );
+});
+
+QualityIssueRow.displayName = 'QualityIssueRow';
 
 export const QualityIssueTable: React.FC<QualityIssueTableProps> = ({
   issues,
@@ -124,66 +213,11 @@ export const QualityIssueTable: React.FC<QualityIssueTableProps> = ({
                 </TableRow>
               ) : (
                 issues.map((issue) => (
-                  <TableRow 
-                    key={issue.id} 
-                    className="border-b cursor-pointer hover:bg-muted/50"
-                    onClick={() => onSelectIssue?.(issue)}
-                  >
-                    <TableCell className="px-2 py-3 whitespace-nowrap font-mono">{issue.orderNumber}</TableCell>
-                    <TableCell className="px-2 py-3 whitespace-nowrap">
-                      <Badge variant="secondary" className={`text-xs ${getDepartmentColor(issue.department)}`}>
-                        {issue.department || '미지정'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="px-2 py-3 whitespace-nowrap">
-                      <Badge variant="outline" className="text-xs bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200">
-                        {issue.registrationKeyword || '미지정'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="px-2 py-3 whitespace-nowrap">
-                      {(() => {
-                        // 최근 작성된 이슈의 상태를 기준으로 표시
-                        const lastIssue = issue.issues[issue.issues.length - 1];
-                        if (lastIssue && typeof lastIssue === 'object' && lastIssue.status) {
-                          return getStatusBadge(lastIssue.status as any);
-                        }
-                        // 전체 이슈의 상태가 undefined인 경우 해결완료로 처리
-                        return getStatusBadge(issue.status || '해결완료');
-                      })()}
-                    </TableCell>
-                    <TableCell className="px-2 py-3 whitespace-nowrap font-semibold">{issue.productName}</TableCell>
-                    <TableCell className="px-2 py-3 whitespace-nowrap">{issue.partName}</TableCell>
-                    <TableCell className="px-2 py-3 whitespace-nowrap">{issue.supplier}</TableCell>
-                    <TableCell className="px-2 py-3 whitespace-nowrap truncate max-w-sm">
-                      {(() => {
-                        // 최근 작성된 이슈 표시
-                        const lastIssue = issue.issues[issue.issues.length - 1];
-                        if (lastIssue) {
-                          return typeof lastIssue === 'string' ? lastIssue : lastIssue.content;
-                        }
-                        return '이슈 없음';
-                      })()}
-                    </TableCell>
-                    <TableCell className="px-2 py-3 whitespace-nowrap">
-                      {issue.imageUrls && issue.imageUrls.length > 0 ? (
-                        <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                          </svg>
-                          <span className="text-xs">{issue.imageUrls.length}</span>
-                        </div>
-                      ) : (
-                        <span className="text-gray-400 dark:text-slate-500 text-xs">없음</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="px-2 py-3 whitespace-nowrap">
-                      {typeof issue.author === 'string' 
-                        ? issue.author 
-                        : issue.author?.displayName || issue.author?.email || 'N/A'
-                      }
-                    </TableCell>
-                    <TableCell className="px-2 py-3 whitespace-nowrap">{formatDate(issue.createdAt)}</TableCell>
-                  </TableRow>
+                  <QualityIssueRow
+                    key={issue.id}
+                    issue={issue}
+                    onSelectIssue={onSelectIssue}
+                  />
                 ))
               )}
             </TableBody>

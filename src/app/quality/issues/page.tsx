@@ -84,7 +84,11 @@ export default function QualityIssuesPage() {
         });
       }
       
-      await addIssueItem(issueId, newIssue.trim(), newStatus);
+      await addIssueItem(issueId, newIssue.trim(), newStatus, {
+        uid: user!.uid,
+        displayName: userProfile?.displayName || user!.displayName || user!.email || 'Unknown User',
+        photoURL: userProfile?.photoURL || undefined
+      });
       toast.success('이슈사항이 성공적으로 추가되었습니다.');
     } catch (error) {
       console.error('Error adding issue item:', error);

@@ -116,11 +116,16 @@ const SidebarProvider = React.forwardRef<
 
       window.addEventListener("keydown", handleKeyDown)
       return () => window.removeEventListener("keydown", handleKeyDown)
-    }, [toggleSidebar])
+    }, [toggleSidebarCallback])
 
     // We add a state so that we can do data-state="expanded" or "collapsed".
     // This makes it easier to style the sidebar with Tailwind classes.
     const state = open ? "expanded" : "collapsed"
+
+    // toggleSidebar를 useCallback으로 메모이제이션
+    const toggleSidebarCallback = React.useCallback(() => {
+      setOpen(prev => !prev);
+    }, [setOpen]);
 
     const contextValue = React.useMemo<SidebarContextProps>(
       () => ({
@@ -130,9 +135,9 @@ const SidebarProvider = React.forwardRef<
         isMobile,
         openMobile,
         setOpenMobile,
-        toggleSidebar,
+        toggleSidebar: toggleSidebarCallback,
       }),
-      [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
+      [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebarCallback]
     )
 
     return (

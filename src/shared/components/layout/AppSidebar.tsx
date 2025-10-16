@@ -89,7 +89,7 @@ const subNavigationItems: NavItem[] = [
   },
 ];
 
-export const AppSidebar: React.FC<AppSidebarProps> = ({ 
+export const AppSidebar = React.memo<AppSidebarProps>(({ 
   className,
   collapsed = false
 }) => {
@@ -114,23 +114,23 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   // 실제 표시 상태: 데스크톱에서 접혀있을 때 호버하면 펼침
   const isExpanded = isDesktop && collapsed ? isHovered : !collapsed;
 
-  const isActive = (href: string, exact = false) => {
+  const isActive = React.useCallback((href: string, exact = false) => {
     if (exact) {
       return pathname === href;
     }
     return pathname === href || pathname.startsWith(href + '/');
-  };
+  }, [pathname]);
 
   // 즉시 페이지 이동 핸들러
-  const handleNavigate = (href: string) => {
+  const handleNavigate = React.useCallback((href: string) => {
     if (pathname === href) {
       return;
     }
     
     router.push(href);
-  };
+  }, [pathname, router]);
 
-  const renderNavItem = (item: NavItem, level = 0) => {
+  const renderNavItem = React.useCallback((item: NavItem, level = 0) => {
     const hasChildren = item.children && item.children.length > 0;
     
     // 부모 메뉴의 경우: 자식 메뉴 중 하나가 활성화되면 부모도 활성화
@@ -214,7 +214,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
         )}
       </div>
     );
-  };
+  }, [isActive, handleNavigate, isExpanded, pathname]);
 
   return (
     <div 
@@ -338,4 +338,4 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
       </div>
     </div>
   );
-};
+});

@@ -32,6 +32,7 @@ import {
   MessageSquare,
   CalendarClock,
   AlertTriangle,
+  ShieldAlert,
   Shield
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
@@ -224,7 +225,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                   notifications.map((notif) => {
                     // 알림 타입 감지 (실제 표시되는 필드)
                     const requestType = notif.metadata?.centerInfo;
-                    const isLogisticsType = requestType || notif.title?.includes('생산관리부') || notif.title?.includes('부족분');
+                    const isLogisticsType = requestType || notif.title?.includes('생산관리부') || notif.title?.includes('부족분') || notif.title?.includes('품질이슈');
                     const timestamp = notif.createdAt?.toDate ? notif.createdAt.toDate() : new Date(notif.createdAt || Date.now());
                     const senderName = notif.metadata?.senderName || '시스템';
                     const senderAvatar = notif.metadata?.senderAvatar;
@@ -263,6 +264,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                                 {notif.title?.includes('댓글 : 생산관리부') && <MessageSquare className="h-3.5 w-3.5 text-blue-500" />}
                                 {notif.title?.includes('생산관리부') && !notif.title?.includes('댓글 :') && <CalendarClock className="h-3.5 w-3.5 text-blue-500" />}
                                 {notif.title?.includes('부족분') && <AlertTriangle className="h-3.5 w-3.5 text-orange-500" />}
+                                {notif.title?.includes('품질이슈') && <ShieldAlert className="h-3.5 w-3.5 text-red-500" />}
                                 {notif.title}
                               </span>
                               {requestType && (

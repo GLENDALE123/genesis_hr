@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/shared/services/firebase/config';
 import { QualityIssue, QualityIssueFormData } from '../types';
+import { QualityIssueNotificationService } from './qualityIssueNotificationService';
 
 const COLLECTION_NAME = 'quality-issues';
 
@@ -84,6 +85,21 @@ export const createQualityIssue = async (
 
 
     const docRef = await addDoc(getCollectionRef(), qualityIssueData);
+
+    // 알림 발송
+    try {
+      await QualityIssueNotificationService.sendQualityIssueCreatedNotification(
+        { ...qualityIssueData, id: docRef.id } as QualityIssue,
+        {
+          uid: user.uid,
+          displayName: user.displayName,
+          photoURL: undefined // 필요시 user 객체에서 photoURL 추가
+        }
+      );
+    } catch (error) {
+      console.error('알림 발송 실패:', error);
+    }
+
     return docRef.id;
   } catch (error) {
     throw error;
@@ -237,7 +253,16 @@ export const searchQualityIssues = async (
 /**
  * 품질이슈에 새로운 이슈사항을 추가합니다
  */
-export const addIssueItem = async (issueId: string, newIssueItem: string, newStatus?: string): Promise<void> => {
+export const addIssueItem = async (
+  issueId: string, 
+  newIssueItem: string, 
+  newStatus?: string,
+  currentUser?: {
+    uid: string;
+    displayName: string;
+    photoURL?: string;
+  }
+): Promise<void> => {
   try {
     if (!newIssueItem.trim()) {
       throw new Error('이슈 내용을 입력해주세요.');
@@ -264,6 +289,25 @@ export const addIssueItem = async (issueId: string, newIssueItem: string, newSta
     }
 
     await updateDoc(issueRef, updateData);
+
+    // 이슈 정보 조회 후 알림 발송
+    if (currentUser) {
+      try {
+        const issueDoc = await getDoc(issueRef);
+        const issueData = issueDoc.data();
+        
+        if (issueData) {
+          await QualityIssueNotificationService.sendQualityIssueItemAddedNotification(
+            issueId,
+            `${issueData.productName} - ${issueData.partName}`,
+            newStatus || '해결완료',
+            currentUser
+          );
+        }
+      } catch (error) {
+        console.error('알림 발송 실패:', error);
+      }
+    }
 
   } catch (error) {
     throw error;

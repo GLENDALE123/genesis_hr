@@ -24,6 +24,7 @@ import {
   CheckCircle2,
   Factory,
   AlertTriangle,
+  ShieldAlert,
   MessageSquare,
   CalendarClock,
   TestTube,
@@ -37,6 +38,7 @@ import { cn } from '@/shared/lib/utils';
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   CalendarClock,
   AlertTriangle,
+  ShieldAlert,
   CalendarDays,
   FileText,
   MessageSquare,
@@ -351,6 +353,11 @@ export const NotificationSettings: React.FC = () => {
               channels: Object.entries(NOTIFICATION_CHANNELS).filter(([_, config]) => config.section === 'sample-center')
             },
             {
+              title: '품질센터',
+              icon: ShieldAlert,
+              channels: Object.entries(NOTIFICATION_CHANNELS).filter(([_, config]) => config.section === 'quality-center')
+            },
+            {
               title: '소통',
               icon: MessageSquare,
               channels: Object.entries(NOTIFICATION_CHANNELS).filter(([_, config]) => config.section === 'communication')
@@ -399,7 +406,7 @@ export const NotificationSettings: React.FC = () => {
               })}
               
               {/* 섹션 간 구분선 */}
-              {sectionIndex < 2 && <Separator className="my-4" />}
+              {sectionIndex < 3 && <Separator className="my-4" />}
             </div>
           ))}
         </CardContent>

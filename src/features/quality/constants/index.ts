@@ -107,3 +107,84 @@ export const CATEGORY_OPTIONS = [
   '기타'
 ] as const;
 
+// === 품질검사 관련 상수 ===
+
+export const INSPECTION_RESULTS = [
+  '합격',
+  '불합격',
+  '한도대기',
+  '한도승인',
+  '반출'
+] as const;
+
+export const INSPECTION_TYPE_LABELS = {
+  'incoming': '수입',
+  'in-process': '공정',
+  'outgoing': '출하'
+} as const;
+
+export const INSPECTION_TYPE_COLORS = {
+  'incoming': 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-200',
+  'in-process': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200',
+  'outgoing': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200'
+} as const;
+
+export const INSPECTION_RESULT_COLORS = {
+  '합격': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200',
+  '불합격': 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200',
+  '한도대기': 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200',
+  '한도승인': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200',
+  '반출': 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200',
+  '미등록': 'bg-gray-100 text-gray-600 dark:bg-gray-900/30 dark:text-gray-400'
+} as const;
+
+export const DEFECT_REASON_OPTIONS = [
+  '선별미흡',
+  '지문자국',
+  '취급불량',
+  '조건불량'
+] as const;
+
+export const INJECTION_MATERIAL_OPTIONS = [
+  'ABS',
+  'AS',
+  'P.P',
+  'PC',
+  'PET',
+  'PETG'
+] as const;
+
+export const INJECTION_COLOR_OPTIONS = [
+  '검정',
+  '백색',
+  '원색',
+  '잡색',
+  '투명'
+] as const;
+
+export const POST_PROCESS_OPTIONS = [
+  '디지털프린팅',
+  '레이져컷팅',
+  '인쇄',
+  '인쇄/박',
+  '전사',
+  '조립',
+  '패드인쇄',
+  '출하',
+  '박'
+] as const;
+
+export const WORK_LINE_OPTIONS = [
+  '1코팅',
+  '2코팅',
+  '내부코팅1호기',
+  '내부코팅2호기',
+  '내부코팅3호기',
+  '증착1',
+  '증착1상도',
+  '증착1하도',
+  '증착2',
+  '증착2상도',
+  '증착2하도'
+] as const;
+

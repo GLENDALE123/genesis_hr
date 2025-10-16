@@ -1,9 +1,10 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // 인증된 사용자만 파일 업로드/다운로드 가능
-    match /{allPaths=**} {
-      allow read, write: if request.auth != null;
+    // 품질 검사 이미지 (인증된 사용자만 읽기, 업로드자만 쓰기)
+    match /quality-inspections/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
     }
     
     // 사용자별 폴더 (본인만 접근 가능)
@@ -23,6 +24,11 @@ service firebase.storage {
     match /public/{allPaths=**} {
       allow read: if true;
       allow write: if request.auth != null;
+    }
+    
+    // 기타 파일들 (인증된 사용자만)
+    match /{allPaths=**} {
+      allow read, write: if request.auth != null;
     }
   }
 }

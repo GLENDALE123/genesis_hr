@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Dialog, DialogContent } from '@/shared/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 
@@ -115,7 +115,14 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-7xl max-h-[90vh] p-0 bg-black/95 border-none">
+      <DialogContent className="max-w-7xl max-h-[90vh] p-0 bg-black/95 border-none [&>button]:hidden">
+        {/* 접근성을 위한 숨겨진 제목과 설명 */}
+        <DialogTitle className="sr-only">
+          이미지 갤러리 - {currentIndex + 1}번째 이미지 ({images.length}개 중)
+        </DialogTitle>
+        <DialogDescription className="sr-only">
+          이미지를 확대하여 볼 수 있습니다. 키보드 화살표 키나 터치 제스처로 이전/다음 이미지로 이동할 수 있습니다.
+        </DialogDescription>
         {/* 닫기 버튼 */}
         <Button
           variant="ghost"

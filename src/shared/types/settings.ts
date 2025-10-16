@@ -48,6 +48,18 @@ export const NOTIFICATION_CHANNELS = {
     description: '댓글 및 멘션 알림',
     section: 'communication',
   },
+  'quality-issue-created': {
+    label: '품질이슈 등록',
+    icon: 'ShieldAlert',
+    description: '품질이슈 등록 알림',
+    section: 'quality-center',
+  },
+  'quality-issue-item-added': {
+    label: '품질이슈사항 추가',
+    icon: 'ShieldAlert',
+    description: '품질이슈사항 추가 및 상태 변경 알림',
+    section: 'quality-center',
+  },
   // 🆕 새 채널 추가 시 여기만 수정하면 UI 자동 업데이트
 } as const;
 
@@ -116,6 +128,8 @@ export const DEFAULT_SETTINGS: UserSettings = {
         'sample-request': true,
         'sample-status': true,
         'comment-mention': true,
+        'quality-issue-created': true,
+        'quality-issue-item-added': true,
     },
     schedule: {
       enabled: false,

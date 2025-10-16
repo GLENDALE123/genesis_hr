@@ -382,6 +382,9 @@
         } else if (title.includes('샘플 요청')) {
           // 샘플 요청 - TestTube 아이콘 (보라색)
           iconSvg = `<svg class="title-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6l-2 2v8a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-8l-2-2V2"/><path d="M9 2h6"/><path d="M12 10v4"/></svg>`;
+        } else if (title.includes('품질이슈')) {
+          // 품질이슈 - ShieldAlert 아이콘 (빨간색)
+          iconSvg = `<svg class="title-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="1"/></svg>`;
         }
         
         titleElement.innerHTML = iconSvg + '<span>' + title + '</span>';
