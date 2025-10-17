@@ -7,6 +7,7 @@ import { Input } from '@/shared/components/ui/input';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { Separator } from '@/shared/components/ui/separator';
+import { Button } from '@/shared/components/ui/button';
 import { InputSelect } from '@/shared/components/common/InputSelect';
 import { InspectionResult } from '../types';
 import type { AutocompleteData } from '../services/autocompleteService';
@@ -30,6 +31,10 @@ export const IncomingInspectionForm: React.FC<IncomingInspectionFormProps> = ({
   handleImageUpload,
   removeImage
 }) => {
+  // 파일 입력 refs
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const cameraInputRef = React.useRef<HTMLInputElement>(null);
+
   // 발주번호 포맷터 훅
   const { handleOrderNumberChange } = useOrderNumberFormatter({
     onAutoFill: (data) => {
@@ -55,7 +60,17 @@ export const IncomingInspectionForm: React.FC<IncomingInspectionFormProps> = ({
   });
 
   // 개별 필드들 가져오기
-  const commonFields = useCommonFields(formData, setFormData, autocompleteData, handleOrderNumberChange);
+  const commonFields = useCommonFields(
+    formData, 
+    setFormData, 
+    autocompleteData, 
+    handleOrderNumberChange,
+    imagePreviews,
+    handleImageUpload,
+    removeImage,
+    fileInputRef,
+    cameraInputRef
+  );
 
   return (
     <Card>
@@ -79,15 +94,7 @@ export const IncomingInspectionForm: React.FC<IncomingInspectionFormProps> = ({
             {commonFields.injectionCompany}
             
             {/* 사출포장 필드 - 사출처 바로 다음에 배치 */}
-            <div className="space-y-2">
-              <Label htmlFor="packagingInfo">사출포장</Label>
-              <Input
-                id="packagingInfo"
-                value={formData.packagingInfo || ''}
-                onChange={(e) => setFormData((prev: any) => ({ ...prev, packagingInfo: e.target.value }))}
-                placeholder="사출포장 정보를 입력하세요"
-              />
-            </div>
+            {commonFields.packagingInfo}
           </div>
         </div>
 
@@ -103,7 +110,7 @@ export const IncomingInspectionForm: React.FC<IncomingInspectionFormProps> = ({
               <Textarea
                 id="appearanceHistory"
                 value={formData.appearanceHistory}
-                onChange={(e) => setFormData(prev => ({ ...prev, appearanceHistory: e.target.value }))}
+                onChange={(e) => setFormData((prev: any) => ({ ...prev, appearanceHistory: e.target.value }))}
                 placeholder="외관검사이력을 입력하세요"
                 rows={3}
               />
@@ -114,7 +121,7 @@ export const IncomingInspectionForm: React.FC<IncomingInspectionFormProps> = ({
               <Textarea
                 id="functionHistory"
                 value={formData.functionHistory}
-                onChange={(e) => setFormData(prev => ({ ...prev, functionHistory: e.target.value }))}
+                onChange={(e) => setFormData((prev: any) => ({ ...prev, functionHistory: e.target.value }))}
                 placeholder="기능검사이력을 입력하세요"
                 rows={3}
               />
@@ -122,61 +129,7 @@ export const IncomingInspectionForm: React.FC<IncomingInspectionFormProps> = ({
           </div>
 
           {/* 이미지 첨부 */}
-          <div className="mt-4">
-            <h3 className="text-sm font-medium mb-2">이미지 첨부</h3>
-            <div className="space-y-4">
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
-                  onClick={() => document.getElementById('fileInput')?.click()}
-                >
-                  파일 선택
-                </button>
-                <button
-                  type="button"
-                  className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
-                  onClick={() => document.getElementById('cameraInput')?.click()}
-                >
-                  사진 촬영
-                </button>
-              </div>
-              
-              <input
-                id="fileInput"
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleImageUpload}
-                className="hidden"
-              />
-              <input
-                id="cameraInput"
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleImageUpload}
-                className="hidden"
-              />
-              
-              {imagePreviews.length > 0 && (
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-2">
-                  {imagePreviews.map((preview, index) => (
-                    <div key={index} className="relative">
-                      <img src={preview} alt={`preview ${index}`} className="w-full h-24 object-cover rounded" />
-                      <button 
-                        type="button" 
-                        onClick={() => removeImage(index)} 
-                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
-                      >
-                        &times;
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          {commonFields.imageSection}
 
           {/* 구분선 */}
           <Separator className="my-4" />
@@ -185,7 +138,7 @@ export const IncomingInspectionForm: React.FC<IncomingInspectionFormProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             <div className="space-y-2">
               <Label htmlFor="result">검사결과</Label>
-              <Select value={formData.result} onValueChange={(value) => setFormData(prev => ({ ...prev, result: value as InspectionResult }))}>
+              <Select value={formData.result} onValueChange={(value) => setFormData((prev: any) => ({ ...prev, result: value as InspectionResult }))}>
                 <SelectTrigger>
                   <SelectValue placeholder="검사결과를 선택하세요" />
                 </SelectTrigger>
@@ -201,7 +154,7 @@ export const IncomingInspectionForm: React.FC<IncomingInspectionFormProps> = ({
 
             <div className="space-y-2">
               <Label htmlFor="finalConsultationDept">최종협의(소속)</Label>
-              <Select value={formData.finalConsultationDept} onValueChange={(value) => setFormData(prev => ({ ...prev, finalConsultationDept: value }))}>
+              <Select value={formData.finalConsultationDept} onValueChange={(value) => setFormData((prev: any) => ({ ...prev, finalConsultationDept: value }))}>
                 <SelectTrigger>
                   <SelectValue placeholder="소속을 선택하세요" />
                 </SelectTrigger>
@@ -224,7 +177,7 @@ export const IncomingInspectionForm: React.FC<IncomingInspectionFormProps> = ({
               <Label htmlFor="finalConsultationName">최종협의(이름)</Label>
               <InputSelect
                 value={formData.finalConsultationName || ''}
-                onChange={(value) => setFormData(prev => ({ ...prev, finalConsultationName: value }))}
+                onChange={(value) => setFormData((prev: any) => ({ ...prev, finalConsultationName: value }))}
                 options={[
                   '김민현', '김영권', '김을한', '김재식', '배영길', '이동엽',
                   '이현석', '전진표', '최유림', '최한수', '한상태', '한태경'
@@ -237,7 +190,7 @@ export const IncomingInspectionForm: React.FC<IncomingInspectionFormProps> = ({
               <Label htmlFor="finalConsultationRank">최종협의(직급)</Label>
               <InputSelect
                 value={formData.finalConsultationRank || ''}
-                onChange={(value) => setFormData(prev => ({ ...prev, finalConsultationRank: value }))}
+                onChange={(value) => setFormData((prev: any) => ({ ...prev, finalConsultationRank: value }))}
                 options={[
                   '과장', '대리', '본부장', '부사장', '상무', '이사', '전무', '팀장'
                 ]}
@@ -253,7 +206,7 @@ export const IncomingInspectionForm: React.FC<IncomingInspectionFormProps> = ({
               <Textarea
                 id="resultReason"
                 value={formData.resultReason}
-                onChange={(e) => setFormData(prev => ({ ...prev, resultReason: e.target.value }))}
+                onChange={(e) => setFormData((prev: any) => ({ ...prev, resultReason: e.target.value }))}
                 placeholder="결과사유를 입력하세요"
                 rows={3}
               />

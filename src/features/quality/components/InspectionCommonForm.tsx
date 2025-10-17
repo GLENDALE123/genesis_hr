@@ -229,6 +229,18 @@ export const InspectionCommonForm: React.FC<InspectionCommonFormProps> = ({
     </div>
   );
 
+  const packagingInfoField = (
+    <div className="space-y-2">
+      <Label htmlFor="packagingInfo">사출포장</Label>
+      <Input
+        id="packagingInfo"
+        value={formData.packagingInfo || ''}
+        onChange={(e) => setFormData((prev: any) => ({ ...prev, packagingInfo: e.target.value }))}
+        placeholder="사출포장 정보를 입력하세요"
+      />
+    </div>
+  );
+
   // 기본 레이아웃 (기존 방식 유지)
   const formContent = (
     <>
@@ -390,7 +402,12 @@ export const useCommonFields = (
   formData: any,
   setFormData: React.Dispatch<React.SetStateAction<any>>,
   autocompleteData: AutocompleteData,
-  handleOrderNumberChange: (value: string, callback: (formatted: string) => void) => void
+  handleOrderNumberChange: (value: string, callback: (formatted: string) => void) => void,
+  imagePreviews?: string[],
+  handleImageUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void,
+  removeImage?: (index: number) => void,
+  fileInputRef?: React.RefObject<HTMLInputElement | null>,
+  cameraInputRef?: React.RefObject<HTMLInputElement | null>
 ) => {
   const inspectionDateField = (
     <div className="space-y-2">
@@ -554,7 +571,19 @@ export const useCommonFields = (
     </div>
   );
 
-  // 키워드 섹션 (공정검사에서만 사용)
+  const packagingInfoField = (
+    <div className="space-y-2">
+      <Label htmlFor="packagingInfo">사출포장</Label>
+      <Input
+        id="packagingInfo"
+        value={formData.packagingInfo || ''}
+        onChange={(e) => setFormData((prev: any) => ({ ...prev, packagingInfo: e.target.value }))}
+        placeholder="사출포장 정보를 입력하세요"
+      />
+    </div>
+  );
+
+  // 키워드 섹션
   const keywordSection = (
     <div className="space-y-3">
       {formData.keywordPairs?.map((pair: any, index: number) => (
@@ -620,6 +649,64 @@ export const useCommonFields = (
     </div>
   );
 
+  const imageSection = (
+    <div className="mt-4">
+      <h3 className="text-sm font-medium mb-2">이미지 첨부</h3>
+      <div className="space-y-4">
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => fileInputRef?.current?.click()}
+          >
+            파일 선택
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => cameraInputRef?.current?.click()}
+          >
+            사진 촬영
+          </Button>
+        </div>
+        
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={handleImageUpload}
+          className="hidden"
+        />
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={handleImageUpload}
+          className="hidden"
+        />
+        
+        {imagePreviews && imagePreviews.length > 0 && (
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-2">
+            {imagePreviews.map((preview: string, index: number) => (
+              <div key={index} className="relative">
+                <img src={preview} alt={`preview ${index}`} className="w-full h-24 object-cover rounded" />
+                <button 
+                  type="button" 
+                  onClick={() => removeImage?.(index)} 
+                  className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                >
+                  &times;
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return {
     inspectionDate: inspectionDateField,
     orderNumber: orderNumberField,
@@ -632,6 +719,8 @@ export const useCommonFields = (
     specification: specificationField,
     postProcess: postProcessField,
     injectionCompany: injectionCompanyField,
+    packagingInfo: packagingInfoField,
     keywordSection: keywordSection,
+    imageSection: imageSection,
   };
 };

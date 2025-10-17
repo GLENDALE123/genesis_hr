@@ -28,6 +28,77 @@
 }
 
 @layer base {
+  /* 전역 렌더링 최적화 */
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* 스크롤 영역 최적화 */
+  .overflow-y-auto,
+  .overflow-auto {
+    -webkit-overflow-scrolling: touch;
+    will-change: scroll-position;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  /* 모달 및 포털 최적화 */
+  [data-radix-portal],
+  [role="dialog"],
+  [data-state="open"] {
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Dialog Content 최적화 */
+  [data-radix-dialog-content] {
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+
+  /* 모달 내부 스크롤 영역 최적화 */
+  [data-radix-dialog-content] .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+    will-change: scroll-position;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* 모달 배경 오버레이 최적화 */
+  [data-radix-dialog-overlay] {
+    will-change: opacity;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  /* 모든 텍스트 요소 최적화 */
+  p, span, div, h1, h2, h3, h4, h5, h6, label, input, textarea, select {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* 텍스트 렌더링 최적화 */
+  body, html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
   :root {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;

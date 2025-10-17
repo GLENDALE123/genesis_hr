@@ -16,6 +16,7 @@ import { INSPECTION_RESULTS, INSPECTION_TYPE_LABELS, INSPECTION_RESULT_COLORS } 
 import { subscribeToAutocompleteData, updateAutocompleteData, AutocompleteData } from '../services/autocompleteService';
 import { InspectionCommonForm } from './InspectionCommonForm';
 import { IncomingInspectionForm } from './IncomingInspectionForm';
+import { ProcessInspectionForm } from './ProcessInspectionForm';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
 import '../utils/migrationTool'; // 마이그레이션 도구 로드
@@ -490,7 +491,15 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
 
         case 'in-process':
           return (
-            <>
+            <ProcessInspectionForm 
+              formData={formData} 
+              setFormData={setFormData}
+              autocompleteData={autocompleteData}
+              imagePreviews={imagePreviews}
+              handleImageUpload={handleImageUpload}
+              removeImage={removeImage}
+            />
+          );
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">공정검사 정보</CardTitle>
@@ -878,9 +887,6 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
                   </div>
                 </CardContent>
               </Card>
-            </>
-          );
-
         case 'outgoing':
           return (
             <Card>
@@ -1001,7 +1007,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="w-[95vw] h-[95vh] max-w-[1400px] overflow-hidden">
+      <DialogContent className="w-[95vw] h-[95vh] max-w-[1400px] overflow-hidden pb-0">
         <DialogTitle className="sr-only">품질검사 작성</DialogTitle>
         <DialogDescription className="sr-only">
           품질검사 정보를 입력하는 폼입니다.
@@ -1043,7 +1049,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
               </div>
               
               {/* 버튼 영역 */}
-              <div className="flex justify-end gap-2 p-6 pt-4 border-t">
+              <div className="flex justify-end gap-2 px-4 pt-4 pb-0 border-t">
                 <Button type="button" variant="outline" onClick={handleClose} disabled={isSaving}>
                   취소
                 </Button>
