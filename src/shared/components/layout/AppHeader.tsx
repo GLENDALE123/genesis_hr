@@ -127,7 +127,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         color: 'hsl(var(--header-foreground))',
       }}
     >
-      <div className="container max-w-none flex h-12 items-center justify-between px-4">
+      <div className="container max-w-none flex h-12 items-center justify-between px-3">
         {/* Left Section */}
         <div className="flex items-center gap-4">
           {/* Sidebar Toggle Button - Always visible */}

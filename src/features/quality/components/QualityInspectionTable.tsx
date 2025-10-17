@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, memo } from 'react';
 import { Card, CardContent } from '@/shared/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/components/ui/table';
 import { GroupedInspectionData } from '../types';
 import { InspectionStatusBadge } from './InspectionStatusBadge';
+import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
 import { Image } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 
@@ -19,7 +20,7 @@ interface QualityInspectionTableProps {
  * - 발주번호별로 그룹화된 검사 데이터 표시
  * - 수입/공정/출하 검사 상태를 한눈에 확인
  */
-export const QualityInspectionTable: React.FC<QualityInspectionTableProps> = ({
+const QualityInspectionTableComponent: React.FC<QualityInspectionTableProps> = ({
   groupedData,
   isLoading,
   onSelectGroup
@@ -36,9 +37,11 @@ export const QualityInspectionTable: React.FC<QualityInspectionTableProps> = ({
   };
 
   // 수량 포맷팅
-  const formatQuantity = (quantity?: number) => {
+  const formatQuantity = (quantity?: number | string) => {
     if (!quantity) return '';
-    return `${quantity.toLocaleString('ko-KR')} ea`;
+    const numQuantity = typeof quantity === 'string' ? parseInt(quantity, 10) : quantity;
+    if (isNaN(numQuantity)) return String(quantity); // 숫자로 변환 불가시 원본 반환
+    return `${numQuantity.toLocaleString('ko-KR')} ea`;
   };
 
   // 이미지 개수 계산
@@ -61,11 +64,12 @@ export const QualityInspectionTable: React.FC<QualityInspectionTableProps> = ({
 
   if (isLoading) {
     return (
-      <Card className="flex-1 min-h-0">
-        <CardContent className="flex justify-center items-center h-full p-8">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-        </CardContent>
-      </Card>
+      <LoadingSpinner 
+        size="lg" 
+        label="품질검사 데이터 로딩 중..." 
+        variant="default"
+        className="flex-1 min-h-0"
+      />
     );
   }
 
@@ -74,11 +78,10 @@ export const QualityInspectionTable: React.FC<QualityInspectionTableProps> = ({
       <CardContent className="flex-1 min-h-0 p-0 flex flex-col">
         {/* 테이블 영역 */}
         <div className="flex-1 overflow-auto">
-          <Table>
-            <TableHeader className="sticky top-0 z-10 bg-muted">
+          <Table className="rounded-lg border">
+            <TableHeader className="sticky top-0 z-50 bg-muted">
               <TableRow>
-                <TableHead className="whitespace-nowrap">아이디</TableHead>
-                <TableHead className="whitespace-nowrap">최근업데이트</TableHead>
+                <TableHead className="whitespace-nowrap rounded-tl-lg">최근업데이트</TableHead>
                 <TableHead className="whitespace-nowrap">발주번호</TableHead>
                 <TableHead className="whitespace-nowrap">발주처</TableHead>
                 <TableHead className="whitespace-nowrap">제품명</TableHead>
@@ -92,7 +95,7 @@ export const QualityInspectionTable: React.FC<QualityInspectionTableProps> = ({
                 <TableHead className="whitespace-nowrap">작업라인</TableHead>
                 <TableHead className="whitespace-nowrap text-center">수입</TableHead>
                 <TableHead className="whitespace-nowrap text-center">공정</TableHead>
-                <TableHead className="whitespace-nowrap text-center">출하</TableHead>
+                <TableHead className="whitespace-nowrap text-center rounded-tr-lg">출하</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -105,9 +108,6 @@ export const QualityInspectionTable: React.FC<QualityInspectionTableProps> = ({
                     onClick={() => onSelectGroup(group)}
                     className="cursor-pointer hover:bg-muted/50 transition-colors"
                   >
-                    <TableCell className="font-mono text-xs whitespace-nowrap">
-                      Q{group.common?.sequentialId || 'N/A'}
-                    </TableCell>
                     <TableCell className="text-xs whitespace-nowrap">
                       {formatDate(group.latestDate)}
                     </TableCell>
@@ -184,7 +184,7 @@ export const QualityInspectionTable: React.FC<QualityInspectionTableProps> = ({
 
         {/* 푸터 - 총 개수 표시 */}
         {groupedData.length > 0 && (
-          <div className="flex-shrink-0 p-3 border-t bg-muted/50">
+          <div className="flex-shrink-0 p-3 border-t bg-muted/50 rounded-b-lg">
             <p className="text-sm text-muted-foreground text-center">
               총 <span className="font-semibold text-foreground">{groupedData.length}</span>개의 항목이 표시됩니다
             </p>
@@ -194,4 +194,7 @@ export const QualityInspectionTable: React.FC<QualityInspectionTableProps> = ({
     </Card>
   );
 };
+
+// 메모이제이션 적용
+export const QualityInspectionTable = memo(QualityInspectionTableComponent);
 

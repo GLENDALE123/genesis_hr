@@ -52,7 +52,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
               color: 'hsl(var(--main-foreground))',
             }}
           >
-            <div className="h-full p-6 overflow-auto">
+            <div className="h-full p-2 overflow-auto">
               {children}
             </div>
           </main>

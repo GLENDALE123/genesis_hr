@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ImageLightbox } from './ImageLightbox';
+import { LazyImage } from './LazyImage';
 import { ImageCache, getThumbnailUrl } from '@/shared/utils/imageUpload';
+import { Spinner } from '../ui/spinner';
 
 interface ImageGalleryGridProps {
   images: string[];
@@ -272,7 +274,15 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
           
           return (
             <div key={index} className="relative">
-              {isLoaded ? (
+              {enableLazyLoading ? (
+                <LazyImage
+                  src={cachedImages[index] || url}
+                  alt={`이미지 ${index + 1}`}
+                  className={`w-full ${imageClassName} object-cover border cursor-pointer hover:opacity-80 transition-opacity select-none`}
+                  style={{ borderRadius: 'var(--radius)' }}
+                  onClick={() => handleImageClick(index)}
+                />
+              ) : isLoaded ? (
                 <img
                   ref={(el) => {
                     imageRefs.current[index] = el;
@@ -362,7 +372,7 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
                   ) : (
                     // 로딩 상태 UI
                     <>
-                      <div className="w-8 h-8 border-2 border-gray-300 dark:border-gray-600 border-t-blue-500 dark:border-t-blue-400 rounded-full animate-spin"></div>
+                      <Spinner className="size-8 text-blue-500" />
                       <div className="absolute bottom-2 left-2 right-2 text-center">
                         <span className="text-xs text-gray-500 dark:text-gray-400 bg-white/80 dark:bg-black/80 px-2 py-1 rounded">
                           로딩 중...

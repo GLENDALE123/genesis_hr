@@ -4,7 +4,7 @@ import React from "react";
 import { AuthProvider } from "@/features/auth";
 import { Toaster } from "@/shared/components/ui/sonner";
 import { ConditionalLayout } from "@/shared/components/layout";
-import { ClientThemeProvider, NetworkStatusProvider, NotificationContainer, NotificationProviderWrapper, ElectronNavigationHandler } from "@/shared/components/common";
+import { ClientThemeProvider, NetworkStatusProvider, NotificationContainer, NotificationProviderWrapper, ElectronNavigationHandler, FontSizeProvider } from "@/shared/components/common";
 import { AppStateProvider } from "@/shared/components/layout/AppStateProvider";
 
 export const metadata: Metadata = {
@@ -25,16 +25,18 @@ export default function RootLayout({
         <ClientThemeProvider>
           <NetworkStatusProvider>
             <AuthProvider>
-              <NotificationProviderWrapper>
-                <AppStateProvider>
-                  <ElectronNavigationHandler />
-                  <ConditionalLayout>
-                    {children}
-                  </ConditionalLayout>
-                  <Toaster />
-                  <NotificationContainer position="bottom-right" />
-                </AppStateProvider>
-              </NotificationProviderWrapper>
+              <FontSizeProvider>
+                <NotificationProviderWrapper>
+                  <AppStateProvider>
+                    <ElectronNavigationHandler />
+                    <ConditionalLayout>
+                      {children}
+                    </ConditionalLayout>
+                    <Toaster />
+                    <NotificationContainer position="bottom-right" />
+                  </AppStateProvider>
+                </NotificationProviderWrapper>
+              </FontSizeProvider>
             </AuthProvider>
           </NetworkStatusProvider>
         </ClientThemeProvider>

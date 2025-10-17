@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
+import { useDebouncedCallback } from 'use-debounce';
 
 export interface InspectionFilters {
   startDate: string;
@@ -15,6 +16,7 @@ interface UseInspectionFiltersReturn {
   resetFilters: () => void;
   today: string;
   yesterday: string;
+  isSearching: boolean; // 검색어 debounce 상태
 }
 
 /**
@@ -43,6 +45,8 @@ export const useInspectionFilters = (): UseInspectionFiltersReturn => {
     searchTerm: '',
   });
 
+  const [isSearching, setIsSearching] = useState(false);
+
   const setStartDate = useCallback((date: string) => {
     setFiltersState(prev => ({ ...prev, startDate: date }));
   }, []);
@@ -51,9 +55,16 @@ export const useInspectionFilters = (): UseInspectionFiltersReturn => {
     setFiltersState(prev => ({ ...prev, endDate: date }));
   }, []);
 
-  const setSearchTerm = useCallback((term: string) => {
+  // Debounced 검색어 설정 (300ms)
+  const debouncedSetSearchTerm = useDebouncedCallback((term: string) => {
     setFiltersState(prev => ({ ...prev, searchTerm: term }));
-  }, []);
+    setIsSearching(false);
+  }, 300);
+
+  const setSearchTerm = useCallback((term: string) => {
+    setIsSearching(true);
+    debouncedSetSearchTerm(term);
+  }, [debouncedSetSearchTerm]);
 
   const setFilters = useCallback((newFilters: Partial<InspectionFilters>) => {
     setFiltersState(prev => ({ ...prev, ...newFilters }));
@@ -65,6 +76,7 @@ export const useInspectionFilters = (): UseInspectionFiltersReturn => {
       endDate: today,
       searchTerm: '',
     });
+    setIsSearching(false);
   }, [today]);
 
   return {
@@ -76,6 +88,7 @@ export const useInspectionFilters = (): UseInspectionFiltersReturn => {
     resetFilters,
     today,
     yesterday,
+    isSearching,
   };
 };
 

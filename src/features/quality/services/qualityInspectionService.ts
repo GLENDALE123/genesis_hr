@@ -5,6 +5,7 @@ import {
   updateDoc,
   deleteDoc,
   getDoc,
+  getDocs,
   query,
   orderBy,
   limit,
@@ -20,7 +21,7 @@ const COLLECTION_NAME = 'quality-inspections';
 /**
  * 품질검사 컬렉션 참조 가져오기
  */
-const getCollectionRef = () => {
+export const getCollectionRef = () => {
   if (!db) throw new Error('Firestore is not initialized');
   return collection(db, COLLECTION_NAME);
 };
@@ -104,16 +105,18 @@ export const getQualityInspection = async (docId: string): Promise<QualityInspec
 
 /**
  * 품질검사 목록 실시간 구독
+ * 생산일보와 동일한 limit 패턴 사용 (기본 500개)
  */
 export const subscribeToQualityInspections = (
   callback: (inspections: QualityInspection[]) => void,
+  limitCount: number = 500,
   onError?: (error: Error) => void
 ) => {
   try {
     const q = query(
       getCollectionRef(),
       orderBy('createdAt', 'desc'),
-      limit(1000)
+      limit(limitCount)
     );
 
     return onSnapshot(
@@ -124,6 +127,8 @@ export const subscribeToQualityInspections = (
           return {
             id: doc.id,
             ...data,
+            // inspectionDate가 없으면 createdAt에서 날짜 부분만 추출
+            inspectionDate: data.inspectionDate || (data.createdAt ? data.createdAt.split('T')[0] : undefined),
             createdAt: data.createdAt || new Date().toISOString(),
           } as QualityInspection;
         });
@@ -183,12 +188,13 @@ export const groupInspectionsByOrder = (
       group.latestDate = inspection.createdAt;
     }
 
-    // 검사 타입별 분류
+    // 검사 타입별 분류 (HS-Jig와 호환성 유지)
     switch (inspection.inspectionType) {
       case 'incoming':
         group.incoming.push(inspection);
         break;
       case 'in-process':
+      case 'inProcess': // HS-Jig 호환성 추가
         group.inProcess.push(inspection);
         break;
       case 'outgoing':
@@ -204,7 +210,129 @@ export const groupInspectionsByOrder = (
 };
 
 /**
- * 날짜 범위로 품질검사 필터링
+ * 날짜 범위별 실시간 구독 (생산일보와 동일한 방식)
+ * 
+ * @param startDate - 시작 날짜 (YYYY-MM-DD)
+ * @param endDate - 종료 날짜 (YYYY-MM-DD)
+ * @param callback - 데이터 수신 콜백
+ * @param onError - 에러 콜백
+ * @param limitCount - 조회할 최대 문서 수 (기본값: 2000)
+ */
+/**
+ * 날짜 범위별 품질검사 구독 (2단계 쿼리 방식)
+ * 1단계: 날짜 범위 내 검사들의 orderNumber 추출
+ * 2단계: 해당 orderNumber들을 가진 모든 검사들을 가져옴
+ * 
+ * @param startDate - 시작 날짜 (YYYY-MM-DD)
+ * @param endDate - 종료 날짜 (YYYY-MM-DD)
+ * @param callback - 데이터 수신 콜백
+ * @param onError - 에러 콜백
+ * @param limitCount - 조회할 최대 문서 수 (기본값: 2000)
+ */
+export const subscribeToQualityInspectionsByDateRange = (
+  startDate: string,
+  endDate: string,
+  callback: (inspections: QualityInspection[]) => void,
+  onError?: (error: Error) => void,
+  limitCount: number = 2000
+): (() => void) => {
+  if (!db) {
+    const error = new Error('Firebase not initialized');
+    console.error('Firebase not initialized');
+    if (onError) {
+      onError(error);
+    }
+    callback([]);
+    return () => {};
+  }
+
+  try {
+    // 1단계: 날짜 범위 내의 검사들을 먼저 가져와서 orderNumber 추출
+    const dateQuery = query(
+      getCollectionRef(),
+      where('inspectionDate', '>=', startDate),
+      where('inspectionDate', '<=', endDate),
+      orderBy('inspectionDate', 'desc'),
+      limit(limitCount)
+    );
+
+    return onSnapshot(
+      dateQuery,
+      (snapshot) => {
+        try {
+          const dateFilteredInspections = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              ...data,
+              inspectionDate: data.inspectionDate || (data.createdAt ? data.createdAt.split('T')[0] : undefined),
+              createdAt: data.createdAt || new Date().toISOString(),
+            } as QualityInspection;
+          });
+
+          // 날짜 필터링된 검사들의 orderNumber 추출
+          const orderNumbers = [...new Set(dateFilteredInspections.map(i => i.orderNumber))];
+          console.log(`📅 날짜 범위 내 검사 그룹: ${orderNumbers.length}개 (${orderNumbers.slice(0, 3).join(', ')}${orderNumbers.length > 3 ? '...' : ''})`);
+
+          if (orderNumbers.length === 0) {
+            callback([]);
+            return;
+          }
+
+          // 2단계: 해당 orderNumber들을 가진 모든 검사들을 가져옴 (비동기 처리)
+          Promise.all(
+            orderNumbers.map(orderNumber => 
+              getDocs(query(
+                getCollectionRef(),
+                where('orderNumber', '==', orderNumber),
+                orderBy('createdAt', 'desc')
+              ))
+            )
+          ).then(groupSnapshots => {
+            // 결과를 합치고 정렬
+            const allInspections: QualityInspection[] = [];
+            groupSnapshots.forEach(snapshot => {
+              snapshot.docs.forEach(doc => {
+                const data = doc.data();
+                allInspections.push({
+                  id: doc.id,
+                  ...data,
+                  inspectionDate: data.inspectionDate || (data.createdAt ? data.createdAt.split('T')[0] : undefined),
+                  createdAt: data.createdAt || new Date().toISOString(),
+                } as QualityInspection);
+              });
+            });
+
+            // 중복 제거 및 정렬
+            const uniqueInspections = allInspections.filter((inspection, index, self) => 
+              index === self.findIndex(i => i.id === inspection.id)
+            ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+            console.log(`✅ 그룹 전체 검사 데이터 수신: ${uniqueInspections.length}건 (${orderNumbers.length}개 그룹)`);
+            callback(uniqueInspections);
+          }).catch(error => {
+            console.error('Error fetching group data:', error);
+            onError?.(error as Error);
+          });
+        } catch (error) {
+          console.error('Error processing date range query:', error);
+          onError?.(error as Error);
+        }
+      },
+      (error) => {
+        console.error('Error subscribing to quality inspections by date range:', error);
+        onError?.(error);
+      }
+    );
+  } catch (error) {
+    console.error('Error setting up subscription:', error);
+    onError?.(error as Error);
+    return () => {}; // 빈 unsubscribe 함수 반환
+  }
+};
+
+/**
+ * 날짜 범위로 품질검사 필터링 (클라이언트 사이드 - 레거시)
  */
 export const filterInspectionsByDateRange = (
   inspections: QualityInspection[],
@@ -256,6 +384,15 @@ export const searchInspections = (
       inspection.keywordPairs.forEach(pair => {
         searchableFields.push(pair.process, pair.defect);
       });
+    }
+    
+    // 공정검사 전용 필드 검색 (HS-Jig 호환성)
+    if (inspection.inspectionType === 'inProcess' || inspection.inspectionType === 'in-process') {
+      searchableFields.push(
+        inspection.workLine || '',
+        inspection.preInspectionHistory || '',
+        inspection.inProcessInspectionHistory || ''
+      );
     }
     
     return searchableFields.some(field => 

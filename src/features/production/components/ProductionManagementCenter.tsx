@@ -196,7 +196,12 @@ const ProductionManagementCenterComponent: React.FC = () => {
       {/* 메인 콘텐츠 */}
       <main className={`flex-1 overflow-auto ${isLoading ? 'flex' : ''}`}>
         {isLoading ? (
-          <LoadingSpinner size="lg" label="데이터 로딩 중..." />
+          <LoadingSpinner 
+            size="lg" 
+            label="생산 데이터 로딩 중..." 
+            variant="card"
+            className="flex-1"
+          />
         ) : filteredRequests.length > 0 ? (
           <div className="relative rounded-md border">
             <Table>

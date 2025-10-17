@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Input } from '@/shared/components/ui/input';
 import { cn } from '@/shared/lib/utils';
 import { Check, ChevronDown } from 'lucide-react';
@@ -29,18 +30,22 @@ export const InputSelect: React.FC<InputSelectProps> = ({
   ...props
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // 외부 클릭 시 드롭다운 닫기
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      const target = event.target as Element;
+      if (containerRef.current && !containerRef.current.contains(target) && 
+          !target.closest('[data-dropdown]')) {
         setIsOpen(false);
       }
     };
 
     if (isOpen) {
-      // 약간의 지연을 두어 이벤트 충돌 방지
       setTimeout(() => {
         document.addEventListener('mousedown', handleClickOutside);
       }, 100);
@@ -48,23 +53,121 @@ export const InputSelect: React.FC<InputSelectProps> = ({
     }
   }, [isOpen]);
 
+  const updateDropdownPosition = () => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const dropdownHeight = 300; // max-h-[300px]
+      const spacing = 4;
+      
+      // 하단에 공간이 충분한지 확인
+      const spaceBelow = viewportHeight - rect.bottom;
+      
+      let top = rect.bottom + spacing; // 기본적으로 하단에 배치
+      
+      // 하단 공간이 부족하면 항상 상단에 배치 (라벨 가려도 상관없음)
+      if (spaceBelow < dropdownHeight) {
+        top = rect.top - dropdownHeight - spacing;
+      }
+      
+      // 디버깅을 위한 로그 추가
+      console.log('Position calculation:', {
+        rectTop: rect.top,
+        rectBottom: rect.bottom,
+        spaceBelow,
+        calculatedTop: top,
+        viewportHeight,
+        dropdownHeight
+      });
+      
+      setDropdownPosition({
+        top,
+        left: rect.left,
+        width: rect.width
+      });
+    }
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange(e.target.value);
+  };
+
+  const handleFocus = () => {
+    updateDropdownPosition();
+    setIsOpen(true);
   };
 
   const handleOptionSelect = (option: string) => {
     onChange(option);
     setIsOpen(false);
+    setHighlightedIndex(-1);
+    // 선택 후 input에 포커스 유지
+    inputRef.current?.focus();
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    e.stopPropagation();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isOpen) {
+      if (e.key === 'ArrowDown' || e.key === 'Enter') {
+        e.preventDefault();
+        updateDropdownPosition();
+        setIsOpen(true);
+        setHighlightedIndex(-1);
+      }
+      return;
+    }
+
+    const filteredOptions = options.filter(option =>
+      option.toLowerCase().includes(value.toLowerCase())
+    );
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setHighlightedIndex(prev => 
+          prev < filteredOptions.length - 1 ? prev + 1 : 0
+        );
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setHighlightedIndex(prev => 
+          prev > 0 ? prev - 1 : filteredOptions.length - 1
+        );
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (highlightedIndex >= 0 && filteredOptions[highlightedIndex]) {
+          handleOptionSelect(filteredOptions[highlightedIndex]);
+        }
+        break;
+      case 'Escape':
+        e.preventDefault();
+        setIsOpen(false);
+        setHighlightedIndex(-1);
+        inputRef.current?.blur();
+        break;
+    }
   };
 
   const filteredOptions = options.filter(option =>
     option.toLowerCase().includes(value.toLowerCase())
   );
 
+  // 드롭다운이 열릴 때 하이라이트 인덱스 초기화
+  useEffect(() => {
+    if (isOpen) {
+      setHighlightedIndex(-1);
+    }
+  }, [isOpen, value]);
+
   return (
     <div className="relative" ref={containerRef}>
       <div className="relative">
         <Input
+          ref={inputRef}
           value={value}
           onChange={handleInputChange}
           placeholder={placeholder}
@@ -73,44 +176,73 @@ export const InputSelect: React.FC<InputSelectProps> = ({
             error && 'border-red-500',
             className
           )}
-          onFocus={() => setIsOpen(true)}
+          onFocus={handleFocus}
+          onKeyDown={handleKeyDown}
+          autoComplete="off"
+          list=""
           disabled={disabled}
-          autoComplete={autoComplete}
           {...props}
         />
         <button
           type="button"
           className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={() => {
+            updateDropdownPosition();
+            setIsOpen(!isOpen);
+          }}
           disabled={disabled}
+          tabIndex={-1}
         >
           <ChevronDown className="h-4 w-4" />
         </button>
       </div>
       
-      {isOpen && (
-        <div data-dropdown className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-lg max-h-60 overflow-auto">
-          {filteredOptions.map((option) => (
-            <div
-              key={option}
-              className="px-3 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground text-sm flex items-center"
-              onClick={() => handleOptionSelect(option)}
-            >
-              <Check
+      {isOpen && createPortal(
+        <div 
+          data-dropdown 
+          className="relative max-h-[300px] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-2"
+          style={{
+            position: 'fixed',
+            top: dropdownPosition.top,
+            left: dropdownPosition.left,
+            width: dropdownPosition.width,
+            zIndex: 9999,
+            pointerEvents: 'auto',
+            animation: 'fadeIn 150ms ease-out, zoomIn 150ms ease-out, slideInFromTop 150ms ease-out'
+          }}
+          onWheel={handleWheel}
+        >
+          <div className="p-1">
+            {filteredOptions.map((option, index) => (
+              <div
+                key={option}
                 className={cn(
-                  "mr-2 h-4 w-4",
-                  value === option ? "opacity-100" : "opacity-0"
+                  "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-2 pr-8 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+                  index === highlightedIndex && "bg-accent text-accent-foreground"
                 )}
-              />
-              {option}
-            </div>
-          ))}
-          {filteredOptions.length === 0 && (
-            <div className="px-3 py-2 text-sm text-muted-foreground">
-              일치하는 항목이 없습니다.
-            </div>
-          )}
-        </div>
+                onClick={() => handleOptionSelect(option)}
+                onMouseEnter={() => setHighlightedIndex(index)}
+                onMouseLeave={() => setHighlightedIndex(-1)}
+              >
+                <span className="absolute right-2 flex h-3.5 w-3.5 items-center justify-center">
+                  <Check
+                    className={cn(
+                      "h-4 w-4",
+                      value === option ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                </span>
+                {option}
+              </div>
+            ))}
+            {filteredOptions.length === 0 && (
+              <div className="px-3 py-2 text-sm text-muted-foreground">
+                일치하는 항목이 없습니다.
+              </div>
+            )}
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

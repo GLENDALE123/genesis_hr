@@ -61,6 +61,44 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "quality-inspections",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "inspectionDate",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "quality-inspections",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "orderNumber",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "quality-inspections",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "inspectionDate",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "orderNumber",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

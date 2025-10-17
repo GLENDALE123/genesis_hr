@@ -16,13 +16,12 @@ export default function ProductionDailyReportLoading() {
   }, []);
 
   return (
-    <div className="flex items-center justify-center h-full min-h-[400px]">
-      <LoadingSpinner 
-        size="lg" 
-        label="생산일보 데이터 로딩 중..." 
-        variant="default"
-      />
-    </div>
+    <LoadingSpinner 
+      size="lg" 
+      label="생산일보 데이터 로딩 중..."
+      variant="card"
+      className="min-h-[400px]"
+    />
   );
 }
 

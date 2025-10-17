@@ -406,9 +406,12 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
       <Card className="flex-1 overflow-hidden flex flex-col">
         <CardContent className="p-0 flex-1 overflow-auto">
           {loading ? (
-            <div className="flex items-center justify-center h-full">
-              <LoadingSpinner />
-            </div>
+            <LoadingSpinner 
+              size="lg" 
+              label="생산 일정 데이터 로딩 중..." 
+              variant="card"
+              className="h-full"
+            />
           ) : filteredSchedules.length === 0 ? (
             <p className="text-center p-8 text-muted-foreground">표시할 일정이 없습니다.</p>
           ) : (

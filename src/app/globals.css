@@ -2,6 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
+/* InputSelect 애니메이션 */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes zoomIn {
+  from { transform: scale(0.95); }
+  to { transform: scale(1); }
+}
+
+@keyframes slideInFromTop {
+  from { transform: translateY(-8px); }
+  to { transform: translateY(0); }
+}
+
 /* Pretendard Variable 폰트 정의 */
 @font-face {
   font-family: 'Pretendard Variable';
@@ -37,6 +53,10 @@
     --input: 0 0% 98%;
     --ring: 221.2 83.2% 53.3%;
     --radius: 0.65rem;
+    
+    /* 폰트 크기 설정 */
+    --font-size-base: 0.875rem; /* 14px - 기본 크기 */
+    --font-size-scale: 1; /* 폰트 크기 배율 */
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
     --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
     --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
@@ -96,6 +116,10 @@
     --border: 220.9 52.4% 8.2%;
     --input: 217.2 32.6% 17.5%;
     --ring: 224.3 76.3% 48%;
+    
+    /* 폰트 크기 설정 (다크 모드에서도 동일) */
+    --font-size-base: 0.875rem; /* 14px - 기본 크기 */
+    --font-size-scale: 1; /* 폰트 크기 배율 */
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
     --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.4);
     --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.4);
@@ -150,7 +174,7 @@
     text-rendering: optimizeLegibility;
     font-weight: 400;
     overflow: hidden;
-    font-size: 0.875rem; /* 14px - 기본 폰트 크기 축소 */
+    font-size: calc(var(--font-size-base) * var(--font-size-scale)); /* 동적 폰트 크기 */
     line-height: 1.5;
   }
   

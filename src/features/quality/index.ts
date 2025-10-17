@@ -46,6 +46,7 @@ export {
 // Components
 export { QualityInspectionTable } from './components/QualityInspectionTable';
 export { QualityInspectionDetail } from './components/QualityInspectionDetail';
+export { QualityInspectionForm } from './components/QualityInspectionForm';
 export { InspectionFilterPanel } from './components/InspectionFilterPanel';
 export { InspectionStatusBadge } from './components/InspectionStatusBadge';
 
@@ -53,12 +54,16 @@ export { InspectionStatusBadge } from './components/InspectionStatusBadge';
 export { useQualityInspections } from './hooks/useQualityInspections';
 export { useInspectionFilters } from './hooks/useInspectionFilters';
 
+// Store
+export { useQualityInspectionStore } from './store/qualityInspectionStore';
+
 // Services
 export {
   createQualityInspection,
   updateQualityInspection,
   deleteQualityInspection,
   subscribeToQualityInspections,
+  subscribeToQualityInspectionsByDateRange,
   getQualityInspection,
   groupInspectionsByOrder,
   filterInspectionsByDateRange,

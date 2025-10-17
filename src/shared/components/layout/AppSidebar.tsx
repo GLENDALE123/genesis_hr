@@ -157,14 +157,14 @@ export const AppSidebar = React.memo<AppSidebarProps>(({
         className={cn(
           "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors text-left",
           // 태블릿 최적화: 터치 영역 최소 44px 보장
-          "min-h-[44px] px-3 py-3 md:px-3 md:py-2",
+          "min-h-[44px] px-2 py-2 md:px-2 md:py-2",
           // 서브메뉴는 버튼 너비를 줄임
           level === 0 ? "w-full" : "w-[calc(100%-1.5rem)] ml-6",
           active
             ? "bg-accent text-accent-foreground"
             : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
           // 접힌 상태에서는 정사각형 터치 영역
-          !isExpanded && "justify-center px-2 py-3 md:px-2 md:py-2 min-w-[44px] md:min-w-[40px]"
+          !isExpanded && "justify-center px-1 py-2 md:px-1 md:py-2 min-w-[44px] md:min-w-[40px]"
         )}
       >
         <div className="flex items-center gap-3">
@@ -232,7 +232,7 @@ export const AppSidebar = React.memo<AppSidebarProps>(({
       onMouseLeave={() => isDesktop && collapsed && setIsHovered(false)}
     >
       {/* Sidebar Header */}
-      <div className="flex h-16 items-center justify-center border-b px-4">
+      <div className="flex h-16 items-center justify-center border-b px-3">
         {isExpanded && (
           <div className="flex items-center gap-2">
             <div className="h-6 w-6 rounded bg-primary flex items-center justify-center">
@@ -247,26 +247,26 @@ export const AppSidebar = React.memo<AppSidebarProps>(({
       <ScrollArea className="flex-1 py-4">
         <nav className="space-y-1">
           {/* 메인 메뉴 섹션 */}
-          <div className="space-y-1 px-3">
+          <div className="space-y-1 px-2">
             {mainNavigationItems.map(item => renderNavItem(item))}
           </div>
           
           {/* 세로 구분선 */}
           {isExpanded && (
-            <div className="flex items-center px-3">
+            <div className="flex items-center px-2">
               <div className="h-px bg-border flex-1" />
             </div>
           )}
           
           {/* 서브 메뉴 섹션 */}
-          <div className="space-y-1 px-3">
+          <div className="space-y-1 px-2">
             {subNavigationItems.map(item => renderNavItem(item))}
           </div>
         </nav>
       </ScrollArea>
 
       {/* Sidebar Footer */}
-      <div className="border-t p-4">
+      <div className="border-t p-3">
         <div className="space-y-2">
           {isExpanded && (
             <>

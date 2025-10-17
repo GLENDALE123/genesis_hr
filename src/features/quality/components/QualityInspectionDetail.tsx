@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, memo } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { Badge } from '@/shared/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
@@ -24,7 +24,7 @@ interface QualityInspectionDetailProps {
  * - 수입/공정/출하 검사를 탭으로 구분
  * - 이미지 갤러리 (ImageGalleryGrid 활용)
  */
-export const QualityInspectionDetail: React.FC<QualityInspectionDetailProps> = ({
+const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> = ({
   group,
   isOpen,
   onClose
@@ -93,9 +93,11 @@ export const QualityInspectionDetail: React.FC<QualityInspectionDetailProps> = (
 
   // 검사 데이터를 최신순으로 정렬하는 함수 (최신이 먼저)
   const sortInspectionsByDate = (inspections: QualityInspection[]) => {
-    return [...inspections].sort((a, b) => 
-      new Date(b.inspectionDate).getTime() - new Date(a.inspectionDate).getTime()
-    );
+    return [...inspections].sort((a, b) => {
+      const dateA = a.inspectionDate || a.createdAt;
+      const dateB = b.inspectionDate || b.createdAt;
+      return new Date(dateB).getTime() - new Date(dateA).getTime();
+    });
   };
 
   // 탭별 검사 데이터 (날짜순 정렬)
@@ -146,7 +148,7 @@ export const QualityInspectionDetail: React.FC<QualityInspectionDetailProps> = (
               </div>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              검사일시: {formatDate(inspection.inspectionDate)}
+              검사일시: {formatDate(inspection.inspectionDate || inspection.createdAt)}
             </p>
             <p className="text-xs text-muted-foreground">
               검사자: {typeof inspection.inspector === 'string' 
@@ -215,13 +217,21 @@ export const QualityInspectionDetail: React.FC<QualityInspectionDetailProps> = (
                     <dd className="space-y-2">
                       {inspection.processLines.map((line, idx) => (
                         <div key={idx} className="p-3 bg-muted rounded-md text-xs space-y-1">
-                          <p><strong>라인:</strong> {line.line}</p>
-                          {line.jigUsed && <p><strong>사용지그-1:</strong> {line.jigUsed}</p>}
-                          {line.jigUsed2 && <p><strong>사용지그-2:</strong> {line.jigUsed2}</p>}
-                          {line.dryerUsed && <p><strong>드라이기:</strong> {line.dryerUsed}</p>}
-                          {line.flameTreatment && <p><strong>화염처리:</strong> {line.flameTreatment}</p>}
-                          {line.lineSpeed && <p><strong>라인속도:</strong> {line.lineSpeed}</p>}
-                          {line.lampUsage && <p><strong>램프사용:</strong> {line.lampUsage}</p>}
+                          {line.workLine && <p><strong>작업라인:</strong> {line.workLine}</p>}
+                          {line.lineSpeed && <p><strong>라인속도:</strong> {line.lineSpeed} rpm</p>}
+                          {line.lineConditions && line.lineConditions.length > 0 && (
+                            <div>
+                              <p><strong>라인조건(I.R):</strong></p>
+                              {line.lineConditions.map((condition, condIdx) => (
+                                <p key={condIdx} className="ml-2">
+                                  {condition.type}: {condition.value}℃
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                          {line.lampUsage && line.lampUsage.length > 0 && (
+                            <p><strong>램프사용:</strong> {line.lampUsage.join(', ')}번</p>
+                          )}
                         </div>
                       ))}
                     </dd>
@@ -333,7 +343,7 @@ export const QualityInspectionDetail: React.FC<QualityInspectionDetailProps> = (
                 </div>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                검사일시: {formatDate(inspection.inspectionDate)}
+                검사일시: {formatDate(inspection.inspectionDate || inspection.createdAt)}
               </p>
               <p className="text-xs text-muted-foreground">
                 검사자: {typeof inspection.inspector === 'string' 
@@ -404,13 +414,21 @@ export const QualityInspectionDetail: React.FC<QualityInspectionDetailProps> = (
                         <dd className="space-y-2">
                           {inspection.processLines.map((line, idx) => (
                             <div key={idx} className="p-3 bg-muted rounded-md text-xs space-y-1">
-                              <p><strong>라인:</strong> {line.line}</p>
-                              {line.jigUsed && <p><strong>사용지그-1:</strong> {line.jigUsed}</p>}
-                              {line.jigUsed2 && <p><strong>사용지그-2:</strong> {line.jigUsed2}</p>}
-                              {line.dryerUsed && <p><strong>드라이기:</strong> {line.dryerUsed}</p>}
-                              {line.flameTreatment && <p><strong>화염처리:</strong> {line.flameTreatment}</p>}
-                              {line.lineSpeed && <p><strong>라인속도:</strong> {line.lineSpeed}</p>}
-                              {line.lampUsage && <p><strong>램프사용:</strong> {line.lampUsage}</p>}
+                              {line.workLine && <p><strong>작업라인:</strong> {line.workLine}</p>}
+                              {line.lineSpeed && <p><strong>라인속도:</strong> {line.lineSpeed} rpm</p>}
+                              {line.lineConditions && line.lineConditions.length > 0 && (
+                                <div>
+                                  <p><strong>라인조건(I.R):</strong></p>
+                                  {line.lineConditions.map((condition, condIdx) => (
+                                    <p key={condIdx} className="ml-2">
+                                      {condition.type}: {condition.value}℃
+                                    </p>
+                                  ))}
+                                </div>
+                              )}
+                              {line.lampUsage && line.lampUsage.length > 0 && (
+                                <p><strong>램프사용:</strong> {line.lampUsage.join(', ')}번</p>
+                              )}
                             </div>
                           ))}
                         </dd>
@@ -593,4 +611,7 @@ export const QualityInspectionDetail: React.FC<QualityInspectionDetailProps> = (
     </Dialog>
   );
 };
+
+// 메모이제이션 적용
+export const QualityInspectionDetail = memo(QualityInspectionDetailComponent);
 

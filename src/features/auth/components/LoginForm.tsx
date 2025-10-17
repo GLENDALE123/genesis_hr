@@ -51,7 +51,7 @@ export function LoginForm() {
   const [shakeConfirmPassword, setShakeConfirmPassword] = useState(false);
   
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, refreshUserProfile } = useAuthStore();
 
   // 이미 로그인된 사용자는 홈으로 리다이렉트
   useEffect(() => {
@@ -137,6 +137,11 @@ export function LoginForm() {
           position: position.trim() || undefined,
           department: department.trim() || undefined,
         });
+        
+        // 회원가입 성공 후 사용자 프로필 강제 새로고침
+        console.log('🔄 [LoginForm] 회원가입 성공 - 사용자 프로필 새로고침 시작...');
+        await refreshUserProfile();
+        
         toast.success('회원가입이 완료되었습니다!', {
           description: '환영합니다. 로그인되었습니다.',
         });
@@ -162,6 +167,11 @@ export function LoginForm() {
             email: email.trim(),
             password,
           });
+          
+          // 로그인 성공 후 사용자 프로필 강제 새로고침
+          console.log('🔄 [LoginForm] 로그인 성공 - 사용자 프로필 새로고침 시작...');
+          await refreshUserProfile();
+          
           toast.success('로그인되었습니다!');
           router.push('/dashboard');
         } catch (loginError: any) {
@@ -187,6 +197,10 @@ export function LoginForm() {
                 } catch (cleanupError) {
                   console.warn('중복 문서 정리 중 에러 (무시):', cleanupError);
                 }
+                
+                // 마이그레이션 성공 후 사용자 프로필 강제 새로고침
+                console.log('🔄 [LoginForm] 마이그레이션 성공 - 사용자 프로필 새로고침 시작...');
+                await refreshUserProfile();
                 
                 toast.success('계정이 성공적으로 연결되었습니다!', {
                   description: '로그인되었습니다.'

@@ -12,7 +12,8 @@ import { Button } from '@/shared/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { useSettings } from '../hooks/useSettings';
 import { useAuthStore } from '@/features/auth/store/authStore';
-import { User, Mail, Phone, Building2, Upload, Loader2, Edit, X } from 'lucide-react';
+import { User, Mail, Phone, Building2, Upload, Edit, X } from 'lucide-react';
+import { Spinner } from '@/shared/components/ui/spinner';
 import { toast } from 'sonner';
 import { getUserInitial } from '@/shared/utils/userUtils';
 import { formatPhoneNumber } from '@/shared/utils/phoneUtils';
@@ -212,7 +213,7 @@ export const ProfileSettings: React.FC = () => {
               >
                 {isUploadingPhoto ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Spinner className="mr-2 size-4" />
                     업로드 중...
                   </>
                 ) : (
@@ -268,7 +269,7 @@ export const ProfileSettings: React.FC = () => {
                   >
                     {isSaving ? (
                       <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        <Spinner className="mr-2 size-4" />
                         저장 중...
                       </>
                     ) : (

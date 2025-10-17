@@ -7,6 +7,7 @@ import { Badge } from '@/shared/components/ui/badge';
 import { QualityIssue } from '../types';
 import { DEPARTMENT_COLORS, STATUS_COLORS } from '../constants';
 import { cn } from '@/shared/lib/utils';
+import { Spinner } from '@/shared/components/ui/spinner';
 import { Search, Plus } from 'lucide-react';
 
 interface QualityIssueTableProps {
@@ -101,26 +102,33 @@ const QualityIssueRow = React.memo<{
       className="border-b cursor-pointer hover:bg-muted/50"
       onClick={handleClick}
     >
-      <TableCell className="px-2 py-3 whitespace-nowrap font-mono">{issue.orderNumber}</TableCell>
+      {/* 작성일 */}
+      <TableCell className="px-2 py-3 whitespace-nowrap">{formatDate(issue.createdAt)}</TableCell>
+      {/* 상태 */}
+      <TableCell className="px-2 py-3 whitespace-nowrap">
+        {statusBadge}
+      </TableCell>
+      {/* 부서 */}
       <TableCell className="px-2 py-3 whitespace-nowrap">
         <Badge variant="secondary" className={`text-xs ${getDepartmentColor(issue.department)}`}>
           {issue.department || '미지정'}
         </Badge>
       </TableCell>
+      {/* 등록키워드 */}
       <TableCell className="px-2 py-3 whitespace-nowrap">
         <Badge variant="outline" className="text-xs bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200">
           {issue.registrationKeyword || '미지정'}
         </Badge>
       </TableCell>
-      <TableCell className="px-2 py-3 whitespace-nowrap">
-        {statusBadge}
-      </TableCell>
-      <TableCell className="px-2 py-3 whitespace-nowrap font-semibold">{issue.productName}</TableCell>
-      <TableCell className="px-2 py-3 whitespace-nowrap">{issue.partName}</TableCell>
+      {/* 발주번호 */}
+      <TableCell className="px-2 py-3 whitespace-nowrap font-mono">{issue.orderNumber}</TableCell>
+      {/* 발주처 */}
       <TableCell className="px-2 py-3 whitespace-nowrap">{issue.supplier}</TableCell>
-      <TableCell className="px-2 py-3 whitespace-nowrap truncate max-w-sm">
-        {issueContent}
-      </TableCell>
+      {/* 제품명 */}
+      <TableCell className="px-2 py-3 whitespace-nowrap font-semibold">{issue.productName}</TableCell>
+      {/* 부속명 */}
+      <TableCell className="px-2 py-3 whitespace-nowrap">{issue.partName}</TableCell>
+      {/* 이미지 */}
       <TableCell className="px-2 py-3 whitespace-nowrap">
         {imageCount > 0 ? (
           <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
@@ -133,10 +141,14 @@ const QualityIssueRow = React.memo<{
           <span className="text-gray-400 dark:text-slate-500 text-xs">없음</span>
         )}
       </TableCell>
+      {/* 이슈사항 */}
+      <TableCell className="px-2 py-3 whitespace-nowrap truncate max-w-sm">
+        {issueContent}
+      </TableCell>
+      {/* 작성자 */}
       <TableCell className="px-2 py-3 whitespace-nowrap">
         {authorName}
       </TableCell>
-      <TableCell className="px-2 py-3 whitespace-nowrap">{formatDate(issue.createdAt)}</TableCell>
     </TableRow>
   );
 });
@@ -185,24 +197,27 @@ export const QualityIssueTable: React.FC<QualityIssueTableProps> = ({
           <Table className="w-full text-sm text-left text-gray-500 dark:text-slate-400 min-w-[1200px]">
                    <TableHeader className="sticky top-0 z-10 bg-background">
                      <TableRow className="border-b bg-background">
-                       <TableHead className="px-2 py-3 whitespace-nowrap bg-background rounded-tl-lg">발주번호</TableHead>
+                       <TableHead className="px-2 py-3 whitespace-nowrap bg-background rounded-tl-lg">작성일</TableHead>
+                       <TableHead className="px-2 py-3 whitespace-nowrap bg-background">상태</TableHead>
                        <TableHead className="px-2 py-3 whitespace-nowrap bg-background">부서</TableHead>
                        <TableHead className="px-2 py-3 whitespace-nowrap bg-background">등록키워드</TableHead>
-                       <TableHead className="px-2 py-3 whitespace-nowrap bg-background">상태</TableHead>
+                       <TableHead className="px-2 py-3 whitespace-nowrap bg-background">발주번호</TableHead>
+                       <TableHead className="px-2 py-3 whitespace-nowrap bg-background">발주처</TableHead>
                        <TableHead className="px-2 py-3 whitespace-nowrap bg-background">제품명</TableHead>
                        <TableHead className="px-2 py-3 whitespace-nowrap bg-background">부속명</TableHead>
-                       <TableHead className="px-2 py-3 whitespace-nowrap bg-background">발주처</TableHead>
-                       <TableHead className="px-2 py-3 whitespace-nowrap bg-background">이슈사항</TableHead>
                        <TableHead className="px-2 py-3 whitespace-nowrap bg-background">이미지</TableHead>
-                       <TableHead className="px-2 py-3 whitespace-nowrap bg-background">작성자</TableHead>
-                       <TableHead className="px-2 py-3 whitespace-nowrap bg-background rounded-tr-lg">작성일</TableHead>
+                       <TableHead className="px-2 py-3 whitespace-nowrap bg-background">이슈사항</TableHead>
+                       <TableHead className="px-2 py-3 whitespace-nowrap bg-background rounded-tr-lg">작성자</TableHead>
                      </TableRow>
                    </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={11} className="px-2 py-8 text-center text-muted-foreground">
-                    로딩 중...
+                  <TableCell colSpan={11} className="px-2 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Spinner className="size-6" />
+                      <span className="text-sm text-muted-foreground">품질이슈 데이터 로딩 중...</span>
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : issues.length === 0 ? (

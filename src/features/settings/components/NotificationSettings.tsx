@@ -31,6 +31,7 @@ import {
   CalendarDays,
   FileText,
 } from 'lucide-react';
+import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
 import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
 
@@ -218,9 +219,12 @@ export const NotificationSettings: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-muted-foreground">설정을 불러오는 중...</div>
-      </div>
+      <LoadingSpinner 
+        size="lg" 
+        label="알림 설정을 불러오는 중..." 
+        variant="card"
+        className="h-64"
+      />
     );
   }
 

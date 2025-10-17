@@ -120,12 +120,14 @@ export const INSPECTION_RESULTS = [
 export const INSPECTION_TYPE_LABELS = {
   'incoming': '수입',
   'in-process': '공정',
+  'inProcess': '공정', // HS-Jig 호환성
   'outgoing': '출하'
 } as const;
 
 export const INSPECTION_TYPE_COLORS = {
   'incoming': 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-200',
   'in-process': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200',
+  'inProcess': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200', // HS-Jig 호환성
   'outgoing': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200'
 } as const;
 
@@ -135,6 +137,7 @@ export const INSPECTION_RESULT_COLORS = {
   '한도대기': 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200',
   '한도승인': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200',
   '반출': 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200',
+  '등록': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200',
   '미등록': 'bg-gray-100 text-gray-600 dark:bg-gray-900/30 dark:text-gray-400'
 } as const;
 

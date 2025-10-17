@@ -54,33 +54,35 @@ export interface QualityIssueCreateData extends Omit<QualityIssueFormData, 'issu
 
 // === 품질검사 관련 타입 ===
 
-export type InspectionType = 'incoming' | 'in-process' | 'outgoing';
+export type InspectionType = 'incoming' | 'in-process' | 'inProcess' | 'outgoing';
 export type InspectionResult = '합격' | '불합격' | '한도대기' | '한도승인' | '반출';
 export type WorkerResult = '합격' | '불합격';
 export type DefectReason = '선별미흡' | '지문자국' | '취급불량' | '조건불량';
 
-// 작업자별 검사 데이터
+// 작업자별 검사 데이터 (HS-Jig 구조)
 export interface WorkerInspectionData {
   name: string;
-  result: WorkerResult;
-  defectReasons?: DefectReason[];
+  totalInspected: number;
+  defectQuantity: number;
+  result: '합격' | '불합격';
+  defectReasons: string[];
+  directInputResult: string;
+  action: string;
+  decisionMaker: string;
 }
 
-// 공정 라인 데이터
+// 공정 라인 데이터 (HS-Jig 구조)
 export interface ProcessLineData {
-  line: string;
-  jigUsed?: string;
-  jigUsed2?: string;
-  dryerUsed?: string;
-  flameTreatment?: string;
+  workLine?: string;
   lineSpeed?: string;
-  lampUsage?: string;
+  lineConditions?: { type: '하도' | '상도'; value: string }[];
+  lampUsage?: number[];
 }
 
-// 신뢰성 테스트 결과
+// 신뢰성 테스트 결과 (HS-Jig 구조)
 export interface ReliabilityReview {
-  method: '투명테이프' | '616테이프' | 'AP방식테스트';
-  result: '양호' | '부분박리' | '박리';
+  method: '투명테이프' | '616테이프' | 'AP방식테스트' | '';
+  result: '양호' | '부분박리' | '박리' | '';
   action?: string;
   decisionMaker?: string;
 }
@@ -100,7 +102,7 @@ export interface QualityInspection {
   supplier: string;
   productName: string;
   partName: string;
-  orderQuantity?: number;
+  orderQuantity?: number | string; // HS-Jig 호환 (string 지원)
   specification?: string;
   postProcess?: string;
   injectionCompany?: string;
@@ -120,7 +122,7 @@ export interface QualityInspection {
   
   // 검사자 정보
   inspector: string | { uid: string; displayName: string; email: string };
-  inspectionDate: string;
+  inspectionDate?: string; // Optional - createdAt으로 대체 가능
   
   // 공정검사 전용
   workLine?: string;
@@ -128,6 +130,12 @@ export interface QualityInspection {
   preInspectionHistory?: string;
   inProcessInspectionHistory?: string;
   processLines?: ProcessLineData[];
+  jigUsed1?: string;
+  jigUsed2?: string;
+  internalJigLower?: string;
+  internalJigUpper?: string;
+  dryerUsed?: '사용' | '미사용' | '';
+  flameTreatment?: '사용' | '미사용' | '';
   
   // 출하검사 전용
   workers?: WorkerInspectionData[];
@@ -136,6 +144,8 @@ export interface QualityInspection {
   colorCheckResult?: TestResultDetail | string;
   injectionPackaging?: string;
   postProcessPackaging?: string;
+  reinspectionKeyword?: string;
+  reinspectionContent?: string;
   
   // 수입검사 전용
   appearanceHistory?: string;
@@ -143,17 +153,16 @@ export interface QualityInspection {
   finalConsultationDept?: string;
   finalConsultationName?: string;
   finalConsultationRank?: string;
-  jigUsed?: string;
-  jigUsed2?: string;
-  internalJigLower?: string;
-  internalJigUpper?: string;
-  reinspectionKeyword?: string;
-  reinspectionContent?: string;
   
   // 메타데이터
   createdAt: string;
   updatedAt?: string;
   sequentialId?: number; // Q1, Q2, Q3...
+  
+  // 품질이슈 관련 필드
+  department?: string;
+  registrationKeyword?: string;
+  issues?: string[];
 }
 
 // 발주번호별 그룹화된 검사 데이터
@@ -166,7 +175,7 @@ export interface GroupedInspectionData {
     supplier: string;
     productName: string;
     partName: string;
-    orderQuantity?: number;
+    orderQuantity?: number | string; // HS-Jig 호환
     specification?: string;
     postProcess?: string;
     injectionMaterial?: string;

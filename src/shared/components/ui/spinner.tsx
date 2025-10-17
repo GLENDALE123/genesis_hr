@@ -1,56 +1,63 @@
-import * as React from "react"
+import { Loader2Icon, LoaderIcon } from "lucide-react"
 import { cva, type VariantProps } from "class-variance-authority"
-import { cn } from "@/lib/utils"
+import { cn } from "@/shared/lib/utils"
 
 const spinnerVariants = cva(
-  "animate-spin rounded-full border-2 border-current border-t-transparent",
+  "animate-spin",
   {
     variants: {
       size: {
-        sm: "h-4 w-4",
-        default: "h-6 w-6",
-        lg: "h-8 w-8",
-        xl: "h-12 w-12",
+        sm: "size-3",
+        default: "size-4", 
+        lg: "size-6",
+        xl: "size-8",
+        "2xl": "size-12",
       },
       variant: {
         default: "text-primary",
         secondary: "text-secondary-foreground",
         muted: "text-muted-foreground",
         destructive: "text-destructive",
+        success: "text-green-500",
+        warning: "text-yellow-500",
       },
+      icon: {
+        loader2: "Loader2Icon",
+        loader: "LoaderIcon",
+      }
     },
     defaultVariants: {
       size: "default",
       variant: "default",
+      icon: "loader2",
     },
   }
 )
 
 export interface SpinnerProps
-  extends React.HTMLAttributes<HTMLDivElement>,
+  extends React.ComponentProps<"svg">,
     VariantProps<typeof spinnerVariants> {
   label?: string
 }
 
-const Spinner = React.forwardRef<HTMLDivElement, SpinnerProps>(
-  ({ className, size, variant, label, ...props }, ref) => {
-    return (
-      <div
-        ref={ref}
-        className={cn("flex items-center justify-center", className)}
-        {...props}
-      >
-        <div
-          className={spinnerVariants({ size, variant })}
-          role="status"
-          aria-label={label || "Loading"}
-        >
-          <span className="sr-only">{label || "Loading"}</span>
-        </div>
-      </div>
-    )
-  }
-)
-Spinner.displayName = "Spinner"
+function Spinner({ 
+  className, 
+  size, 
+  variant, 
+  icon = "loader2",
+  label,
+  ...props 
+}: SpinnerProps) {
+  const IconComponent = icon === "loader" ? LoaderIcon : Loader2Icon
+  
+  return (
+    <IconComponent
+      role="status"
+      aria-label={label || "Loading"}
+      className={cn(spinnerVariants({ size, variant }), className)}
+      {...props}
+    />
+  )
+}
 
 export { Spinner, spinnerVariants }

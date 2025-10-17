@@ -21,6 +21,7 @@ interface AuthActions {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   initializeAuth: () => void;
+  refreshUserProfile: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState & AuthActions>()(
@@ -87,23 +88,41 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             // 타임아웃 해제
             clearTimeout(timeoutId);
             
+            console.log('🔄 [AuthStore] 인증 상태 변경:', {
+              hasUser: !!user,
+              userEmail: user?.email || 'none',
+              userUid: user?.uid || 'none'
+            });
+            
             set({ user, isLoading: false, error: null });
             
             if (user) {
               // 사용자 프로필 정보도 함께 로드
               try {
+                console.log('📋 [AuthStore] 사용자 프로필 로딩 시작...');
+                
+                // 약간의 지연을 두어 Firebase Auth 상태가 완전히 안정화되도록 함
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
                 const userProfile = await AuthService.getCurrentUserProfile();
+                console.log('✅ [AuthStore] 사용자 프로필 로딩 완료:', {
+                  hasProfile: !!userProfile,
+                  profileName: userProfile?.name || 'none',
+                  profileRole: userProfile?.role || 'none'
+                });
+                
                 set({ userProfile });
               } catch (error) {
                 // 권한 에러는 조용히 처리 (로그인 전 상태)
                 const errorMessage = error instanceof Error ? error.message : '';
                 if (!errorMessage.includes('permission') && !errorMessage.includes('insufficient')) {
-                  console.error('사용자 프로필 로드 실패:', error);
+                  console.error('❌ [AuthStore] 사용자 프로필 로드 실패:', error);
                 }
                 set({ userProfile: null });
               }
             } else {
               // ✅ 로그아웃 시 권한 캐시 초기화
+              console.log('🚪 [AuthStore] 사용자 로그아웃 - 상태 초기화');
               set({ userProfile: null });
               usePermissionsStore.getState().clearCache();
             }
@@ -114,6 +133,31 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             clearTimeout(timeoutId);
             unsubscribe();
           };
+        },
+        
+        refreshUserProfile: async () => {
+          const { user } = get();
+          if (!user) {
+            console.warn('⚠️ [AuthStore] 사용자가 로그인되지 않음 - 프로필 새로고침 불가');
+            return;
+          }
+          
+          try {
+            console.log('🔄 [AuthStore] 사용자 프로필 강제 새로고침 시작...');
+            set({ isLoading: true });
+            
+            const userProfile = await AuthService.getCurrentUserProfile();
+            console.log('✅ [AuthStore] 사용자 프로필 새로고침 완료:', {
+              hasProfile: !!userProfile,
+              profileName: userProfile?.name || 'none',
+              profileRole: userProfile?.role || 'none'
+            });
+            
+            set({ userProfile, isLoading: false });
+          } catch (error) {
+            console.error('❌ [AuthStore] 사용자 프로필 새로고침 실패:', error);
+            set({ isLoading: false });
+          }
         },
       }),
       {

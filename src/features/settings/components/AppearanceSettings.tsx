@@ -11,6 +11,7 @@ import { RadioGroup, RadioGroupItem } from '@/shared/components/ui/radio-group';
 import { useSettings } from '../hooks/useSettings';
 import { useTheme } from 'next-themes';
 import { Sun, Moon, Monitor, Type } from 'lucide-react';
+import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
 import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
 
@@ -40,9 +41,12 @@ export const AppearanceSettings: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-muted-foreground">설정을 불러오는 중...</div>
-      </div>
+      <LoadingSpinner 
+        size="lg" 
+        label="화면 설정을 불러오는 중..." 
+        variant="card"
+        className="h-64"
+      />
     );
   }
 
@@ -155,8 +159,10 @@ export const AppearanceSettings: React.FC = () => {
                     : "border-transparent hover:bg-accent"
                 )}
               >
-                <p className="font-medium text-sm">작게</p>
-                <p className="text-xs text-muted-foreground">더 많은 정보를 한 화면에</p>
+                <div className="space-y-1">
+                  <p className="font-medium text-sm">작게</p>
+                  <p className="text-xs text-muted-foreground">더 많은 정보를 한 화면에</p>
+                </div>
               </Label>
             </div>
 
@@ -172,8 +178,10 @@ export const AppearanceSettings: React.FC = () => {
                     : "border-transparent hover:bg-accent"
                 )}
               >
-                <p className="font-medium text-base">보통</p>
-                <p className="text-sm text-muted-foreground">기본 크기 (권장)</p>
+                <div className="space-y-1">
+                  <p className="font-medium text-base">보통</p>
+                  <p className="text-sm text-muted-foreground">기본 크기 (권장)</p>
+                </div>
               </Label>
             </div>
 
@@ -189,15 +197,17 @@ export const AppearanceSettings: React.FC = () => {
                     : "border-transparent hover:bg-accent"
                 )}
               >
-                <p className="font-medium text-base">크게</p>
-                <p className="text-base text-muted-foreground">더 편한 가독성</p>
+                <div className="space-y-1">
+                  <p className="font-medium text-lg">크게</p>
+                  <p className="text-base text-muted-foreground">더 편한 가독성</p>
+                </div>
               </Label>
             </div>
           </RadioGroup>
 
           <div className="mt-4 p-3 bg-muted rounded-lg">
             <p className="text-sm text-muted-foreground">
-              💡 폰트 크기는 아직 구현되지 않았습니다. 향후 업데이트에서 제공될 예정입니다.
+              💡 폰트 크기 변경이 즉시 적용됩니다. 현재 설정: <strong>{settings.appearance.fontSize}</strong>
             </p>
           </div>
         </CardContent>
