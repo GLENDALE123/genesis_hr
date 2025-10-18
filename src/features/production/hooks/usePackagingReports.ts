@@ -27,14 +27,11 @@ export const usePackagingReports = () => {
     isLoading: loading,
     isFetching,
     error,
-    getCachedReports,
-    setReports: setCachedReports,
     setLoading,
     setFetching,
     setError,
     updateReport: updateCachedReport,
-    deleteReport: deleteCachedReport,
-    addReport: addCachedReport
+    deleteReport: deleteCachedReport
   } = usePackagingReportsStore();
 
   // 클라이언트 사이드에서만 실행되도록 보장
@@ -157,7 +154,7 @@ export const usePackagingReports = () => {
     try {
       setLoading(true);
       setError(null);
-      const filteredReports = await PackagingReportsService.getPackagingReportsByLine(
+      await PackagingReportsService.getPackagingReportsByLine(
         productionLine
       );
       
@@ -233,7 +230,7 @@ export const usePackagingReports = () => {
       setError(err as Error);
       throw err;
     }
-  }, [user, refetch]);
+  }, [user, refetch, setError]);
 
   return {
     reports,

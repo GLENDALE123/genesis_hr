@@ -248,7 +248,7 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
       await deleteSchedule(itemToDelete.id);
       toast.success('일정이 삭제되었습니다.');
       setItemToDelete(null);
-    } catch (err) {
+    } catch {
       toast.error('일정 삭제에 실패했습니다.');
     }
   };
@@ -261,7 +261,7 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
       await deleteSchedulesByDate(dateToDelete);
       toast.success(`${dateToDelete} 날짜의 모든 일정이 삭제되었습니다.`);
       setDateToDelete(null);
-    } catch (err) {
+    } catch {
       toast.error('일정 삭제에 실패했습니다.');
     }
   };
@@ -409,7 +409,7 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
             <LoadingSpinner 
               size="lg" 
               label="생산 일정 데이터 로딩 중..." 
-              variant="card"
+              variant="default"
               className="h-full"
             />
           ) : filteredSchedules.length === 0 ? (
@@ -528,7 +528,7 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
           <AlertDialogHeader>
             <AlertDialogTitle>일정 삭제 확인</AlertDialogTitle>
             <AlertDialogDescription>
-              '{itemToDelete?.planDate}'의 '{itemToDelete?.productName}' 일정을 정말 삭제하시겠습니까?
+              &apos;{itemToDelete?.planDate}&apos;의 &apos;{itemToDelete?.productName}&apos; 일정을 정말 삭제하시겠습니까?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -544,7 +544,7 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
           <AlertDialogHeader>
             <AlertDialogTitle>일괄 삭제 확인</AlertDialogTitle>
             <AlertDialogDescription>
-              '{dateToDelete}'의 모든 생산 일정을 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+              &apos;{dateToDelete}&apos;의 모든 생산 일정을 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

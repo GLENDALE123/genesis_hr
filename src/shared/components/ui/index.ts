@@ -26,7 +26,6 @@ export { Progress } from './progress';
 export { RadioGroup, RadioGroupItem } from './radio-group';
 export { ResizableHandle, ResizablePanel, ResizablePanelGroup } from './resizable';
 export { ScrollArea, ScrollBar } from './scroll-area';
-export { CustomScroll, AdvancedScroll, ScrollContainer } from './custom-scroll';
 export { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select';
 export { Separator } from './separator';
 export { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from './sheet';

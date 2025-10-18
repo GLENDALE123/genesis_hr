@@ -125,7 +125,7 @@ export const usePagePermissions = (pageId: PageIdentifier) => {
       if (!currentPermissions || !currentPermissions.customPermissions) return false;
 
       // 커스텀 권한 객체에서 값 확인
-      return (currentPermissions.customPermissions as any)[customPermissionKey] === true;
+      return (currentPermissions.customPermissions as Record<string, boolean>)[customPermissionKey] === true;
     },
     [isAdmin, isManager, getPagePermission, pageId]
   );
@@ -137,7 +137,8 @@ export const usePagePermissions = (pageId: PageIdentifier) => {
     canUpdate: hasPermission('update'),
     canDelete: hasPermission('delete'),
 
-    // 커스텀 권한 체크 함수
+    // 권한 체크 함수들
+    hasPermission,
     hasCustomPermission,
 
     // 로딩 상태
@@ -150,4 +151,24 @@ export const usePagePermissions = (pageId: PageIdentifier) => {
     isAdmin,
     isManager,
   };
+};
+
+/**
+ * 단일 권한 체크 훅 (CRUD 권한)
+ * @param pageId 페이지 식별자
+ * @param permission 체크할 권한
+ */
+export const useHasPermission = (pageId: PageIdentifier, permission: CrudPermission) => {
+  const { hasPermission } = usePagePermissions(pageId);
+  return hasPermission(permission);
+};
+
+/**
+ * 커스텀 권한 체크 훅
+ * @param pageId 페이지 식별자
+ * @param customPermissionKey 커스텀 권한 키
+ */
+export const useHasCustomPermission = (pageId: PageIdentifier, customPermissionKey: string) => {
+  const { hasCustomPermission } = usePagePermissions(pageId);
+  return hasCustomPermission(customPermissionKey);
 };

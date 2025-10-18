@@ -125,7 +125,15 @@ export const createSchedules = async (
     // 알림 전송 (사용자 정보가 제공된 경우에만)
     if (user) {
       try {
-        await sendBulkScheduleNotification(schedules, user);
+        // ProductionSchedule을 알림 함수가 기대하는 형태로 변환
+        const notificationSchedules = schedules.map(schedule => ({
+          planDate: schedule.planDate,
+          productionLine: schedule.productionLine || schedule.line || '',
+          productName: schedule.productName,
+          partName: schedule.partName,
+          planQuantity: schedule.orderQuantity
+        }));
+        await sendBulkScheduleNotification(notificationSchedules, user);
       } catch (error) {
         console.error('❌ 생산일정 알림 전송 실패:', error);
         // 알림 실패는 메인 로직에 영향 없음
@@ -187,10 +195,10 @@ export const deleteSchedulesByDate = async (
           'deleted',
           {
             planDate: firstSchedule.planDate,
-            productionLine: firstSchedule.productionLine,
+            productionLine: firstSchedule.productionLine || firstSchedule.line || '',
             productName: firstSchedule.productName,
             partName: firstSchedule.partName,
-            planQuantity: firstSchedule.planQuantity
+            planQuantity: firstSchedule.orderQuantity
           },
           user
         );

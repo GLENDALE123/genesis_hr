@@ -17,16 +17,16 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import { Textarea } from '@/shared/components/ui/textarea';
-import { X, Plus, Minus } from 'lucide-react';
+import { Plus, Minus } from 'lucide-react';
 import { UploadingImageGrid } from '@/shared/components/common/UploadingImageGrid';
 import { useSampleForm } from '../hooks';
 import { COATING_METHODS, POST_PROCESSING_OPTIONS } from '../constants';
-import { SampleRequest } from '../types';
+import { SampleRequest, SampleFormData } from '../types';
 
 interface SampleRequestFormProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: any, images: File[]) => Promise<void>;
+  onSubmit: (data: SampleFormData, images: File[]) => Promise<void>;
   existingRequest?: SampleRequest | null;
 }
 

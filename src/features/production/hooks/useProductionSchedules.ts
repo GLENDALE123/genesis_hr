@@ -160,11 +160,16 @@ export const useProductionSchedules = () => {
 
   // 일정 생성
   const createSchedules = useCallback(async (
-    newSchedules: Omit<ProductionSchedule, 'id' | 'createdAt' | 'updatedAt'>[]
+    newSchedules: Omit<ProductionSchedule, 'id' | 'createdAt' | 'updatedAt'>[],
+    user?: {
+      uid: string;
+      displayName: string;
+      photoURL?: string;
+    }
   ) => {
     try {
       setLoading(true);
-      const createdIds = await ProductionScheduleService.createSchedules(newSchedules);
+      const createdIds = await ProductionScheduleService.createSchedules(newSchedules, user);
       await refetch();
       return createdIds;
     } catch (err) {

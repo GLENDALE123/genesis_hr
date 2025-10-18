@@ -100,7 +100,14 @@ export const usePermissionsStore = create<PermissionsState & PermissionsActions>
         set({
           cache: {
             userId,
-            permissions: {},
+            permissions: {
+              dashboard: null,
+              'production-daily-report': null,
+              'production-shortage-management': null,
+              employees: null,
+              payroll: null,
+              settings: null,
+            },
             lastFetchedAt: new Date(),
           },
         });

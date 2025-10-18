@@ -32,7 +32,7 @@ interface FCMProviderProps {
 
 // 최근 표시한 알림 ID 저장 (ElectronNotificationProvider와 공유)
 if (typeof window !== 'undefined') {
-  (window as any).__recentNotificationIds = (window as any).__recentNotificationIds || new Set<string>();
+  (window as unknown as Record<string, unknown>).__recentNotificationIds = (window as unknown as Record<string, unknown>).__recentNotificationIds || new Set<string>();
 }
 
 export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
@@ -302,7 +302,7 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
 
 const getRecentNotificationIds = () => {
   if (typeof window !== 'undefined') {
-    return (window as any).__recentNotificationIds as Set<string>;
+    return (window as unknown as Record<string, unknown>).__recentNotificationIds as Set<string>;
   }
   return new Set<string>();
 };

@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Button } from '@/shared/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/shared/components/ui/alert-dialog';
-import { Plus } from 'lucide-react';
+// import { Plus } from 'lucide-react';
 import { 
   QualityIssueForm,
   QualityIssueStatsCards,
@@ -14,12 +14,13 @@ import {
   useQualityIssueForm,
   QualityIssue
 } from '@/features/quality';
+import { IssueItem } from '@/features/quality/types';
 import { addIssueItem, deleteQualityIssue } from '@/features/quality/services/qualityIssueService';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/features/auth/store/authStore';
 
 export default function QualityIssuesPage() {
-  const { issues, isLoading, searchTerm, setSearchTerm, statusFilter, setStatusFilter, stats } = useQualityIssues();
+  const { issues, isLoading, searchTerm, setSearchTerm, setStatusFilter, stats } = useQualityIssues();
   const { isFormModalOpen, isSaving, handleSaveIssue, handleCancelForm, openFormModal } = useQualityIssueForm();
   const { user, userProfile } = useAuthStore();
   
@@ -79,8 +80,8 @@ export default function QualityIssuesPage() {
         
         setSelectedIssue({
           ...selectedIssue,
-          issues: [...selectedIssue.issues, newIssueObject] as any, // 타입 호환성을 위해 any 사용
-          status: (newStatus || selectedIssue.status) as any // 타입 호환성을 위해 any 사용
+          issues: [...selectedIssue.issues, newIssueObject] as IssueItem[],
+          status: (newStatus || selectedIssue.status) as QualityIssue['status']
         });
       }
       
@@ -182,8 +183,6 @@ export default function QualityIssuesPage() {
         >
           <QualityIssueForm
             onSave={handleSaveIssue}
-            onCancel={handleCancelForm}
-            isSaving={isSaving}
           />
         </DialogContent>
       </Dialog>
@@ -207,7 +206,7 @@ export default function QualityIssuesPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>품질이슈 삭제 확인</AlertDialogTitle>
             <AlertDialogDescription>
-              '{issueToDelete?.productName}' 품질이슈를 정말 삭제하시겠습니까? 
+              &apos;{issueToDelete?.productName}&apos; 품질이슈를 정말 삭제하시겠습니까? 
               <br />
               이 작업은 되돌릴 수 없습니다.
             </AlertDialogDescription>

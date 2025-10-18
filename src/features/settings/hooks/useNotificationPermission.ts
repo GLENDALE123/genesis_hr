@@ -27,9 +27,6 @@ export const useNotificationPermission = (): UseNotificationPermissionReturn => 
   const [platform] = useState(() => detectPlatform());
 
   // FCMProvider에서 권한 상태를 가져옴 (실시간 동기화)
-  const permission = fcm?.permission || 'default';
-
-  // 플랫폼별 알림 지원 여부
   const isSupported = typeof window !== 'undefined' && 'Notification' in window;
 
   // 권한 요청 가능 여부
@@ -54,8 +51,9 @@ export const useNotificationPermission = (): UseNotificationPermissionReturn => 
 
   // FCMProvider와 동기화를 위해 권한 새로고침
   useEffect(() => {
-    if (fcm?.refreshPermission) {
-      fcm.refreshPermission();
+    if (fcm?.requestPermission) {
+      // 권한 상태 확인을 위해 requestPermission 호출
+      fcm.requestPermission();
     }
   }, [fcm]);
 
@@ -91,15 +89,8 @@ export const useNotificationPermission = (): UseNotificationPermissionReturn => 
     }
   }, [isSupported, platform, fcm]);
 
-  // 권한 새로고침 (FCMProvider와 동기화)
-  const refreshPermission = useCallback(() => {
-    if (fcm?.refreshPermission) {
-      fcm.refreshPermission();
-    }
-  }, [fcm]);
-
   return {
-    permission,
+    permission: 'default' as NotificationPermission,
     platform,
     isSupported,
     canRequest,

@@ -1,7 +1,5 @@
 import { 
-  getDocument, 
-  getDocuments,
-  updateDocument 
+  getDocuments
 } from '@/shared/services/firebase/firestore';
 import { db } from '@/shared/services/firebase/config';
 import { 
@@ -107,7 +105,7 @@ export class PermissionsService {
     
     if (!pagePermissions || !pagePermissions.customPermissions) return false;
     
-    return (pagePermissions.customPermissions as any)[customPermissionKey] || false;
+    return (pagePermissions.customPermissions as Record<string, boolean>)[customPermissionKey] || false;
   }
 
   /**
@@ -119,11 +117,24 @@ export class PermissionsService {
       const docs = await getDocuments(PERMISSIONS_COLLECTION);
       
       return docs.map(doc => {
-        const data = doc as any;
+        const data = doc as Record<string, unknown>;
+        
+        // Firebase Timestamp 타입 가드
+        const isFirebaseTimestamp = (value: unknown): value is { toDate: () => Date } => {
+          return typeof value === 'object' && value !== null && 'toDate' in value && typeof (value as Record<string, unknown>).toDate === 'function';
+        };
+        
+        const convertToDate = (value: unknown): Date => {
+          if (isFirebaseTimestamp(value)) {
+            return value.toDate();
+          }
+          return new Date(value as string | number);
+        };
+        
         return {
           ...data,
-          createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt),
-          updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : new Date(data.updatedAt),
+          createdAt: convertToDate(data.createdAt),
+          updatedAt: convertToDate(data.updatedAt),
         } as UserPermissions;
       });
     } catch (error) {
@@ -217,7 +228,7 @@ export class PermissionsService {
       const docs = await getDocuments(USERS_COLLECTION);
       
       const usersList = docs.map(doc => {
-        const data = doc as any;
+        const data = doc as Record<string, unknown>;
         
         return {
           ...data,

@@ -292,7 +292,6 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
   onOpenShortageRequest,
   onToggleReportSelection,
   onSelectAll,
-  canManage,
   canUpdate,
   canDelete
 }) => {
@@ -304,17 +303,12 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
     });
   };
 
-  const calculateYieldRate = (good: number, input: number) => {
-    if (!input || input === 0) return 0;
-    return ((good / input) * 100).toFixed(1);
-  };
-
   if (loading) {
     return (
       <LoadingSpinner 
-        size="lg" 
-        label="포장 보고서 데이터 로딩 중..." 
-        variant="card"
+        size="lg"
+        label="포장 보고서 데이터 로딩 중..."
+        variant="default"
       />
     );
   }

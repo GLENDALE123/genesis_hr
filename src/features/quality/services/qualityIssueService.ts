@@ -9,9 +9,6 @@ import {
   orderBy,
   limit,
   onSnapshot,
-  Timestamp,
-  serverTimestamp,
-  DocumentData,
   arrayUnion
 } from 'firebase/firestore';
 import { db } from '@/shared/services/firebase/config';
@@ -278,7 +275,7 @@ export const addIssueItem = async (
       status: newStatus || '해결완료'
     };
 
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       issues: arrayUnion(newIssueObject)
     };
 

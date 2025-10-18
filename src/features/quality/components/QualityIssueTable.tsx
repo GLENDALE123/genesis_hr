@@ -72,7 +72,7 @@ const QualityIssueRow = React.memo<{
   // 상태 배지 렌더링 최적화
   const statusBadge = useMemo(() => {
     if (lastIssue && typeof lastIssue === 'object' && lastIssue.status) {
-      return getStatusBadge(lastIssue.status as any);
+      return getStatusBadge(lastIssue.status as 'open' | 'in-progress' | 'resolved' | 'closed' | '미해결' | '진행중' | '해결완료');
     }
     return getStatusBadge(issue.status || '해결완료');
   }, [lastIssue, issue.status]);

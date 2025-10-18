@@ -38,7 +38,7 @@ export const LoadingSpinner = ({
     className
   )
 
-  const spinnerContent = (
+  return (
     <div className={containerClasses}>
       <Spinner 
         size={size} 
@@ -56,8 +56,6 @@ export const LoadingSpinner = ({
       )}
     </div>
   )
-
-  return spinnerContent
 }
 
 export default LoadingSpinner

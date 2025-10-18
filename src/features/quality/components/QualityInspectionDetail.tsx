@@ -16,6 +16,7 @@ interface QualityInspectionDetailProps {
   group: GroupedInspectionData | null;
   isOpen: boolean;
   onClose: () => void;
+  initialTab?: 'incoming' | 'inProcess' | 'outgoing';
 }
 
 /**
@@ -27,9 +28,10 @@ interface QualityInspectionDetailProps {
 const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> = ({
   group,
   isOpen,
-  onClose
+  onClose,
+  initialTab
 }) => {
-  const [activeTab, setActiveTab] = useState<'incoming' | 'in-process' | 'outgoing'>('incoming');
+  const [activeTab, setActiveTab] = useState<'incoming' | 'inProcess' | 'outgoing'>(initialTab || 'incoming');
   const [collapsedInspections, setCollapsedInspections] = useState<{
     [key: string]: boolean;
   }>({});
@@ -45,15 +47,6 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
     });
   };
 
-  // 날짜 포맷팅 (간단한 버전)
-  const formatDateSimple = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    });
-  };
-
   // 개별 검사 토글 함수
   const toggleInspection = (inspectionId: string) => {
     setCollapsedInspections(prev => ({
@@ -62,9 +55,34 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
     }));
   };
 
+
+  // 검사 데이터를 최신순으로 정렬하는 함수 (최신이 먼저)
+  const sortInspectionsByDate = (inspections: QualityInspection[]) => {
+    return [...inspections].sort((a, b) => {
+      const dateA = a.inspectionDate || a.createdAt;
+      const dateB = b.inspectionDate || b.createdAt;
+      return new Date(dateB).getTime() - new Date(dateA).getTime();
+    });
+  };
+
+  // 탭별 검사 데이터 (날짜순 정렬)
+  const tabData = useMemo(() => {
+    if (!group) return { incoming: [], inProcess: [], outgoing: [] };
+    return {
+      incoming: sortInspectionsByDate(group.incoming),
+      inProcess: sortInspectionsByDate(group.inProcess),
+      outgoing: sortInspectionsByDate(group.outgoing)
+    };
+  }, [group]);
+
   // 모달이 열릴 때마다 최신 검사 상태 초기화
   useEffect(() => {
-    if (isOpen && group) {
+    if (isOpen && group && tabData) {
+      // 초기 탭 설정
+      if (initialTab) {
+        setActiveTab(initialTab);
+      }
+      
       // 모든 검사 타입의 첫 번째 검사를 펼쳐진 상태로 설정
       const firstInspections: string[] = [];
       
@@ -89,29 +107,10 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
         ...newState
       }));
     }
-  }, [isOpen, group]);
-
-  // 검사 데이터를 최신순으로 정렬하는 함수 (최신이 먼저)
-  const sortInspectionsByDate = (inspections: QualityInspection[]) => {
-    return [...inspections].sort((a, b) => {
-      const dateA = a.inspectionDate || a.createdAt;
-      const dateB = b.inspectionDate || b.createdAt;
-      return new Date(dateB).getTime() - new Date(dateA).getTime();
-    });
-  };
-
-  // 탭별 검사 데이터 (날짜순 정렬)
-  const tabData = useMemo(() => {
-    if (!group) return { incoming: [], inProcess: [], outgoing: [] };
-    return {
-      incoming: sortInspectionsByDate(group.incoming),
-      inProcess: sortInspectionsByDate(group.inProcess),
-      outgoing: sortInspectionsByDate(group.outgoing)
-    };
-  }, [group]);
+  }, [isOpen, group, tabData, initialTab]);
 
   // 필드 렌더링 헬퍼
-  const renderField = (label: string, value: any) => {
+  const renderField = (label: string, value: unknown) => {
     if (!value || (Array.isArray(value) && value.length === 0)) return null;
     
     const displayValue = Array.isArray(value) ? value.join(', ') : value;
@@ -120,7 +119,7 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
       <div className="space-y-1">
         <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
         <dd className="text-sm text-foreground whitespace-pre-wrap break-words">
-          {displayValue}
+          {String(displayValue || '')}
         </dd>
       </div>
     );
@@ -143,7 +142,7 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
                 </Badge>
                 <Badge className={cn(INSPECTION_TYPE_COLORS[inspection.inspectionType])}>
                   {inspection.inspectionType === 'incoming' ? '수입' :
-                   inspection.inspectionType === 'in-process' ? '공정' : '출하'}
+                   inspection.inspectionType === 'inProcess' ? '공정' : '출하'}
                 </Badge>
               </div>
             </div>
@@ -153,7 +152,7 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
             <p className="text-xs text-muted-foreground">
               검사자: {typeof inspection.inspector === 'string' 
                 ? inspection.inspector 
-                : (inspection.inspector as any)?.displayName || '알 수 없음'}
+                : (inspection.inspector as { displayName?: string })?.displayName || '알 수 없음'}
             </p>
           </CardHeader>
         <CardContent>
@@ -203,7 +202,7 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
             )}
             
             {/* 공정검사 전용 필드 */}
-            {inspection.inspectionType === 'in-process' && (
+            {inspection.inspectionType === 'inProcess' && (
               <>
                 {renderField('작업라인', inspection.workLine)}
                 {renderField('작업자 인원수', inspection.workerCount ? `${inspection.workerCount}명` : undefined)}
@@ -338,7 +337,7 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
                   </Badge>
                   <Badge className={cn(INSPECTION_TYPE_COLORS[inspection.inspectionType])}>
                     {inspection.inspectionType === 'incoming' ? '수입' :
-                     inspection.inspectionType === 'in-process' ? '공정' : '출하'}
+                     inspection.inspectionType === 'inProcess' ? '공정' : '출하'}
                   </Badge>
                 </div>
               </div>
@@ -348,7 +347,7 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
               <p className="text-xs text-muted-foreground">
                 검사자: {typeof inspection.inspector === 'string' 
                   ? inspection.inspector 
-                  : (inspection.inspector as any)?.displayName || '알 수 없음'}
+                  : (inspection.inspector as { displayName?: string })?.displayName || '알 수 없음'}
               </p>
             </CardHeader>
           </CollapsibleTrigger>
@@ -400,7 +399,7 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
                 )}
                 
                 {/* 공정검사 전용 필드 */}
-                {inspection.inspectionType === 'in-process' && (
+                {inspection.inspectionType === 'inProcess' && (
                   <>
                     {renderField('작업라인', inspection.workLine)}
                     {renderField('작업자 인원수', inspection.workerCount ? `${inspection.workerCount}명` : undefined)}
@@ -529,7 +528,7 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
             </DialogDescription>
             
             {/* 탭 네비게이션 */}
-            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="mt-4">
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'incoming' | 'inProcess' | 'outgoing')} className="mt-4">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="incoming" className="relative">
                   수입검사
@@ -539,7 +538,7 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
                     </Badge>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="in-process" className="relative">
+                <TabsTrigger value="inProcess" className="relative">
                   공정검사
                   {tabData.inProcess.length > 0 && (
                     <Badge className="ml-2 h-5 min-w-5 flex items-center justify-center" variant="secondary">
@@ -568,7 +567,7 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
           발주처: {group.common.supplier}, 부속명: {group.common.partName}의 품질검사 상세 정보를 확인할 수 있습니다.
         </DialogDescription>
 
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="flex-1 flex flex-col min-h-0">
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'incoming' | 'inProcess' | 'outgoing')} className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 overflow-auto mt-2">
             <TabsContent value="incoming" className="mt-0">
               {tabData.incoming.length > 0 ? (
@@ -582,7 +581,7 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
               )}
             </TabsContent>
 
-            <TabsContent value="in-process" className="mt-0">
+            <TabsContent value="inProcess" className="mt-0">
               {tabData.inProcess.length > 0 ? (
                 <div className="space-y-4">
                   {tabData.inProcess.map((inspection, index) => renderInspectionCard(inspection, index, tabData.inProcess.length))}

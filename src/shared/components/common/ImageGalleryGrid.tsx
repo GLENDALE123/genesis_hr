@@ -35,7 +35,6 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [cachedImages, setCachedImages] = useState<string[]>([]);
   const [loadedImages, setLoadedImages] = useState<boolean[]>([]);
-  const [errorImages, setErrorImages] = useState<boolean[]>([]);
   const imageRefs = useRef<(HTMLImageElement | HTMLDivElement | null)[]>([]);
 
   // 지연 로딩을 위한 Intersection Observer
@@ -102,7 +101,7 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
             if (thumbnailResponse.ok) {
               targetUrl = thumbnailUrl;
             }
-          } catch (error) {
+          } catch {
             // 썸네일 로드 실패시 원본 사용
           }
         }
@@ -129,6 +128,13 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
     setCachedImages(processedImages);
     setLoadedImages(new Array(images.length).fill(true));
   }, [images, useThumbnails]);
+
+  // 지연 로딩 비활성화시 모든 이미지 로드
+  useEffect(() => {
+    if (!enableLazyLoading) {
+      loadAllImages();
+    }
+  }, [enableLazyLoading, loadAllImages]);
 
   // 개별 이미지 로드 (지연 로딩시) - 간단한 버전
   const loadImage = useCallback(async (index: number) => {
@@ -315,11 +321,6 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
                         const img = new Image();
                         img.onerror = () => {
                           console.log('원본 이미지도 로드 실패:', url);
-                          setErrorImages(prev => {
-                            const newErrors = [...prev];
-                            newErrors[index] = true;
-                            return newErrors;
-                          });
                         };
                         img.src = url;
                       }, 1000);
@@ -332,11 +333,6 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
                         newLoaded[index] = false;
                         return newLoaded;
                       });
-                      setErrorImages(prev => {
-                        const newErrors = [...prev];
-                        newErrors[index] = true;
-                        return newErrors;
-                      });
                     }
                   }}
                 />
@@ -345,41 +341,17 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
                   ref={(el) => {
                     imageRefs.current[index] = el;
                   }}
-                  className={`w-full ${imageClassName} ${
-                    errorImages[index] 
-                      ? 'bg-red-100 dark:bg-red-900/20 border-red-300 dark:border-red-700' 
-                      : 'bg-gray-200 dark:bg-gray-700 border-gray-300 dark:border-gray-600'
-                  } rounded-md border cursor-pointer flex items-center justify-center relative`}
+                  className={`w-full ${imageClassName} bg-gray-200 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-md border cursor-pointer flex items-center justify-center relative`}
                   style={{ borderRadius: 'var(--radius)' }}
                   onClick={() => handleImageClick(index)}
                 >
-                  {errorImages[index] ? (
-                    // 에러 상태 UI
-                    <>
-                      <div className="w-8 h-8 text-red-500 dark:text-red-400">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <circle cx="12" cy="12" r="10"/>
-                          <line x1="15" y1="9" x2="9" y2="15"/>
-                          <line x1="9" y1="9" x2="15" y2="15"/>
-                        </svg>
-                      </div>
-                      <div className="absolute bottom-2 left-2 right-2 text-center">
-                        <span className="text-xs text-red-600 dark:text-red-400 bg-white/90 dark:bg-black/90 px-2 py-1 rounded">
-                          이미지 로드 실패
-                        </span>
-                      </div>
-                    </>
-                  ) : (
-                    // 로딩 상태 UI
-                    <>
-                      <Spinner className="size-8 text-blue-500" />
-                      <div className="absolute bottom-2 left-2 right-2 text-center">
-                        <span className="text-xs text-gray-500 dark:text-gray-400 bg-white/80 dark:bg-black/80 px-2 py-1 rounded">
-                          로딩 중...
-                        </span>
-                      </div>
-                    </>
-                  )}
+                  {/* 로딩 상태 UI */}
+                  <Spinner className="size-8 text-blue-500" />
+                  <div className="absolute bottom-2 left-2 right-2 text-center">
+                    <span className="text-xs text-gray-500 dark:text-gray-400 bg-white/80 dark:bg-black/80 px-2 py-1 rounded">
+                      로딩 중...
+                    </span>
+                  </div>
                 </div>
               )}
             </div>

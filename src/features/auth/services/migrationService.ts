@@ -1,4 +1,4 @@
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile, User } from 'firebase/auth';
 import { doc, setDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '@/shared/services/firebase/config';
 import { getUserProfileByEmail } from '@/shared/services/firebase/userProfile';
@@ -68,9 +68,9 @@ export class MigrationService {
         success: true,
         profile: updatedProfile
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Auth 계정이 이미 존재하는 경우
-      if (error.code === 'auth/email-already-in-use') {
+      if ((error as { code?: string }).code === 'auth/email-already-in-use') {
         return {
           success: false,
           profile: null,
@@ -81,7 +81,7 @@ export class MigrationService {
       return {
         success: false,
         profile: null,
-        error: error.message || '계정 생성 중 오류가 발생했습니다.'
+        error: error instanceof Error ? error.message : '계정 생성 중 오류가 발생했습니다.'
       };
     }
   }
@@ -105,13 +105,16 @@ export class MigrationService {
    * 현재 로그인한 사용자의 프로필이 없을 경우 생성
    * (Auth는 있는데 Firestore 프로필이 없는 경우)
    */
-  static async createMissingProfile(user: any): Promise<UserProfile | null> {
+  static async createMissingProfile(user: User): Promise<UserProfile | null> {
     try {
       if (!db || !user) {
         throw new Error('Firebase or User not initialized');
       }
 
       // 기존 이메일의 프로필 찾기
+      if (!user.email) {
+        throw new Error('User email is required for migration');
+      }
       const existingProfile = await getUserProfileByEmail(user.email);
       
       if (existingProfile && existingProfile.uid !== user.uid) {
@@ -125,8 +128,8 @@ export class MigrationService {
         
         // undefined 필드 제거
         Object.keys(newProfile).forEach(key => {
-          if ((newProfile as any)[key] === undefined) {
-            delete (newProfile as any)[key];
+          if ((newProfile as unknown as Record<string, unknown>)[key] === undefined) {
+            delete (newProfile as unknown as Record<string, unknown>)[key];
           }
         });
         

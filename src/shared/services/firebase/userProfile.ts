@@ -20,7 +20,7 @@ export const createUserProfile = async (userData: SignUpData, uid: string): Prom
   if (!db) throw new Error('Firestore is not initialized');
   
   // 기본 필수 필드
-  const userProfile: any = {
+  const userProfile: Record<string, unknown> = {
     uid,
     email: userData.email,
     name: userData.name,
@@ -43,7 +43,7 @@ export const createUserProfile = async (userData: SignUpData, uid: string): Prom
   
   await setDoc(doc(db, USERS_COLLECTION, uid), userProfile);
   
-  return userProfile as UserProfile;
+  return userProfile as unknown as UserProfile;
 };
 
 // 사용자 프로필 조회
@@ -234,10 +234,10 @@ export const getAllUsers = async (): Promise<UserProfile[]> => {
       const data = doc.data();
       
       // 날짜 필드 안전하게 변환
-      const toDate = (field: any): Date => {
+      const toDate = (field: unknown): Date => {
         if (!field) return new Date();
         if (field instanceof Date) return field;
-        if (typeof field.toDate === 'function') return field.toDate();
+        if (typeof (field as { toDate?: () => Date }).toDate === 'function') return (field as { toDate: () => Date }).toDate();
         if (typeof field === 'string') return new Date(field);
         return new Date();
       };

@@ -10,62 +10,33 @@ import { Button } from '@/shared/components/ui/button';
 import { InputSelect } from '@/shared/components/common/InputSelect';
 import type { AutocompleteData } from '../services/autocompleteService';
 import { useCommonFields } from './InspectionCommonForm';
-import { useOrderNumberFormatter } from '@/shared/hooks/useOrderNumberFormatter';
+import { QualityInspection, KeywordPair, ProcessLineData, TestResultDetail } from '../types';
 
 interface ProcessInspectionFormProps {
-  formData: any;
-  setFormData: React.Dispatch<React.SetStateAction<any>>;
+  formData: Partial<QualityInspection>;
+  setFormData: React.Dispatch<React.SetStateAction<Partial<QualityInspection>>>;
   autocompleteData: AutocompleteData;
-  imagePreviews: string[];
-  handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  removeImage: (index: number) => void;
 }
 
 export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
   formData,
   setFormData,
-  autocompleteData,
-  imagePreviews,
-  handleImageUpload,
-  removeImage
+  autocompleteData
 }) => {
+  // TestResultDetail 타입 가드 함수
+  const isTestResultDetail = (value: string | TestResultDetail | undefined): value is TestResultDetail => {
+    return typeof value === 'object' && value !== null;
+  };
   // 파일 입력 refs
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const cameraInputRef = React.useRef<HTMLInputElement>(null);
-
-  // 발주번호 포맷터 훅
-  const { handleOrderNumberChange } = useOrderNumberFormatter({
-    onAutoFill: (data) => {
-      setFormData((prev: any) => ({
-        ...prev,
-        supplier: data.supplier || prev.supplier,
-        productName: data.productName || prev.productName,
-        partName: data.partName || prev.partName,
-        orderQuantity: data.orderQuantity || prev.orderQuantity,
-        specification: data.specification || prev.specification,
-      }));
-    },
-    onClear: () => {
-      setFormData((prev: any) => ({
-        ...prev,
-        supplier: '',
-        productName: '',
-        partName: '',
-        orderQuantity: '',
-        specification: '',
-      }));
-    }
-  });
 
   // 개별 필드들 가져오기
   const commonFields = useCommonFields(
     formData, 
     setFormData, 
     autocompleteData, 
-    handleOrderNumberChange,
-    imagePreviews,
-    handleImageUpload,
-    removeImage,
+    undefined,
     fileInputRef,
     cameraInputRef
   );
@@ -100,7 +71,7 @@ export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
               <Input
                 id="jigUsed1"
                 value={formData.jigUsed1 || ''}
-                onChange={(e) => setFormData((prev: any) => ({ ...prev, jigUsed1: e.target.value }))}
+                onChange={(e) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, jigUsed1: e.target.value }))}
                 placeholder="사용지그-1을 입력하세요"
               />
               <span className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-gray-500 dark:text-slate-400">번지그</span>
@@ -109,7 +80,7 @@ export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
 
           <div className="space-y-2">
             <Label htmlFor="jigUsed2">사용지그-2</Label>
-            <Select value={formData.jigUsed2 || ''} onValueChange={(value) => setFormData((prev: any) => ({ ...prev, jigUsed2: value }))}>
+            <Select value={formData.jigUsed2 || ''} onValueChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, jigUsed2: value }))}>
               <SelectTrigger>
                 <SelectValue placeholder="사용지그-2를 선택하세요" />
               </SelectTrigger>
@@ -131,7 +102,7 @@ export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
               <Input
                 id="internalJigLower"
                 value={formData.internalJigLower || ''}
-                onChange={(e) => setFormData((prev: any) => ({ ...prev, internalJigLower: e.target.value }))}
+                onChange={(e) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, internalJigLower: e.target.value }))}
                 placeholder="내부코팅 사용지그 (하측지그)를 입력하세요"
               />
               <span className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-gray-500 dark:text-slate-400">번지그</span>
@@ -144,7 +115,7 @@ export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
               <Input
                 id="internalJigUpper"
                 value={formData.internalJigUpper || ''}
-                onChange={(e) => setFormData((prev: any) => ({ ...prev, internalJigUpper: e.target.value }))}
+                onChange={(e) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, internalJigUpper: e.target.value }))}
                 placeholder="내부코팅 사용지그 (상측지그)를 입력하세요"
               />
               <span className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-gray-500 dark:text-slate-400">번지그</span>
@@ -160,7 +131,7 @@ export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
                   name="dryerUsed" 
                   value="사용" 
                   checked={formData.dryerUsed === '사용'} 
-                  onChange={(e) => setFormData((prev: any) => ({ ...prev, dryerUsed: e.target.value as '사용' | '미사용' | '' }))} 
+                  onChange={(e) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, dryerUsed: e.target.value as '사용' | '미사용' | '' }))} 
                   className="form-radio text-primary-600 focus:ring-primary-500 bg-transparent" 
                 />
                 <span>사용</span>
@@ -171,7 +142,7 @@ export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
                   name="dryerUsed" 
                   value="미사용" 
                   checked={formData.dryerUsed === '미사용'} 
-                  onChange={(e) => setFormData((prev: any) => ({ ...prev, dryerUsed: e.target.value as '사용' | '미사용' | '' }))} 
+                  onChange={(e) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, dryerUsed: e.target.value as '사용' | '미사용' | '' }))} 
                   className="form-radio text-primary-600 focus:ring-primary-500 bg-transparent" 
                 />
                 <span>미사용</span>
@@ -188,7 +159,7 @@ export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
                   name="flameTreatment" 
                   value="사용" 
                   checked={formData.flameTreatment === '사용'} 
-                  onChange={(e) => setFormData((prev: any) => ({ ...prev, flameTreatment: e.target.value as '사용' | '미사용' | '' }))} 
+                  onChange={(e) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, flameTreatment: e.target.value as '사용' | '미사용' | '' }))} 
                   className="form-radio text-primary-600 focus:ring-primary-500 bg-transparent" 
                 />
                 <span>사용</span>
@@ -199,7 +170,7 @@ export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
                   name="flameTreatment" 
                   value="미사용" 
                   checked={formData.flameTreatment === '미사용'} 
-                  onChange={(e) => setFormData((prev: any) => ({ ...prev, flameTreatment: e.target.value as '사용' | '미사용' | '' }))} 
+                  onChange={(e) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, flameTreatment: e.target.value as '사용' | '미사용' | '' }))} 
                   className="form-radio text-primary-600 focus:ring-primary-500 bg-transparent" 
                 />
                 <span>미사용</span>
@@ -212,14 +183,14 @@ export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
         <div className="space-y-2">
           <Label>공정/불량 키워드</Label>
           <div className="space-y-3">
-            {(formData.keywordPairs || [{ process: '', defect: '' }]).map((pair: any, index: number) => (
+            {(formData.keywordPairs || [{ process: '', defect: '' }]).map((pair: KeywordPair, index: number) => (
               <div key={index} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
                 <InputSelect
                   value={pair.process}
                   onChange={(value) => {
                     const newPairs = [...(formData.keywordPairs || [])];
                     newPairs[index] = { ...newPairs[index], process: value };
-                    setFormData((prev: any) => ({ ...prev, keywordPairs: newPairs }));
+                    setFormData((prev: Partial<QualityInspection>) => ({ ...prev, keywordPairs: newPairs }));
                   }}
                   options={['DP', '내부코팅', '박', '사출', '인쇄', '조립', '증착', '코팅']}
                   placeholder="공정 키워드"
@@ -229,7 +200,7 @@ export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
                   onChange={(value) => {
                     const newPairs = [...(formData.keywordPairs || [])];
                     newPairs[index] = { ...newPairs[index], defect: value };
-                    setFormData((prev: any) => ({ ...prev, keywordPairs: newPairs }));
+                    setFormData((prev: Partial<QualityInspection>) => ({ ...prev, keywordPairs: newPairs }));
                   }}
                   options={['가스', '기름', '기포', '기능불량', '내부코팅', '미성형', '미증착', '변형', '색상차이', '수축', '스크레치', '웰드', '과열', '찍힘', '침식', '크랙', '흑점', 'wetting']}
                   placeholder="불량 키워드"
@@ -242,7 +213,7 @@ export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
                     onClick={() => {
                       const newPairs = [...(formData.keywordPairs || [])];
                       newPairs.splice(index, 1);
-                      setFormData((prev: any) => ({ ...prev, keywordPairs: newPairs }));
+                      setFormData((prev: Partial<QualityInspection>) => ({ ...prev, keywordPairs: newPairs }));
                     }}
                   >
                     -
@@ -255,7 +226,7 @@ export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
               variant="outline"
               onClick={() => {
                 const newPairs = [...(formData.keywordPairs || []), { process: '', defect: '' }];
-                setFormData((prev: any) => ({ ...prev, keywordPairs: newPairs }));
+                setFormData((prev: Partial<QualityInspection>) => ({ ...prev, keywordPairs: newPairs }));
               }}
               className="w-full"
             >
@@ -266,7 +237,7 @@ export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
 
         {/* 라인 정보 - HS-Jig와 동일한 구조 */}
         <div className="space-y-4">
-          {(formData.processLines || [{ workLine: '', lineSpeed: '', lineConditions: [{ type: '하도', value: '' }, { type: '상도', value: '' }], lampUsage: [] }]).map((line: any, lineIndex: number) => (
+          {(formData.processLines || [{ workLine: '', lineSpeed: '', lineConditions: [{ type: '하도' as const, value: '' }, { type: '상도' as const, value: '' }], lampUsage: [] }]).map((line: ProcessLineData, lineIndex: number) => (
             <div key={lineIndex} className="p-4 border dark:border-slate-700 rounded-lg space-y-4 bg-slate-50 dark:bg-slate-900/50 relative">
               {(formData.processLines?.length || 1) > 1 && (
                 <Button
@@ -277,7 +248,7 @@ export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
                   onClick={() => {
                     const newLines = [...(formData.processLines || [])];
                     newLines.splice(lineIndex, 1);
-                    setFormData((prev: any) => ({ ...prev, processLines: newLines }));
+                    setFormData((prev: Partial<QualityInspection>) => ({ ...prev, processLines: newLines }));
                   }}
                 >
                   ×
@@ -289,7 +260,7 @@ export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
                   <Select value={line.workLine || ''} onValueChange={(value) => {
                     const newLines = [...(formData.processLines || [])];
                     newLines[lineIndex] = { ...newLines[lineIndex], workLine: value };
-                    setFormData((prev: any) => ({ ...prev, processLines: newLines }));
+                    setFormData((prev: Partial<QualityInspection>) => ({ ...prev, processLines: newLines }));
                   }}>
                     <SelectTrigger>
                       <SelectValue placeholder="작업라인을 선택하세요" />
@@ -317,7 +288,7 @@ export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
                       onChange={(e) => {
                         const newLines = [...(formData.processLines || [])];
                         newLines[lineIndex] = { ...newLines[lineIndex], lineSpeed: e.target.value };
-                        setFormData((prev: any) => ({ ...prev, processLines: newLines }));
+                        setFormData((prev: Partial<QualityInspection>) => ({ ...prev, processLines: newLines }));
                       }}
                       placeholder="라인속도를 입력하세요"
                     />
@@ -327,7 +298,7 @@ export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
                 <div className="space-y-2 lg:col-span-2">
                   <Label>라인조건(I.R)</Label>
                   <div className="space-y-2">
-                    {(line.lineConditions || []).map((condition: any, condIndex: number) => (
+                    {(line.lineConditions || []).map((condition: { type: '하도' | '상도'; value: string }, condIndex: number) => (
                       <div key={condIndex} className="flex items-center gap-2">
                         <span className="font-semibold w-12 text-center flex-shrink-0">{condition.type}</span>
                         <div className="relative flex-grow">
@@ -337,7 +308,7 @@ export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
                               const newLines = [...(formData.processLines || [])];
                               if (!newLines[lineIndex].lineConditions) newLines[lineIndex].lineConditions = [];
                               newLines[lineIndex].lineConditions[condIndex] = { ...newLines[lineIndex].lineConditions[condIndex], value: e.target.value };
-                              setFormData((prev: any) => ({ ...prev, processLines: newLines }));
+                              setFormData((prev: Partial<QualityInspection>) => ({ ...prev, processLines: newLines }));
                             }}
                             placeholder="온도를 입력하세요"
                           />
@@ -350,8 +321,10 @@ export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
                             size="sm"
                             onClick={() => {
                               const newLines = [...(formData.processLines || [])];
-                              newLines[lineIndex].lineConditions.splice(condIndex, 1);
-                              setFormData((prev: any) => ({ ...prev, processLines: newLines }));
+                              if (newLines[lineIndex].lineConditions) {
+                                newLines[lineIndex].lineConditions.splice(condIndex, 1);
+                              }
+                              setFormData((prev: Partial<QualityInspection>) => ({ ...prev, processLines: newLines }));
                             }}
                           >
                             ×
@@ -367,8 +340,8 @@ export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
                         onClick={() => {
                           const newLines = [...(formData.processLines || [])];
                           if (!newLines[lineIndex].lineConditions) newLines[lineIndex].lineConditions = [];
-                          newLines[lineIndex].lineConditions.push({ type: '하도', value: '' });
-                          setFormData((prev: any) => ({ ...prev, processLines: newLines }));
+                          newLines[lineIndex].lineConditions.push({ type: '하도' as const, value: '' });
+                          setFormData((prev: Partial<QualityInspection>) => ({ ...prev, processLines: newLines }));
                         }}
                         className="flex-1"
                       >
@@ -381,8 +354,8 @@ export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
                         onClick={() => {
                           const newLines = [...(formData.processLines || [])];
                           if (!newLines[lineIndex].lineConditions) newLines[lineIndex].lineConditions = [];
-                          newLines[lineIndex].lineConditions.push({ type: '상도', value: '' });
-                          setFormData((prev: any) => ({ ...prev, processLines: newLines }));
+                          newLines[lineIndex].lineConditions.push({ type: '상도' as const, value: '' });
+                          setFormData((prev: Partial<QualityInspection>) => ({ ...prev, processLines: newLines }));
                         }}
                         className="flex-1"
                       >
@@ -424,7 +397,7 @@ export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
                                 lampUsage.push(num);
                               }
                               newLines[lineIndex].lampUsage = lampUsage;
-                              setFormData((prev: any) => ({ ...prev, processLines: newLines }));
+                              setFormData((prev: Partial<QualityInspection>) => ({ ...prev, processLines: newLines }));
                             }} 
                             className="sr-only"
                           />
@@ -441,8 +414,13 @@ export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
             type="button"
             variant="outline"
             onClick={() => {
-              const newLines = [...(formData.processLines || []), { workLine: '', lineSpeed: '', lineConditions: [{ type: '하도', value: '' }, { type: '상도', value: '' }], lampUsage: [] }];
-              setFormData((prev: any) => ({ ...prev, processLines: newLines }));
+              const newLines = [...(formData.processLines || []), { 
+                workLine: '', 
+                lineSpeed: '', 
+                lineConditions: [{ type: '하도' as const, value: '' }, { type: '상도' as const, value: '' }], 
+                lampUsage: [] 
+              }];
+              setFormData((prev: Partial<QualityInspection>) => ({ ...prev, processLines: newLines }));
             }}
             className="w-full"
           >
@@ -457,7 +435,7 @@ export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="space-y-2">
             <Label>신뢰성테스트결과</Label>
-            <Select value={formData.reliabilityTestResult?.result || '양호'} onValueChange={(value) => setFormData((prev: any) => ({ ...prev, reliabilityTestResult: { ...prev.reliabilityTestResult, result: value } }))}>
+            <Select value={isTestResultDetail(formData.reliabilityTestResult) ? formData.reliabilityTestResult.result : (formData.reliabilityTestResult || '양호')} onValueChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, reliabilityTestResult: isTestResultDetail(prev.reliabilityTestResult) ? { ...prev.reliabilityTestResult, result: value } : { result: value } }))}>
               <SelectTrigger>
                 <SelectValue placeholder="신뢰성 테스트 결과를 선택하세요" />
               </SelectTrigger>
@@ -471,7 +449,7 @@ export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
 
           <div className="space-y-2">
             <Label>색상체크결과</Label>
-            <Select value={formData.colorCheckResult?.result || '견본과 색상동일'} onValueChange={(value) => setFormData((prev: any) => ({ ...prev, colorCheckResult: { ...prev.colorCheckResult, result: value } }))}>
+            <Select value={isTestResultDetail(formData.colorCheckResult) ? formData.colorCheckResult.result : (formData.colorCheckResult || '견본과 색상동일')} onValueChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, colorCheckResult: isTestResultDetail(prev.colorCheckResult) ? { ...prev.colorCheckResult, result: value } : { result: value } }))}>
               <SelectTrigger>
                 <SelectValue placeholder="색상 체크 결과를 선택하세요" />
               </SelectTrigger>
@@ -486,7 +464,7 @@ export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
             <Label>사출포장</Label>
             <Input
               value={formData.packagingInfo || ''}
-              onChange={(e) => setFormData((prev: any) => ({ ...prev, packagingInfo: e.target.value }))}
+              onChange={(e) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, packagingInfo: e.target.value }))}
               placeholder="사출포장 정보를 입력하세요"
             />
           </div>
@@ -495,28 +473,29 @@ export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
             <Label>후가공포장</Label>
             <Input
               value={formData.postProcessPackaging || ''}
-              onChange={(e) => setFormData((prev: any) => ({ ...prev, postProcessPackaging: e.target.value }))}
+              onChange={(e) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, postProcessPackaging: e.target.value }))}
               placeholder="후가공포장 정보를 입력하세요"
             />
           </div>
         </div>
 
         {/* 신뢰성 테스트 결과가 부분박리 또는 박리일 때 추가 필드 */}
-        {(formData.reliabilityTestResult?.result === '부분박리' || formData.reliabilityTestResult?.result === '박리') && (
+        {((isTestResultDetail(formData.reliabilityTestResult) && (formData.reliabilityTestResult.result === '부분박리' || formData.reliabilityTestResult.result === '박리')) || 
+          (!isTestResultDetail(formData.reliabilityTestResult) && (formData.reliabilityTestResult === '부분박리' || formData.reliabilityTestResult === '박리'))) && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-md">
             <div className="space-y-2">
               <Label>처리 결과 (신뢰성)</Label>
               <Input
-                value={formData.reliabilityTestResult?.action || ''}
-                onChange={(e) => setFormData((prev: any) => ({ ...prev, reliabilityTestResult: { ...prev.reliabilityTestResult, action: e.target.value } }))}
+                value={isTestResultDetail(formData.reliabilityTestResult) ? formData.reliabilityTestResult.action || '' : ''}
+                onChange={(e) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, reliabilityTestResult: isTestResultDetail(prev.reliabilityTestResult) ? { ...prev.reliabilityTestResult, action: e.target.value } : { result: prev.reliabilityTestResult || '', action: e.target.value } }))}
                 placeholder="처리 결과를 입력하세요"
               />
             </div>
             <div className="space-y-2">
               <Label>결정자 (신뢰성)</Label>
               <InputSelect
-                value={formData.reliabilityTestResult?.decisionMaker || ''}
-                onChange={(value) => setFormData((prev: any) => ({ ...prev, reliabilityTestResult: { ...prev.reliabilityTestResult, decisionMaker: value } }))}
+                value={isTestResultDetail(formData.reliabilityTestResult) ? formData.reliabilityTestResult.decisionMaker || '' : ''}
+                onChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, reliabilityTestResult: isTestResultDetail(prev.reliabilityTestResult) ? { ...prev.reliabilityTestResult, decisionMaker: value } : { result: prev.reliabilityTestResult || '', decisionMaker: value } }))}
                 options={['김민현', '김영권', '김을한', '김재식', '배영길', '이동엽', '이현석', '전진표', '최유림', '최한수', '한상태', '한태경']}
                 placeholder="결정자를 선택하세요"
               />
@@ -525,21 +504,22 @@ export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
         )}
 
         {/* 색상 체크 결과가 색상편차발생일 때 추가 필드 */}
-        {formData.colorCheckResult?.result === '색상편차발생' && (
+        {((isTestResultDetail(formData.colorCheckResult) && formData.colorCheckResult.result === '색상편차발생') || 
+          (!isTestResultDetail(formData.colorCheckResult) && formData.colorCheckResult === '색상편차발생')) && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-md">
             <div className="space-y-2">
               <Label>처리 결과 (색상)</Label>
               <Input
-                value={formData.colorCheckResult?.action || ''}
-                onChange={(e) => setFormData((prev: any) => ({ ...prev, colorCheckResult: { ...prev.colorCheckResult, action: e.target.value } }))}
+                value={isTestResultDetail(formData.colorCheckResult) ? formData.colorCheckResult.action || '' : ''}
+                onChange={(e) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, colorCheckResult: isTestResultDetail(prev.colorCheckResult) ? { ...prev.colorCheckResult, action: e.target.value } : { result: prev.colorCheckResult || '', action: e.target.value } }))}
                 placeholder="처리 결과를 입력하세요"
               />
             </div>
             <div className="space-y-2">
               <Label>결정자 (색상)</Label>
               <InputSelect
-                value={formData.colorCheckResult?.decisionMaker || ''}
-                onChange={(value) => setFormData((prev: any) => ({ ...prev, colorCheckResult: { ...prev.colorCheckResult, decisionMaker: value } }))}
+                value={isTestResultDetail(formData.colorCheckResult) ? formData.colorCheckResult.decisionMaker || '' : ''}
+                onChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, colorCheckResult: isTestResultDetail(prev.colorCheckResult) ? { ...prev.colorCheckResult, decisionMaker: value } : { result: prev.colorCheckResult || '', decisionMaker: value } }))}
                 options={['김민현', '김영권', '김을한', '김재식', '배영길', '이동엽', '이현석', '전진표', '최유림', '최한수', '한상태', '한태경']}
                 placeholder="결정자를 선택하세요"
               />
@@ -553,7 +533,7 @@ export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
             <Label>사전검사이력</Label>
             <Textarea
               value={formData.preInspectionHistory || ''}
-              onChange={(e) => setFormData((prev: any) => ({ ...prev, preInspectionHistory: e.target.value }))}
+              onChange={(e) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, preInspectionHistory: e.target.value }))}
               placeholder="사전검사이력을 입력하세요"
               rows={3}
             />
@@ -563,7 +543,7 @@ export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
             <Label>공정검사이력</Label>
             <Textarea
               value={formData.inProcessInspectionHistory || ''}
-              onChange={(e) => setFormData((prev: any) => ({ ...prev, inProcessInspectionHistory: e.target.value }))}
+              onChange={(e) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, inProcessInspectionHistory: e.target.value }))}
               placeholder="공정검사이력을 입력하세요"
               rows={3}
             />

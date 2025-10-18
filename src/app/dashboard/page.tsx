@@ -17,8 +17,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RadioGroup, RadioGroupItem } from '@/shared/components/ui/radio-group';
 import { Label } from '@/shared/components/ui/label';
 import { toast } from 'sonner';
-import { Shield, Lock, TestTube, Bell, Send, AlertTriangle, Users, User } from 'lucide-react';
-import { createTestShortageNotification } from '@/features/production/services/notificationService';
+import { Shield, Lock, TestTube, Bell, Send, Users, User } from 'lucide-react';
+// import { createTestShortageNotification } from '@/features/production/services/notificationService';
 
 interface Todo {
   id: string;
@@ -46,7 +46,7 @@ export default function DashboardPage() {
     if (user && !userProfile) {
       console.warn('⚠️ UserProfile이 null입니다. 수동으로 프로필 조회를 시도합니다...');
       import('@/shared/services/firebase/userProfile').then(({ getUserProfile }) => {
-        getUserProfile(user.uid).then(profile => {
+        getUserProfile(user.uid).then(() => {
         }).catch(err => {
           console.error('❌ [Manual Fetch] 프로필 조회 실패:', err);
         });
@@ -92,7 +92,7 @@ export default function DashboardPage() {
   const testElectronCustomNotification = async () => {
     if (typeof window !== 'undefined' && window.__ELECTRON__ && window.electron) {
       try {
-        const result = await window.electron.showNotification({
+        await window.electron.showNotification({
           title: '생산관리부 요청사항',
           subtitle: '100ml진공(스크류타입) 외 6건 (일체형민자펌프숄더, 받침, 어깨장식, 뽕무숄더, 외용기, 외캡)/커버',
           body: '@유호령 긴급 확인 부탁드립니다! 😊',  // ✅ 실제 댓글 내용 (멘션 포함)
@@ -116,7 +116,7 @@ export default function DashboardPage() {
   const testElectronSystemNotification = async () => {
     if (typeof window !== 'undefined' && window.__ELECTRON__ && window.electron) {
       try {
-        const result = await window.electron.showNotification({
+        await window.electron.showNotification({
           title: 'HS 인사관리 시스템',
           body: '시스템 알림 테스트입니다! Windows 알림 센터로 표시됩니다.',
           useCustom: false // 시스템 알림 사용
@@ -143,7 +143,7 @@ export default function DashboardPage() {
 
       setTimeout(async () => {
         try {
-          const result = await electron.showNotification({
+          await electron.showNotification({
             title: '생산관리부 요청사항',
             subtitle: '엔진A/실린더커버B',
             body: '@관리자 백그라운드에서도 알림이 잘 표시되나요? 🎉',
@@ -162,79 +162,79 @@ export default function DashboardPage() {
   };
 
   // 물류이동 알림 테스트
-  const testLogisticsNotification = async () => {
-    if (!user || !userProfile) {
-      toast.error('사용자 정보가 없습니다.');
-      return;
-    }
+  // const testLogisticsNotification = async () => {
+  //   if (!user || !userProfile) {
+  //     toast.error('사용자 정보가 없습니다.');
+  //     return;
+  //   }
 
-    try {
-      const { createTestLogisticsNotification } = await import('@/features/production/services/notificationService');
-      await createTestLogisticsNotification(userProfile.displayName, user.uid, user.photoURL || undefined);
-      toast.success('물류이동 테스트 알림이 Admin/Manager에게 발송되었습니다!');
-    } catch (error) {
-      console.error('물류이동 알림 발송 실패:', error);
-      toast.error('물류이동 알림 발송에 실패했습니다.');
-    }
-  };
+  //   try {
+  //     const { createTestLogisticsNotification } = await import('@/features/production/services/notificationService');
+  //     await createTestLogisticsNotification(userProfile.displayName, user.uid, user.photoURL || undefined);
+  //     toast.success('물류이동 테스트 알림이 Admin/Manager에게 발송되었습니다!');
+  //   } catch (error) {
+  //     console.error('물류이동 알림 발송 실패:', error);
+  //     toast.error('물류이동 알림 발송에 실패했습니다.');
+  //   }
+  // };
 
   // 부족분 알림 테스트
-  const testShortageNotification = async () => {
-    if (!user || !userProfile) {
-      toast.error('사용자 정보가 없습니다.');
-      return;
-    }
+  // const testShortageNotification = async () => {
+  //   if (!user || !userProfile) {
+  //     toast.error('사용자 정보가 없습니다.');
+  //     return;
+  //   }
 
-    try {
-      const { createTestShortageNotification } = await import('@/features/production/services/notificationService');
-      await createTestShortageNotification(userProfile.displayName, user.uid, user.photoURL || undefined);
-      toast.success('부족분 신청 테스트 알림이 Admin/Manager에게 발송되었습니다!');
-    } catch (error) {
-      console.error('부족분 알림 테스트 실패:', error);
-      toast.error('알림 테스트에 실패했습니다.');
-    }
-  };
+  //   try {
+  //     const { createTestShortageNotification } = await import('@/features/production/services/notificationService');
+  //     await createTestShortageNotification(userProfile.displayName, user.uid, user.photoURL || undefined);
+  //     toast.success('부족분 신청 테스트 알림이 Admin/Manager에게 발송되었습니다!');
+  //   } catch (error) {
+  //     console.error('부족분 알림 테스트 실패:', error);
+  //     toast.error('알림 테스트에 실패했습니다.');
+  //   }
+  // };
 
   // 로그인한 사용자에게만 알림을 보내는 함수
-  const sendNotificationToCurrentUser = async (type: string, content: any) => {
-    if (!user || !userProfile) {
-      toast.error('사용자 정보가 없습니다.');
-      return;
-    }
+  // const sendNotificationToCurrentUser = async (type: string, content: Record<string, unknown>) => {
+  //   if (!user || !userProfile) {
+  //     toast.error('사용자 정보가 없습니다.');
+  //     return;
+  //   }
 
-    try {
-      // Firebase Functions URL 설정
-      const functionsUrl = 'https://asia-northeast3-hs-jig-b2093.cloudfunctions.net';
+  //   try {
+  //     // Firebase Functions URL 설정
+  //     const functionsUrl = 'https://asia-northeast3-hs-jig-b2093.cloudfunctions.net';
       
-      const payload = {
-        targetUsers: [user.uid], // 로그인한 사용자에게만
-        type: type,
-        title: content.title,
-        body: content.body,
-        requestId: `TEST-${Date.now()}`,
-        subtitle: content.subtitle,
-        senderName: userProfile.displayName,
-        senderUid: user.uid,
-        senderAvatar: user.photoURL || undefined,
-        priority: 'normal'
-      };
+  //     const payload = {
+  //       targetUsers: [user.uid], // 로그인한 사용자에게만
+  //       type: type,
+  //       title: content.title,
+  //       body: content.body,
+  //       requestId: `TEST-${Date.now()}`,
+  //       subtitle: content.subtitle,
+  //       senderName: userProfile.displayName,
+  //       senderUid: user.uid,
+  //       senderAvatar: user.photoURL || undefined,
+  //       priority: 'normal'
+  //     };
 
-      const response = await fetch(`${functionsUrl}/createNotification`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+  //     const response = await fetch(`${functionsUrl}/createNotification`, {
+  //       method: 'POST',
+  //       headers: { 'Content-Type': 'application/json' },
+  //       body: JSON.stringify(payload)
+  //     });
 
-      if (!response.ok) {
-        throw new Error(`알림 전송 실패: ${response.status}`);
-      }
+  //     if (!response.ok) {
+  //       throw new Error(`알림 전송 실패: ${response.status}`);
+  //     }
 
-      toast.success(`${selectedRequestType} 테스트 알림이 본인에게 발송되었습니다!`);
-    } catch (error) {
-      console.error('알림 발송 실패:', error);
-      toast.error('알림 발송에 실패했습니다.');
-    }
-  };
+  //     toast.success(`${selectedRequestType} 테스트 알림이 본인에게 발송되었습니다!`);
+  //   } catch (error) {
+  //     console.error('알림 발송 실패:', error);
+  //     toast.error('알림 발송에 실패했습니다.');
+  //   }
+  // };
 
   // 통합 알림 테스트 함수
   const testNotification = async () => {
@@ -249,7 +249,7 @@ export default function DashboardPage() {
         const functionsUrl = 'https://asia-northeast3-hs-jig-b2093.cloudfunctions.net';
         
         // 실제 비즈니스 로직에서 생성할 payload 데이터
-        let payload: any = {};
+        let payload: Record<string, unknown> = {};
         
         if (selectedRequestType === '물류이동') {
           payload = {

@@ -19,7 +19,7 @@ export const useQualityIssueForm = () => {
     setIsSaving(true);
     try {
 
-      const issueId = await createQualityIssue(formData, imageFiles, {
+      await createQualityIssue(formData, imageFiles, {
         uid: user.uid,
         displayName: userProfile?.name || userProfile?.displayName || user.displayName || user.email?.split('@')[0] || '사용자',
         email: user.email || '',
@@ -28,7 +28,7 @@ export const useQualityIssueForm = () => {
       setIsFormModalOpen(false);
       toast.success('품질이슈가 성공적으로 등록되었습니다.');
       
-    } catch (error) {
+    } catch {
       toast.error('품질이슈 저장에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setIsSaving(false);

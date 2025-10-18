@@ -62,7 +62,7 @@ export const NotificationSettings: React.FC = () => {
         },
       });
       toast.success(enabled ? '알림이 활성화되었습니다.' : '알림이 비활성화되었습니다.');
-    } catch (error) {
+        } catch {
       toast.error('설정 저장에 실패했습니다.');
     } finally {
       setIsSaving(false);
@@ -83,7 +83,7 @@ export const NotificationSettings: React.FC = () => {
         },
       });
       toast.success(`${NOTIFICATION_CHANNELS[channel].label} 알림이 ${enabled ? '활성화' : '비활성화'}되었습니다.`);
-    } catch (error) {
+        } catch {
       toast.error('설정 저장에 실패했습니다.');
     } finally {
       setIsSaving(false);
@@ -104,7 +104,7 @@ export const NotificationSettings: React.FC = () => {
         },
       });
       toast.success(enabled ? '시간대 제한이 활성화되었습니다.' : '시간대 제한이 비활성화되었습니다.');
-    } catch (error) {
+        } catch {
       toast.error('설정 저장에 실패했습니다.');
     } finally {
       setIsSaving(false);
@@ -129,7 +129,7 @@ export const NotificationSettings: React.FC = () => {
       });
       const label = dayType === 'weekdays' ? '평일' : '주말';
       toast.success(enabled ? `${label} 알림이 활성화되었습니다.` : `${label} 알림이 비활성화되었습니다.`);
-    } catch (error) {
+        } catch {
       toast.error('설정 저장에 실패했습니다.');
     } finally {
       setIsSaving(false);
@@ -156,7 +156,7 @@ export const NotificationSettings: React.FC = () => {
           },
         },
       });
-    } catch (error) {
+        } catch {
       toast.error('설정 저장에 실패했습니다.');
     } finally {
       setIsSaving(false);
@@ -174,7 +174,7 @@ export const NotificationSettings: React.FC = () => {
         },
       });
       toast.success(enabled ? '알림 소리가 활성화되었습니다.' : '알림 소리가 비활성화되었습니다.');
-    } catch (error) {
+        } catch {
       toast.error('설정 저장에 실패했습니다.');
     } finally {
       setIsSaving(false);
@@ -192,7 +192,7 @@ export const NotificationSettings: React.FC = () => {
         },
       });
       toast.success(enabled ? '진동이 활성화되었습니다.' : '진동이 비활성화되었습니다.');
-    } catch (error) {
+        } catch {
       toast.error('설정 저장에 실패했습니다.');
     } finally {
       setIsSaving(false);
@@ -222,7 +222,7 @@ export const NotificationSettings: React.FC = () => {
       <LoadingSpinner 
         size="lg" 
         label="알림 설정을 불러오는 중..." 
-        variant="card"
+        loadingVariant="card"
         className="h-64"
       />
     );
@@ -299,7 +299,7 @@ export const NotificationSettings: React.FC = () => {
               <h4 className="font-medium">권한 허용 방법:</h4>
               <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
                 <li>주소창 왼쪽의 자물쇠 아이콘을 클릭합니다</li>
-                <li>"알림" 항목을 찾아 "허용"으로 변경합니다</li>
+                <li>&quot;알림&quot; 항목을 찾아 &quot;허용&quot;으로 변경합니다</li>
                 <li>또는 브라우저 설정 → 사이트 설정 → 알림에서 허용할 수 있습니다</li>
               </ol>
             </div>
@@ -349,22 +349,22 @@ export const NotificationSettings: React.FC = () => {
             {
               title: '생산센터',
               icon: Factory,
-              channels: Object.entries(NOTIFICATION_CHANNELS).filter(([_, config]) => config.section === 'production-center')
+              channels: Object.entries(NOTIFICATION_CHANNELS).filter(([, config]) => config.section === 'production-center')
             },
             {
               title: '샘플센터',
               icon: Bell,
-              channels: Object.entries(NOTIFICATION_CHANNELS).filter(([_, config]) => config.section === 'sample-center')
+              channels: Object.entries(NOTIFICATION_CHANNELS).filter(([, config]) => config.section === 'sample-center')
             },
             {
               title: '품질센터',
               icon: ShieldAlert,
-              channels: Object.entries(NOTIFICATION_CHANNELS).filter(([_, config]) => config.section === 'quality-center')
+              channels: Object.entries(NOTIFICATION_CHANNELS).filter(([, config]) => config.section === 'quality-center')
             },
             {
               title: '소통',
               icon: MessageSquare,
-              channels: Object.entries(NOTIFICATION_CHANNELS).filter(([_, config]) => config.section === 'communication')
+              channels: Object.entries(NOTIFICATION_CHANNELS).filter(([, config]) => config.section === 'communication')
             }
           ].map((section, sectionIndex) => (
             <div key={section.title} className="space-y-3">
@@ -374,7 +374,7 @@ export const NotificationSettings: React.FC = () => {
               </div>
               
               {/* 섹션 내 채널들 */}
-              {section.channels.map(([key, config], index) => {
+              {section.channels.map(([key, config]) => {
                 const IconComponent = iconMap[config.icon] || Bell;
                 const isEnabled = settings.notifications.channels[key as NotificationChannelType];
                 

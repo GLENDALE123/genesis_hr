@@ -3,8 +3,7 @@ import { QualityInspection, GroupedInspectionData } from '../types';
 import {
   subscribeToQualityInspections,
   subscribeToQualityInspectionsByDateRange,
-  groupInspectionsByOrder,
-  searchInspections
+  groupInspectionsByOrder
 } from '../services/qualityInspectionService';
 import { useQualityInspectionStore } from '../store/qualityInspectionStore';
 
@@ -33,7 +32,7 @@ interface UseQualityInspectionsOptions {
 export const useQualityInspections = (
   options: UseQualityInspectionsOptions = {}
 ): UseQualityInspectionsReturn => {
-  const { startDate, endDate, searchTerm, limitCount = 1000 } = options;
+  const { searchTerm, limitCount = 1000 } = options;
   
   const [mounted, setMounted] = useState(false);
   
@@ -51,10 +50,7 @@ export const useQualityInspections = (
     setInspections,
     setLoading,
     setFetching,
-    setError,
-    updateInspection,
-    deleteInspection,
-    addInspection
+    setError
   } = useQualityInspectionStore();
 
   // 클라이언트 사이드에서만 실행되도록 보장

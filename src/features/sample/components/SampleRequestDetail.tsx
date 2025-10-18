@@ -32,7 +32,7 @@ import { useComments } from '@/shared/hooks/useComments';
 import { CommentsService } from '@/shared/services/comments/commentsService';
 import { Edit, Trash2, Save, Upload, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
-import { SampleRequest, SampleStatus, WorkCoat } from '../types';
+import { SampleRequest, SampleStatus } from '../types';
 import { SAMPLE_STATUS_COLORS, SAMPLE_REQUESTS_COLLECTION } from '../constants';
 
 interface SampleRequestDetailProps {
@@ -140,29 +140,31 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, (request && request.id), currentUserUid]);
 
-  if (!request) return null;
-
   const canManage = isAdmin;
 
-  // 작업 데이터가 비어있는지 확인
+  // 작업 정보가 비어있는지 확인하는 함수
   const isWorkDataEmpty = () => {
-    if (!request.workData) return true;
-    const { undercoat, midcoat, topcoat } = request.workData;
-    return (
-      (!undercoat || (!undercoat.conditions && !undercoat.remarks)) &&
-      (!midcoat || (!midcoat.conditions && !midcoat.remarks)) &&
-      (!topcoat || (!topcoat.conditions && !topcoat.remarks))
-    );
+    const workData = request?.workData;
+    if (!workData) return true;
+    
+    return !workData.undercoat?.conditions && 
+           !workData.undercoat?.remarks &&
+           !workData.midcoat?.conditions && 
+           !workData.midcoat?.remarks &&
+           !workData.topcoat?.conditions && 
+           !workData.topcoat?.remarks;
   };
 
   // 작업 이미지가 있는지 확인
-  const hasWorkImages = request.workImageUrls && request.workImageUrls.length > 0;
+  const hasWorkImages = request?.workImageUrls && request.workImageUrls.length > 0;
 
   // 작업 정보가 비어있으면 자동으로 수정 모드 시작
-  const [isEditingWorkData, setIsEditingWorkData] = useState(isWorkDataEmpty() && !hasWorkImages);
+  const [isEditingWorkData, setIsEditingWorkData] = useState(() => isWorkDataEmpty() && !hasWorkImages);
   
   // 작업 데이터는 기본적으로 펼쳐진 상태
   const [isWorkDataOpen, setIsWorkDataOpen] = useState(true);
+
+  if (!request) return null;
 
   // 작업 데이터 변경
   const handleWorkDataChange = (
@@ -211,7 +213,7 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
   };
 
   // 댓글 추가
-  const handleAddComment = async (text: string, mentionedUserIds?: string[]) => {
+  const handleAddComment = async (text: string) => {
     const { user: authUser } = await import('@/features/auth/store/authStore').then(m => m.useAuthStore.getState());
     const displayName = authUser?.displayName || authUser?.email || currentUserUid;
     

@@ -271,7 +271,7 @@ export const listFiles = async (folderPath: string): Promise<string[]> => {
  * @param path - Storage 경로
  * @returns 파일 메타데이터
  */
-export const getFileMetadata = async (path: string): Promise<any> => {
+export const getFileMetadata = async (path: string): Promise<Record<string, unknown>> => {
   if (!storage) {
     throw new Error('Firebase Storage가 초기화되지 않았습니다.');
   }
@@ -280,7 +280,7 @@ export const getFileMetadata = async (path: string): Promise<any> => {
     const { getMetadata } = await import('firebase/storage');
     const storageRef = ref(storage, path);
     const metadata = await getMetadata(storageRef);
-    return metadata;
+    return metadata as unknown as Record<string, unknown>;
   } catch (error) {
     console.error('❌ 메타데이터 가져오기 실패:', error);
     throw error;
@@ -320,6 +320,10 @@ export const uploadImageFiles = async (
       const fileExtension = file.name.split('.').pop() || 'jpg';
       const fileName = `image_${timestamp}_${index}.${fileExtension}`;
       
+      if (!storage) {
+        throw new Error('Firebase Storage가 초기화되지 않았습니다.');
+      }
+
       // Storage 경로
       const storageRef = ref(storage, `${folderPath}/${fileName}`);
 

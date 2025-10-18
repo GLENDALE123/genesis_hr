@@ -39,7 +39,7 @@ import { useTheme } from 'next-themes';
 import { logout } from '@/shared/services/firebase/auth';
 import { useRouter, usePathname } from 'next/navigation';
 import { cn } from '@/shared/lib/utils';
-import { getUserDisplayName, getUserInitial, getUserRoleBadgeVariant, getUserRoleText, isAdmin as checkIsAdmin } from '@/shared/utils/userUtils';
+import { getUserDisplayName, getUserInitial, getUserRoleBadgeVariant, getUserRoleText } from '@/shared/utils/userUtils';
 import { ThemeCustomizer } from '@/shared/components/common';
 import { useDevStore } from '@/app/store';
 import { toast } from 'sonner';
@@ -61,7 +61,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const { theme, setTheme, resolvedTheme } = useTheme();
   const { dummyRole, setDummyRole, clearDummyRole } = useDevStore();
   
-  const [notifications, setNotifications] = React.useState<any[]>([]);
+  const [notifications, setNotifications] = React.useState<Record<string, unknown>[]>([]);
   const [unreadCount, setUnreadCount] = React.useState(0);
   const [isNotificationOpen, setIsNotificationOpen] = React.useState(false);
   const [isMarkingAllRead, setIsMarkingAllRead] = React.useState(false);
@@ -224,17 +224,17 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                 ) : (
                   notifications.map((notif) => {
                     // 알림 타입 감지 (실제 표시되는 필드)
-                    const requestType = notif.metadata?.centerInfo;
-                    const isLogisticsType = requestType || notif.title?.includes('생산관리부') || notif.title?.includes('부족분') || notif.title?.includes('품질이슈');
-                    const timestamp = notif.createdAt?.toDate ? notif.createdAt.toDate() : new Date(notif.createdAt || Date.now());
-                    const senderName = notif.metadata?.senderName || '시스템';
-                    const senderAvatar = notif.metadata?.senderAvatar;
-                    const productName = notif.metadata?.productName;
-                    const supplier = notif.metadata?.supplier;
+                    const requestType = (notif.metadata as Record<string, unknown>)?.centerInfo;
+                    const isLogisticsType = requestType || (notif.title as string)?.includes('생산관리부') || (notif.title as string)?.includes('부족분') || (notif.title as string)?.includes('품질이슈');
+                    const timestamp = (notif.createdAt as { toDate?: () => Date })?.toDate ? (notif.createdAt as { toDate: () => Date }).toDate() : new Date((notif.createdAt as string | number) || Date.now());
+                    const senderName = (notif.metadata as Record<string, unknown>)?.senderName || '시스템';
+                    const senderAvatar = (notif.metadata as Record<string, unknown>)?.senderAvatar;
+                    const productName = (notif.metadata as Record<string, unknown>)?.productName;
+                    const supplier = (notif.metadata as Record<string, unknown>)?.supplier;
                     
                     return (
                       <Link
-                        key={notif.id}
+                        key={notif.id as string}
                         href={notif.link || '#'}
                         className="block px-3 py-3 border-b cursor-pointer hover:bg-accent transition-colors bg-primary/5"
                         onClick={async (e) => {
@@ -248,7 +248,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                             
                             // 백그라운드에서 읽음 처리 (서버는 3일 후 자동 삭제)
                             const { NotificationManager } = await import('@/shared/components/common/CustomNotification');
-                            NotificationManager.markAsRead(user.uid, notif.id).catch(err => {
+                            NotificationManager.markAsRead(user.uid, notif.id as string).catch(err => {
                               console.error('❌ 알림 읽음 처리 실패:', err);
                             });
                             
@@ -261,37 +261,37 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                           <>
                             <div className="flex items-center justify-between mb-2">
                               <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
-                                {notif.title?.includes('댓글 : 생산관리부') && <MessageSquare className="h-3.5 w-3.5 text-blue-500" />}
-                                {notif.title?.includes('생산관리부') && !notif.title?.includes('댓글 :') && <CalendarClock className="h-3.5 w-3.5 text-blue-500" />}
-                                {notif.title?.includes('부족분') && <AlertTriangle className="h-3.5 w-3.5 text-orange-500" />}
-                                {notif.title?.includes('품질이슈') && <ShieldAlert className="h-3.5 w-3.5 text-red-500" />}
-                                {notif.title}
+                                {(notif.title as string)?.includes('댓글 : 생산관리부') && <MessageSquare className="h-3.5 w-3.5 text-blue-500" />}
+                                {(notif.title as string)?.includes('생산관리부') && !(notif.title as string)?.includes('댓글 :') && <CalendarClock className="h-3.5 w-3.5 text-blue-500" />}
+                                {(notif.title as string)?.includes('부족분') && <AlertTriangle className="h-3.5 w-3.5 text-orange-500" />}
+                                {(notif.title as string)?.includes('품질이슈') && <ShieldAlert className="h-3.5 w-3.5 text-red-500" />}
+                                {notif.title as string}
                               </span>
-                              {requestType && (
+                              {(requestType as string) && (
                                 <span className="text-xs font-semibold text-primary">
-                                  {requestType}
+                                  {requestType as string}
                                 </span>
                               )}
                             </div>
                             <div className="flex items-start gap-3">
                               <Avatar className="h-10 w-10 flex-shrink-0">
-                                <AvatarImage src={senderAvatar} alt={senderName} />
+                                <AvatarImage src={senderAvatar as string} alt={senderName as string} />
                                 <AvatarFallback className="bg-muted">
-                                  {senderName.charAt(0).toUpperCase()}
+                                  {(senderName as string).charAt(0).toUpperCase()}
                                 </AvatarFallback>
                               </Avatar>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
-                                  <span className="text-sm font-semibold text-foreground">{senderName}</span>
+                                  <span className="text-sm font-semibold text-foreground">{senderName as string}</span>
                                   <span className="text-xs text-muted-foreground">•</span>
                                   <span className="text-sm font-medium text-foreground truncate">
-                                    {supplier && `${supplier} `}{productName}
+                                    {(supplier as string) && `${supplier as string} `}{productName as string}
                                   </span>
                                   <span className="text-xs text-muted-foreground ml-auto">
                                     {timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
                                   </span>
                                 </div>
-                                <p className="text-xs text-muted-foreground line-clamp-3 whitespace-pre-line">{notif.body}</p>
+                                <p className="text-xs text-muted-foreground line-clamp-3 whitespace-pre-line">{notif.body as string}</p>
                               </div>
                             </div>
                           </>
@@ -299,9 +299,9 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                           /* 댓글/멘션 알림 */
                           <div className="flex items-start gap-3">
                             <Avatar className="h-10 w-10 flex-shrink-0">
-                              <AvatarImage src={senderAvatar} alt={senderName} />
+                              <AvatarImage src={senderAvatar as string} alt={senderName as string} />
                               <AvatarFallback className="bg-muted">
-                                {senderName.charAt(0).toUpperCase()}
+                                {(senderName as string).charAt(0).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
                             <div className="flex-1 min-w-0">
@@ -311,13 +311,13 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                                 ) : (
                                   <User className="h-4 w-4 text-green-600" />
                                 )}
-                                <span className="text-sm font-semibold text-foreground truncate">{senderName}</span>
+                                <span className="text-sm font-semibold text-foreground truncate">{senderName as string}</span>
                                 <span className="text-xs text-muted-foreground">
                                   {timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
                                 </span>
                               </div>
-                              <p className="text-sm font-medium text-foreground mb-1">{notif.title}</p>
-                              <p className="text-sm text-muted-foreground line-clamp-2">{notif.body}</p>
+                              <p className="text-sm font-medium text-foreground mb-1">{notif.title as string}</p>
+                              <p className="text-sm text-muted-foreground line-clamp-2">{notif.body as string}</p>
                             </div>
                           </div>
                         )}
@@ -405,7 +405,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               <DropdownMenuSeparator />
               
               {/* Admin 전용: 권한 테스트 모드 */}
-              {checkIsAdmin(userProfile) && (
+              {userProfile?.role === 'Admin' && (
                 <>
                   <DropdownMenuLabel>
                     <div className="flex items-center gap-2">

@@ -12,22 +12,11 @@ import {
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
 import { toast } from 'sonner';
-import { getUserInitial, getUserDisplayName } from '@/shared/utils/userUtils';
+import { getUserInitial } from '@/shared/utils/userUtils';
 import { getAllUsers } from '@/shared/services/firebase/userProfile';
 import { ChatInput } from '@/shared/components/common/ChatInput';
 import type { UserProfile } from '@/features/auth/types';
-
-export interface Comment {
-  id: string;
-  timestamp?: string;
-  date?: string;
-  user: string;
-  text: string;
-  uid?: string;
-  userId?: string;
-  readBy?: string[];
-  editedAt?: string;
-}
+import type { Comment } from '@/shared/services/comments/commentsService';
 
 interface CommentsSectionProps {
   comments: Comment[];
@@ -158,7 +147,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
     
     // @[DisplayName](UID) 패턴이 있으면 이를 사용
     if (mentionMatches.length > 0) {
-      mentionMatches.forEach((mention, idx) => {
+      mentionMatches.forEach((mention) => {
         // 멘션 이전 텍스트
         if (mention.index > lastIndex) {
           parts.push({
@@ -255,11 +244,11 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
         ) : (
           comments.map((comment) => {
             const isUnread = currentUserUid && comment.readBy && !comment.readBy.includes(currentUserUid);
-            const commentDate = comment.timestamp || comment.date || '';
+            const commentDate = comment.timestamp || '';
             const displayName = comment.user || '알 수 없음';
             const initial = getUserInitial({ displayName: comment.user }, '알');
 
-            const isMyComment = comment.uid === currentUserUid || comment.userId === currentUserUid;
+            const isMyComment = comment.uid === currentUserUid;
             const canDelete = isAdmin || isMyComment;
 
             return (
@@ -356,7 +345,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleReply(displayName, comment.uid || comment.userId)}>
+                      <DropdownMenuItem onClick={() => handleReply(displayName, comment.uid)}>
                         <Reply className="mr-2 h-4 w-4" />
                         답글
                       </DropdownMenuItem>

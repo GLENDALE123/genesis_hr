@@ -31,7 +31,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <div className="flex-shrink-0">
-          <AppSidebar 
+          <AppSidebar
+            className=""
             collapsed={sidebarCollapsed}
           />
         </div>

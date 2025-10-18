@@ -51,15 +51,15 @@ export const signIn = async (loginData: LoginData) => {
     console.log('✅ [Firebase Auth] 마지막 로그인 시간 업데이트 완료');
     
     return userCredential.user;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ [Firebase Auth] 로그인 실패:', {
-      code: error.code,
-      message: error.message,
+      code: (error as { code?: string }).code,
+      message: (error as { message?: string }).message,
       email: loginData.email
     });
     
     // 상세한 에러 정보 로깅
-    if (error.code) {
+    if ((error as { code?: string }).code) {
       const errorMessages: Record<string, string> = {
         'auth/user-not-found': '사용자를 찾을 수 없음',
         'auth/wrong-password': '잘못된 비밀번호',
@@ -69,7 +69,7 @@ export const signIn = async (loginData: LoginData) => {
         'auth/too-many-requests': '너무 많은 요청',
         'auth/network-request-failed': '네트워크 오류'
       };
-      console.error('🔍 [Firebase Auth] 에러 코드 분석:', errorMessages[error.code] || '알 수 없는 오류');
+      console.error('🔍 [Firebase Auth] 에러 코드 분석:', errorMessages[(error as { code?: string }).code || ''] || '알 수 없는 오류');
     }
     
     throw error;

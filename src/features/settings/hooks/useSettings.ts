@@ -36,7 +36,6 @@ export const useSettings = (): UseSettingsReturn => {
   const { user } = useAuthStore();
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // 설정 로드
   const loadSettings = useCallback(async () => {
@@ -48,12 +47,10 @@ export const useSettings = (): UseSettingsReturn => {
 
     try {
       setIsLoading(true);
-      setError(null);
       const loadedSettings = await settingsService.getSettings(user.uid);
       setSettings(loadedSettings);
     } catch (err) {
       console.error('❌ 설정 로드 실패:', err);
-      setError(err instanceof Error ? err.message : '설정 로드 실패');
       setSettings(DEFAULT_SETTINGS);
     } finally {
       setIsLoading(false);
@@ -173,7 +170,7 @@ export const useSettings = (): UseSettingsReturn => {
   return {
     settings,
     isLoading,
-    error,
+    error: null,
     updateSettings,
     updateNotificationSettings,
     updateProfileSettings,

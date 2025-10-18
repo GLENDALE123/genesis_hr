@@ -7,9 +7,9 @@ export interface ElectronAPI {
    * IPC Renderer (electron-push-receiver용)
    */
   ipcRenderer: {
-    send: (channel: string, ...args: any[]) => void;
-    on: (channel: string, listener: (event: any, ...args: any[]) => void) => void;
-    removeListener: (channel: string, listener: (event: any, ...args: any[]) => void) => void;
+    send: (channel: string, ...args: unknown[]) => void;
+    on: (channel: string, listener: (event: unknown, ...args: unknown[]) => void) => void;
+    removeListener: (channel: string, listener: (event: unknown, ...args: unknown[]) => void) => void;
   };
 
   /**
@@ -41,7 +41,7 @@ export interface ElectronAPI {
     link?: string | null; // 알림 클릭 시 이동할 링크
     useCustom?: boolean; // true: 커스텀 윈도우, false: 네이티브 알림
     soundEnabled?: boolean; // 알림 소리 설정
-    data?: Record<string, any>; // FCM 데이터
+    data?: Record<string, unknown>; // FCM 데이터
   }) => Promise<{ success: boolean; type?: 'custom' | 'native'; error?: string }>;
 
   /**

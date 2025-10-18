@@ -1,18 +1,17 @@
 'use client';
 
-import React, { useMemo, memo } from 'react';
+import React, { memo } from 'react';
 import { Card, CardContent } from '@/shared/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/components/ui/table';
 import { GroupedInspectionData } from '../types';
 import { InspectionStatusBadge } from './InspectionStatusBadge';
 import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
 import { Image } from 'lucide-react';
-import { cn } from '@/shared/lib/utils';
 
 interface QualityInspectionTableProps {
   groupedData: GroupedInspectionData[];
   isLoading: boolean;
-  onSelectGroup: (group: GroupedInspectionData) => void;
+  onSelectGroup: (group: GroupedInspectionData, initialTab?: 'incoming' | 'inProcess' | 'outgoing') => void;
 }
 
 /**
@@ -152,13 +151,25 @@ const QualityInspectionTableComponent: React.FC<QualityInspectionTableProps> = (
                       {group.common?.workLine || '-'}
                     </TableCell>
                     <TableCell className="text-center">
-                      <InspectionStatusBadge inspections={group.incoming} />
+                      <InspectionStatusBadge 
+                        inspections={group.incoming} 
+                        inspectionType="incoming"
+                        onClick={(type) => onSelectGroup(group, type)}
+                      />
                     </TableCell>
                     <TableCell className="text-center">
-                      <InspectionStatusBadge inspections={group.inProcess} />
+                      <InspectionStatusBadge 
+                        inspections={group.inProcess} 
+                        inspectionType="inProcess"
+                        onClick={(type) => onSelectGroup(group, type)}
+                      />
                     </TableCell>
                     <TableCell className="text-center">
-                      <InspectionStatusBadge inspections={group.outgoing} />
+                      <InspectionStatusBadge 
+                        inspections={group.outgoing} 
+                        inspectionType="outgoing"
+                        onClick={(type) => onSelectGroup(group, type)}
+                      />
                     </TableCell>
                   </TableRow>
                 );

@@ -17,7 +17,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/shared/components/ui/sheet';
-import { Settings, Shield, User, Check, X } from 'lucide-react';
+import { Settings, Shield, User, Check } from 'lucide-react';
 import { useIsAdmin } from '@/features/auth/hooks';
 import { usePermissionsStore } from '@/features/auth/store/permissionsStore';
 import { Badge } from '@/shared/components/ui/badge';

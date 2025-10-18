@@ -20,12 +20,12 @@
  * const date = toDate(new Date());
  * const date = toDate('2023-01-01T00:00:00.000Z');
  */
-export const toDate = (dateField: any): Date => {
+export const toDate = (dateField: unknown): Date => {
   if (!dateField) return new Date();
   
   // Firestore Timestamp (toDate 메서드 있음)
-  if (typeof dateField.toDate === 'function') {
-    return dateField.toDate();
+  if (typeof (dateField as { toDate?: () => Date }).toDate === 'function') {
+    return (dateField as { toDate: () => Date }).toDate();
   }
   
   // JavaScript Date 객체
@@ -51,7 +51,7 @@ export const toDate = (dateField: any): Date => {
  * @example
  * const isoString = toISOString(firestoreTimestamp);
  */
-export const toISOString = (dateField: any): string => {
+export const toISOString = (dateField: unknown): string => {
   return toDate(dateField).toISOString();
 };
 

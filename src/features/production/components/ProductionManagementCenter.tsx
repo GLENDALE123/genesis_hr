@@ -80,7 +80,7 @@ const ProductionManagementCenterComponent: React.FC = () => {
         setSelectedRequest(updatedRequest);
       }
     }
-  }, [requests]);
+  }, [requests, selectedRequest]);
 
   const handleNewRequest = useCallback(() => {
     setIsFormModalOpen(true);
@@ -199,7 +199,7 @@ const ProductionManagementCenterComponent: React.FC = () => {
           <LoadingSpinner 
             size="lg" 
             label="생산 데이터 로딩 중..." 
-            variant="card"
+            variant="default"
             className="flex-1"
           />
         ) : filteredRequests.length > 0 ? (
@@ -299,7 +299,6 @@ const ProductionManagementCenterComponent: React.FC = () => {
         isOpen={!!selectedRequest}
         onClose={() => setSelectedRequest(null)}
         request={selectedRequest}
-        currentUserName={getUserDisplayName(userProfile)}
         currentUserUid={(userProfile && userProfile.uid) || ''}
         isAdmin={isAdmin(userProfile)}
         isManager={isManager(userProfile)}

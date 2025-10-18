@@ -23,7 +23,7 @@ interface NotificationPayload {
   senderAvatar?: string;
   priority?: 'low' | 'normal' | 'high';
   centerInfo?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // Firebase Functions URL 설정

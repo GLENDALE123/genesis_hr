@@ -31,10 +31,10 @@ export const useComments = (collectionName: string) => {
     try {
       await CommentsService.addComment(collectionName, documentId, commentData);
       toast.success('댓글이 추가되었습니다.');
-    } catch (error) {
-      console.error('댓글 추가 실패:', error);
+    } catch (err) {
+      console.error('댓글 추가 실패:', err);
       toast.error('댓글 추가에 실패했습니다.');
-      throw error;
+      throw err;
     }
   };
 

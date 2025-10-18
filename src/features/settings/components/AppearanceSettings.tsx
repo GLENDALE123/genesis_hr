@@ -32,7 +32,7 @@ export const AppearanceSettings: React.FC = () => {
       setIsSaving(true);
       await updateAppearanceSettings({ fontSize });
       toast.success('폰트 크기가 변경되었습니다.');
-    } catch (error) {
+    } catch {
       toast.error('폰트 크기 변경에 실패했습니다.');
     } finally {
       setIsSaving(false);
@@ -44,7 +44,7 @@ export const AppearanceSettings: React.FC = () => {
       <LoadingSpinner 
         size="lg" 
         label="화면 설정을 불러오는 중..." 
-        variant="card"
+        variant="default"
         className="h-64"
       />
     );

@@ -63,7 +63,7 @@ class SettingsService {
       }
 
       const settingsRef = doc(db, `users/${userId}/settings/preferences`);
-      await updateDoc(settingsRef, settings as any);
+      await updateDoc(settingsRef, settings as Record<string, unknown>);
       console.log('✅ 설정 저장 완료:', settings);
     } catch (error) {
       console.error('❌ 설정 저장 실패:', error);

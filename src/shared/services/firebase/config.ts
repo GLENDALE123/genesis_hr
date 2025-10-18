@@ -6,7 +6,7 @@ import { getAnalytics } from 'firebase/analytics';
 import { getFunctions } from 'firebase/functions';
 
 // 일렉트론 환경 감지
-const isElectron = typeof window !== 'undefined' && (window as any).__ELECTRON__;
+const isElectron = typeof window !== 'undefined' && (window as unknown as Record<string, unknown>).__ELECTRON__;
 
 
 const firebaseConfig = {

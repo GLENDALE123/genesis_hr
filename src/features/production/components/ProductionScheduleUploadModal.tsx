@@ -185,7 +185,7 @@ export const ProductionScheduleUploadModal: React.FC<ProductionScheduleUploadMod
       onClose();
       setPastedText('');
       setParsedSchedules([]);
-    } catch (e) {
+    } catch {
       toast.error('일정 등록에 실패했습니다.');
     } finally {
       setIsSaving(false);

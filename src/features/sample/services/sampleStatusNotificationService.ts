@@ -30,7 +30,7 @@ export class SampleStatusNotificationService {
       }
 
       // 상태변경에 따른 알림 내용 생성
-      let title = '샘플 요청 상태 변경';
+      const title = '샘플 요청 상태 변경';
       let body = '';
 
       if (oldStatus && oldStatus !== newStatus) {

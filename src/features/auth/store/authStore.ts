@@ -35,7 +35,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         error: null,
         
         // Actions
-        login: async (emailOrLoginId: string) => {
+        login: async () => {
           set({ isLoading: true, error: null });
           try {
             // Firebase 로그인 로직은 별도 서비스에서 처리
@@ -136,7 +136,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         },
         
         refreshUserProfile: async () => {
-          const { user } = get();
+          const { user } = useAuthStore.getState();
           if (!user) {
             console.warn('⚠️ [AuthStore] 사용자가 로그인되지 않음 - 프로필 새로고침 불가');
             return;

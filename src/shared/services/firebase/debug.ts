@@ -12,7 +12,7 @@ export const checkFirebaseConnection = async () => {
   
   const connectionStatus = {
     environment: {
-      isElectron: typeof window !== 'undefined' && (window as any).__ELECTRON__,
+      isElectron: typeof window !== 'undefined' && (window as unknown as Record<string, unknown>).__ELECTRON__,
       isBrowser: typeof window !== 'undefined',
       platform: typeof process !== 'undefined' ? process.platform : 'browser',
       nodeEnv: typeof process !== 'undefined' ? process.env.NODE_ENV : 'browser'

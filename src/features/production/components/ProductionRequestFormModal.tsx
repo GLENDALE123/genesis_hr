@@ -175,7 +175,7 @@ const ProductionRequestFormModalComponent: React.FC<ProductionRequestFormModalPr
       const imageFiles = imagePreviewItems.map(item => item.file);
       await onSave(formData, imageFiles);
       onClose();
-    } catch (error) {
+    } catch {
       setIsSaving(false);
     }
   };

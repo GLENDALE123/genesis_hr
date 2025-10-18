@@ -32,9 +32,6 @@ export const useSampleRequests = () => {
     setLoading,
     setFetching,
     setError,
-    updateRequest: updateCachedRequest,
-    deleteRequest: deleteCachedRequest,
-    addRequest: addCachedRequest,
     clearCache
   } = useSampleRequestsStore();
 
@@ -112,7 +109,7 @@ export const useSampleRequests = () => {
         unsubscribeRef.current = null;
       }
     };
-  }, [mounted]);
+  }, [mounted, getCachedRequests, setCachedRequests, setError, setFetching, setLoading]);
 
   /**
    * 새 샘플 요청 생성

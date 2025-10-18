@@ -173,9 +173,9 @@ export const usePackagingForm = ({ report, isEditMode = false }: UseProductionFo
     const currentBox = { ...newBoxes[index] };
 
     if (field === 'quantity' || field === 'boxNumber') {
-      (currentBox as any)[field] = value.replace(/[^0-9]/g, '');
+      (currentBox as Record<string, unknown>)[field] = value.replace(/[^0-9]/g, '');
     } else {
-      (currentBox as any)[field] = value;
+      (currentBox as Record<string, unknown>)[field] = value;
     }
 
     // 정상 선택 시 사유 초기화

@@ -9,4 +9,3 @@ export * from './hooks';
 export { useGlobalStore } from '@/app/store';
 export { useAuthStore } from '@/features/auth';
 export { useDashboardStore } from '@/features/dashboard';
-export { useEmployeesStore } from '@/features/employees';

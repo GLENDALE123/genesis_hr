@@ -21,11 +21,11 @@ export const createQuickThumbnail = async (file: File): Promise<string> => {
       
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        let { width, height } = img;
+        const { width, height } = img;
 
         // 정사각형 비율로 맞추기
         const size = Math.min(width, height);
-        const scale = THUMB_SIZE / size;
+        // const scale = THUMB_SIZE / size;
         
         canvas.width = THUMB_SIZE;
         canvas.height = THUMB_SIZE;
@@ -251,7 +251,7 @@ export class ImageCache {
       // 캐시 크기 제한 (오래된 것부터 삭제)
       if (Object.keys(cache).length >= this.MAX_CACHE_SIZE) {
         const oldestKey = Object.keys(cache).reduce((oldest, key) => 
-          cache[key].timestamp < cache[oldest].timestamp ? key : oldest
+          (cache[key] as { timestamp: number }).timestamp < (cache[oldest] as { timestamp: number }).timestamp ? key : oldest
         );
         delete cache[oldestKey];
       }
@@ -283,9 +283,9 @@ export class ImageCache {
       if (cached) {
         // 만료 확인
         const now = Date.now();
-        if (now - cached.timestamp < this.CACHE_EXPIRY) {
+        if (now - (cached as { timestamp: number }).timestamp < this.CACHE_EXPIRY) {
           console.log(`⚡ 캐시 히트: ${urlHash}`);
-          return cached.url;
+          return (cached as { url: string }).url;
         } else {
           // 만료된 캐시 삭제
           delete cache[urlHash];
@@ -327,7 +327,7 @@ export class ImageCache {
     }
   }
 
-  private static getCache(): Record<string, any> {
+  private static getCache(): Record<string, unknown> {
     try {
       const cached = localStorage.getItem(this.CACHE_KEY);
       return cached ? JSON.parse(cached) : {};

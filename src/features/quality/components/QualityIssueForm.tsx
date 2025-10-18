@@ -1,39 +1,30 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
-import { Badge } from '@/shared/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
-import { Plus, Minus, X, Camera, Upload, AlertCircle } from 'lucide-react';
+import { Plus, Minus, Camera, Upload } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { useOrderNumberFormatter } from '@/shared/hooks/useOrderNumberFormatter';
 import { UploadingImageGrid, type UploadingImageItem, InputSelect } from '@/shared/components/common';
 import {
-  QualityIssueFormData,
-  KeywordPair
+  QualityIssueFormData
 } from '../types';
 import { 
   DEPARTMENT_OPTIONS,
   REGISTRATION_KEYWORD_OPTIONS,
   PROCESS_KEYWORD_OPTIONS,
-  DEFECT_KEYWORD_OPTIONS,
-  PRIORITY_OPTIONS,
-  CATEGORY_OPTIONS
+  DEFECT_KEYWORD_OPTIONS
 } from '../constants';
 
 interface QualityIssueFormProps {
   onSave: (data: QualityIssueFormData, imageFiles: File[]) => void;
-  onCancel: () => void;
-  isSaving: boolean;
 }
 
 export const QualityIssueForm: React.FC<QualityIssueFormProps> = ({
-  onSave,
-  onCancel,
-  isSaving
+  onSave
 }) => {
   const [formData, setFormData] = useState<QualityIssueFormData>({
     department: '',
@@ -136,7 +127,7 @@ export const QualityIssueForm: React.FC<QualityIssueFormProps> = ({
             updated[startIndex + i] = { file: files[i], preview: thumbnail };
             return updated;
           });
-        } catch (error) {
+        } catch {
           // 실패 시 원본 Blob URL 사용
           setImagePreviewItems(prev => {
             const updated = [...prev];
@@ -192,11 +183,6 @@ export const QualityIssueForm: React.FC<QualityIssueFormProps> = ({
     onSave(submitData, imageFiles);
   };
 
-  const getPriorityInfo = (priority: string) => {
-    return PRIORITY_OPTIONS.find(p => p.value === priority) || PRIORITY_OPTIONS[1];
-  };
-
-
   return (
     <form id="quality-issue-form" onSubmit={handleSubmit} className="space-y-6 max-w-4xl mx-auto p-6">
           {/* 부서와 등록키워드 */}
@@ -229,7 +215,6 @@ export const QualityIssueForm: React.FC<QualityIssueFormProps> = ({
                 onChange={(value) => handleInputChange('registrationKeyword', value)}
                 options={[...REGISTRATION_KEYWORD_OPTIONS]}
                 placeholder="등록키워드를 입력하거나 선택하세요"
-                error={!!errors.registrationKeyword}
               />
               {errors.registrationKeyword && (
                 <p className="text-sm text-red-500 mt-1">{errors.registrationKeyword}</p>

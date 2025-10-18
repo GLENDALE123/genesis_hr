@@ -9,6 +9,7 @@ interface RequestUser {
   uid: string;
   displayName: string;
   photoURL?: string;
+  email?: string;
 }
 
 interface NotificationPayload {
@@ -23,7 +24,7 @@ interface NotificationPayload {
   senderAvatar?: string;
   priority?: 'low' | 'normal' | 'high';
   centerInfo?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // Firebase Functions URL 설정
@@ -291,7 +292,11 @@ export class QualityIssueNotificationService {
       productName: '테스트제품',
       partName: '테스트부속',
       supplier: '테스트공급사',
-      author: senderInfo,
+      author: {
+        uid: senderInfo.uid,
+        displayName: senderInfo.displayName,
+        email: senderInfo.email || ''
+      },
       issues: ['테스트용 품질이슈입니다.'],
       createdAt: new Date().toISOString(),
       registrationKeyword: '견본요청',
@@ -300,7 +305,9 @@ export class QualityIssueNotificationService {
         process: '성형',
         defect: '불량'
       }],
-      images: []
+      status: 'open',
+      priority: 'normal',
+      category: '품질이슈',
     };
 
     await this.sendQualityIssueCreatedNotification(testIssue, senderInfo);

@@ -213,6 +213,7 @@ export interface ProductionSchedule {
   progress?: string;          // 진행
   shipping?: string;          // 출하
   line?: string;              // 라인
+  productionLine?: string;    // 생산라인 (알림용)
   injection?: string;         // 사출
   orderNumber?: string;       // 발주번호
   client: string;             // 발주처

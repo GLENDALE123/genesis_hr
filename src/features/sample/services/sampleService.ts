@@ -16,8 +16,7 @@ import {
   updateDoc,
   deleteDoc,
   onSnapshot,
-  arrayUnion,
-  Timestamp
+  arrayUnion
 } from 'firebase/firestore';
 import { uploadImages } from '@/shared/utils/imageUpload';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
@@ -25,8 +24,7 @@ import {
   SampleRequest,
   SampleFormData,
   SampleStatus,
-  SampleHistoryItem,
-  WorkCoat
+  SampleHistoryItem
 } from '../types';
 import { SAMPLE_REQUESTS_COLLECTION } from '../constants';
 import { SampleStatusNotificationService } from './sampleStatusNotificationService';
@@ -181,7 +179,7 @@ export class SampleService {
         ...(reason && { reason })
       };
 
-      const updateData: any = {
+      const updateData: Record<string, unknown> = {
         status,
         history: arrayUnion(historyItem),
         updatedAt: new Date().toISOString()
@@ -440,7 +438,7 @@ export class SampleService {
           
           // 댓글이 있는 요청 디버깅
           if (data.comments && data.comments.length > 0) {
-            console.log(`🔍 [실시간 구독] ${doc.id} 댓글 데이터:`, data.comments.map((c: any) => ({
+            console.log(`🔍 [실시간 구독] ${doc.id} 댓글 데이터:`, data.comments.map((c: Record<string, unknown>) => ({
               id: c.id,
               readBy: c.readBy || []
             })));

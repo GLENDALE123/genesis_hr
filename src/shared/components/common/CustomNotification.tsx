@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, CalendarClock, AlertTriangle } from 'lucide-react';
+import { X } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
 import { CommentNotification, LogisticsNotification } from './notifications';

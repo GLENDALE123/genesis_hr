@@ -29,6 +29,7 @@ export default function QualityHistoryPage() {
   });
 
   const [selectedGroup, setSelectedGroup] = useState<GroupedInspectionData | null>(null);
+  const [selectedInitialTab, setSelectedInitialTab] = useState<'incoming' | 'inProcess' | 'outgoing' | undefined>(undefined);
 
   // 날짜 필터 변경 시 구독 업데이트 (검색어가 없을 때만)
   useEffect(() => {
@@ -71,14 +72,21 @@ export default function QualityHistoryPage() {
       <QualityInspectionTable
         groupedData={filteredGroupedInspections}
         isLoading={isLoading}
-        onSelectGroup={setSelectedGroup}
+        onSelectGroup={(group, initialTab) => {
+          setSelectedGroup(group);
+          setSelectedInitialTab(initialTab);
+        }}
       />
 
       {/* 상세 모달 */}
       <QualityInspectionDetail
         group={selectedGroup}
         isOpen={!!selectedGroup}
-        onClose={() => setSelectedGroup(null)}
+        onClose={() => {
+          setSelectedGroup(null);
+          setSelectedInitialTab(undefined);
+        }}
+        initialTab={selectedInitialTab}
       />
     </div>
   );

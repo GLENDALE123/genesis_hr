@@ -29,12 +29,11 @@ const closeInputSelect = (id: string) => {
 };
 
 interface InputSelectProps {
-  value: string;
+  value: string | undefined;
   onChange: (value: string) => void;
   options: readonly string[];
   placeholder?: string;
   className?: string;
-  error?: boolean;
   disabled?: boolean;
   autoComplete?: string;
   'data-testid'?: string;
@@ -46,7 +45,6 @@ export const InputSelect: React.FC<InputSelectProps> = ({
   options,
   placeholder = "입력하거나 선택하세요",
   className,
-  error = false,
   disabled = false,
   autoComplete = "off",
   ...props
@@ -170,7 +168,7 @@ export const InputSelect: React.FC<InputSelectProps> = ({
     }
 
     const filteredOptions = options.filter(option =>
-      option.toLowerCase().includes(value.toLowerCase())
+      option.toLowerCase().includes((value || '').toLowerCase())
     );
 
     switch (e.key) {
@@ -209,7 +207,7 @@ export const InputSelect: React.FC<InputSelectProps> = ({
   };
 
   const filteredOptions = options.filter(option =>
-    option.toLowerCase().includes(value.toLowerCase())
+    option.toLowerCase().includes((value || '').toLowerCase())
   );
 
   // 드롭다운이 열릴 때 하이라이트 인덱스 초기화
@@ -224,12 +222,11 @@ export const InputSelect: React.FC<InputSelectProps> = ({
       <div className="relative">
         <Input
           ref={inputRef}
-          value={value}
+          value={value || ''}
           onChange={handleInputChange}
           placeholder={placeholder}
           className={cn(
             "pr-10",
-            error && 'border-red-500',
             className
           )}
           onFocus={handleFocus}

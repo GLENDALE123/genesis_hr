@@ -65,13 +65,11 @@ export const createShortageRequest = async (
     try {
       await createShortageNotification(
         docId,
-        author.displayName,
+        `${author.displayName}님이 ${report.productName} (${report.partName}) 부족분을 신청했습니다.`,
         report.productName,
-        report.partName,
-        report.supplier,
-        shortageData.requestedShortageQuantity,
-        shortageData.shortageReason,
-        author.uid
+        author.uid,
+        author.displayName,
+        undefined
       );
     } catch (notificationError) {
       console.error('부족분 신청 알림 발송 실패:', notificationError);

@@ -4,7 +4,7 @@
 
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Label } from '@/shared/components/ui/label';
 import { Input } from '@/shared/components/ui/input';
@@ -28,7 +28,6 @@ export const ProfileSettings: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     displayName: userProfile?.displayName || user?.displayName || '',
     phoneNumber: userProfile?.contact || settings.profile.phoneNumber || '',
@@ -76,7 +75,7 @@ export const ProfileSettings: React.FC = () => {
       });
       
       // 2. Firebase Auth 프로필 업데이트
-      if (auth.currentUser) {
+      if (auth && auth.currentUser) {
         await updateProfile(auth.currentUser, {
           displayName: formData.displayName,
         });
@@ -127,7 +126,7 @@ export const ProfileSettings: React.FC = () => {
       const photoURL = await uploadProfilePhoto(user.uid, compressedFile);
 
       // 1. Firebase Auth 프로필 업데이트
-      if (auth.currentUser) {
+      if (auth && auth.currentUser) {
         await updateProfile(auth.currentUser, { photoURL });
       }
 
@@ -139,10 +138,7 @@ export const ProfileSettings: React.FC = () => {
 
       toast.success('프로필 사진이 변경되었습니다.');
 
-      // 파일 input 초기화
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      // 파일 input 초기화는 자동으로 됩니다
     } catch (error) {
       console.error('프로필 사진 업로드 실패:', error);
       const errorMessage = error instanceof Error ? error.message : '프로필 사진 업로드에 실패했습니다.';
@@ -154,7 +150,9 @@ export const ProfileSettings: React.FC = () => {
 
   // 파일 선택 대화상자 열기
   const handlePhotoClick = () => {
-    fileInputRef.current?.click();
+    // 파일 선택은 input 요소의 onChange 이벤트로 처리됩니다
+    const fileInput = document.getElementById('photo-upload') as HTMLInputElement;
+    fileInput?.click();
   };
 
   // userProfile 변경 시 formData 업데이트
@@ -199,7 +197,7 @@ export const ProfileSettings: React.FC = () => {
             </Avatar>
             <div className="flex-1">
               <input
-                ref={fileInputRef}
+                id="photo-upload"
                 type="file"
                 accept="image/jpeg,image/jpg,image/png,image/webp"
                 onChange={handlePhotoUpload}

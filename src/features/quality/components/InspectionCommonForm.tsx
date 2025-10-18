@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import { Label } from '@/shared/components/ui/label';
 import { Input } from '@/shared/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
@@ -10,20 +10,136 @@ import { Button } from '@/shared/components/ui/button';
 import { PROCESS_KEYWORD_OPTIONS, DEFECT_KEYWORD_OPTIONS } from '../constants';
 import type { AutocompleteData } from '../services/autocompleteService';
 import { useOrderNumberFormatter } from '@/shared/hooks/useOrderNumberFormatter';
+import { QualityInspection, KeywordPair } from '../types';
+import { 
+  createImagePreview, 
+  uploadImageWithState, 
+  ImageUploadState, 
+  revokePreviewUrl 
+} from '@/shared/utils/imageUpload';
+import { UploadingImageGrid, UploadingImageItem } from '@/shared/components/common/UploadingImageGrid';
 
 interface InspectionCommonFormProps {
-  formData: any;
-  setFormData: React.Dispatch<React.SetStateAction<any>>;
+  formData: Partial<QualityInspection>;
+  setFormData: React.Dispatch<React.SetStateAction<Partial<QualityInspection>>>;
   autocompleteData: AutocompleteData;
   showKeywordSection?: boolean;
   onKeywordPairChange?: (index: number, field: 'process' | 'defect', value: string) => void;
   onAddKeywordPair?: () => void;
   onRemoveKeywordPair?: (index: number) => void;
-  imagePreviews: string[];
-  handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  removeImage: (index: number) => void;
   withoutCard?: boolean;
 }
+
+// 이미지 업로드 훅 인터페이스
+export interface UseImageUploadReturn {
+  uploadingImages: UploadingImageItem[];
+  isUploading: boolean;
+  uploadProgress: number;
+  handleFileSelect: (files: File[]) => Promise<void>;
+  removeImage: (index: number) => void;
+  uploadImages: (folder: string) => Promise<string[]>;
+  clearImages: () => void;
+}
+
+// 이미지 업로드 훅
+export const useImageUpload = (): UseImageUploadReturn => {
+  const [uploadingImages, setUploadingImages] = useState<UploadingImageItem[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  const handleFileSelect = useCallback(async (files: File[]) => {
+    if (files.length === 0) return;
+
+    // 1단계: 즉시 로딩 상태로 추가
+    const newItems: UploadingImageItem[] = files.map(file => ({ file, preview: null }));
+    setUploadingImages(prev => [...prev, ...newItems]);
+    
+    // 2단계: 썸네일 생성
+    const startIndex = uploadingImages.length;
+    for (let i = 0; i < files.length; i++) {
+      try {
+        const thumbnail = await createImagePreview(files[i]);
+        setUploadingImages(prev => {
+          const updated = [...prev];
+          updated[startIndex + i] = { file: files[i], preview: thumbnail.previewUrl };
+          return updated;
+        });
+      } catch (error) {
+        console.error('썸네일 생성 실패:', error);
+        // 실패한 경우 원본 파일로 대체
+        setUploadingImages(prev => {
+          const updated = [...prev];
+          updated[startIndex + i] = { file: files[i], preview: URL.createObjectURL(files[i]) };
+          return updated;
+        });
+      }
+    }
+  }, [uploadingImages.length]);
+
+  const removeImage = useCallback((index: number) => {
+    setUploadingImages(prev => {
+      const item = prev[index];
+      if (item.preview && item.preview.startsWith('blob:')) {
+        URL.revokeObjectURL(item.preview);
+      }
+      return prev.filter((_, i) => i !== index);
+    });
+  }, []);
+
+  const uploadImages = useCallback(async (folder: string): Promise<string[]> => {
+    if (uploadingImages.length === 0) return [];
+
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const uploadedUrls: string[] = [];
+      
+      for (let i = 0; i < uploadingImages.length; i++) {
+        const item = uploadingImages[i];
+        const uploadState = await createImagePreview(item.file);
+        
+        const uploadedState = await uploadImageWithState(uploadState, folder, (state) => {
+          // 진행률 업데이트
+          const currentProgress = ((i + (state.progress || 0) / 100) / uploadingImages.length) * 100;
+          setUploadProgress(currentProgress);
+        });
+
+        if (uploadedState.status === 'uploaded' && uploadedState.uploadedUrl) {
+          uploadedUrls.push(uploadedState.uploadedUrl);
+        }
+      }
+
+      return uploadedUrls;
+    } catch (error) {
+      console.error('이미지 업로드 실패:', error);
+      throw error;
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
+    }
+  }, [uploadingImages]);
+
+  const clearImages = useCallback(() => {
+    // 모든 blob URL 정리
+    uploadingImages.forEach(item => {
+      if (item.preview && item.preview.startsWith('blob:')) {
+        URL.revokeObjectURL(item.preview);
+      }
+    });
+    setUploadingImages([]);
+  }, [uploadingImages]);
+
+  return {
+    uploadingImages,
+    isUploading,
+    uploadProgress,
+    handleFileSelect,
+    removeImage,
+    uploadImages,
+    clearImages
+  };
+};
 
 export const InspectionCommonForm: React.FC<InspectionCommonFormProps> = ({
   formData,
@@ -33,18 +149,36 @@ export const InspectionCommonForm: React.FC<InspectionCommonFormProps> = ({
   onKeywordPairChange,
   onAddKeywordPair,
   onRemoveKeywordPair,
-  imagePreviews,
-  handleImageUpload,
-  removeImage,
   withoutCard = false
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   
+  // 이미지 업로드 훅 사용
+  const {
+    uploadingImages,
+    isUploading,
+    uploadProgress,
+    handleFileSelect,
+    removeImage
+  } = useImageUpload();
+
+  // 파일 선택 핸들러
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      await handleFileSelect(files);
+    }
+    // input 초기화
+    if (e.target) {
+      e.target.value = '';
+    }
+  };
+  
   // 발주번호 포맷터 및 자동완성 훅
   const { handleOrderNumberChange } = useOrderNumberFormatter({
     onAutoFill: (data) => {
-      setFormData((prev: any) => ({
+      setFormData((prev: Partial<QualityInspection>) => ({
         ...prev,
         supplier: data.supplier || prev.supplier,
         productName: data.productName || prev.productName,
@@ -55,7 +189,7 @@ export const InspectionCommonForm: React.FC<InspectionCommonFormProps> = ({
     },
     onClear: () => {
       // 발주번호가 비어있을 때 관련 정보 초기화
-      setFormData((prev: any) => ({
+      setFormData((prev: Partial<QualityInspection>) => ({
         ...prev,
         supplier: '',
         productName: '',
@@ -74,7 +208,7 @@ export const InspectionCommonForm: React.FC<InspectionCommonFormProps> = ({
         id="inspectionDate"
         type="date"
         value={formData.inspectionDate}
-        onChange={(e) => setFormData((prev: any) => ({ ...prev, inspectionDate: e.target.value }))}
+        onChange={(e) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, inspectionDate: e.target.value }))}
       />
     </div>
   );
@@ -86,7 +220,7 @@ export const InspectionCommonForm: React.FC<InspectionCommonFormProps> = ({
         id="orderNumber"
         value={formData.orderNumber}
         onChange={(e) => handleOrderNumberChange(e.target.value, (formatted) => 
-          setFormData((prev: any) => ({ ...prev, orderNumber: formatted }))
+          setFormData((prev: Partial<QualityInspection>) => ({ ...prev, orderNumber: formatted }))
         )}
         placeholder="발주번호를 입력하세요"
         required
@@ -101,7 +235,7 @@ export const InspectionCommonForm: React.FC<InspectionCommonFormProps> = ({
       <Label htmlFor="supplier">발주처</Label>
       <InputSelect
         value={formData.supplier}
-        onChange={(value) => setFormData((prev: any) => ({ ...prev, supplier: value }))}
+        onChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, supplier: value }))}
         options={autocompleteData.suppliers}
         placeholder="발주처를 입력하거나 선택하세요"
       />
@@ -113,7 +247,7 @@ export const InspectionCommonForm: React.FC<InspectionCommonFormProps> = ({
       <Label htmlFor="productName">제품명 *</Label>
       <InputSelect
         value={formData.productName}
-        onChange={(value) => setFormData((prev: any) => ({ ...prev, productName: value }))}
+        onChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, productName: value }))}
         options={autocompleteData.productNames}
         placeholder="제품명을 입력하거나 선택하세요"
       />
@@ -125,7 +259,7 @@ export const InspectionCommonForm: React.FC<InspectionCommonFormProps> = ({
       <Label htmlFor="partName">부속명</Label>
       <InputSelect
         value={formData.partName}
-        onChange={(value) => setFormData((prev: any) => ({ ...prev, partName: value }))}
+        onChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, partName: value }))}
         options={autocompleteData.partNames}
         placeholder="부속명을 입력하거나 선택하세요"
       />
@@ -138,7 +272,7 @@ export const InspectionCommonForm: React.FC<InspectionCommonFormProps> = ({
       <Input
         id="orderQuantity"
         value={formData.orderQuantity}
-        onChange={(e) => setFormData((prev: any) => ({ ...prev, orderQuantity: e.target.value }))}
+        onChange={(e) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, orderQuantity: e.target.value }))}
         placeholder="수량을 입력하세요"
         autoComplete="off"
         list=""
@@ -151,7 +285,7 @@ export const InspectionCommonForm: React.FC<InspectionCommonFormProps> = ({
       <Label htmlFor="injectionMaterial">사출원료</Label>
       <Select 
         value={formData.injectionMaterial} 
-        onValueChange={(value) => setFormData((prev: any) => ({ ...prev, injectionMaterial: value }))}
+        onValueChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, injectionMaterial: value }))}
       >
         <SelectTrigger>
           <SelectValue placeholder="사출원료를 선택하세요" />
@@ -173,7 +307,7 @@ export const InspectionCommonForm: React.FC<InspectionCommonFormProps> = ({
       <Label htmlFor="injectionColor">사출색상</Label>
       <InputSelect
         value={formData.injectionColor}
-        onChange={(value) => setFormData((prev: any) => ({ ...prev, injectionColor: value }))}
+        onChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, injectionColor: value }))}
         options={autocompleteData.injectionColors}
         placeholder="사출색상을 입력하거나 선택하세요"
       />
@@ -185,7 +319,7 @@ export const InspectionCommonForm: React.FC<InspectionCommonFormProps> = ({
       <Label htmlFor="specification">사양</Label>
       <InputSelect
         value={formData.specification}
-        onChange={(value) => setFormData((prev: any) => ({ ...prev, specification: value }))}
+        onChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, specification: value }))}
         options={autocompleteData.specifications}
         placeholder="사양을 입력하거나 선택하세요"
       />
@@ -197,7 +331,7 @@ export const InspectionCommonForm: React.FC<InspectionCommonFormProps> = ({
       <Label htmlFor="postProcess">후공정</Label>
       <Select 
         value={formData.postProcess} 
-        onValueChange={(value) => setFormData((prev: any) => ({ ...prev, postProcess: value }))}
+        onValueChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, postProcess: value }))}
       >
         <SelectTrigger>
           <SelectValue placeholder="후공정을 선택하세요" />
@@ -222,21 +356,9 @@ export const InspectionCommonForm: React.FC<InspectionCommonFormProps> = ({
       <Label htmlFor="injectionCompany">사출처</Label>
       <InputSelect
         value={formData.injectionCompany}
-        onChange={(value) => setFormData((prev: any) => ({ ...prev, injectionCompany: value }))}
+        onChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, injectionCompany: value }))}
         options={autocompleteData.injectionCompanies}
         placeholder="사출처를 입력하거나 선택하세요"
-      />
-    </div>
-  );
-
-  const packagingInfoField = (
-    <div className="space-y-2">
-      <Label htmlFor="packagingInfo">사출포장</Label>
-      <Input
-        id="packagingInfo"
-        value={formData.packagingInfo || ''}
-        onChange={(e) => setFormData((prev: any) => ({ ...prev, packagingInfo: e.target.value }))}
-        placeholder="사출포장 정보를 입력하세요"
       />
     </div>
   );
@@ -266,7 +388,7 @@ export const InspectionCommonForm: React.FC<InspectionCommonFormProps> = ({
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {formData.keywordPairs?.map((pair: any, index: number) => (
+                {formData.keywordPairs?.map((pair: KeywordPair, index: number) => (
                   <div key={index} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
                     <InputSelect
                       value={pair.process}
@@ -280,7 +402,7 @@ export const InspectionCommonForm: React.FC<InspectionCommonFormProps> = ({
                       options={DEFECT_KEYWORD_OPTIONS}
                       placeholder="불량 키워드를 입력하거나 선택하세요"
                     />
-                    {formData.keywordPairs.length > 1 ? (
+                    {(formData.keywordPairs || []).length > 1 ? (
                       <Button
                         type="button"
                         variant="destructive"
@@ -332,7 +454,7 @@ export const InspectionCommonForm: React.FC<InspectionCommonFormProps> = ({
             type="file"
             accept="image/*"
             multiple
-            onChange={handleImageUpload}
+            onChange={handleFileInputChange}
             className="hidden"
           />
           <input
@@ -340,26 +462,33 @@ export const InspectionCommonForm: React.FC<InspectionCommonFormProps> = ({
             type="file"
             accept="image/*"
             capture="environment"
-            onChange={handleImageUpload}
+            onChange={handleFileInputChange}
             className="hidden"
           />
           
-          {imagePreviews.length > 0 && (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-2">
-              {imagePreviews.map((preview, index) => (
-                <div key={index} className="relative">
-                  <img src={preview} alt={`preview ${index}`} className="w-full h-24 object-cover rounded" />
-                  <button 
-                    type="button" 
-                    onClick={() => removeImage(index)} 
-                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
-                  >
-                    &times;
-                  </button>
-                </div>
-              ))}
+          {/* 업로드 진행률 표시 */}
+          {isUploading && (
+            <div className="mt-2">
+              <div className="flex justify-between text-sm text-muted-foreground mb-1">
+                <span>이미지 업로드 중...</span>
+                <span>{Math.round(uploadProgress)}%</span>
+              </div>
+              <div className="w-full bg-muted rounded-full h-2">
+                <div 
+                  className="bg-primary h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
             </div>
           )}
+          
+          {/* 이미지 그리드 */}
+          <UploadingImageGrid
+            items={uploadingImages}
+            onRemove={removeImage}
+            gridClassName="grid-cols-[repeat(auto-fill,minmax(100px,1fr))]"
+            imageClassName="h-24"
+          />
         </div>
       </div>
 
@@ -367,20 +496,6 @@ export const InspectionCommonForm: React.FC<InspectionCommonFormProps> = ({
   );
 
   // 개별 필드들을 export하는 객체
-  const commonFields = {
-    inspectionDate: inspectionDateField,
-    orderNumber: orderNumberField,
-    supplier: supplierField,
-    productName: productNameField,
-    partName: partNameField,
-    orderQuantity: orderQuantityField,
-    injectionMaterial: injectionMaterialField,
-    injectionColor: injectionColorField,
-    specification: specificationField,
-    postProcess: postProcessField,
-    injectionCompany: injectionCompanyField,
-  };
-
   if (withoutCard) {
     return formContent;
   }
@@ -399,16 +514,37 @@ export const InspectionCommonForm: React.FC<InspectionCommonFormProps> = ({
 
 // 개별 필드들을 export
 export const useCommonFields = (
-  formData: any,
-  setFormData: React.Dispatch<React.SetStateAction<any>>,
+  formData: Partial<QualityInspection>,
+  setFormData: React.Dispatch<React.SetStateAction<Partial<QualityInspection>>>,
   autocompleteData: AutocompleteData,
-  handleOrderNumberChange: (value: string, callback: (formatted: string) => void) => void,
-  imagePreviews?: string[],
-  handleImageUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void,
-  removeImage?: (index: number) => void,
+  imageUploadHook?: UseImageUploadReturn,
   fileInputRef?: React.RefObject<HTMLInputElement | null>,
   cameraInputRef?: React.RefObject<HTMLInputElement | null>
 ) => {
+  // 발주번호 포맷터 및 자동완성 훅
+  const { handleOrderNumberChange } = useOrderNumberFormatter({
+    onAutoFill: (data) => {
+      setFormData((prev: Partial<QualityInspection>) => ({
+        ...prev,
+        supplier: data.supplier || prev.supplier,
+        productName: data.productName || prev.productName,
+        partName: data.partName || prev.partName,
+        orderQuantity: data.orderQuantity || prev.orderQuantity,
+        specification: data.specification || prev.specification,
+      }));
+    },
+    onClear: () => {
+      setFormData((prev: Partial<QualityInspection>) => ({
+        ...prev,
+        supplier: '',
+        productName: '',
+        partName: '',
+        orderQuantity: '',
+        specification: '',
+      }));
+    }
+  });
+
   const inspectionDateField = (
     <div className="space-y-2">
       <Label htmlFor="inspectionDate">검사일시</Label>
@@ -416,7 +552,7 @@ export const useCommonFields = (
         id="inspectionDate"
         type="date"
         value={formData.inspectionDate}
-        onChange={(e) => setFormData((prev: any) => ({ ...prev, inspectionDate: e.target.value }))}
+        onChange={(e) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, inspectionDate: e.target.value }))}
       />
     </div>
   );
@@ -428,7 +564,7 @@ export const useCommonFields = (
         id="orderNumber"
         value={formData.orderNumber}
         onChange={(e) => handleOrderNumberChange(e.target.value, (formatted) => 
-          setFormData((prev: any) => ({ ...prev, orderNumber: formatted }))
+          setFormData((prev: Partial<QualityInspection>) => ({ ...prev, orderNumber: formatted }))
         )}
         placeholder="발주번호를 입력하세요"
         required
@@ -443,7 +579,7 @@ export const useCommonFields = (
       <Label htmlFor="supplier">발주처</Label>
       <InputSelect
         value={formData.supplier}
-        onChange={(value) => setFormData((prev: any) => ({ ...prev, supplier: value }))}
+        onChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, supplier: value }))}
         options={autocompleteData.suppliers}
         placeholder="발주처를 입력하거나 선택하세요"
       />
@@ -455,7 +591,7 @@ export const useCommonFields = (
       <Label htmlFor="productName">제품명 *</Label>
       <InputSelect
         value={formData.productName}
-        onChange={(value) => setFormData((prev: any) => ({ ...prev, productName: value }))}
+        onChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, productName: value }))}
         options={autocompleteData.productNames}
         placeholder="제품명을 입력하거나 선택하세요"
       />
@@ -467,7 +603,7 @@ export const useCommonFields = (
       <Label htmlFor="partName">부속명</Label>
       <InputSelect
         value={formData.partName}
-        onChange={(value) => setFormData((prev: any) => ({ ...prev, partName: value }))}
+        onChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, partName: value }))}
         options={autocompleteData.partNames}
         placeholder="부속명을 입력하거나 선택하세요"
       />
@@ -480,7 +616,7 @@ export const useCommonFields = (
       <Input
         id="orderQuantity"
         value={formData.orderQuantity}
-        onChange={(e) => setFormData((prev: any) => ({ ...prev, orderQuantity: e.target.value }))}
+        onChange={(e) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, orderQuantity: e.target.value }))}
         placeholder="수량을 입력하세요"
         autoComplete="off"
         list=""
@@ -493,7 +629,7 @@ export const useCommonFields = (
       <Label htmlFor="injectionMaterial">사출원료</Label>
       <Select 
         value={formData.injectionMaterial} 
-        onValueChange={(value) => setFormData((prev: any) => ({ ...prev, injectionMaterial: value }))}
+        onValueChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, injectionMaterial: value }))}
       >
         <SelectTrigger>
           <SelectValue placeholder="사출원료를 선택하세요" />
@@ -515,7 +651,7 @@ export const useCommonFields = (
       <Label htmlFor="injectionColor">사출색상</Label>
       <InputSelect
         value={formData.injectionColor}
-        onChange={(value) => setFormData((prev: any) => ({ ...prev, injectionColor: value }))}
+        onChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, injectionColor: value }))}
         options={autocompleteData.injectionColors}
         placeholder="사출색상을 입력하거나 선택하세요"
       />
@@ -527,7 +663,7 @@ export const useCommonFields = (
       <Label htmlFor="specification">사양</Label>
       <InputSelect
         value={formData.specification}
-        onChange={(value) => setFormData((prev: any) => ({ ...prev, specification: value }))}
+        onChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, specification: value }))}
         options={autocompleteData.specifications}
         placeholder="사양을 입력하거나 선택하세요"
       />
@@ -539,7 +675,7 @@ export const useCommonFields = (
       <Label htmlFor="postProcess">후공정</Label>
       <Select 
         value={formData.postProcess} 
-        onValueChange={(value) => setFormData((prev: any) => ({ ...prev, postProcess: value }))}
+        onValueChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, postProcess: value }))}
       >
         <SelectTrigger>
           <SelectValue placeholder="후공정을 선택하세요" />
@@ -564,7 +700,7 @@ export const useCommonFields = (
       <Label htmlFor="injectionCompany">사출처</Label>
       <InputSelect
         value={formData.injectionCompany}
-        onChange={(value) => setFormData((prev: any) => ({ ...prev, injectionCompany: value }))}
+        onChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, injectionCompany: value }))}
         options={autocompleteData.injectionCompanies}
         placeholder="사출처를 입력하거나 선택하세요"
       />
@@ -577,7 +713,7 @@ export const useCommonFields = (
       <Input
         id="packagingInfo"
         value={formData.packagingInfo || ''}
-        onChange={(e) => setFormData((prev: any) => ({ ...prev, packagingInfo: e.target.value }))}
+        onChange={(e) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, packagingInfo: e.target.value }))}
         placeholder="사출포장 정보를 입력하세요"
       />
     </div>
@@ -586,7 +722,7 @@ export const useCommonFields = (
   // 키워드 섹션
   const keywordSection = (
     <div className="space-y-3">
-      {formData.keywordPairs?.map((pair: any, index: number) => (
+      {formData.keywordPairs?.map((pair: KeywordPair, index: number) => (
         <div key={index} className="space-y-2">
           <div className="grid grid-cols-[1fr_1fr_3.5rem] gap-2 items-end">
             <div className="space-y-2">
@@ -598,7 +734,7 @@ export const useCommonFields = (
                 onChange={(value) => {
                   const newPairs = [...(formData.keywordPairs || [])];
                   newPairs[index] = { ...newPairs[index], process: value };
-                  setFormData((prev: any) => ({ ...prev, keywordPairs: newPairs }));
+                  setFormData((prev: Partial<QualityInspection>) => ({ ...prev, keywordPairs: newPairs }));
                 }}
                 options={PROCESS_KEYWORD_OPTIONS}
                 placeholder="공정 키워드를 입력하거나 선택하세요"
@@ -609,7 +745,7 @@ export const useCommonFields = (
               onChange={(value) => {
                 const newPairs = [...(formData.keywordPairs || [])];
                 newPairs[index] = { ...newPairs[index], defect: value };
-                setFormData((prev: any) => ({ ...prev, keywordPairs: newPairs }));
+                setFormData((prev: Partial<QualityInspection>) => ({ ...prev, keywordPairs: newPairs }));
               }}
               options={DEFECT_KEYWORD_OPTIONS}
               placeholder="불량 키워드를 입력하거나 선택하세요"
@@ -623,7 +759,7 @@ export const useCommonFields = (
                   onClick={() => {
                     const newPairs = [...(formData.keywordPairs || [])];
                     newPairs.splice(index, 1);
-                    setFormData((prev: any) => ({ ...prev, keywordPairs: newPairs }));
+                    setFormData((prev: Partial<QualityInspection>) => ({ ...prev, keywordPairs: newPairs }));
                   }}
                 >
                   삭제
@@ -639,7 +775,7 @@ export const useCommonFields = (
           variant="outline"
           onClick={() => {
             const newPairs = [...(formData.keywordPairs || []), { process: '', defect: '' }];
-            setFormData((prev: any) => ({ ...prev, keywordPairs: newPairs }));
+            setFormData((prev: Partial<QualityInspection>) => ({ ...prev, keywordPairs: newPairs }));
           }}
           className="col-span-2"
         >
@@ -648,6 +784,18 @@ export const useCommonFields = (
       </div>
     </div>
   );
+
+  // 파일 선택 핸들러
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0 && imageUploadHook) {
+      await imageUploadHook.handleFileSelect(files);
+    }
+    // input 초기화
+    if (e.target) {
+      e.target.value = '';
+    }
+  };
 
   const imageSection = (
     <div className="mt-4">
@@ -675,7 +823,7 @@ export const useCommonFields = (
           type="file"
           accept="image/*"
           multiple
-          onChange={handleImageUpload}
+          onChange={handleFileInputChange}
           className="hidden"
         />
         <input
@@ -683,25 +831,34 @@ export const useCommonFields = (
           type="file"
           accept="image/*"
           capture="environment"
-          onChange={handleImageUpload}
+          onChange={handleFileInputChange}
           className="hidden"
         />
         
-        {imagePreviews && imagePreviews.length > 0 && (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-2">
-            {imagePreviews.map((preview: string, index: number) => (
-              <div key={index} className="relative">
-                <img src={preview} alt={`preview ${index}`} className="w-full h-24 object-cover rounded" />
-                <button 
-                  type="button" 
-                  onClick={() => removeImage?.(index)} 
-                  className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
-                >
-                  &times;
-                </button>
-              </div>
-            ))}
+        {/* 업로드 진행률 표시 */}
+        {imageUploadHook?.isUploading && (
+          <div className="mt-2">
+            <div className="flex justify-between text-sm text-muted-foreground mb-1">
+              <span>이미지 업로드 중...</span>
+              <span>{Math.round(imageUploadHook.uploadProgress)}%</span>
+            </div>
+            <div className="w-full bg-muted rounded-full h-2">
+              <div 
+                className="bg-primary h-2 rounded-full transition-all duration-300"
+                style={{ width: `${imageUploadHook.uploadProgress}%` }}
+              />
+            </div>
           </div>
+        )}
+        
+        {/* 이미지 그리드 */}
+        {imageUploadHook && (
+          <UploadingImageGrid
+            items={imageUploadHook.uploadingImages}
+            onRemove={imageUploadHook.removeImage}
+            gridClassName="grid-cols-[repeat(auto-fill,minmax(100px,1fr))]"
+            imageClassName="h-24"
+          />
         )}
       </div>
     </div>

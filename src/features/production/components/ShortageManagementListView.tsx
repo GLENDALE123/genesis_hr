@@ -66,7 +66,7 @@ export const ShortageManagementListView: React.FC<ShortageManagementListViewProp
       <LoadingSpinner 
         size="lg" 
         label="부족품 관리 데이터 로딩 중..." 
-        variant="card"
+        variant="default"
       />
     );
   }

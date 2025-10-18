@@ -12,9 +12,9 @@ interface FirebaseErrorInfo {
 /**
  * Firebase 에러 코드를 사용자 친화적인 메시지로 변환
  */
-export const getFirebaseErrorMessage = (error: any): FirebaseErrorInfo => {
-  const errorMessage = error?.message || '';
-  const errorCode = error?.code || '';
+export const getFirebaseErrorMessage = (error: unknown): FirebaseErrorInfo => {
+  const errorMessage = (error as { message?: string }).message || '';
+  const errorCode = (error as { code?: string }).code || '';
 
   // 네트워크 관련 에러
   const networkErrors = [

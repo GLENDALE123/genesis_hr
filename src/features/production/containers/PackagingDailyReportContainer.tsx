@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/components/ui/dialog';
-import { LogisticsTransferModal } from '@/features/production/components/LogisticsTransferModal';
+import { LogisticsTransferModal, LogisticsTransferData } from '@/features/production/components/LogisticsTransferModal';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,8 +34,6 @@ import { ShortageRequestModal } from '@/features/production/components/ShortageR
 import { usePackagingReports } from '@/features/production/hooks/usePackagingReports';
 import { usePackagingReportFilters } from '@/features/production/hooks/usePackagingReportFilters';
 import { 
-  canManageData, 
-  canCreateData, 
   PermissionSettingsButton,
   usePagePermissions,
   useAuthStore
@@ -224,7 +222,7 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
     try {
       if (isEditMode && selectedReport) {
         // PackagingFormData를 Partial<PackagingReport>로 변환
-        const updateData: any = {
+        const updateData: Partial<PackagingReport> = {
           workDate: formData.workDate,
           productionLine: formData.productionLine,
           orderNumbers: formData.orderNumbers.filter(num => num.trim() !== ''),
@@ -439,31 +437,35 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
   }, [selectedReportIds, reports]);
 
   // 물류이동 리포트 확정 핸들러
-  const handleConfirmLogisticsTransfer = useCallback(async (data: any[]) => {
+  const handleConfirmLogisticsTransfer = useCallback((transferData: LogisticsTransferData[]) => {
     if (!user || !userProfile) {
       toast.error('사용자 정보가 없습니다.');
       return;
     }
 
-    try {
-      const selectedReports = reports.filter(report => selectedReportIds.has(report.id));
-      
-      // Firestore에 저장
-      const { createLogisticsRequest } = await import('@/features/production/services/logisticsService');
-      const requestId = await createLogisticsRequest(
-        selectedReports,
-        data,
-        { uid: user.uid, displayName: userProfile.displayName }
-      );
-      
-      toast.success(`물류이동 요청이 생성되었습니다. (${requestId})`);
-      
-      setIsLogisticsModalOpen(false);
-      setSelectedReportIds(new Set()); // 선택 초기화
-    } catch (error) {
-      console.error('물류이동 요청 생성 실패:', error);
-      toast.error('물류이동 요청 생성에 실패했습니다.');
-    }
+    const asyncHandler = async () => {
+      try {
+        const selectedReports = reports.filter(report => selectedReportIds.has(report.id));
+        
+        // Firestore에 저장
+        const { createLogisticsRequest } = await import('@/features/production/services/logisticsService');
+        const requestId = await createLogisticsRequest(
+          selectedReports,
+          transferData,
+          { uid: user.uid, displayName: userProfile.displayName }
+        );
+        
+        toast.success(`물류이동 요청이 생성되었습니다. (${requestId})`);
+        
+        setIsLogisticsModalOpen(false);
+        setSelectedReportIds(new Set()); // 선택 초기화
+      } catch (error) {
+        console.error('물류이동 요청 생성 실패:', error);
+        toast.error('물류이동 요청 생성에 실패했습니다.');
+      }
+    };
+
+    asyncHandler();
   }, [user, userProfile, reports, selectedReportIds]);
 
   // 에러 발생 시 토스트 표시
@@ -635,7 +637,6 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
             report={selectedReport}
             isEditMode={isEditMode}
             onSubmit={handleFormSubmit}
-            onCancel={handleFormCancel}
           />
         </DialogContent>
       </Dialog>

@@ -37,7 +37,7 @@ export const AboutSettings: React.FC = () => {
       await logout();
       toast.success('로그아웃되었습니다.');
       router.push('/login');
-    } catch (error) {
+    } catch {
       toast.error('로그아웃에 실패했습니다.');
       setIsLoggingOut(false);
     }
@@ -129,9 +129,9 @@ export const AboutSettings: React.FC = () => {
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">플랫폼</span>
             <Badge variant="secondary">
-              {typeof window !== 'undefined' && (window as any).__ELECTRON__ 
+              {typeof window !== 'undefined' && (window as unknown as Record<string, unknown>).__ELECTRON__ 
                 ? 'Electron Desktop' 
-                : typeof window !== 'undefined' && (window as any).ReactNativeWebView 
+                : typeof window !== 'undefined' && (window as unknown as Record<string, unknown>).ReactNativeWebView 
                   ? 'Mobile App' 
                   : 'Web Browser'}
             </Badge>

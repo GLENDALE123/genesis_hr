@@ -207,17 +207,6 @@ export const usePackagingReportFilters = (
     }));
   };
 
-  const handleDateRangeFilter = (startDate: string, endDate: string) => {
-    setFilters(prev => ({
-      ...prev,
-      startDate: startDate || undefined,
-      endDate: endDate || undefined
-    }));
-    // 수동으로 날짜 변경 시 빠른 필터 해제
-    setActiveQuickFilter(null);
-    // ✅ useEffect에서 자동으로 쿼리 전송
-  };
-
   const handleQuickDateFilter = (type: 'today' | 'yesterday' | 'week' | 'month' | 'all') => {
     // 활성 빠른 필터 설정
     setActiveQuickFilter(type);

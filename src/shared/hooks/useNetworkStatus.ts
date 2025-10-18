@@ -44,7 +44,7 @@ export const useNetworkStatus = (): NetworkStatus => {
     isOnline,
     isOffline: !isOnline,
     effectiveType: typeof window !== 'undefined' && 'connection' in navigator
-      ? (navigator as any).connection?.effectiveType
+      ? (navigator as { connection?: { effectiveType?: string } }).connection?.effectiveType
       : undefined
   };
 };

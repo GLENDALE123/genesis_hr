@@ -16,7 +16,7 @@ import {
   useSampleRequests,
   useSampleFilters,
 } from '@/features/sample/hooks';
-import { SampleRequest } from '@/features/sample/types';
+import { SampleRequest, SampleFormData } from '@/features/sample/types';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Skeleton } from '@/shared/components/ui/skeleton';
@@ -52,13 +52,13 @@ export default function SampleRequestsPage() {
   const [selectedRequest, setSelectedRequest] = useState<SampleRequest | null>(null);
 
   // 새 요청 등록
-  const handleCreateRequest = async (data: any, images: File[]) => {
+  const handleCreateRequest = async (data: SampleFormData, images: File[]) => {
     await createRequest(data, images);
     setShowForm(false);
   };
 
   // 요청 수정
-  const handleUpdateRequest = async (data: any, images: File[]) => {
+  const handleUpdateRequest = async (data: SampleFormData) => {
     if (!editingRequest) return;
     await updateRequest(editingRequest.id, data);
     setEditingRequest(null);
@@ -208,6 +208,11 @@ export default function SampleRequestsPage() {
             onDelete={deleteRequest}
             onEdit={handleEdit}
             onUpdateWorkData={updateWorkData}
+            onUploadWorkImage={async (id: string, file: File) => {
+              // 작업 이미지 업로드 로직 (필요시 구현)
+              console.log('작업 이미지 업로드', id, file);
+              return 'uploaded-image-url'; // 임시 URL 반환
+            }}
             currentUserUid={user?.uid}
             isAdmin={true}
           />

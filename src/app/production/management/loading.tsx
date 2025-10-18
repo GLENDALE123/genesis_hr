@@ -15,7 +15,7 @@ export default function ProductionManagementLoading() {
     <LoadingSpinner 
       size="lg" 
       label="생산관리부 데이터 로딩 중..."
-      variant="card"
+      loadingVariant="card"
       className="min-h-[400px]"
     />
   );

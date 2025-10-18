@@ -1,10 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
 import { CommentsService } from '@/shared/services/comments/commentsService';
 import { Button } from '@/shared/components/ui/button';
-import { Badge } from '@/shared/components/ui/badge';
 import { Label } from '@/shared/components/ui/label';
 import {
   Dialog,
@@ -16,7 +14,6 @@ import { Textarea } from '@/shared/components/ui/textarea';
 import { CommentsSection } from '@/shared/components/common';
 import {
   ProductionRequestStatus,
-  ProductionRequestType,
   type ProductionRequest,
 } from '../services/productionRequestService';
 
@@ -24,7 +21,6 @@ interface ProductionRequestDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   request: ProductionRequest | null;
-  currentUserName?: string;
   currentUserUid?: string;
   isAdmin?: boolean;
   isManager?: boolean;
@@ -57,7 +53,6 @@ const ProductionRequestDetailModalComponent: React.FC<ProductionRequestDetailMod
   isOpen,
   onClose,
   request,
-  currentUserName = '',
   currentUserUid = '',
   isAdmin = false,
   isManager = false,
@@ -112,7 +107,7 @@ const ProductionRequestDetailModalComponent: React.FC<ProductionRequestDetailMod
 
       markCommentsAsRead();
     }
-  }, [isOpen, (request && request.id), currentUserUid]);
+  }, [isOpen, request, currentUserUid]);
 
   if (!request) return null;
 
@@ -297,7 +292,7 @@ const ProductionRequestDetailModalComponent: React.FC<ProductionRequestDetailMod
             <DialogTitle>요청 삭제</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            '{request.productName}' 요청을 정말 삭제하시겠습니까?
+            &apos;{request.productName}&apos; 요청을 정말 삭제하시겠습니까?
           </p>
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>

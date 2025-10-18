@@ -1,5 +1,11 @@
 // 품질이슈 관련 타입 정의
 
+export interface TestResultDetail {
+  result: string;
+  action?: string;
+  decisionMaker?: string;
+}
+
 export interface IssueItem {
   content: string;
   createdAt: string;
@@ -54,7 +60,7 @@ export interface QualityIssueCreateData extends Omit<QualityIssueFormData, 'issu
 
 // === 품질검사 관련 타입 ===
 
-export type InspectionType = 'incoming' | 'in-process' | 'inProcess' | 'outgoing';
+export type InspectionType = 'incoming' | 'inProcess' | 'outgoing';
 export type InspectionResult = '합격' | '불합격' | '한도대기' | '한도승인' | '반출';
 export type WorkerResult = '합격' | '불합격';
 export type DefectReason = '선별미흡' | '지문자국' | '취급불량' | '조건불량';
@@ -81,17 +87,24 @@ export interface ProcessLineData {
 
 // 신뢰성 테스트 결과 (HS-Jig 구조)
 export interface ReliabilityReview {
-  method: '투명테이프' | '616테이프' | 'AP방식테스트' | '';
-  result: '양호' | '부분박리' | '박리' | '';
+  method?: '투명테이프' | '616테이프' | 'AP방식테스트' | '';
+  result?: '양호' | '부분박리' | '박리' | '';
   action?: string;
   decisionMaker?: string;
 }
 
-// 테스트 결과 상세
-export interface TestResultDetail {
+// 불량키워드 & 검사결과 페어 타입
+export interface DefectResultPair {
+  defectKeyword: string;
+  inspectionResult: string;
+  limitApprovalContent: string;
+  limitApprovalDecisionMaker: string;
+}
+
+// 기존 호환성을 위한 타입
+export interface SimpleDefectResultPair {
+  defect: string;
   result: string;
-  action?: string;
-  decisionMaker?: string;
 }
 
 // 품질검사 데이터 (수입/공정/출하)
@@ -126,11 +139,12 @@ export interface QualityInspection {
   
   // 공정검사 전용
   workLine?: string;
-  workerCount?: number;
+  workerCount?: string; // HS-Jig 호환: string 타입
   preInspectionHistory?: string;
   inProcessInspectionHistory?: string;
   processLines?: ProcessLineData[];
-  jigUsed1?: string;
+  jigUsed?: string; // HS-Jig 호환: 단일 속성
+  jigUsed1?: string; // 공정검사용
   jigUsed2?: string;
   internalJigLower?: string;
   internalJigUpper?: string;
@@ -146,6 +160,7 @@ export interface QualityInspection {
   postProcessPackaging?: string;
   reinspectionKeyword?: string;
   reinspectionContent?: string;
+  defectResultPairs?: DefectResultPair[] | SimpleDefectResultPair[]; // 호환성을 위한 추가 속성
   
   // 수입검사 전용
   appearanceHistory?: string;
@@ -183,7 +198,7 @@ export interface GroupedInspectionData {
     workLine?: string;
   };
   incoming: QualityInspection[];
-  inProcess: QualityInspection[];
+  inProcess: QualityInspection[]; // HS-Jig 호환: inProcess 사용
   outgoing: QualityInspection[];
 }
 

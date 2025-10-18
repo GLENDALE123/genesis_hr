@@ -20,7 +20,7 @@ export const useQualityIssues = () => {
         setIssues(fetchedIssues);
         setIsLoading(false);
       },
-      (error) => {
+      () => {
         toast.error('품질이슈 로딩에 실패했습니다.');
         setIsLoading(false);
       }

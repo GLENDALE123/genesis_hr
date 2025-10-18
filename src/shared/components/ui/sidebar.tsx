@@ -102,6 +102,11 @@ const SidebarProvider = React.forwardRef<
         : setOpen((open) => !open)
     }, [isMobile, setOpen, setOpenMobile])
 
+    // toggleSidebar를 useCallback으로 메모이제이션
+    const toggleSidebarCallback = React.useCallback(() => {
+      setOpen(prev => !prev);
+    }, [setOpen]);
+
     // Adds a keyboard shortcut to toggle the sidebar.
     React.useEffect(() => {
       const handleKeyDown = (event: KeyboardEvent) => {
@@ -116,16 +121,11 @@ const SidebarProvider = React.forwardRef<
 
       window.addEventListener("keydown", handleKeyDown)
       return () => window.removeEventListener("keydown", handleKeyDown)
-    }, [toggleSidebarCallback])
+    }, [toggleSidebarCallback, toggleSidebar])
 
     // We add a state so that we can do data-state="expanded" or "collapsed".
     // This makes it easier to style the sidebar with Tailwind classes.
     const state = open ? "expanded" : "collapsed"
-
-    // toggleSidebar를 useCallback으로 메모이제이션
-    const toggleSidebarCallback = React.useCallback(() => {
-      setOpen(prev => !prev);
-    }, [setOpen]);
 
     const contextValue = React.useMemo<SidebarContextProps>(
       () => ({

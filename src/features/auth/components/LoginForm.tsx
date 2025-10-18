@@ -174,9 +174,10 @@ export function LoginForm() {
           
           toast.success('로그인되었습니다!');
           router.push('/dashboard');
-        } catch (loginError: any) {
+        } catch (loginError: unknown) {
           // 로그인 실패 시 Firestore 프로필 확인 (마이그레이션)
-          if (loginError.message?.includes('사용자') || loginError.message?.includes('존재하지') || loginError.code === 'auth/user-not-found') {
+          const error = loginError as { message?: string; code?: string };
+          if (error.message?.includes('사용자') || error.message?.includes('존재하지') || error.code === 'auth/user-not-found') {
             const hasProfile = await MigrationService.checkFirestoreProfileExists(email.trim());
             
             if (hasProfile) {

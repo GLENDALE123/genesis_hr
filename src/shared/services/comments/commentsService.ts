@@ -23,11 +23,11 @@ import { db } from '@/shared/services/firebase/config';
 
 export interface Comment {
   id: string;
-  timestamp: string;
+  timestamp?: string;
   text: string;
   user: string;
-  uid: string;
-  readBy: string[];
+  uid?: string;
+  readBy?: string[];
   editedAt?: string;
 }
 
@@ -263,10 +263,10 @@ export class CommentsService {
     collectionName: string,
     documentId: string,
     commentData: NewCommentData,
-    requestData: any
+    requestData: Record<string, unknown>
   ): Promise<void> {
     try {
-      const requestAuthorId = requestData?.author?.uid;
+      const requestAuthorId = (requestData?.author as { uid?: string })?.uid;
       const mentionedUserIds = commentData.mentionedUserIds || [];
       
       // 알림 대상 결정
@@ -309,7 +309,7 @@ export class CommentsService {
     collectionName: string;
     documentId: string;
     commentData: NewCommentData;
-    requestData: any;
+    requestData: Record<string, unknown>;
   }): Promise<void> {
     const { userId, type, collectionName, documentId, commentData, requestData } = params;
     

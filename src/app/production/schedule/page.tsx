@@ -33,7 +33,7 @@ export default function ProductionSchedulePage() {
       
       for (const date of uniqueDates) {
         try {
-          await deleteSchedulesByDate(date, userInfo);
+          await deleteSchedulesByDate(date);
         } catch (err) {
           console.warn(`날짜 ${date} 삭제 중 오류 (기존 데이터가 없을 수 있음):`, err);
         }

@@ -34,22 +34,22 @@ class OrderLookupService {
       );
 
       if (docs.length > 0) {
-        const data = docs[0] as any;
+        const data = docs[0] as Record<string, unknown>;
 
         // 발주처 필드 확인 - 다양한 가능한 필드명 체크
-        const supplierValue = data.client || data.supplier || data.발주처 || data.clientName || '';
+        const supplierValue = (data.client || data.supplier || data.발주처 || data.clientName || '') as string;
 
         // 부속명에서 괄호 부분 제거 (예: "외캡(원색(ABS))" → "외캡")
         const rawPartName = data.partName || data.부속명 || '';
-        const cleanPartName = rawPartName.replace(/\(.*$/g, '').trim();
+        const cleanPartName = (rawPartName as string).replace(/\(.*$/g, '').trim();
 
         const orderData: OrderData = {
           orderNumber: orderNumber,
           supplier: supplierValue,
-          productName: data.productName || '',
+          productName: (data.productName || '') as string,
           partName: cleanPartName,
-          orderQuantity: data.orderQuantity || data.발주 || '',
-          specification: data.specification || data.사양 || ''
+          orderQuantity: (data.orderQuantity || data.발주 || '') as string,
+          specification: (data.specification || data.사양 || '') as string
         };
 
         return orderData;

@@ -1,19 +1,12 @@
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
-import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
+import { Badge } from '@/shared/components/ui/badge';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
-import { Separator } from '@/shared/components/ui/separator';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { ImageGalleryGrid } from '@/shared/components/common/ImageGalleryGrid';
 import { 
-  Building, 
-  Tag, 
-  Calendar, 
-  User, 
   AlertCircle, 
-  Image as ImageIcon,
-  X,
   Copy,
   Edit,
   Trash2,
@@ -46,13 +39,12 @@ export const QualityIssueDetail: React.FC<QualityIssueDetailProps> = ({
   canEdit = false,
   canDelete = false,
   canManage = false,
-  canChangeStatus = false
 }) => {
-  if (!issue) return null;
-
   const [isAddingIssue, setIsAddingIssue] = useState(false);
   const [newIssue, setNewIssue] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('해결완료');
+
+  if (!issue) return null;
 
   const handleAddNewIssue = () => {
     if (newIssue.trim() && onAddIssueItem) {
@@ -83,26 +75,6 @@ export const QualityIssueDetail: React.FC<QualityIssueDetailProps> = ({
       minute: '2-digit',
     });
   };
-
-  const getStatusBadge = (status: QualityIssue['status']) => {
-    const statusConfig = {
-      '미해결': { variant: 'destructive' as const, label: '미해결' },
-      '진행중': { variant: 'default' as const, label: '진행중' },
-      '해결완료': { variant: 'secondary' as const, label: '해결완료' },
-      'open': { variant: 'destructive' as const, label: '미해결' },
-      'in-progress': { variant: 'default' as const, label: '진행중' },
-      'resolved': { variant: 'secondary' as const, label: '해결완료' },
-      'closed': { variant: 'secondary' as const, label: '완료' },
-    };
-    
-    const config = statusConfig[status] || { variant: 'secondary' as const, label: '해결완료' };
-    return (
-      <Badge variant={config.variant} className="text-sm">
-        {config.label}
-      </Badge>
-    );
-  };
-
 
   const handleCopy = () => {
     const text = `

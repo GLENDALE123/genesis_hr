@@ -7,7 +7,7 @@ import { runMigration, collectAutocompleteDataFromInspections } from '../service
 
 // 전역 객체에 마이그레이션 함수 추가 (개발자 도구에서 사용)
 if (typeof window !== 'undefined') {
-  (window as any).qualityMigration = {
+  (window as unknown as Record<string, unknown>).qualityMigration = {
     /**
      * 마이그레이션 실행
      * 브라우저 콘솔에서 qualityMigration.run() 실행

@@ -10,8 +10,7 @@ import {
   orderBy,
   limit,
   onSnapshot,
-  where,
-  Timestamp
+  where
 } from 'firebase/firestore';
 import { db } from '@/shared/services/firebase/config';
 import { QualityInspection, GroupedInspectionData } from '../types';
@@ -122,8 +121,14 @@ export const subscribeToQualityInspections = (
     return onSnapshot(
       q,
       (snapshot) => {
+        console.log(`📊 [Quality Inspection Service] 전체 데이터 수신: ${snapshot.docs.length}건`);
+        
         const inspections = snapshot.docs.map(doc => {
           const data = doc.data();
+          
+          // 디버깅을 위한 로그
+          console.log(`📋 [Quality Inspection Service] 문서 ID: ${doc.id}, 타입: ${data.inspectionType}, 발주번호: ${data.orderNumber}`);
+          
           return {
             id: doc.id,
             ...data,
@@ -132,6 +137,16 @@ export const subscribeToQualityInspections = (
             createdAt: data.createdAt || new Date().toISOString(),
           } as QualityInspection;
         });
+        
+        // 타입별 통계 로그
+        const typeStats = inspections.reduce((acc, inspection) => {
+          const type = inspection.inspectionType || 'unknown';
+          acc[type] = (acc[type] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+        
+        console.log('📈 [Quality Inspection Service] 타입별 통계:', typeStats);
+        
         callback(inspections);
       },
       (error) => {
@@ -193,8 +208,7 @@ export const groupInspectionsByOrder = (
       case 'incoming':
         group.incoming.push(inspection);
         break;
-      case 'in-process':
-      case 'inProcess': // HS-Jig 호환성 추가
+      case 'inProcess': // HS-Jig 실제 타입 (카멜케이스)
         group.inProcess.push(inspection);
         break;
       case 'outgoing':
@@ -387,7 +401,7 @@ export const searchInspections = (
     }
     
     // 공정검사 전용 필드 검색 (HS-Jig 호환성)
-    if (inspection.inspectionType === 'inProcess' || inspection.inspectionType === 'in-process') {
+    if (inspection.inspectionType === 'inProcess') {
       searchableFields.push(
         inspection.workLine || '',
         inspection.preInspectionHistory || '',
@@ -405,7 +419,7 @@ export const searchInspections = (
  * 그룹화된 데이터에서 딥 서치
  */
 export const deepSearchGroupedData = (
-  obj: any,
+  obj: unknown,
   term: string
 ): boolean => {
   if (obj === null || obj === undefined) return false;

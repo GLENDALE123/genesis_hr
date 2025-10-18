@@ -12,7 +12,7 @@ import {
   updateDoc,
   addDoc
 } from 'firebase/firestore';
-import { PackagingReport, PackagingFormData, PackagedBoxFormData, ProductionStatus } from '@/features/production/types';
+import { PackagingReport, PackagingFormData, ProductionStatus } from '@/features/production/types';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
 import { DailyReportNotificationService } from './notificationService';
 
@@ -47,13 +47,14 @@ export class PackagingReportsService {
         throw new Error('Firebase not initialized');
       }
 
-      // 숫자 필드 안전하게 변환하는 헬퍼 함수 (null 반환)
-      const parseNumber = (value: string | undefined): number | null => {
-        if (!value || value.trim() === '') return null;
+      // 숫자 필드 안전하게 변환하는 헬퍼 함수 (undefined 반환)
+      const parseNumber = (value: string | undefined): number | undefined => {
+        if (!value || value.trim() === '') return undefined;
         const parsed = parseInt(value.trim());
-        return isNaN(parsed) ? null : parsed;
+        return isNaN(parsed) ? undefined : parsed;
       };
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const reportData: any = {
         createdAt: new Date().toISOString(),
         workDate: formData.workDate,
@@ -101,7 +102,7 @@ export class PackagingReportsService {
         const createdReport: PackagingReport = {
           id: docRef.id,
           ...reportData
-        };
+        } as PackagingReport;
         await DailyReportNotificationService.sendDailyReportActionNotification(
           'created',
           createdReport,

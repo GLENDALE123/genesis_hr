@@ -3,71 +3,37 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Label } from '@/shared/components/ui/label';
-import { Input } from '@/shared/components/ui/input';
+// import { Input } from '@/shared/components/ui/input';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { Separator } from '@/shared/components/ui/separator';
-import { Button } from '@/shared/components/ui/button';
+// import { Button } from '@/shared/components/ui/button';
 import { InputSelect } from '@/shared/components/common/InputSelect';
-import { InspectionResult } from '../types';
+import { InspectionResult, QualityInspection } from '../types';
 import type { AutocompleteData } from '../services/autocompleteService';
-import { InspectionCommonForm, useCommonFields } from './InspectionCommonForm';
-import { useOrderNumberFormatter } from '@/shared/hooks/useOrderNumberFormatter';
+import { useCommonFields } from './InspectionCommonForm';
 
 interface IncomingInspectionFormProps {
-  formData: any;
-  setFormData: React.Dispatch<React.SetStateAction<any>>;
+  formData: Partial<QualityInspection>;
+  setFormData: React.Dispatch<React.SetStateAction<Partial<QualityInspection>>>;
   autocompleteData: AutocompleteData;
-  imagePreviews: string[];
-  handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  removeImage: (index: number) => void;
 }
 
 export const IncomingInspectionForm: React.FC<IncomingInspectionFormProps> = ({
   formData,
   setFormData,
-  autocompleteData,
-  imagePreviews,
-  handleImageUpload,
-  removeImage
+  autocompleteData
 }) => {
   // 파일 입력 refs
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const cameraInputRef = React.useRef<HTMLInputElement>(null);
-
-  // 발주번호 포맷터 훅
-  const { handleOrderNumberChange } = useOrderNumberFormatter({
-    onAutoFill: (data) => {
-      setFormData((prev: any) => ({
-        ...prev,
-        supplier: data.supplier || prev.supplier,
-        productName: data.productName || prev.productName,
-        partName: data.partName || prev.partName,
-        orderQuantity: data.orderQuantity || prev.orderQuantity,
-        specification: data.specification || prev.specification,
-      }));
-    },
-    onClear: () => {
-      setFormData((prev: any) => ({
-        ...prev,
-        supplier: '',
-        productName: '',
-        partName: '',
-        orderQuantity: '',
-        specification: '',
-      }));
-    }
-  });
 
   // 개별 필드들 가져오기
   const commonFields = useCommonFields(
     formData, 
     setFormData, 
     autocompleteData, 
-    handleOrderNumberChange,
-    imagePreviews,
-    handleImageUpload,
-    removeImage,
+    undefined,
     fileInputRef,
     cameraInputRef
   );
@@ -110,7 +76,7 @@ export const IncomingInspectionForm: React.FC<IncomingInspectionFormProps> = ({
               <Textarea
                 id="appearanceHistory"
                 value={formData.appearanceHistory}
-                onChange={(e) => setFormData((prev: any) => ({ ...prev, appearanceHistory: e.target.value }))}
+                onChange={(e) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, appearanceHistory: e.target.value }))}
                 placeholder="외관검사이력을 입력하세요"
                 rows={3}
               />
@@ -121,7 +87,7 @@ export const IncomingInspectionForm: React.FC<IncomingInspectionFormProps> = ({
               <Textarea
                 id="functionHistory"
                 value={formData.functionHistory}
-                onChange={(e) => setFormData((prev: any) => ({ ...prev, functionHistory: e.target.value }))}
+                onChange={(e) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, functionHistory: e.target.value }))}
                 placeholder="기능검사이력을 입력하세요"
                 rows={3}
               />
@@ -138,7 +104,7 @@ export const IncomingInspectionForm: React.FC<IncomingInspectionFormProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             <div className="space-y-2">
               <Label htmlFor="result">검사결과</Label>
-              <Select value={formData.result} onValueChange={(value) => setFormData((prev: any) => ({ ...prev, result: value as InspectionResult }))}>
+              <Select value={formData.result} onValueChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, result: value as InspectionResult }))}>
                 <SelectTrigger>
                   <SelectValue placeholder="검사결과를 선택하세요" />
                 </SelectTrigger>
@@ -154,7 +120,7 @@ export const IncomingInspectionForm: React.FC<IncomingInspectionFormProps> = ({
 
             <div className="space-y-2">
               <Label htmlFor="finalConsultationDept">최종협의(소속)</Label>
-              <Select value={formData.finalConsultationDept} onValueChange={(value) => setFormData((prev: any) => ({ ...prev, finalConsultationDept: value }))}>
+              <Select value={formData.finalConsultationDept} onValueChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, finalConsultationDept: value }))}>
                 <SelectTrigger>
                   <SelectValue placeholder="소속을 선택하세요" />
                 </SelectTrigger>
@@ -177,7 +143,7 @@ export const IncomingInspectionForm: React.FC<IncomingInspectionFormProps> = ({
               <Label htmlFor="finalConsultationName">최종협의(이름)</Label>
               <InputSelect
                 value={formData.finalConsultationName || ''}
-                onChange={(value) => setFormData((prev: any) => ({ ...prev, finalConsultationName: value }))}
+                onChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, finalConsultationName: value }))}
                 options={[
                   '김민현', '김영권', '김을한', '김재식', '배영길', '이동엽',
                   '이현석', '전진표', '최유림', '최한수', '한상태', '한태경'
@@ -190,7 +156,7 @@ export const IncomingInspectionForm: React.FC<IncomingInspectionFormProps> = ({
               <Label htmlFor="finalConsultationRank">최종협의(직급)</Label>
               <InputSelect
                 value={formData.finalConsultationRank || ''}
-                onChange={(value) => setFormData((prev: any) => ({ ...prev, finalConsultationRank: value }))}
+                onChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, finalConsultationRank: value }))}
                 options={[
                   '과장', '대리', '본부장', '부사장', '상무', '이사', '전무', '팀장'
                 ]}
@@ -206,7 +172,7 @@ export const IncomingInspectionForm: React.FC<IncomingInspectionFormProps> = ({
               <Textarea
                 id="resultReason"
                 value={formData.resultReason}
-                onChange={(e) => setFormData((prev: any) => ({ ...prev, resultReason: e.target.value }))}
+                onChange={(e) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, resultReason: e.target.value }))}
                 placeholder="결과사유를 입력하세요"
                 rows={3}
               />

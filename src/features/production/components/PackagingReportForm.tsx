@@ -15,7 +15,6 @@ import { Textarea } from '@/shared/components/ui/textarea';
 import { Calendar } from '@/shared/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import { Button } from '@/shared/components/ui/button';
-import { Spinner } from '@/shared/components/ui/spinner';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { usePackagingForm } from '@/features/production/hooks/usePackagingForm';
@@ -29,19 +28,16 @@ interface PackagingReportFormProps {
   report?: PackagingReport | null;
   isEditMode?: boolean;
   onSubmit: (data: PackagingFormData) => void;
-  onCancel: () => void;
 }
 
 export const PackagingReportForm: React.FC<PackagingReportFormProps> = ({
   report,
   isEditMode = false,
-  onSubmit,
-  onCancel
+  onSubmit
 }) => {
   // 커스텀 훅으로 폼 로직 분리
   const {
     formData,
-    isSaving,
     isCalendarOpen,
     setIsSaving,
     setIsCalendarOpen,

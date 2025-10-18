@@ -89,9 +89,12 @@ const subNavigationItems: NavItem[] = [
   },
 ];
 
-export const AppSidebar = React.memo<AppSidebarProps>(({ 
+const AppSidebarComponent = ({
   className,
   collapsed = false
+}: {
+  className: string;
+  collapsed?: boolean;
 }) => {
   const pathname = usePathname();
   const router = useRouter();
@@ -338,4 +341,8 @@ export const AppSidebar = React.memo<AppSidebarProps>(({
       </div>
     </div>
   );
-});
+};
+
+AppSidebarComponent.displayName = 'AppSidebar';
+
+export const AppSidebar = React.memo(AppSidebarComponent);

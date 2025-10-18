@@ -10,6 +10,7 @@ export type CrudPermission = 'read' | 'create' | 'update' | 'delete';
 export type PageIdentifier = 
   | 'dashboard'
   | 'production-daily-report'  // 생산일보
+  | 'production-shortage-management'  // 생산 부족 관리
   | 'employees'
   | 'payroll'
   | 'settings';

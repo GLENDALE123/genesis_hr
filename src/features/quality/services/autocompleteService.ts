@@ -1,6 +1,5 @@
 import {
   doc,
-  getDoc,
   setDoc,
   updateDoc,
   onSnapshot,
@@ -80,7 +79,7 @@ export const updateAutocompleteData = async (inspectionData: {
 }) => {
   try {
     const docRef = getAutocompleteDocRef();
-    const updates: any = {
+    const updates: Record<string, unknown> = {
       lastUpdated: serverTimestamp()
     };
 
