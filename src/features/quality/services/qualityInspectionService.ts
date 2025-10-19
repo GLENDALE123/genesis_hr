@@ -142,8 +142,6 @@ export const subscribeToQualityInspections = (
         const inspections = snapshot.docs.map(doc => {
           const data = doc.data();
           
-          // 디버깅을 위한 로그
-          console.log(`📋 [Quality Inspection Service] 문서 ID: ${doc.id}, 타입: ${data.inspectionType}, 발주번호: ${data.orderNumber}`);
           
           return {
             id: doc.id,

@@ -6,6 +6,19 @@ export interface TestResultDetail {
   decisionMaker?: string;
 }
 
+// 타입 가드 함수들
+export const isTestResultDetail = (value: string | TestResultDetail | undefined): value is TestResultDetail => {
+  return typeof value === 'object' && value !== null && 'result' in value;
+};
+
+export const isIssueItem = (value: string | IssueItem): value is IssueItem => {
+  return typeof value === 'object' && value !== null && 'content' in value && 'createdAt' in value;
+};
+
+export const isUserObject = (value: string | { uid: string; displayName: string; email: string }): value is { uid: string; displayName: string; email: string } => {
+  return typeof value === 'object' && value !== null && 'uid' in value && 'displayName' in value;
+};
+
 export interface IssueItem {
   content: string;
   createdAt: string;

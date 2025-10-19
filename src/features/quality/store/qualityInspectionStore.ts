@@ -136,6 +136,24 @@ export const useQualityInspectionStore = create<QualityInspectionStore>()(
         updateInspection: (inspectionId: string, updateData: Partial<QualityInspection>) => {
           const { inspections, cache } = get();
           
+          // 기존 검사 데이터 찾기
+          const existingInspection = inspections.find(inspection => inspection.id === inspectionId);
+          if (!existingInspection) {
+            console.warn(`📦 품질검사 업데이트 실패: ${inspectionId}를 찾을 수 없음`);
+            return;
+          }
+          
+          // 실제 변경사항이 있는지 확인
+          const hasChanges = Object.keys(updateData).some(key => {
+            const typedKey = key as keyof QualityInspection;
+            return existingInspection[typedKey] !== updateData[typedKey];
+          });
+          
+          if (!hasChanges) {
+            console.log(`📦 품질검사 업데이트 건너뛰기: ${inspectionId} (변경사항 없음)`);
+            return;
+          }
+          
           const updatedInspections = inspections.map(inspection =>
             inspection.id === inspectionId
               ? { ...inspection, ...updateData }

@@ -32,13 +32,27 @@ interface UseQualityInspectionsOptions {
 export const useQualityInspections = (
   options: UseQualityInspectionsOptions = {}
 ): UseQualityInspectionsReturn => {
-  const { searchTerm, limitCount = 1000 } = options;
+  const { searchTerm: inputSearchTerm, limitCount = 1000 } = options;
+  
+  // 검색어 디바운싱 (300ms)
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(inputSearchTerm || '');
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [inputSearchTerm]);
   
   const [mounted, setMounted] = useState(false);
   
   // 현재 구독 중인 날짜 범위 (실시간 구독 관리용)
   const [currentDateRange, setCurrentDateRange] = useState<{ startDate: string; endDate: string } | null>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
+  
+  // 중복 요청 방지를 위한 debounce 타이머
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Zustand 스토어 사용
   const {
@@ -131,8 +145,8 @@ export const useQualityInspections = (
       }
 
       // 검색어가 있으면 모든 데이터 구독 (날짜 필터 무시)
-      if (searchTerm && searchTerm.trim()) {
-        console.log(`🔍 검색어 모드: "${searchTerm}" - 전체 데이터 구독`);
+      if (debouncedSearchTerm && debouncedSearchTerm.trim()) {
+        console.log(`🔍 검색어 모드: "${debouncedSearchTerm}" - 전체 데이터 구독`);
         
         unsubscribeRef.current = subscribeToQualityInspections(
           (newInspections) => {
@@ -203,8 +217,13 @@ export const useQualityInspections = (
         unsubscribeRef.current();
         unsubscribeRef.current = null;
       }
+      // debounce 타이머 정리
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
     };
-  }, [mounted, currentDateRange, searchTerm, limitCount, setLoading, setError, setInspections]);
+  }, [mounted, currentDateRange, debouncedSearchTerm, limitCount, setLoading, setError, setInspections]);
 
   // 수동 새로고침 (현재 날짜 범위 유지하면서 재구독)
   const refetch = useCallback(() => {
@@ -216,14 +235,22 @@ export const useQualityInspections = (
     setCurrentDateRange({ ...currentDateRange });
   }, [mounted, currentDateRange]);
 
-  // ✅ 특정 날짜 범위로 실시간 구독 변경
+  // ✅ 특정 날짜 범위로 실시간 구독 변경 (debounce 적용)
   const getInspectionsByDateRange = useCallback((startDate: string, endDate: string) => {
     if (!mounted) return;
     
-    console.log(`📅 날짜 범위 변경 요청: ${startDate} ~ ${endDate}`);
+    // 기존 타이머 취소
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
     
-    // 날짜 범위 상태 변경 → useEffect가 자동으로 구독 재시작
-    setCurrentDateRange({ startDate, endDate });
+    // 300ms 후에 실행 (연속된 요청 방지)
+    debounceTimerRef.current = setTimeout(() => {
+      console.log(`📅 날짜 범위 변경 요청 (debounced): ${startDate} ~ ${endDate}`);
+      
+      // 날짜 범위 상태 변경 → useEffect가 자동으로 구독 재시작
+      setCurrentDateRange({ startDate, endDate });
+    }, 300);
   }, [mounted]);
 
   // 발주번호별 그룹화 (서버에서 이미 필터링된 데이터)
@@ -236,9 +263,8 @@ export const useQualityInspections = (
     let filtered = groupedInspections;
 
     // 검색어가 있으면 전체 데이터에서 검색 (생산일보와 동일한 방식)
-    if (searchTerm && searchTerm.trim()) {
-      console.log(`🔍 [통합검색] 검색어: "${searchTerm}"`);
-      const searchLower = searchTerm.toLowerCase().trim();
+    if (debouncedSearchTerm && debouncedSearchTerm.trim()) {
+      const searchLower = debouncedSearchTerm.toLowerCase().trim();
       filtered = filtered.filter(group => {
         // 그룹 내 모든 검사들을 확인
         const allInspections = [...group.incoming, ...group.inProcess, ...group.outgoing];
@@ -246,13 +272,13 @@ export const useQualityInspections = (
         // 검사 데이터에서 검색어 찾기 (생산일보와 동일한 필드)
         return allInspections.some(inspection => {
           const matchesSearch = 
-            inspection.orderNumber.toLowerCase().includes(searchLower) ||
-            inspection.supplier.toLowerCase().includes(searchLower) ||
-            inspection.productName.toLowerCase().includes(searchLower) ||
+            (inspection.orderNumber && inspection.orderNumber.toLowerCase().includes(searchLower)) ||
+            (inspection.supplier && inspection.supplier.toLowerCase().includes(searchLower)) ||
+            (inspection.productName && inspection.productName.toLowerCase().includes(searchLower)) ||
             (inspection.partName && inspection.partName.toLowerCase().includes(searchLower)) ||
             (inspection.specification && inspection.specification.toLowerCase().includes(searchLower)) ||
-            inspection.inspectionType.toLowerCase().includes(searchLower) ||
-            inspection.result.toLowerCase().includes(searchLower);
+            (inspection.inspectionType && inspection.inspectionType.toLowerCase().includes(searchLower)) ||
+            (inspection.result && inspection.result.toLowerCase().includes(searchLower));
           
           return matchesSearch;
         });
@@ -260,7 +286,7 @@ export const useQualityInspections = (
     }
 
     return filtered;
-  }, [groupedInspections, searchTerm]);
+  }, [groupedInspections, debouncedSearchTerm]);
 
   return {
     inspections,
