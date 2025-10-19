@@ -22,7 +22,7 @@ interface InspectionFilterPanelProps {
   totalCount?: number;
   isSearching?: boolean; // 검색어 debounce 상태
   isFetching?: boolean; // 백그라운드 동기화 상태
-  onCreateInspection?: (inspection: Omit<QualityInspection, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  onCreateInspection?: (inspection: Omit<QualityInspection, 'id' | 'createdAt' | 'updatedAt'>) => Promise<string>;
 }
 
 /**
@@ -60,7 +60,7 @@ export const InspectionFilterPanel: React.FC<InspectionFilterPanelProps> = ({
             onClick={() => setIsExpanded(prev => !prev)}
           >
             <h2 className="text-xl font-bold text-foreground">품질 종합이력</h2>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground hidden md:block">
               모든 검사 현황을 통합하여 보여줍니다.
               {typeof totalCount === 'number' && ` (총 ${totalCount}개)`}
               {isFetching && (
@@ -162,14 +162,9 @@ export const InspectionFilterPanel: React.FC<InspectionFilterPanelProps> = ({
                   type="text"
                   value={searchTerm}
                   onChange={(e) => onSearchTermChange(e.target.value)}
-                  placeholder="전체 항목에서 검색..."
+                  placeholder="제품명, 발주처, 발주번호, 검사유형 검색..."
                   className="pl-10"
                 />
-                {isSearching && (
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                    <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
-                  </div>
-                )}
               </div>
             </div>
 
@@ -191,8 +186,13 @@ export const InspectionFilterPanel: React.FC<InspectionFilterPanelProps> = ({
       <QualityInspectionForm
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        onSubmit={(inspection) => {
-          onCreateInspection?.(inspection);
+        onSubmit={async (inspection) => {
+          const docId = await onCreateInspection?.(inspection);
+          // 이미지 업로드가 완료된 후 모달이 닫히도록 하기 위해 여기서는 닫지 않음
+          return docId || 'unknown';
+        }}
+        onComplete={() => {
+          // 모든 처리가 완료된 후 모달 닫기
           setIsCreateModalOpen(false);
         }}
       />

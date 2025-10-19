@@ -2,7 +2,7 @@
  * Firebase Storage 서비스
  */
 
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, deleteObject, getMetadata } from 'firebase/storage';
 import { storage } from './config';
 
 /**
@@ -182,27 +182,76 @@ export const compressImage = async (
 };
 
 /**
- * 일반 파일 업로드 (기존 API 호환)
+ * 일반 파일 업로드 (개선된 재시도 로직)
  * @param file - 업로드할 파일
  * @param path - Storage 경로
+ * @param maxRetries - 최대 재시도 횟수 (기본값: 5)
  * @returns 업로드된 파일의 다운로드 URL
  */
-export const uploadFile = async (file: File, path: string): Promise<string> => {
+export const uploadFile = async (
+  file: File, 
+  path: string, 
+  maxRetries: number = 5
+): Promise<string> => {
   if (!storage) {
     throw new Error('Firebase Storage가 초기화되지 않았습니다.');
   }
 
-  try {
-    const storageRef = ref(storage, path);
-    await uploadBytes(storageRef, file, {
-      contentType: file.type,
-    });
-    const downloadURL = await getDownloadURL(storageRef);
-    return downloadURL;
-  } catch (error) {
-    console.error('❌ 파일 업로드 실패:', error);
-    throw error;
+  let lastError: Error | null = null;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`🔄 파일 업로드 시도 ${attempt}/${maxRetries}: ${file.name}`);
+      
+      const storageRef = ref(storage, path);
+      
+      // 업로드 타임아웃 설정 (30초)
+      const uploadPromise = uploadBytes(storageRef, file, {
+        contentType: file.type,
+      });
+      
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('업로드 타임아웃')), 30000);
+      });
+      
+      await Promise.race([uploadPromise, timeoutPromise]);
+      
+      const downloadURL = await getDownloadURL(storageRef);
+      console.log(`✅ 파일 업로드 성공 (시도 ${attempt}/${maxRetries}): ${file.name}`);
+      
+      return downloadURL;
+      
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error('알 수 없는 오류');
+      
+      // 재시도 가능한 오류인지 확인
+      const isRetryableError = (
+        lastError.message.includes('retry-limit-exceeded') ||
+        lastError.message.includes('network') ||
+        lastError.message.includes('timeout') ||
+        lastError.message.includes('quota') ||
+        lastError.message.includes('unavailable')
+      );
+      
+      if (!isRetryableError) {
+        console.error(`❌ 재시도 불가능한 오류: ${lastError.message}`);
+        throw lastError;
+      }
+      
+      console.warn(`⚠️ 파일 업로드 실패 (시도 ${attempt}/${maxRetries}): ${lastError.message}`);
+      
+      // 마지막 시도가 아니면 지수 백오프로 대기
+      if (attempt < maxRetries) {
+        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000); // 최대 10초
+        console.log(`⏳ ${delay}ms 후 재시도...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
   }
+  
+  // 모든 재시도 실패
+  console.error(`❌ 파일 업로드 최종 실패 (${maxRetries}회 시도): ${lastError?.message}`);
+  throw new Error(`파일 업로드 실패: ${lastError?.message || '알 수 없는 오류'}`);
 };
 
 /**
@@ -221,6 +270,54 @@ export const getFileDownloadURL = async (path: string): Promise<string> => {
     return downloadURL;
   } catch (error) {
     console.error('❌ 다운로드 URL 가져오기 실패:', error);
+    throw error;
+  }
+};
+
+/**
+ * 파일 존재 여부 확인
+ * @param path - Storage 경로
+ * @returns 파일 존재 여부
+ */
+export const fileExists = async (path: string): Promise<boolean> => {
+  if (!storage) {
+    throw new Error('Firebase Storage가 초기화되지 않았습니다.');
+  }
+
+  try {
+    const storageRef = ref(storage, path);
+    await getMetadata(storageRef);
+    return true;
+  } catch (error: any) {
+    if (error.code === 'storage/object-not-found') {
+      return false;
+    }
+    throw error;
+  }
+};
+
+/**
+ * 파일 삭제 (존재 여부 확인 후)
+ * @param path - Storage 경로
+ */
+export const deleteFileIfExists = async (path: string): Promise<boolean> => {
+  if (!storage) {
+    throw new Error('Firebase Storage가 초기화되지 않았습니다.');
+  }
+
+  try {
+    const exists = await fileExists(path);
+    if (!exists) {
+      console.log('📝 파일이 존재하지 않음 (삭제 건너뜀):', path);
+      return false;
+    }
+
+    const storageRef = ref(storage, path);
+    await deleteObject(storageRef);
+    console.log('✅ 파일 삭제 성공:', path);
+    return true;
+  } catch (error) {
+    console.error('❌ 파일 삭제 실패:', error);
     throw error;
   }
 };

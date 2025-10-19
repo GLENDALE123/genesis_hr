@@ -497,12 +497,24 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
       <div className="h-full flex flex-col space-y-6">
         {/* 상단 액션 바 */}
         <div className="flex items-center justify-between gap-4 flex-shrink-0">
-          {/* 좌측: 권한 설정 버튼 (Admin만 표시) */}
-          <div>
-            <PermissionSettingsButton 
-              pageId="production-daily-report" 
-              pageName="생산일보" 
-            />
+          {/* 좌측: 권한 설정 버튼 */}
+          <div className="flex items-center gap-2">
+            {/* 데스크톱: 텍스트와 아이콘 */}
+            <div className="hidden md:block">
+              <PermissionSettingsButton 
+                pageId="production-daily-report" 
+                pageName="생산일보" 
+              />
+            </div>
+            
+            {/* 모바일: 아이콘만 */}
+            <div className="md:hidden">
+              <PermissionSettingsButton 
+                pageId="production-daily-report" 
+                pageName="생산일보"
+                iconOnly={true}
+              />
+            </div>
           </div>
           
           {/* 우측: 액션 버튼들 */}
@@ -512,6 +524,7 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
               size="sm" 
               disabled={!canCreate}
               title={canCreate ? '엑셀 업로드' : '권한이 없습니다'}
+              className="hidden md:flex"
             >
               <Upload className="h-4 w-4 mr-2" />
               엑셀 업로드
@@ -520,6 +533,7 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
               variant="outline" 
               size="sm"
               title="엑셀 다운로드"
+              className="hidden md:flex"
             >
               <Download className="h-4 w-4 mr-2" />
               엑셀 다운로드
@@ -532,6 +546,27 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
               <Plus className="h-4 w-4 mr-2" />
               생산일보 등록
             </Button>
+            
+            {/* 모바일: 엑셀 아이콘만 표시 */}
+            <div className="flex items-center gap-2 md:hidden">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                disabled={!canCreate}
+                title={canCreate ? '엑셀 업로드' : '권한이 없습니다'}
+                className="p-2"
+              >
+                <Upload className="h-4 w-4" />
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                title="엑셀 다운로드"
+                className="p-2"
+              >
+                <Download className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
 

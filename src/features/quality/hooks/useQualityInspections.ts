@@ -235,27 +235,26 @@ export const useQualityInspections = (
   const filteredGroupedInspections = useMemo(() => {
     let filtered = groupedInspections;
 
-    // 검색어가 있으면 전체 데이터에서 검색 (HS-Jig 방식)
+    // 검색어가 있으면 전체 데이터에서 검색 (생산일보와 동일한 방식)
     if (searchTerm && searchTerm.trim()) {
-      console.log(`🔍 검색어 필터링: "${searchTerm}"`);
-      const term = searchTerm.toLowerCase().trim();
+      console.log(`🔍 [통합검색] 검색어: "${searchTerm}"`);
+      const searchLower = searchTerm.toLowerCase().trim();
       filtered = filtered.filter(group => {
         // 그룹 내 모든 검사들을 확인
         const allInspections = [...group.incoming, ...group.inProcess, ...group.outgoing];
         
-        // 검사 데이터에서 검색어 찾기
+        // 검사 데이터에서 검색어 찾기 (생산일보와 동일한 필드)
         return allInspections.some(inspection => {
-          const searchableText = [
-            inspection.orderNumber,
-            inspection.supplier,
-            inspection.productName,
-            inspection.partName,
-            inspection.inspector,
-            inspection.result,
-            inspection.resultReason
-          ].join(' ').toLowerCase();
+          const matchesSearch = 
+            inspection.orderNumber.toLowerCase().includes(searchLower) ||
+            inspection.supplier.toLowerCase().includes(searchLower) ||
+            inspection.productName.toLowerCase().includes(searchLower) ||
+            (inspection.partName && inspection.partName.toLowerCase().includes(searchLower)) ||
+            (inspection.specification && inspection.specification.toLowerCase().includes(searchLower)) ||
+            inspection.inspectionType.toLowerCase().includes(searchLower) ||
+            inspection.result.toLowerCase().includes(searchLower);
           
-          return searchableText.includes(term);
+          return matchesSearch;
         });
       });
     }

@@ -11,18 +11,24 @@ import { Separator } from '@/shared/components/ui/separator';
 import { InputSelect } from '@/shared/components/common/InputSelect';
 import { InspectionResult, QualityInspection } from '../types';
 import type { AutocompleteData } from '../services/autocompleteService';
-import { useCommonFields } from './InspectionCommonForm';
+import { useCommonFields, UseImageUploadReturn } from './InspectionCommonForm';
 
 interface IncomingInspectionFormProps {
   formData: Partial<QualityInspection>;
   setFormData: React.Dispatch<React.SetStateAction<Partial<QualityInspection>>>;
   autocompleteData: AutocompleteData;
+  imageUploadHook: UseImageUploadReturn;
+  isViewMode?: boolean;
+  isEditMode?: boolean;
 }
 
 export const IncomingInspectionForm: React.FC<IncomingInspectionFormProps> = ({
   formData,
   setFormData,
-  autocompleteData
+  autocompleteData,
+  imageUploadHook,
+  isViewMode = false,
+  isEditMode = false
 }) => {
   // 파일 입력 refs
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -33,7 +39,7 @@ export const IncomingInspectionForm: React.FC<IncomingInspectionFormProps> = ({
     formData, 
     setFormData, 
     autocompleteData, 
-    undefined,
+    imageUploadHook,
     fileInputRef,
     cameraInputRef
   );

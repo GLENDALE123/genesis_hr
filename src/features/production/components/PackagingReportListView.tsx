@@ -295,6 +295,8 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
   canUpdate,
   canDelete
 }) => {
+  // 모바일 필터 표시 상태
+  const [isMobileFilterVisible, setIsMobileFilterVisible] = React.useState(false);
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ko-KR', {
       year: 'numeric',
@@ -346,9 +348,9 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
     <div className="h-full flex flex-col space-y-4">
       {/* 필터 및 검색 */}
       <Card className="flex-shrink-0">
-        <CardContent className="p-4">
+        <CardContent className="p-2 sm:p-4">
           {/* CSS Grid 기반 반응형 필터 섹션 */}
-          <div className="space-y-3 3xl:space-y-0">
+          <div className="space-y-2 sm:space-y-3 3xl:space-y-0">
             {/* 1700px 이상: 1행 6컬럼 그리드 */}
             <div className="hidden 3xl:grid grid-cols-[auto_auto_1fr_1fr_2fr_auto] gap-4 items-end">
               {/* 조회기간 */}
@@ -492,10 +494,35 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
               </div>
             </div>
 
-            {/* 1700px 미만: 2행 그리드 */}
-            <div className="3xl:hidden grid grid-rows-2 gap-3">
-              {/* 첫 번째 행: 4컬럼 그리드 */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+            {/* 모바일 전용 레이아웃 */}
+            <div className="3xl:hidden">
+              {/* 필터 토글 버튼 */}
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-medium text-foreground">필터</h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsMobileFilterVisible(!isMobileFilterVisible)}
+                  className="flex items-center gap-1 text-xs"
+                >
+                  {isMobileFilterVisible ? (
+                    <>
+                      <ChevronUp className="h-3 w-3" />
+                      접기
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="h-3 w-3" />
+                      펼치기
+                    </>
+                  )}
+                </Button>
+              </div>
+              
+              {/* 필터 내용 (접었다가 펼 수 있음) */}
+              <div className={`space-y-3 transition-all duration-300 overflow-hidden ${
+                isMobileFilterVisible ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'
+              }`}>
                 {/* 조회기간 */}
                 <div className="space-y-1">
                   <label className="text-sm font-medium text-card-foreground flex items-center gap-2">
@@ -508,7 +535,7 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
                       placeholder="시작일"
                       value={filters.startDate || ''}
                       onChange={(e) => onFilterChange('startDate', e.target.value)}
-                      className="w-full sm:w-auto sm:min-w-[8.75rem]"
+                      className="flex-1"
                     />
                     <span className="text-muted-foreground">~</span>
                     <Input
@@ -516,7 +543,7 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
                       placeholder="종료일"
                       value={filters.endDate || ''}
                       onChange={(e) => onFilterChange('endDate', e.target.value)}
-                      className="w-full sm:w-auto sm:min-w-[8.75rem]"
+                      className="flex-1"
                     />
                   </div>
                 </div>
@@ -524,12 +551,12 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
                 {/* 빠른 필터 */}
                 <div className="space-y-1">
                   <label className="text-sm font-medium text-foreground">빠른 필터</label>
-                  <div className="flex items-center gap-1 flex-wrap">
+                  <div className="flex flex-wrap gap-1">
                     <Button
                       variant={activeQuickFilter === 'today' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => onQuickDateFilter('today')}
-                      className="text-xs px-4 py-1"
+                      className="text-xs px-3 py-1"
                     >
                       오늘
                     </Button>
@@ -537,7 +564,7 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
                       variant={activeQuickFilter === 'yesterday' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => onQuickDateFilter('yesterday')}
-                      className="text-xs px-4 py-1"
+                      className="text-xs px-3 py-1"
                     >
                       어제
                     </Button>
@@ -545,7 +572,7 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
                       variant={activeQuickFilter === 'week' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => onQuickDateFilter('week')}
-                      className="text-xs px-4 py-1"
+                      className="text-xs px-3 py-1"
                     >
                       최근 7일
                     </Button>
@@ -553,7 +580,7 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
                       variant={activeQuickFilter === 'month' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => onQuickDateFilter('month')}
-                      className="text-xs px-4 py-1"
+                      className="text-xs px-3 py-1"
                     >
                       최근 30일
                     </Button>
@@ -561,82 +588,79 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
                       variant={activeQuickFilter === 'all' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => onQuickDateFilter('all')}
-                      className="text-xs px-4 py-1"
+                      className="text-xs px-3 py-1"
                     >
                       전체
                     </Button>
                   </div>
                 </div>
 
-                {/* 상태 드롭다운 */}
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-foreground">상태</label>
-                  <Select
-                    value={filters.status || 'all'}
-                    onValueChange={(value) => onFilterChange('status', value === 'all' ? '' : value)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="상태 선택" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">전체</SelectItem>
-                      <SelectItem value="completed">생산완료</SelectItem>
-                      <SelectItem value="in_progress">작업중</SelectItem>
-                      <SelectItem value="pending">대기</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* 상태 & 생산라인 (2컬럼) */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium text-foreground">상태</label>
+                    <Select
+                      value={filters.status || 'all'}
+                      onValueChange={(value) => onFilterChange('status', value === 'all' ? '' : value)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="상태 선택" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">전체</SelectItem>
+                        <SelectItem value="completed">생산완료</SelectItem>
+                        <SelectItem value="in_progress">작업중</SelectItem>
+                        <SelectItem value="pending">대기</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                {/* 생산라인 드롭다운 */}
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-foreground">생산라인</label>
-                  <Select
-                    value={filters.productionLine || 'all'}
-                    onValueChange={(value) => onFilterChange('productionLine', value === 'all' ? '' : value)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="생산라인 선택" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">전체</SelectItem>
-                      {PRODUCTION_LINE_OPTIONS.map(line => (
-                        <SelectItem key={line} value={line}>{line}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* 두 번째 행: 2컬럼 그리드 */}
-              <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-4 items-end">
-                {/* 통합검색 */}
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-foreground">통합검색</label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="제품명, 발주처, 발주번호 검색..."
-                      value={searchTerm}
-                      onChange={(e) => onSearchChange(e.target.value)}
-                      className="pl-10"
-                    />
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium text-foreground">생산라인</label>
+                    <Select
+                      value={filters.productionLine || 'all'}
+                      onValueChange={(value) => onFilterChange('productionLine', value === 'all' ? '' : value)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="생산라인 선택" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">전체</SelectItem>
+                        {PRODUCTION_LINE_OPTIONS.map(line => (
+                          <SelectItem key={line} value={line}>{line}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
-                {/* 초기화 버튼 + 총 건수 */}
-                <div className="flex items-center gap-3 justify-end">
-                  <Button 
-                    variant="outline" 
-                    onClick={onClearFilters}
-                    className="flex items-center gap-2"
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                    초기화
-                  </Button>
-                  
-                  <span className="text-sm text-muted-foreground whitespace-nowrap">
-                    총 {reports.length}건
-                  </span>
+                {/* 통합검색 + 초기화 버튼 */}
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-foreground">통합검색</label>
+                  <div className="flex gap-2 items-center">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="제품명, 발주처, 발주번호 검색..."
+                        value={searchTerm}
+                        onChange={(e) => onSearchChange(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      onClick={onClearFilters}
+                      className="flex items-center gap-1 text-xs px-3 py-2 whitespace-nowrap"
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                      초기화
+                    </Button>
+                  </div>
+                  <div className="flex justify-end">
+                    <span className="text-xs text-muted-foreground">
+                      총 {reports.length}건
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -650,31 +674,36 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
           <CardContent className="p-4">
             {/* 요약 헤더 (클릭 가능) */}
             <div 
-              className="flex items-center justify-between cursor-pointer p-2 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-md transition-colors"
+              className="cursor-pointer p-2 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-md transition-colors"
               onClick={onSummaryToggle}
             >
-              <div className="flex items-center gap-2">
+              {/* 첫 번째 행: 생산요약 + 날짜범위 */}
+              <div className="flex items-center justify-between mb-2">
                 <h3 className="text-base font-semibold text-foreground">
                   생산 요약
-                  {summaryData && (
-                    <span className="text-sm font-normal text-muted-foreground ml-2">
-                      ({formatDate(summaryData.actualStartDate)} ~ {formatDate(summaryData.actualEndDate)})
-                    </span>
-                  )}
                 </h3>
+                {summaryData && (
+                  <span className="text-sm font-normal text-muted-foreground">
+                    {formatDate(summaryData.actualStartDate)} ~ {formatDate(summaryData.actualEndDate)}
+                  </span>
+                )}
+              </div>
+              
+              {/* 두 번째 행: 통계 데이터 */}
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4 text-sm">
                   <span className="font-medium">총 투입: <span className="font-semibold">{summaryData.total.input.toLocaleString()}</span></span>
                   <span className="font-medium">총 양품: <span className="font-semibold">{summaryData.total.good.toLocaleString()}</span></span>
                   <span className="font-medium text-red-500">총 불량: <span className="font-semibold">{summaryData.total.defect.toLocaleString()}</span></span>
                   <span className="font-medium">총 양품률: <span className="font-semibold">{summaryData.total.input > 0 ? ((summaryData.total.good / summaryData.total.input) * 100).toFixed(1) + '%' : 'N/A'}</span></span>
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {isSummaryVisible ? (
-                  <ChevronUp className="h-5 w-5 text-muted-foreground" />
-                ) : (
-                  <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                )}
+                <div className="flex items-center gap-2">
+                  {isSummaryVisible ? (
+                    <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                  )}
+                </div>
               </div>
             </div>
 
@@ -710,8 +739,8 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
       )}
 
       {/* 보고서 목록 */}
-      <Card className="flex-1 flex flex-col min-h-0">
-        <CardContent className="p-0 flex flex-col flex-1 min-h-0">
+      <Card className="flex-1 flex flex-col md:min-h-0 mb-2 md:mb-0">
+        <CardContent className="p-0 flex flex-col flex-1 md:min-h-0">
           {reports.length === 0 ? (
             /* 빈 상태 - 중앙 정렬 */
             <div className="flex flex-col items-center justify-center gap-4 flex-1 min-h-[24rem]">
@@ -726,8 +755,8 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
               </div>
             </div>
           ) : (
-            /* 스크롤 가능한 테이블 전체 - 높이 고정 */
-            <div className="flex-1 overflow-auto h-[600px]">
+            /* 스크롤 가능한 테이블 전체 - 모바일에서는 높이 제한 완전 제거 */
+            <div className="flex-1 overflow-x-auto md:h-[600px] md:overflow-y-auto">
               <Table className="w-full text-sm text-left text-gray-500 dark:text-slate-400 min-w-[2000px]">
                 {/* 고정 헤더 */}
                 <TableHeader className="sticky top-0 z-10 bg-background">

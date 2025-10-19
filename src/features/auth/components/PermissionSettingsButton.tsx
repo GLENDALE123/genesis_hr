@@ -32,6 +32,7 @@ import { getUserDisplayName, getUserRoleBadgeVariant, isAdmin as checkIsAdmin, h
 interface PermissionSettingsButtonProps {
   pageId: PageIdentifier;
   pageName: string;
+  iconOnly?: boolean;
 }
 
 // 내부적으로 사용할 간단한 권한 상태 타입
@@ -49,7 +50,8 @@ interface PermissionState {
  */
 const PermissionSettingsButtonComponent: React.FC<PermissionSettingsButtonProps> = ({
   pageId,
-  pageName
+  pageName,
+  iconOnly = false
 }) => {
   const isAdmin = useIsAdmin();
   const { clearCache } = usePermissionsStore();
@@ -222,11 +224,17 @@ const PermissionSettingsButtonComponent: React.FC<PermissionSettingsButtonProps>
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
-          <Shield className="h-4 w-4" />
-          권한 설정
-          <Badge variant="default" className="ml-1">Admin</Badge>
-        </Button>
+        {iconOnly ? (
+          <Button variant="outline" size="sm" className="p-2">
+            <Shield className="h-4 w-4" />
+          </Button>
+        ) : (
+          <Button variant="outline" size="sm" className="gap-2">
+            <Shield className="h-4 w-4" />
+            권한 설정
+            <Badge variant="default" className="ml-1">Admin</Badge>
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>

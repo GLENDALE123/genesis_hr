@@ -40,7 +40,7 @@ exports.generateImageThumbnail = onObjectFinalized({
   }
   
   // 허용된 폴더만 처리 (비용 절약)
-  const allowedFolders = ['production-requests', 'packaging-reports', 'quality-issues'];
+  const allowedFolders = ['production-requests', 'packaging-reports', 'quality-issues', 'quality-inspections'];
   const isAllowedFolder = allowedFolders.some(folder => filePath.startsWith(folder));
   
   if (!isAllowedFolder) {

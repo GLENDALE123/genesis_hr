@@ -81,7 +81,7 @@ export interface WorkerInspectionData {
 export interface ProcessLineData {
   workLine?: string;
   lineSpeed?: string;
-  lineConditions?: { type: '하도' | '상도'; value: string }[];
+  lineConditions?: { type: '하도' | '상도'; value: number }[];
   lampUsage?: number[];
 }
 
@@ -136,6 +136,10 @@ export interface QualityInspection {
   // 검사자 정보
   inspector: string | { uid: string; displayName: string; email: string };
   inspectionDate?: string; // Optional - createdAt으로 대체 가능
+  
+  // 생성/수정 정보
+  createdBy?: string; // 작성자 UID
+  updatedBy?: string; // 수정자 UID
   
   // 공정검사 전용
   workLine?: string;

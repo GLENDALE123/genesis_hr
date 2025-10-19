@@ -42,16 +42,33 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
 
   // initialIndex가 변경되면 currentIndex 업데이트
   useEffect(() => {
+    console.log(`🔍 [ImageLightbox] 초기 인덱스 설정:`, {
+      initialIndex,
+      totalImages: images.length,
+      currentImageUrl: images[initialIndex]
+    });
     setCurrentIndex(initialIndex);
-  }, [initialIndex]);
+  }, [initialIndex, images]);
 
   const handlePrevious = useCallback(() => {
-    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
-  }, [images.length]);
+    const newIndex = currentIndex > 0 ? currentIndex - 1 : images.length - 1;
+    console.log(`⬅️ [ImageLightbox] 이전 이미지로 이동:`, {
+      from: currentIndex,
+      to: newIndex,
+      imageUrl: images[newIndex]
+    });
+    setCurrentIndex(newIndex);
+  }, [currentIndex, images]);
 
   const handleNext = useCallback(() => {
-    setCurrentIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
-  }, [images.length]);
+    const newIndex = currentIndex < images.length - 1 ? currentIndex + 1 : 0;
+    console.log(`➡️ [ImageLightbox] 다음 이미지로 이동:`, {
+      from: currentIndex,
+      to: newIndex,
+      imageUrl: images[newIndex]
+    });
+    setCurrentIndex(newIndex);
+  }, [currentIndex, images]);
 
   // 키보드 이벤트 핸들러
   useEffect(() => {
@@ -113,6 +130,20 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
 
   if (images.length === 0) return null;
 
+  // 라이트박스 열림/닫힘 디버그
+  useEffect(() => {
+    if (open) {
+      console.log(`🔍 [ImageLightbox] 라이트박스 열림:`, {
+        totalImages: images.length,
+        currentIndex,
+        currentImageUrl: images[currentIndex],
+        allImageUrls: images
+      });
+    } else {
+      console.log(`🔍 [ImageLightbox] 라이트박스 닫힘`);
+    }
+  }, [open, images, currentIndex]);
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-7xl max-h-[90vh] p-0 bg-black/95 border-none [&>button]:hidden">
@@ -172,6 +203,18 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
             onClick={(e) => e.stopPropagation()}
             draggable={false}
             onDragStart={(e) => e.preventDefault()}
+            onLoad={() => {
+              console.log(`✅ [ImageLightbox] 원본 이미지 로드 성공 (${currentIndex + 1}/${images.length}):`, {
+                imageUrl: images[currentIndex],
+                isOriginal: true
+              });
+            }}
+            onError={() => {
+              console.log(`❌ [ImageLightbox] 원본 이미지 로드 실패 (${currentIndex + 1}/${images.length}):`, {
+                imageUrl: images[currentIndex],
+                error: 'Failed to load original image in lightbox'
+              });
+            }}
           />
         </div>
       </DialogContent>

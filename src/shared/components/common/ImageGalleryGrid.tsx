@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ImageLightbox } from './ImageLightbox';
 import { LazyImage } from './LazyImage';
-import { ImageCache, getThumbnailUrl } from '@/shared/utils/imageUpload';
+import { ImageCache } from '@/shared/utils/imageUpload';
+import { getThumbnailURL } from '@/shared/utils/imagePathMigration';
 import { Spinner } from '../ui/spinner';
 
 interface ImageGalleryGridProps {
@@ -95,7 +96,7 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
         // 썸네일 우선 로드 (useThumbnails가 true일 때)
         let targetUrl = originalUrl;
         if (useThumbnails) {
-          const thumbnailUrl = getThumbnailUrl(originalUrl);
+          const thumbnailUrl = getThumbnailURL(originalUrl);
           try {
             const thumbnailResponse = await fetch(thumbnailUrl, { method: 'HEAD' });
             if (thumbnailResponse.ok) {
@@ -148,7 +149,6 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
       if (cachedUrl) {
         // 캐시된 이미지가 압축된 이미지인지 확인 (WebP 확장자 또는 blob URL)
         const isCompressed = cachedUrl.includes('.webp') || cachedUrl.startsWith('blob:');
-        console.log('캐시된 이미지 사용:', cachedUrl, isCompressed ? '(압축됨)' : '(원본)');
         
         setCachedImages(prev => {
           const newImages = [...prev];
@@ -164,8 +164,9 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
       }
       
       // 간단한 접근: 썸네일 우선 시도, 실패시 onError에서 폴백
-      const thumbnailUrl = useThumbnails ? getThumbnailUrl(originalUrl) : null;
+      const thumbnailUrl = useThumbnails ? getThumbnailURL(originalUrl) : null;
       const finalUrl = thumbnailUrl || originalUrl;
+      
       
       // 캐시에 저장
       ImageCache.setImage(originalUrl, { 
@@ -185,7 +186,7 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
       });
       
     } catch (error) {
-      console.warn('이미지 로드 실패:', originalUrl, error);
+      console.warn(`❌ [ImageGallery] 이미지 로드 실패 (${index + 1}):`, originalUrl, error);
       // 최종 실패시 원본 URL 사용
       setCachedImages(prev => {
         const newImages = [...prev];
@@ -303,11 +304,21 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
                   onError={async () => {
                     // 이미지 로드 실패시 원본 URL 사용 (썸네일 → 원본 폴백)
                     const currentSrc = cachedImages[index] || url;
-                    const thumbnailUrl = useThumbnails ? getThumbnailUrl(url) : null;
+                    const thumbnailUrl = useThumbnails ? getThumbnailURL(url) : null;
+                    
+                    console.log(`❌ [ImageGallery] 이미지 로드 에러 (${index + 1}):`, {
+                      currentSrc,
+                      thumbnailUrl,
+                      originalUrl: url,
+                      isThumbnailError: currentSrc === thumbnailUrl
+                    });
                     
                     if (currentSrc === thumbnailUrl) {
                       // 썸네일 로드 실패 - 원본을 직접 사용하거나 CORS 우회 시도
-                      console.log('썸네일 로드 실패, 원본으로 폴백:', currentSrc, '→', url);
+                      console.log(`🔄 [ImageGallery] 썸네일 로드 실패, 원본으로 폴백 (${index + 1}):`, {
+                        from: currentSrc,
+                        to: url
+                      });
                       
                       // 원본 URL을 직접 사용 (CORS 문제 우회)
                       setCachedImages(prev => {
@@ -320,14 +331,14 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
                       setTimeout(() => {
                         const img = new Image();
                         img.onerror = () => {
-                          console.log('원본 이미지도 로드 실패:', url);
+                          console.log(`❌ [ImageGallery] 원본 이미지도 로드 실패 (${index + 1}):`, url);
                         };
                         img.src = url;
                       }, 1000);
                       
                     } else {
                       // 원본도 실패한 경우 - 에러 상태로 표시
-                      console.log('원본 이미지도 로드 실패:', url);
+                      console.log(`❌ [ImageGallery] 원본 이미지도 로드 실패 (${index + 1}):`, url);
                       setLoadedImages(prev => {
                         const newLoaded = [...prev];
                         newLoaded[index] = false;

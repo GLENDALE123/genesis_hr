@@ -10,18 +10,25 @@ import { Button } from '@/shared/components/ui/button';
 import { InputSelect } from '@/shared/components/common/InputSelect';
 import { QualityInspection, WorkerInspectionData, DefectResultPair, SimpleDefectResultPair } from '../types';
 import type { AutocompleteData } from '../services/autocompleteService';
-import { useCommonFields } from './InspectionCommonForm';
+import { useCommonFields, UseImageUploadReturn } from './InspectionCommonForm';
+import { PRODUCTION_LINE_OPTIONS } from '@/features/production/constants';
 
 interface OutgoingInspectionFormProps {
   formData: Partial<QualityInspection>;
   setFormData: React.Dispatch<React.SetStateAction<Partial<QualityInspection>>>;
   autocompleteData: AutocompleteData;
+  imageUploadHook: UseImageUploadReturn;
+  isViewMode?: boolean;
+  isEditMode?: boolean;
 }
 
 export const OutgoingInspectionForm: React.FC<OutgoingInspectionFormProps> = ({
   formData,
   setFormData,
-  autocompleteData
+  autocompleteData,
+  imageUploadHook,
+  isViewMode = false,
+  isEditMode = false
 }) => {
   // 타입 가드 함수
   const isDefectResultPair = (pair: DefectResultPair | SimpleDefectResultPair): pair is DefectResultPair => {
@@ -36,7 +43,7 @@ export const OutgoingInspectionForm: React.FC<OutgoingInspectionFormProps> = ({
     formData, 
     setFormData, 
     autocompleteData, 
-    undefined,
+    imageUploadHook,
     fileInputRef,
     cameraInputRef
   );
@@ -59,26 +66,45 @@ export const OutgoingInspectionForm: React.FC<OutgoingInspectionFormProps> = ({
     setFormData((prev: Partial<QualityInspection>) => ({ ...prev, defectResultPairs: newPairs as DefectResultPair[] }));
   };
 
-  // 작업자 추가/제거 함수들
-  const addWorker = () => {
-    const newWorkers = [...(formData.workers || []), { 
-      name: '', 
-      totalInspected: 0, 
-      defectQuantity: 0, 
-      result: '합격' as const, 
-      defectReasons: [], 
-      action: '', 
-      decisionMaker: '', 
-      directInputResult: '' 
-    }];
-    setFormData((prev: Partial<QualityInspection>) => ({ ...prev, workers: newWorkers as WorkerInspectionData[] }));
+  // 작업자 인원수 변경 핸들러
+  const handleWorkerCountChange = (value: string) => {
+    const count = parseInt(value) || 0;
+    
+    // 현재 작업자 배열
+    const currentWorkers = formData.workers || [];
+    
+    // 새로운 작업자 배열 생성
+    const newWorkers: WorkerInspectionData[] = [];
+    
+    for (let i = 0; i < count; i++) {
+      if (i < currentWorkers.length) {
+        // 기존 작업자 정보 유지
+        newWorkers.push(currentWorkers[i]);
+      } else {
+        // 새로운 작업자 추가
+        newWorkers.push({
+          name: '',
+          totalInspected: 0,
+          defectQuantity: 0,
+          result: '합격' as const,
+          defectReasons: [],
+          action: '',
+          decisionMaker: '',
+          directInputResult: ''
+        });
+      }
+    }
+    
+    setFormData((prev: Partial<QualityInspection>) => ({ 
+      ...prev, 
+      workerCount: value,
+      workers: newWorkers
+    }));
   };
 
-  const removeWorker = (index: number) => {
-    const newWorkers = [...(formData.workers || [])];
-    newWorkers.splice(index, 1);
-    setFormData((prev: Partial<QualityInspection>) => ({ ...prev, workers: newWorkers as WorkerInspectionData[] }));
-  };
+  // 작업자 추가/제거 함수들 (제거 예정) - 제거됨
+  // const addWorker = () => { ... };
+  // const removeWorker = (index: number) => { ... };
 
   const handleWorkerChange = (index: number, field: string, value: string | number) => {
     const newWorkers = [...(formData.workers || [])];
@@ -133,7 +159,7 @@ export const OutgoingInspectionForm: React.FC<OutgoingInspectionFormProps> = ({
             <InputSelect
               value={formData.workLine || ''}
               onChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, workLine: value }))}
-              options={['라인1', '라인2', '라인3', '라인4', '라인5']}
+              options={PRODUCTION_LINE_OPTIONS}
               placeholder="작업라인을 선택하세요"
             />
           </div>
@@ -254,8 +280,10 @@ export const OutgoingInspectionForm: React.FC<OutgoingInspectionFormProps> = ({
             <Label htmlFor="workerCount">작업자 인원수</Label>
             <Input
               id="workerCount"
+              type="number"
+              min="0"
               value={formData.workerCount || ''}
-              onChange={(e) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, workerCount: e.target.value }))}
+              onChange={(e) => handleWorkerCountChange(e.target.value)}
               placeholder="작업자 인원수를 입력하세요"
             />
           </div>
@@ -266,14 +294,7 @@ export const OutgoingInspectionForm: React.FC<OutgoingInspectionFormProps> = ({
           <div key={index} className="p-4 border rounded-lg space-y-4 bg-slate-50 dark:bg-slate-900/50">
             <div className="flex items-center justify-between">
               <h4 className="font-semibold">작업자 {index + 1}</h4>
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                onClick={() => removeWorker(index)}
-              >
-                -
-              </Button>
+              {/* 개별 작업자 제거 버튼 제거 */}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="space-y-2">
@@ -364,15 +385,7 @@ export const OutgoingInspectionForm: React.FC<OutgoingInspectionFormProps> = ({
           </div>
         ))}
 
-        {/* 작업자 추가 버튼 */}
-        <Button
-          type="button"
-          variant="outline"
-          onClick={addWorker}
-          className="w-full"
-        >
-          + 작업자 추가
-        </Button>
+        {/* 작업자 추가 버튼 제거 */}
 
         {/* 신뢰성 검토 */}
         <div className="pt-4 border-t">

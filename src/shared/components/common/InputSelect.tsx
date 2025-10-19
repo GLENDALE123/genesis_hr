@@ -52,6 +52,7 @@ export const InputSelect: React.FC<InputSelectProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [isSelecting, setIsSelecting] = useState(false); // 선택 중인지 추적
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   
@@ -135,6 +136,11 @@ export const InputSelect: React.FC<InputSelectProps> = ({
   };
 
   const handleFocus = () => {
+    // 선택 중이면 팝오버를 열지 않음
+    if (isSelecting) {
+      setIsSelecting(false);
+      return;
+    }
     // 다른 InputSelect가 열려있으면 닫기
     closeOtherInputSelects(instanceId);
     updateDropdownPosition();
@@ -142,12 +148,15 @@ export const InputSelect: React.FC<InputSelectProps> = ({
   };
 
   const handleOptionSelect = (option: string) => {
+    setIsSelecting(true); // 선택 중 상태 설정
     onChange(option);
     setIsOpen(false);
     setHighlightedIndex(-1);
     closeInputSelect(instanceId);
-    // 선택 후 input에 포커스 유지
-    inputRef.current?.focus();
+    // 선택 후 input에 포커스 유지하되, 팝오버가 다시 열리지 않도록 약간의 지연
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
   };
 
   const handleWheel = (e: React.WheelEvent) => {

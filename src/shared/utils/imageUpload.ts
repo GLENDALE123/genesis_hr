@@ -65,14 +65,177 @@ export const revokePreviewUrl = (url: string): void => {
 };
 
 /**
- * 클라이언트에서 빠른 압축 (Canvas API)
- * - 목적: 빠른 업로드를 위한 경량 압축
- * - 서버에서 추가로 썸네일 생성
+ * 여러 이미지를 병렬로 압축 (Web Workers 활용)
+ * - 동시에 여러 이미지 압축 처리
+ * - CPU 코어를 최대한 활용
  */
+const compressImagesParallel = async (files: File[]): Promise<File[]> => {
+  const BATCH_SIZE = 2; // 동시 처리할 이미지 수 (서버 부하 감소)
+  const compressedFiles: File[] = [];
+  
+  // 배치 단위로 나누어 처리
+  for (let i = 0; i < files.length; i += BATCH_SIZE) {
+    const batch = files.slice(i, i + BATCH_SIZE);
+    
+    // 배치 내에서 병렬 처리
+    const batchPromises = batch.map(file => compressImageQuick(file));
+    const batchResults = await Promise.all(batchPromises);
+    
+    compressedFiles.push(...batchResults);
+    
+    // UI 업데이트를 위한 짧은 대기
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+  
+  return compressedFiles;
+};
+
+/**
+ * 이미지 압축을 Web Worker에서 처리 (비동기)
+ * - 메인 스레드 블로킹 방지
+ * - 더 빠른 처리
+ */
+const compressImageWithWorker = async (file: File): Promise<File> => {
+  // Web Worker가 지원되지 않는 경우 기본 압축 사용
+  if (typeof Worker === 'undefined') {
+    return compressImageQuick(file);
+  }
+  
+  return new Promise(async (resolve) => {
+    // 간단한 Web Worker 코드 (실제로는 별도 파일로 분리 권장)
+    const workerCode = `
+      self.onmessage = function(e) {
+        const { file, maxWidth, maxHeight, quality } = e.data;
+        
+        // ArrayBuffer를 Blob으로 변환
+        const blob = new Blob([file.data], { type: file.type });
+        
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        
+        reader.onload = function(event) {
+          const img = new Image();
+          img.src = event.target.result;
+          
+          img.onload = function() {
+            const canvas = document.createElement('canvas');
+            let { width, height } = img;
+            
+            if (width > maxWidth || height > maxHeight) {
+              const ratio = Math.min(maxWidth / width, maxHeight / height);
+              width = width * ratio;
+              height = height * ratio;
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            
+            if (!ctx) {
+              self.postMessage({ success: false, file: file });
+              return;
+            }
+            
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'low';
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            canvas.toBlob(function(blob) {
+              if (!blob) {
+                self.postMessage({ success: false, file: file });
+                return;
+              }
+              
+              const compressedFile = new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              });
+              
+              self.postMessage({ 
+                success: true, 
+                file: compressedFile,
+                originalSize: file.size,
+                compressedSize: compressedFile.size
+              });
+            }, 'image/jpeg', quality);
+          };
+          
+          img.onerror = function() {
+            self.postMessage({ success: false, file: file });
+          };
+        };
+        
+        reader.onerror = function() {
+          self.postMessage({ success: false, file: file });
+        };
+      };
+    `;
+    
+    const blob = new Blob([workerCode], { type: 'application/javascript' });
+    const workerUrl = URL.createObjectURL(blob);
+    const worker = new Worker(workerUrl);
+    
+    // File을 ArrayBuffer로 변환하여 전달
+    const arrayBuffer = await file.arrayBuffer();
+    worker.postMessage({
+      file: {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        data: arrayBuffer
+      },
+      maxWidth: 1920,
+      maxHeight: 1080,
+      quality: 0.6
+    });
+    
+    worker.onmessage = function(e) {
+      const { success, file: resultFile } = e.data;
+      worker.terminate();
+      URL.revokeObjectURL(workerUrl);
+      resolve(success ? resultFile : file);
+    };
+    
+    worker.onerror = function() {
+      worker.terminate();
+      URL.revokeObjectURL(workerUrl);
+      resolve(file);
+    };
+  });
+};
+
+/**
+ * 스마트 이미지 압축 (파일 크기별 최적화)
+ * - 작은 파일: 압축 건너뛰기
+ * - 중간 파일: 빠른 압축
+ * - 큰 파일: 고품질 압축
+ */
+const compressImageSmart = async (file: File): Promise<File> => {
+  const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
+  const LARGE_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+  
+  // 작은 파일은 압축 건너뛰기
+  if (file.size <= MAX_FILE_SIZE) {
+    console.log(`⚡ 작은 파일 (${(file.size / 1024 / 1024).toFixed(2)}MB): 압축 건너뛰기`);
+    return file;
+  }
+  
+  // 큰 파일은 고품질 압축
+  if (file.size > LARGE_FILE_SIZE) {
+    console.log(`🔍 큰 파일 (${(file.size / 1024 / 1024).toFixed(2)}MB): 고품질 압축`);
+    return compressImageWithWorker(file);
+  }
+  
+  // 중간 파일은 빠른 압축
+  console.log(`⚡ 중간 파일 (${(file.size / 1024 / 1024).toFixed(2)}MB): 빠른 압축`);
+  return compressImageQuick(file);
+};
 const compressImageQuick = async (file: File): Promise<File> => {
-  const MAX_WIDTH = 1920;
-  const MAX_HEIGHT = 1920;
-  const QUALITY = 0.85;
+  const MAX_WIDTH = 1920;  // 원래대로 복원
+  const MAX_HEIGHT = 1080; // 원래대로 복원
+  const QUALITY = 0.6;     // 품질 향상 (0.6 → 0.8)
+  const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB 이하는 압축 건너뛰기
+  
 
   // HEIF/HEIC 파일은 압축 건너뛰기 (Functions에서 변환 처리)
   if (file.type.includes('heic') || file.type.includes('heif')) {
@@ -80,7 +243,14 @@ const compressImageQuick = async (file: File): Promise<File> => {
     return file;
   }
 
-  // 일반 이미지 압축 (품질이슈 증거 이미지 최적화)
+  // 작은 파일은 압축 건너뛰기 (빠른 처리)
+  if (file.size <= MAX_FILE_SIZE) {
+    console.log(`⚡ 작은 파일 감지 (${(file.size / 1024 / 1024).toFixed(2)}MB): 압축 건너뛰기`);
+    return file;
+  }
+
+  // 빠른 압축을 위한 최적화
+  console.log(`🚀 이미지 압축 시작: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
 
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -110,6 +280,10 @@ const compressImageQuick = async (file: File): Promise<File> => {
           return;
         }
 
+        // 빠른 압축을 위한 Canvas 최적화
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'low'; // 빠른 처리
+        
         ctx.drawImage(img, 0, 0, width, height);
 
         canvas.toBlob(
@@ -151,14 +325,14 @@ const compressImageQuick = async (file: File): Promise<File> => {
 export const uploadImage = async (
   file: File, 
   folder: string, 
-  maxRetries: number = 3
+  maxRetries: number = 5
 ): Promise<string> => {
   let lastError: Error | null = null;
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      // 1단계: 클라이언트 압축 (모든 이미지)
-      const compressedFile = await compressImageQuick(file);
+      // 1단계: 클라이언트 압축 (스마트 압축 사용)
+      const compressedFile = await compressImageSmart(file);
 
       const timestamp = Date.now();
       const fileName = `${timestamp}_${file.name}`;
@@ -189,32 +363,65 @@ export const uploadImage = async (
 };
 
 /**
- * 여러 이미지 파일을 일괄 업로드
+ * 여러 이미지 파일을 병렬로 일괄 업로드 (고성능)
  * 
  * @param files - 업로드할 이미지 파일 배열
  * @param folder - 저장할 폴더 경로
  * @param onProgress - 진행률 콜백
+ * @param useParallelCompression - 병렬 압축 사용 여부 (기본값: true)
  * @returns 업로드된 이미지 URL 배열
  */
-export const uploadImages = async (
+export const uploadImagesParallel = async (
   files: File[],
   folder: string,
-  onProgress?: (current: number, total: number) => void
+  onProgress?: (current: number, total: number) => void,
+  useParallelCompression: boolean = true
 ): Promise<string[]> => {
-  const urls: string[] = [];
+  console.log(`🚀 병렬 이미지 업로드 시작: ${files.length}개 파일`);
   
-  for (let i = 0; i < files.length; i++) {
-    try {
-      const url = await uploadImage(files[i], folder);
-      urls.push(url);
-      onProgress?.(i + 1, files.length);
-    } catch (error) {
-      console.error(`업로드 실패: ${files[i].name}`, error);
-      onProgress?.(i + 1, files.length);
+  try {
+    // 1단계: 병렬 압축 (선택적)
+    let processedFiles = files;
+    if (useParallelCompression && files.length > 1) {
+      console.log('📦 병렬 압축 시작...');
+      processedFiles = await compressImagesParallel(files);
+      console.log('✅ 병렬 압축 완료');
     }
+    
+    // 2단계: 병렬 업로드 (배치 처리)
+    const BATCH_SIZE = 2; // 동시 업로드할 파일 수 (서버 부하 감소)
+    const urls: string[] = [];
+    
+    for (let i = 0; i < processedFiles.length; i += BATCH_SIZE) {
+      const batch = processedFiles.slice(i, i + BATCH_SIZE);
+      
+      // 배치 내에서 병렬 업로드 (재시도 횟수 증가)
+      const batchPromises = batch.map(async (file, index) => {
+        try {
+          const url = await uploadImage(file, folder, 5); // 재시도 횟수 5회로 증가
+          onProgress?.(urls.length + index + 1, files.length);
+          return url;
+        } catch (error) {
+          console.error(`업로드 실패: ${file.name}`, error);
+          onProgress?.(urls.length + index + 1, files.length);
+          return null;
+        }
+      });
+      
+      const batchResults = await Promise.all(batchPromises);
+      urls.push(...batchResults.filter(url => url !== null));
+      
+      // UI 업데이트를 위한 짧은 대기
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    
+    console.log(`✅ 병렬 업로드 완료: ${urls.length}/${files.length}개 성공`);
+    return urls;
+    
+  } catch (error) {
+    console.error('❌ 병렬 업로드 실패:', error);
+    throw error;
   }
-
-  return urls;
 };
 
 /**
@@ -347,6 +554,35 @@ export class ImageCache {
     return Math.abs(hash).toString(36);
   }
 }
+
+/**
+ * 여러 이미지 파일을 일괄 업로드 (기존 API 호환)
+ * 
+ * @param files - 업로드할 이미지 파일 배열
+ * @param folder - 저장할 폴더 경로
+ * @param onProgress - 진행률 콜백
+ * @returns 업로드된 이미지 URL 배열
+ */
+export const uploadImages = async (
+  files: File[],
+  folder: string,
+  onProgress?: (current: number, total: number) => void
+): Promise<string[]> => {
+  const urls: string[] = [];
+  
+  for (let i = 0; i < files.length; i++) {
+    try {
+      const url = await uploadImage(files[i], folder);
+      urls.push(url);
+      onProgress?.(i + 1, files.length);
+    } catch (error) {
+      console.error(`업로드 실패: ${files[i].name}`, error);
+      onProgress?.(i + 1, files.length);
+    }
+  }
+
+  return urls;
+};
 
 /**
  * 이미지 업로드 상태

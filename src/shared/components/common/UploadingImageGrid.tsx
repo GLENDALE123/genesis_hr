@@ -5,7 +5,7 @@ import { X } from 'lucide-react';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 
 export interface UploadingImageItem {
-  file: File;
+  file: File | null; // null이면 기존 이미지 URL
   preview: string | null; // null이면 로딩 중
 }
 

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
 
 export interface InspectionFilters {
@@ -45,7 +45,21 @@ export const useInspectionFilters = (): UseInspectionFiltersReturn => {
     searchTerm: '',
   });
 
+  const [inputValue, setInputValue] = useState(''); // 즉시 반영되는 입력값
+  const [searchTerm, setSearchTerm] = useState(''); // 디바운스된 검색어
   const [isSearching, setIsSearching] = useState(false);
+
+  // 검색어 디바운싱: 입력이 멈춘 후 300ms 뒤에 검색 실행
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchTerm(inputValue);
+      setIsSearching(false);
+    }, 300);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [inputValue]);
 
   const setStartDate = useCallback((date: string) => {
     setFiltersState(prev => ({ ...prev, startDate: date }));
@@ -55,16 +69,10 @@ export const useInspectionFilters = (): UseInspectionFiltersReturn => {
     setFiltersState(prev => ({ ...prev, endDate: date }));
   }, []);
 
-  // Debounced 검색어 설정 (300ms)
-  const debouncedSetSearchTerm = useDebouncedCallback((term: string) => {
-    setFiltersState(prev => ({ ...prev, searchTerm: term }));
-    setIsSearching(false);
-  }, 300);
-
-  const setSearchTerm = useCallback((term: string) => {
+  const setSearchTermCallback = useCallback((term: string) => {
     setIsSearching(true);
-    debouncedSetSearchTerm(term);
-  }, [debouncedSetSearchTerm]);
+    setInputValue(term);
+  }, []);
 
   const setFilters = useCallback((newFilters: Partial<InspectionFilters>) => {
     setFiltersState(prev => ({ ...prev, ...newFilters }));
@@ -76,14 +84,19 @@ export const useInspectionFilters = (): UseInspectionFiltersReturn => {
       endDate: today,
       searchTerm: '',
     });
+    setInputValue('');
+    setSearchTerm('');
     setIsSearching(false);
   }, [today]);
 
   return {
-    filters,
+    filters: {
+      ...filters,
+      searchTerm: inputValue, // UI에는 즉시 반영되는 값 사용
+    },
     setStartDate,
     setEndDate,
-    setSearchTerm,
+    setSearchTerm: setSearchTermCallback,
     setFilters,
     resetFilters,
     today,

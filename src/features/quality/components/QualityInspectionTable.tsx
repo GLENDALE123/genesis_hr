@@ -77,7 +77,7 @@ const QualityInspectionTableComponent: React.FC<QualityInspectionTableProps> = (
       <CardContent className="flex-1 min-h-0 p-0 flex flex-col">
         {/* 테이블 영역 */}
         <div className="flex-1 overflow-auto">
-          <Table className="rounded-lg border">
+          <Table className="rounded-lg border min-w-[1400px]">
             <TableHeader className="sticky top-0 z-50 bg-muted">
               <TableRow>
                 <TableHead className="whitespace-nowrap rounded-tl-lg">최근업데이트</TableHead>
@@ -116,13 +116,13 @@ const QualityInspectionTableComponent: React.FC<QualityInspectionTableProps> = (
                     <TableCell className="text-xs whitespace-nowrap">
                       {group.common?.supplier}
                     </TableCell>
-                    <TableCell className="font-semibold whitespace-nowrap">
+                    <TableCell className="font-semibold whitespace-nowrap text-xs">
                       {group.common?.productName}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">
+                    <TableCell className="whitespace-nowrap text-xs">
                       {group.common?.partName}
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-center whitespace-nowrap">
                       {totalImages > 0 ? (
                         <div className="flex items-center justify-center gap-1 text-blue-600 dark:text-blue-400">
                           <Image className="h-4 w-4" />
@@ -150,21 +150,21 @@ const QualityInspectionTableComponent: React.FC<QualityInspectionTableProps> = (
                     <TableCell className="whitespace-nowrap text-xs">
                       {group.common?.workLine || '-'}
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-center whitespace-nowrap">
                       <InspectionStatusBadge 
                         inspections={group.incoming} 
                         inspectionType="incoming"
                         onClick={(type) => onSelectGroup(group, type)}
                       />
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-center whitespace-nowrap">
                       <InspectionStatusBadge 
                         inspections={group.inProcess} 
                         inspectionType="inProcess"
                         onClick={(type) => onSelectGroup(group, type)}
                       />
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-center whitespace-nowrap">
                       <InspectionStatusBadge 
                         inspections={group.outgoing} 
                         inspectionType="outgoing"

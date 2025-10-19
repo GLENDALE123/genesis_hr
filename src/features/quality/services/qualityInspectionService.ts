@@ -58,12 +58,21 @@ export const updateQualityInspection = async (
   updateData: Partial<QualityInspection>
 ): Promise<void> => {
   try {
+    console.log('🔄 [QualityInspectionService] 업데이트 시작:', { docId, updateData });
+    
     const docRef = getDocRef(docId);
-    await updateDoc(docRef, {
+    const finalUpdateData = {
       ...updateData,
       updatedAt: new Date().toISOString(),
-    });
+    };
+    
+    console.log('💾 [QualityInspectionService] Firestore 업데이트 데이터:', finalUpdateData);
+    
+    await updateDoc(docRef, finalUpdateData);
+    
+    console.log('✅ [QualityInspectionService] 업데이트 완료:', docId);
   } catch (error) {
+    console.error('❌ [QualityInspectionService] 업데이트 실패:', error);
     throw error;
   }
 };
@@ -75,7 +84,14 @@ export const deleteQualityInspection = async (docId: string): Promise<void> => {
   try {
     const docRef = getDocRef(docId);
     await deleteDoc(docRef);
+    
+    // Zustand 스토어에서도 삭제 (실시간 반영)
+    const { useQualityInspectionStore } = await import('../store/qualityInspectionStore');
+    useQualityInspectionStore.getState().deleteInspection(docId);
+    
+    console.log('✅ 품질검사 삭제 완료:', docId);
   } catch (error) {
+    console.error('❌ 품질검사 삭제 실패:', error);
     throw error;
   }
 };

@@ -39,6 +39,9 @@ export interface UseImageUploadReturn {
   removeImage: (index: number) => void;
   uploadImages: (folder: string) => Promise<string[]>;
   clearImages: () => void;
+  setExistingImages: (urls: string[]) => void;
+  deletedImageUrls: string[]; // 삭제된 이미지 URL 추적
+  clearDeletedUrls: () => void; // 삭제된 URL 목록 초기화
 }
 
 // 이미지 업로드 훅
@@ -46,6 +49,7 @@ export const useImageUpload = (): UseImageUploadReturn => {
   const [uploadingImages, setUploadingImages] = useState<UploadingImageItem[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [deletedImageUrls, setDeletedImageUrls] = useState<string[]>([]); // 삭제된 이미지 URL 추적
 
   const handleFileSelect = useCallback(async (files: File[]) => {
     if (files.length === 0) return;
@@ -79,10 +83,36 @@ export const useImageUpload = (): UseImageUploadReturn => {
   const removeImage = useCallback((index: number) => {
     setUploadingImages(prev => {
       const item = prev[index];
+      
+      console.log('🗑️ 이미지 삭제 요청:', {
+        index,
+        item,
+        file: item.file,
+        preview: item.preview,
+        isBlob: item.preview?.startsWith('blob:'),
+        isExistingImage: item.file === null && item.preview && !item.preview.startsWith('blob:')
+      });
+      
+      // 기존 이미지 URL인 경우 삭제 목록에 추가
+      if (item.file === null && item.preview && !item.preview.startsWith('blob:')) {
+        console.log('✅ 기존 이미지를 삭제 목록에 추가:', item.preview);
+        setDeletedImageUrls(prevDeleted => [...prevDeleted, item.preview!]);
+      }
+      
+      // blob URL인 경우에만 해제 (기존 이미지 URL은 해제하지 않음)
       if (item.preview && item.preview.startsWith('blob:')) {
+        console.log('🔄 Blob URL 해제:', item.preview);
         URL.revokeObjectURL(item.preview);
       }
-      return prev.filter((_, i) => i !== index);
+      
+      const filtered = prev.filter((_, i) => i !== index);
+      console.log('🔄 이미지 목록 필터링:', {
+        원본개수: prev.length,
+        필터링후개수: filtered.length,
+        제거된인덱스: index
+      });
+      
+      return filtered;
     });
   }, []);
 
@@ -97,18 +127,35 @@ export const useImageUpload = (): UseImageUploadReturn => {
       
       for (let i = 0; i < uploadingImages.length; i++) {
         const item = uploadingImages[i];
-        const uploadState = await createImagePreview(item.file);
         
-        const uploadedState = await uploadImageWithState(uploadState, folder, (state) => {
-          // 진행률 업데이트
-          const currentProgress = ((i + (state.progress || 0) / 100) / uploadingImages.length) * 100;
-          setUploadProgress(currentProgress);
-        });
+        
+        // 기존 이미지인 경우 (file이 null) URL을 그대로 사용
+        if (item.file === null && item.preview) {
+          uploadedUrls.push(item.preview);
+          continue;
+        }
+        
+        // 새로 업로드할 이미지인 경우
+        if (item.file) {
+          const uploadState = await createImagePreview(item.file);
+          
+          const uploadedState = await uploadImageWithState(uploadState, folder, (state) => {
+            // 진행률 업데이트
+            const currentProgress = ((i + (state.progress || 0) / 100) / uploadingImages.length) * 100;
+            setUploadProgress(currentProgress);
+          });
 
-        if (uploadedState.status === 'uploaded' && uploadedState.uploadedUrl) {
-          uploadedUrls.push(uploadedState.uploadedUrl);
+          if (uploadedState.status === 'uploaded' && uploadedState.uploadedUrl) {
+            uploadedUrls.push(uploadedState.uploadedUrl);
+          }
         }
       }
+
+      console.log('📤 이미지 업로드 완료:', {
+        총이미지수: uploadingImages.length,
+        업로드된URL수: uploadedUrls.length,
+        업로드된URLs: uploadedUrls
+      });
 
       return uploadedUrls;
     } catch (error) {
@@ -121,7 +168,7 @@ export const useImageUpload = (): UseImageUploadReturn => {
   }, [uploadingImages]);
 
   const clearImages = useCallback(() => {
-    // 모든 blob URL 정리
+    // blob URL만 정리 (기존 이미지 URL은 정리하지 않음)
     uploadingImages.forEach(item => {
       if (item.preview && item.preview.startsWith('blob:')) {
         URL.revokeObjectURL(item.preview);
@@ -130,6 +177,20 @@ export const useImageUpload = (): UseImageUploadReturn => {
     setUploadingImages([]);
   }, [uploadingImages]);
 
+  const setExistingImages = useCallback((urls: string[]) => {
+    // 기존 이미지 URL들을 uploadingImages 형태로 변환
+    const existingItems: UploadingImageItem[] = urls.map(url => ({
+      file: null, // 기존 이미지는 파일이 없음
+      preview: url
+    }));
+    setUploadingImages(existingItems);
+    setDeletedImageUrls([]); // 기존 이미지 설정 시 삭제 목록 초기화
+  }, []);
+
+  const clearDeletedUrls = useCallback(() => {
+    setDeletedImageUrls([]);
+  }, []);
+
   return {
     uploadingImages,
     isUploading,
@@ -137,7 +198,10 @@ export const useImageUpload = (): UseImageUploadReturn => {
     handleFileSelect,
     removeImage,
     uploadImages,
-    clearImages
+    clearImages,
+    setExistingImages,
+    deletedImageUrls,
+    clearDeletedUrls
   };
 };
 

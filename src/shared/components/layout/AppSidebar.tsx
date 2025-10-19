@@ -21,6 +21,7 @@ import {
 interface AppSidebarProps {
   className?: string;
   collapsed?: boolean;
+  onMobileClose?: () => void;
 }
 
 interface NavItem {
@@ -91,31 +92,36 @@ const subNavigationItems: NavItem[] = [
 
 const AppSidebarComponent = ({
   className,
-  collapsed = false
+  collapsed = false,
+  onMobileClose
 }: {
   className: string;
   collapsed?: boolean;
+  onMobileClose?: () => void;
 }) => {
   const pathname = usePathname();
   const router = useRouter();
   const [isHovered, setIsHovered] = React.useState(false);
   
-  // 데스크톱에서만 호버 효과 적용 (1024px 이상)
+  // 모바일/태블릿/데스크톱 구분
+  const [isMobile, setIsMobile] = React.useState(false);
   const [isDesktop, setIsDesktop] = React.useState(false);
 
   React.useEffect(() => {
-    const checkDesktop = () => {
-      setIsDesktop(window.innerWidth >= 1024);
+    const checkScreenSize = () => {
+      const width = window.innerWidth;
+      setIsMobile(width < 768); // 모바일
+      setIsDesktop(width >= 1024); // 데스크톱
     };
     
-    checkDesktop();
-    window.addEventListener('resize', checkDesktop);
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
     
-    return () => window.removeEventListener('resize', checkDesktop);
+    return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
 
-  // 실제 표시 상태: 데스크톱에서 접혀있을 때 호버하면 펼침
-  const isExpanded = isDesktop && collapsed ? isHovered : !collapsed;
+  // 모바일에서는 항상 확장된 상태로 표시, 데스크톱에서는 collapsed 상태에 따라
+  const isExpanded = isMobile ? true : (isDesktop && collapsed ? isHovered : !collapsed);
 
   const isActive = React.useCallback((href: string, exact = false) => {
     if (exact) {
@@ -131,7 +137,12 @@ const AppSidebarComponent = ({
     }
     
     router.push(href);
-  }, [pathname, router]);
+    
+    // 모바일에서는 메뉴 클릭 후 사이드바 닫기
+    if (isMobile && onMobileClose) {
+      onMobileClose();
+    }
+  }, [pathname, router, isMobile, onMobileClose]);
 
   const renderNavItem = React.useCallback((item: NavItem, level = 0) => {
     const hasChildren = item.children && item.children.length > 0;
@@ -219,11 +230,13 @@ const AppSidebarComponent = ({
     );
   }, [isActive, handleNavigate, isExpanded, pathname]);
 
+  // 모바일에서는 Sheet 내에서 확장된 상태로 표시
+
   return (
     <div 
       className={cn(
         "flex h-full flex-col border-r transition-all duration-300 flex-shrink-0",
-        // 태블릿에서 사이드바 너비 조정 (모바일: 더 넓게, 데스크톱: 기존 유지)
+        // 태블릿에서 사이드바 너비 조정 (모바일: 숨김, 태블릿: 더 넓게, 데스크톱: 기존 유지)
         isExpanded ? "w-72 md:w-64" : "w-16 md:w-16",
         className
       )}
