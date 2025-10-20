@@ -7,7 +7,9 @@ import { useJigMaster } from '../hooks/useJigMaster';
 import { useUserRole } from '@/features/auth/hooks/useUserRole';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { Button } from '@/shared/components/ui/button';
-import { Plus } from 'lucide-react';
+import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
+import { createTestJigMasterData } from '../services/jigMasterService';
+import { Plus, TestTube } from 'lucide-react';
 
 export const JigMasterContainer: React.FC = () => {
   const { masterItems, isLoading, error, setSelectedItem, createMasterItem } = useJigMaster();
@@ -46,6 +48,21 @@ export const JigMasterContainer: React.FC = () => {
     }
   };
 
+  const handleCreateTestData = async () => {
+    if (!user) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+    
+    try {
+      await createTestJigMasterData({ uid: user.uid, displayName: user.displayName || 'Unknown User' });
+      alert('테스트 데이터가 생성되었습니다!');
+    } catch (error) {
+      console.error('테스트 데이터 생성 실패:', error);
+      alert('테스트 데이터 생성에 실패했습니다.');
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* 헤더 */}
@@ -61,18 +78,27 @@ export const JigMasterContainer: React.FC = () => {
               신규 지그 등록
             </Button>
           )}
+          <Button 
+            onClick={handleCreateTestData} 
+            variant="outline" 
+            className="flex-shrink-0"
+          >
+            <TestTube className="h-4 w-4 mr-2" />
+            테스트 데이터 생성
+          </Button>
         </div>
       </div>
 
       {/* 메인 콘텐츠 */}
-      <div className="flex-1 px-6 pb-6">
+      <div className="flex-1 px-6 pb-6 flex flex-col min-h-0">
         {isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-muted-foreground">로딩 중...</p>
-            </div>
-          </div>
+          <LoadingSpinner 
+            size="lg" 
+            variant="default" 
+            label="로딩 중..." 
+            loadingVariant="card"
+            className="h-64"
+          />
         ) : error ? (
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
@@ -81,12 +107,14 @@ export const JigMasterContainer: React.FC = () => {
             </div>
           </div>
         ) : (
-          <JigMasterListView
-            jigs={masterItems}
-            onSelectJig={handleSelectJig}
-            onAddNewJig={handleAddNewJig}
-            currentUserProfile={user ? { uid: user.uid, displayName: user.displayName || '', email: user.email || '', role: userRole } : null}
-          />
+          <div className="flex-1 min-h-0">
+            <JigMasterListView
+              jigs={masterItems}
+              onSelectJig={handleSelectJig}
+              onAddNewJig={handleAddNewJig}
+              currentUserProfile={user ? { uid: user.uid, displayName: user.displayName || '', email: user.email || '', role: userRole } : null}
+            />
+          </div>
         )}
       </div>
     </div>

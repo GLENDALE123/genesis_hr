@@ -95,3 +95,38 @@ export const getAutocompleteData = async () => {
     itemNumbers,
   };
 };
+
+// 테스트용 지그 마스터 데이터 생성
+export const createTestJigMasterData = async (currentUser: { uid: string; displayName: string }) => {
+  const testData: CreateJigMasterItemData[] = [
+    {
+      requestType: '증착용',
+      itemName: '테스트크림',
+      partName: '외용기',
+      itemNumber: 'TEST-001',
+      remarks: '테스트용 지그 데이터입니다.',
+    },
+    {
+      requestType: '코팅용',
+      itemName: '테스트로션',
+      partName: '펌프',
+      itemNumber: 'TEST-002',
+      remarks: '테스트용 지그 데이터입니다.',
+    },
+    {
+      requestType: '내부코팅용',
+      itemName: '테스트세럼',
+      partName: '드로퍼',
+      itemNumber: 'TEST-003',
+      remarks: '테스트용 지그 데이터입니다.',
+    },
+  ];
+
+  try {
+    for (const data of testData) {
+      await createJigMasterItem(data, [], currentUser);
+    }
+  } catch (error) {
+    throw error;
+  }
+};

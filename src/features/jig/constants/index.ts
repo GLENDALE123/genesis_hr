@@ -6,7 +6,7 @@ import { JigStatus } from '../types';
 
 export const JIG_COLLECTIONS = {
   REQUESTS: 'jig-requests',
-  MASTER: 'jig-master',
+  MASTER: 'jig-masters',
   MASTER_DATA: 'jig-master-data',
 } as const;
 
@@ -26,12 +26,12 @@ export const STATUS_FILTERS: JigStatus[] = [
 export const PRODUCTION_TYPES = ['증착용', '코팅용', '내부코팅용'] as const;
 
 export const STATUS_COLORS: Record<JigStatus, string> = {
-  [JigStatus.Request]: '#3b82f6', // 파란색
-  [JigStatus.Hold]: '#f97316', // 주황색
-  [JigStatus.InProgress]: '#f59e0b', // 노란색
-  [JigStatus.Receiving]: '#06b6d4', // 하늘색
-  [JigStatus.Rejected]: '#ef4444', // 빨간색
-  [JigStatus.Completed]: '#22c55e', // 초록색
+  [JigStatus.Request]: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200',
+  [JigStatus.Hold]: 'bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200',
+  [JigStatus.InProgress]: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-200',
+  [JigStatus.Receiving]: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/50 dark:text-cyan-200',
+  [JigStatus.Rejected]: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200',
+  [JigStatus.Completed]: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200',
 };
 
 export const STATUS_BADGE_VARIANTS: Record<JigStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {

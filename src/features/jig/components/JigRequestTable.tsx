@@ -10,7 +10,7 @@ import {
   TableRow,
 } from '@/shared/components/ui/table';
 import { Badge } from '@/shared/components/ui/badge';
-import { ArrowUpDown, MessageSquare } from 'lucide-react';
+import { ArrowUpDown, MessageSquare, Image as ImageIcon } from 'lucide-react';
 import { JigRequest, JigStatus } from '../types';
 import { STATUS_COLORS } from '../constants';
 
@@ -49,12 +49,11 @@ const RequestTableRow: React.FC<{
 
   return (
     <TableRow
-      key={request.id}
-      className="cursor-pointer hover:bg-accent/50 border-b"
+      className="cursor-pointer"
       onClick={() => onSelectRequest(request)}
     >
       {/* 댓글 컬럼 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap">
+      <TableCell>
         <div className="flex items-center gap-2">
           {unread ? (
             <span 
@@ -74,31 +73,36 @@ const RequestTableRow: React.FC<{
           )}
         </div>
       </TableCell>
-      <TableCell className="px-2 py-3 whitespace-nowrap">
+      <TableCell className="text-xs whitespace-nowrap">
         {new Date(request.requestDate).toLocaleDateString('ko-KR')}
       </TableCell>
-      <TableCell className="px-2 py-3 whitespace-nowrap">{request.requestType}</TableCell>
-      <TableCell className="px-2 py-3 whitespace-nowrap">{request.requester}</TableCell>
-      <TableCell className="px-2 py-3 whitespace-nowrap">{request.destination}</TableCell>
-      <TableCell className="px-2 py-3 whitespace-nowrap">{request.deliveryDate}</TableCell>
-      <TableCell className="px-2 py-3 font-medium whitespace-nowrap">{request.itemName}</TableCell>
-      <TableCell className="px-2 py-3 whitespace-nowrap">{request.partName}</TableCell>
-      <TableCell className="px-2 py-3 whitespace-nowrap">{request.itemNumber}</TableCell>
-      <TableCell className="px-2 py-3 whitespace-nowrap">{request.specification}</TableCell>
-      <TableCell className="px-2 py-3 text-right whitespace-nowrap">{request.quantity.toLocaleString()}</TableCell>
-      <TableCell className="px-2 py-3 text-right whitespace-nowrap">
-        {request.receivedQuantity.toLocaleString()}
-      </TableCell>
-      <TableCell className="px-2 py-3 whitespace-nowrap">
-        <Badge
-          style={{
-            backgroundColor: STATUS_COLORS[request.status],
-            color: '#ffffff',
-          }}
-        >
+      <TableCell className="text-xs whitespace-nowrap">{request.deliveryDate}</TableCell>
+      <TableCell className="whitespace-nowrap">
+        <Badge className={STATUS_COLORS[request.status]}>
           {request.status}
         </Badge>
       </TableCell>
+      <TableCell className="whitespace-nowrap">{request.requester}</TableCell>
+      <TableCell className="whitespace-nowrap">{request.destination}</TableCell>
+      <TableCell className="text-xs whitespace-nowrap">{request.requestType}</TableCell>
+      <TableCell className="font-medium whitespace-nowrap">{request.itemName}</TableCell>
+      <TableCell className="whitespace-nowrap">{request.partName}</TableCell>
+      <TableCell className="whitespace-nowrap">{request.itemNumber}</TableCell>
+      <TableCell>
+        {request.imageUrls && request.imageUrls.length > 0 ? (
+          <div className="flex items-center gap-1 text-primary">
+            <ImageIcon className="w-4 h-4" />
+            <span className="text-xs">{request.imageUrls.length}</span>
+          </div>
+        ) : (
+          <span className="text-xs text-muted-foreground">없음</span>
+        )}
+      </TableCell>
+      <TableCell className="whitespace-nowrap">{request.specification}</TableCell>
+      <TableCell className="text-right whitespace-nowrap">
+        {request.receivedQuantity.toLocaleString()}
+      </TableCell>
+      <TableCell className="text-right whitespace-nowrap">{request.quantity.toLocaleString()}</TableCell>
     </TableRow>
   );
 };
@@ -143,7 +147,7 @@ export const JigRequestTable: React.FC<JigRequestTableProps> = ({
   };
 
   const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
-    <TableHead className="px-2 py-3 whitespace-nowrap text-primary-foreground">
+    <TableHead className="whitespace-nowrap text-primary-foreground">
       <button
         onClick={() => handleSort(field)}
         className="flex items-center gap-1 hover:text-primary-foreground/80"
@@ -157,28 +161,29 @@ export const JigRequestTable: React.FC<JigRequestTableProps> = ({
   return (
     <div className="bg-card rounded-lg shadow-md overflow-hidden h-full flex flex-col">
       <div className="overflow-auto flex-1">
-        <Table className="w-full text-sm text-left text-gray-500 dark:text-slate-400 min-w-[1400px]">
+        <Table className="min-w-max">
           <TableHeader className="sticky top-0 z-10 bg-primary">
             <TableRow className="hover:bg-primary">
-              <TableHead className="px-2 py-3 whitespace-nowrap text-primary-foreground"></TableHead>
+              <TableHead className="whitespace-nowrap text-primary-foreground"></TableHead>
               <SortableHeader field="requestDate">요청일자</SortableHeader>
-              <SortableHeader field="requestType">생산구분</SortableHeader>
+              <SortableHeader field="deliveryDate">납기일</SortableHeader>
+              <SortableHeader field="status">상태</SortableHeader>
               <SortableHeader field="requester">요청자</SortableHeader>
               <SortableHeader field="destination">수신처</SortableHeader>
-              <SortableHeader field="deliveryDate">납기일</SortableHeader>
+              <SortableHeader field="requestType">생산구분</SortableHeader>
               <SortableHeader field="itemName">제품명</SortableHeader>
               <SortableHeader field="partName">부속명</SortableHeader>
               <SortableHeader field="itemNumber">지그번호</SortableHeader>
+              <TableHead className="whitespace-nowrap text-primary-foreground">이미지</TableHead>
               <SortableHeader field="specification">규격</SortableHeader>
-              <SortableHeader field="quantity">발주수량</SortableHeader>
               <SortableHeader field="receivedQuantity">완료수량</SortableHeader>
-              <TableHead className="px-2 py-3 whitespace-nowrap text-primary-foreground">상태</TableHead>
+              <SortableHeader field="quantity">발주수량</SortableHeader>
             </TableRow>
           </TableHeader>
           <TableBody>
             {sortedRequests.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={13} className="text-center py-10 text-muted-foreground">
+                <TableCell colSpan={14} className="text-center py-10 text-muted-foreground">
                   요청이 없습니다.
                 </TableCell>
               </TableRow>

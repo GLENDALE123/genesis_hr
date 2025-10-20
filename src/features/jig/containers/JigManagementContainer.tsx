@@ -10,8 +10,10 @@ import { useAuthStore } from '@/features/auth/store/authStore';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Badge } from '@/shared/components/ui/badge';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
+import { Tabs, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
+import { Card, CardContent } from '@/shared/components/ui/card';
+import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
 import { ViewMode } from '../types';
 import { Plus, Filter, Search, Table, Grid3X3, Kanban } from 'lucide-react';
 
@@ -93,19 +95,6 @@ export const JigManagementContainer: React.FC = () => {
     }
   };
 
-  const handleMultiSelectChange = <T extends string>(
-    value: T,
-    selectedSet: Set<T>,
-    setSelectedSet: React.Dispatch<React.SetStateAction<Set<T>>>
-  ) => {
-    const newSet = new Set(selectedSet);
-    if (newSet.has(value)) {
-      newSet.delete(value);
-    } else {
-      newSet.add(value);
-    }
-    setSelectedSet(newSet);
-  };
 
   const renderView = () => {
     switch (viewMode) {
@@ -160,143 +149,137 @@ export const JigManagementContainer: React.FC = () => {
       </div>
 
       {/* 필터 및 검색 */}
-      <div className="px-6 pb-4 space-y-4">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                placeholder="요청 검색..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
+      <div className="px-6 pb-4">
+        <Card>
+          <CardContent className="p-4 space-y-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                  <Input
+                    placeholder="요청 검색..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
             {/* 상태 필터 */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  상태
-                  {selectedStatuses.size > 0 && (
-                    <Badge variant="secondary" className="ml-2">
-                      {selectedStatuses.size}
-                    </Badge>
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuLabel>상태 필터</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {Object.values(JigStatus).map((status) => (
-                  <DropdownMenuCheckboxItem
-                    key={status}
-                    checked={selectedStatuses.has(status)}
-                    onCheckedChange={() => handleMultiSelectChange(status, selectedStatuses, setSelectedStatuses)}
-                  >
-                    {status}
-                  </DropdownMenuCheckboxItem>
-                ))}
-                <DropdownMenuSeparator />
-                <Button variant="ghost" onClick={() => setSelectedStatuses(new Set())} className="w-full justify-start">
-                  상태 초기화
-                </Button>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-muted-foreground">상태</label>
+              <Select
+                value={selectedStatuses.size === 1 ? Array.from(selectedStatuses)[0] : selectedStatuses.size > 1 ? 'multiple' : 'all'}
+                onValueChange={(value) => {
+                  if (value === 'all') {
+                    setSelectedStatuses(new Set());
+                  } else if (value === 'multiple') {
+                    // 다중 선택 상태 유지
+                  } else {
+                    setSelectedStatuses(new Set([value as JigStatus]));
+                  }
+                }}
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">전체</SelectItem>
+                  {Object.values(JigStatus).map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             {/* 요청자 필터 */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  요청자
-                  {selectedRequesters.size > 0 && (
-                    <Badge variant="secondary" className="ml-2">
-                      {selectedRequesters.size}
-                    </Badge>
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuLabel>요청자 필터</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {requesters.map((requester) => (
-                  <DropdownMenuCheckboxItem
-                    key={requester}
-                    checked={selectedRequesters.has(requester)}
-                    onCheckedChange={() => handleMultiSelectChange(requester, selectedRequesters, setSelectedRequesters)}
-                  >
-                    {requester}
-                  </DropdownMenuCheckboxItem>
-                ))}
-                <DropdownMenuSeparator />
-                <Button variant="ghost" onClick={() => setSelectedRequesters(new Set())} className="w-full justify-start">
-                  요청자 초기화
-                </Button>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-muted-foreground">요청자</label>
+              <Select
+                value={selectedRequesters.size === 1 ? Array.from(selectedRequesters)[0] : selectedRequesters.size > 1 ? 'multiple' : 'all'}
+                onValueChange={(value) => {
+                  if (value === 'all') {
+                    setSelectedRequesters(new Set());
+                  } else if (value === 'multiple') {
+                    // 다중 선택 상태 유지
+                  } else {
+                    setSelectedRequesters(new Set([value]));
+                  }
+                }}
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">전체</SelectItem>
+                  {requesters.map((requester) => (
+                    <SelectItem key={requester} value={requester}>
+                      {requester}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             {/* 수신처 필터 */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  수신처
-                  {selectedDestinations.size > 0 && (
-                    <Badge variant="secondary" className="ml-2">
-                      {selectedDestinations.size}
-                    </Badge>
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuLabel>수신처 필터</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {destinations.map((destination) => (
-                  <DropdownMenuCheckboxItem
-                    key={destination}
-                    checked={selectedDestinations.has(destination)}
-                    onCheckedChange={() => handleMultiSelectChange(destination, selectedDestinations, setSelectedDestinations)}
-                  >
-                    {destination}
-                  </DropdownMenuCheckboxItem>
-                ))}
-                <DropdownMenuSeparator />
-                <Button variant="ghost" onClick={() => setSelectedDestinations(new Set())} className="w-full justify-start">
-                  수신처 초기화
-                </Button>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-muted-foreground">수신처</label>
+              <Select
+                value={selectedDestinations.size === 1 ? Array.from(selectedDestinations)[0] : selectedDestinations.size > 1 ? 'multiple' : 'all'}
+                onValueChange={(value) => {
+                  if (value === 'all') {
+                    setSelectedDestinations(new Set());
+                  } else if (value === 'multiple') {
+                    // 다중 선택 상태 유지
+                  } else {
+                    setSelectedDestinations(new Set([value]));
+                  }
+                }}
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">전체</SelectItem>
+                  {destinations.map((destination) => (
+                    <SelectItem key={destination} value={destination}>
+                      {destination}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             {/* 월별 필터 */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  월별
-                  {selectedMonths.size > 0 && (
-                    <Badge variant="secondary" className="ml-2">
-                      {selectedMonths.size}
-                    </Badge>
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuLabel>월별 필터</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {months.map((month) => (
-                  <DropdownMenuCheckboxItem
-                    key={month}
-                    checked={selectedMonths.has(month)}
-                    onCheckedChange={() => handleMultiSelectChange(month, selectedMonths, setSelectedMonths)}
-                  >
-                    {month}
-                  </DropdownMenuCheckboxItem>
-                ))}
-                <DropdownMenuSeparator />
-                <Button variant="ghost" onClick={() => setSelectedMonths(new Set())} className="w-full justify-start">
-                  월별 초기화
-                </Button>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-muted-foreground">월별</label>
+              <Select
+                value={selectedMonths.size === 1 ? Array.from(selectedMonths)[0] : selectedMonths.size > 1 ? 'multiple' : 'all'}
+                onValueChange={(value) => {
+                  if (value === 'all') {
+                    setSelectedMonths(new Set());
+                  } else if (value === 'multiple') {
+                    // 다중 선택 상태 유지
+                  } else {
+                    setSelectedMonths(new Set([value]));
+                  }
+                }}
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">전체</SelectItem>
+                  {months.map((month) => (
+                    <SelectItem key={month} value={month}>
+                      {month}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             {/* 전체 필터 초기화 */}
             {(selectedStatuses.size + selectedRequesters.size + selectedDestinations.size + selectedMonths.size) > 0 && (
@@ -304,50 +287,40 @@ export const JigManagementContainer: React.FC = () => {
                 모든 필터 초기화
               </Button>
             )}
-          </div>
-        </div>
+              </div>
+            </div>
 
-        {/* 뷰 모드 선택 */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">보기:</span>
-          <div className="flex border rounded-md">
-            <Button
-              variant={viewMode === 'table' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => handleViewModeChange('table')}
-              className="rounded-r-none"
-            >
-              <Table className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === 'card' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => handleViewModeChange('card')}
-              className="rounded-none"
-            >
-              <Grid3X3 className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === 'kanban' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => handleViewModeChange('kanban')}
-              className="rounded-l-none"
-            >
-              <Kanban className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+            {/* 뷰 모드 선택 탭 */}
+            <Tabs value={viewMode} onValueChange={(value) => handleViewModeChange(value as ViewMode)}>
+              <TabsList className="inline-flex">
+                <TabsTrigger value="table" className="flex items-center gap-2">
+                  <Table className="h-4 w-4" />
+                  <span>테이블</span>
+                </TabsTrigger>
+                <TabsTrigger value="card" className="flex items-center gap-2">
+                  <Grid3X3 className="h-4 w-4" />
+                  <span>카드</span>
+                </TabsTrigger>
+                <TabsTrigger value="kanban" className="flex items-center gap-2">
+                  <Kanban className="h-4 w-4" />
+                  <span>칸반</span>
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </CardContent>
+        </Card>
       </div>
 
       {/* 메인 콘텐츠 */}
-      <div className="flex-1 px-6 pb-6">
+      <div className="flex-1 px-6 pb-6 flex flex-col min-h-0">
         {isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-muted-foreground">로딩 중...</p>
-            </div>
-          </div>
+          <LoadingSpinner 
+            size="lg" 
+            variant="default" 
+            label="로딩 중..." 
+            loadingVariant="card"
+            className="h-64"
+          />
         ) : error ? (
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
@@ -356,7 +329,9 @@ export const JigManagementContainer: React.FC = () => {
             </div>
           </div>
         ) : (
-          renderView()
+          <div className="flex-1 min-h-0">
+            {renderView()}
+          </div>
         )}
       </div>
 

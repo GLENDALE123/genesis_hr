@@ -377,7 +377,14 @@ export const JigRequestForm: React.FC<JigRequestFormProps> = ({
             취소
           </Button>
           <Button onClick={handleSubmit} disabled={isLoading}>
-            {isLoading ? '저장 중...' : '등록'}
+            {isLoading ? (
+              <div className="flex items-center gap-2">
+                <LoadingSpinner size="sm" variant="secondary" />
+                저장 중...
+              </div>
+            ) : (
+              '등록'
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
