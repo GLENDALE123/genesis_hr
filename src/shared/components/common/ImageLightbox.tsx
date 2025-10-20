@@ -128,8 +128,6 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
     };
   }, [open, handlePrevious, handleNext]);
 
-  if (images.length === 0) return null;
-
   // 라이트박스 열림/닫힘 디버그
   useEffect(() => {
     if (open) {
@@ -143,6 +141,8 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
       console.log(`🔍 [ImageLightbox] 라이트박스 닫힘`);
     }
   }, [open, images, currentIndex]);
+
+  if (images.length === 0) return null;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>

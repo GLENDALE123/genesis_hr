@@ -288,8 +288,8 @@ export const fileExists = async (path: string): Promise<boolean> => {
     const storageRef = ref(storage, path);
     await getMetadata(storageRef);
     return true;
-  } catch (error: any) {
-    if (error.code === 'storage/object-not-found') {
+  } catch (error: unknown) {
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'storage/object-not-found') {
       return false;
     }
     throw error;

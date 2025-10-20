@@ -1,0 +1,200 @@
+'use client';
+
+import React, { useState, useMemo } from 'react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/shared/components/ui/table';
+import { Badge } from '@/shared/components/ui/badge';
+import { ArrowUpDown, MessageSquare } from 'lucide-react';
+import { JigRequest, JigStatus } from '../types';
+import { STATUS_COLORS } from '../constants';
+
+interface JigRequestTableProps {
+  requests: JigRequest[];
+  onSelectRequest: (request: JigRequest) => void;
+  currentUserUid?: string;
+}
+
+type SortField = keyof JigRequest;
+type SortDirection = 'asc' | 'desc';
+
+/**
+ * 읽지 않은 댓글 확인
+ */
+const hasUnreadComments = (
+  comments: Array<{ readBy?: string[]; uid?: string }> | undefined,
+  currentUserUid: string | undefined
+): boolean => {
+  if (!currentUserUid || !comments) return false;
+  
+  return comments.some(c => {
+    if (!c.readBy) return true; // readBy 배열이 없으면 읽지 않은 것으로 간주
+    if (c.uid === currentUserUid) return false; // 본인이 작성한 댓글은 읽은 것으로 간주
+    return !c.readBy.includes(currentUserUid); // readBy 배열에 currentUserUid가 없으면 읽지 않은 댓글
+  });
+};
+
+const RequestTableRow: React.FC<{
+  request: JigRequest;
+  onSelectRequest: (request: JigRequest) => void;
+  currentUserUid?: string;
+}> = ({ request, onSelectRequest, currentUserUid }) => {
+  const unread = hasUnreadComments(request.comments, currentUserUid);
+  const commentCount = (request.comments && request.comments.length) || 0;
+
+  return (
+    <TableRow
+      key={request.id}
+      className="cursor-pointer hover:bg-accent/50 border-b"
+      onClick={() => onSelectRequest(request)}
+    >
+      {/* 댓글 컬럼 */}
+      <TableCell className="px-2 py-3 whitespace-nowrap">
+        <div className="flex items-center gap-2">
+          {unread ? (
+            <span 
+              title="새로운 댓글" 
+              className="w-2.5 h-2.5 bg-blue-500 rounded-full animate-pulse"
+            />
+          ) : (
+            <span className="w-2.5 h-2.5" />
+          )}
+          {commentCount > 0 && (
+            <div className="flex items-center gap-1">
+              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+              <span className="text-xs font-medium text-muted-foreground">
+                {commentCount}
+              </span>
+            </div>
+          )}
+        </div>
+      </TableCell>
+      <TableCell className="px-2 py-3 whitespace-nowrap">
+        {new Date(request.requestDate).toLocaleDateString('ko-KR')}
+      </TableCell>
+      <TableCell className="px-2 py-3 whitespace-nowrap">{request.requestType}</TableCell>
+      <TableCell className="px-2 py-3 whitespace-nowrap">{request.requester}</TableCell>
+      <TableCell className="px-2 py-3 whitespace-nowrap">{request.destination}</TableCell>
+      <TableCell className="px-2 py-3 whitespace-nowrap">{request.deliveryDate}</TableCell>
+      <TableCell className="px-2 py-3 font-medium whitespace-nowrap">{request.itemName}</TableCell>
+      <TableCell className="px-2 py-3 whitespace-nowrap">{request.partName}</TableCell>
+      <TableCell className="px-2 py-3 whitespace-nowrap">{request.itemNumber}</TableCell>
+      <TableCell className="px-2 py-3 whitespace-nowrap">{request.specification}</TableCell>
+      <TableCell className="px-2 py-3 text-right whitespace-nowrap">{request.quantity.toLocaleString()}</TableCell>
+      <TableCell className="px-2 py-3 text-right whitespace-nowrap">
+        {request.receivedQuantity.toLocaleString()}
+      </TableCell>
+      <TableCell className="px-2 py-3 whitespace-nowrap">
+        <Badge
+          style={{
+            backgroundColor: STATUS_COLORS[request.status],
+            color: '#ffffff',
+          }}
+        >
+          {request.status}
+        </Badge>
+      </TableCell>
+    </TableRow>
+  );
+};
+
+export const JigRequestTable: React.FC<JigRequestTableProps> = ({
+  requests,
+  onSelectRequest,
+  currentUserUid,
+}) => {
+  const [sortField, setSortField] = useState<SortField>('requestDate');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+
+  const sortedRequests = useMemo(() => {
+    return [...requests].sort((a, b) => {
+      const aValue = a[sortField];
+      const bValue = b[sortField];
+
+      if (aValue === bValue) return 0;
+
+      let comparison = 0;
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        comparison = aValue.localeCompare(bValue);
+      } else if (typeof aValue === 'number' && typeof bValue === 'number') {
+        comparison = aValue - bValue;
+      } else if (aValue instanceof Date && bValue instanceof Date) {
+        comparison = aValue.getTime() - bValue.getTime();
+      } else {
+        comparison = String(aValue).localeCompare(String(bValue));
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [requests, sortField, sortDirection]);
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
+    <TableHead className="px-2 py-3 whitespace-nowrap text-primary-foreground">
+      <button
+        onClick={() => handleSort(field)}
+        className="flex items-center gap-1 hover:text-primary-foreground/80"
+      >
+        {children}
+        <ArrowUpDown className="h-4 w-4" />
+      </button>
+    </TableHead>
+  );
+
+  return (
+    <div className="bg-card rounded-lg shadow-md overflow-hidden h-full flex flex-col">
+      <div className="overflow-auto flex-1">
+        <Table className="w-full text-sm text-left text-gray-500 dark:text-slate-400 min-w-[1400px]">
+          <TableHeader className="sticky top-0 z-10 bg-primary">
+            <TableRow className="hover:bg-primary">
+              <TableHead className="px-2 py-3 whitespace-nowrap text-primary-foreground"></TableHead>
+              <SortableHeader field="requestDate">요청일자</SortableHeader>
+              <SortableHeader field="requestType">생산구분</SortableHeader>
+              <SortableHeader field="requester">요청자</SortableHeader>
+              <SortableHeader field="destination">수신처</SortableHeader>
+              <SortableHeader field="deliveryDate">납기일</SortableHeader>
+              <SortableHeader field="itemName">제품명</SortableHeader>
+              <SortableHeader field="partName">부속명</SortableHeader>
+              <SortableHeader field="itemNumber">지그번호</SortableHeader>
+              <SortableHeader field="specification">규격</SortableHeader>
+              <SortableHeader field="quantity">발주수량</SortableHeader>
+              <SortableHeader field="receivedQuantity">완료수량</SortableHeader>
+              <TableHead className="px-2 py-3 whitespace-nowrap text-primary-foreground">상태</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sortedRequests.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={13} className="text-center py-10 text-muted-foreground">
+                  요청이 없습니다.
+                </TableCell>
+              </TableRow>
+            ) : (
+              sortedRequests.map((request) => (
+                <RequestTableRow
+                  key={request.id}
+                  request={request}
+                  onSelectRequest={onSelectRequest}
+                  currentUserUid={currentUserUid}
+                />
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+};

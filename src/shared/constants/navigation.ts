@@ -15,7 +15,8 @@ import {
   MessageSquare,
   Settings,
   HelpCircle,
-  User
+  User,
+  Wrench
 } from 'lucide-react';
 
 // 경로별 아이콘 매핑
@@ -29,6 +30,8 @@ export const ROUTE_ICONS: Record<string, React.ComponentType<{ className?: strin
   '/quality/history': History,
   '/sample-center': TestTube,
   '/sample-center/requests': ClipboardList,
+  '/jig/management': Wrench,
+  '/jig/master-list': ClipboardList,
   '/calendar': Calendar,
   '/notifications': Bell,
   '/messages': MessageSquare,
@@ -48,6 +51,8 @@ export const ROUTE_TITLES: Record<string, string> = {
   '/quality/history': '품질 종합이력',
   '/sample-center': '샘플센터',
   '/sample-center/requests': '샘플 요청목록',
+  '/jig/management': '지그 요청/관리',
+  '/jig/master-list': '지그목록표',
   '/calendar': '일정 관리',
   '/notifications': '알림',
   '/messages': '메시지',
@@ -73,6 +78,9 @@ export const getRouteIcon = (pathname: string): React.ComponentType<{ className?
   if (pathname.startsWith('/sample-center')) {
     return TestTube;
   }
+  if (pathname.startsWith('/jig')) {
+    return Wrench;
+  }
 
   return LayoutDashboard;
 };
@@ -93,6 +101,9 @@ export const getRouteTitle = (pathname: string): string => {
   }
   if (pathname.startsWith('/sample-center')) {
     return '샘플센터';
+  }
+  if (pathname.startsWith('/jig')) {
+    return '지그센터';
   }
 
   return '대시보드';

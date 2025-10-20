@@ -185,7 +185,7 @@ export const useSampleForm = (initialData?: SampleFormData) => {
         ...formData,
         items: validItems
       },
-      images: imagePreviewItems.map(item => item.file)
+      images: imagePreviewItems.map(item => item.file).filter((file): file is File => file !== null)
     };
   }, [formData, items, imagePreviewItems]);
 

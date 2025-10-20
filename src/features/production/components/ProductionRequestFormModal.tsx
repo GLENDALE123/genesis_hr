@@ -172,7 +172,7 @@ const ProductionRequestFormModalComponent: React.FC<ProductionRequestFormModalPr
     e.preventDefault();
     setIsSaving(true);
     try {
-      const imageFiles = imagePreviewItems.map(item => item.file);
+      const imageFiles = imagePreviewItems.map(item => item.file).filter((file): file is File => file !== null);
       await onSave(formData, imageFiles);
       onClose();
     } catch {

@@ -179,7 +179,7 @@ export const QualityIssueForm: React.FC<QualityIssueFormProps> = ({
     };
 
     // UploadingImageItem에서 File 배열 추출
-    const imageFiles = imagePreviewItems.map(item => item.file);
+    const imageFiles = imagePreviewItems.map(item => item.file).filter((file): file is File => file !== null);
     onSave(submitData, imageFiles);
   };
 

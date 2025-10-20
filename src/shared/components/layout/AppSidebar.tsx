@@ -15,7 +15,8 @@ import {
   Shield,
   LayoutDashboard,
   Settings,
-  HelpCircle
+  HelpCircle,
+  Wrench
 } from 'lucide-react';
 
 interface AppSidebarProps {
@@ -65,6 +66,15 @@ const mainNavigationItems: NavItem[] = [
     icon: TestTube,
     children: [
       { title: '요청목록', href: '/sample-center/requests', icon: ROUTE_ICONS['/sample-center/requests'] },
+    ],
+  },
+  {
+    title: '지그센터',
+    href: '/jig/management',
+    icon: Wrench,
+    children: [
+      { title: '지그 요청/관리', href: '/jig/management', icon: ROUTE_ICONS['/jig/management'] },
+      { title: '지그목록표', href: '/jig/master-list', icon: ROUTE_ICONS['/jig/master-list'] },
     ],
   },
 ];

@@ -89,9 +89,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
               color: 'hsl(var(--main-foreground))',
             }}
           >
-            <div className={cn(
-              "h-full p-2 md:p-3"
-            )}>
+            <div className="h-full">
               {children}
             </div>
           </main>
