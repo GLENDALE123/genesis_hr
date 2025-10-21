@@ -97,11 +97,17 @@ export const UploadingImageGrid: React.FC<UploadingImageGridProps> = ({
                 style={{ borderRadius: 'var(--radius)' }}
                 draggable={false}
                 onDragStart={(e) => e.preventDefault()}
+                onError={(e) => {
+                  // 이미지 로드 실패 시 기본 이미지로 대체
+                  const target = e.target as HTMLImageElement;
+                  target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik04NSA3MEgxMTVWNzBIMTA1VjkwSDk1VjcwSDg1WiIgZmlsbD0iIzlDQTNBRiIvPgo8cGF0aCBkPSJNMTAwIDExMEw5MCA5MEw4MCAxMTBIMTIwTDEwMCAxMTBaIiBmaWxsPSIjOUNBM0FGIi8+Cjwvc3ZnPgo=';
+                  target.alt = '이미지 로드 실패';
+                }}
               />
               <button
                 type="button"
                 onClick={() => handleRemove(index)}
-                className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-destructive/90"
+                className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-destructive/90 transition-colors"
                 aria-label="이미지 삭제"
               >
                 <X className="h-3 w-3" />

@@ -1,57 +1,121 @@
 // 이미지 업로드 유틸리티 (클라이언트-서버 하이브리드)
 import { uploadFile } from '@/shared/services/firebase/storage';
 
+
 /**
  * 클라이언트에서 즉시 표시할 작은 썸네일 생성
  * - 목적: 빠른 미리보기 (메모리 효율적)
  * - 크기: 200x200px, 품질: 60%
  * - 생성 시간: ~0.1초
+ * - 개선: 오류 처리 강화 및 재시도 로직 추가
  */
 export const createQuickThumbnail = async (file: File): Promise<string> => {
   const THUMB_SIZE = 200;
   const THUMB_QUALITY = 0.6;
+  const MAX_RETRIES = 3;
 
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    
-    reader.onload = (e) => {
-      const img = new Image();
-      img.src = e.target?.result as string;
+
+  // 파일 유효성 검사
+  if (!file || file.size === 0) {
+    return URL.createObjectURL(file);
+  }
+
+  // 지원되는 이미지 타입 확인
+  const supportedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+  if (!supportedTypes.includes(file.type.toLowerCase())) {
+    return URL.createObjectURL(file);
+  }
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const result = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        
+        reader.onload = (e) => {
+          try {
+            const img = new Image();
+            img.crossOrigin = 'anonymous'; // CORS 문제 방지
+            
+            img.onload = () => {
+              try {
+                const canvas = document.createElement('canvas');
+                const { width, height } = img;
+
+                // 이미지 크기 유효성 검사
+                if (width === 0 || height === 0) {
+                  reject(new Error('이미지 크기가 0입니다'));
+                  return;
+                }
+
+                // 정사각형 비율로 맞추기
+                const size = Math.min(width, height);
+                
+                canvas.width = THUMB_SIZE;
+                canvas.height = THUMB_SIZE;
+                const ctx = canvas.getContext('2d');
+                
+                if (!ctx) {
+                  reject(new Error('Canvas context를 가져올 수 없습니다'));
+                  return;
+                }
+
+                // Canvas 설정 최적화
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'medium';
+
+                // 중앙 크롭
+                const sx = Math.max(0, (width - size) / 2);
+                const sy = Math.max(0, (height - size) / 2);
+                
+                // 이미지 그리기 (안전한 범위 체크)
+                ctx.drawImage(img, sx, sy, size, size, 0, 0, THUMB_SIZE, THUMB_SIZE);
+
+                // Data URL 생성
+                const dataUrl = canvas.toDataURL('image/jpeg', THUMB_QUALITY);
+                
+                // 생성된 Data URL 유효성 검사
+                if (!dataUrl || dataUrl === 'data:,') {
+                  reject(new Error('썸네일 생성 실패'));
+                  return;
+                }
+
+                resolve(dataUrl);
+              } catch (error) {
+                reject(error);
+              }
+            };
+            
+            img.onerror = () => {
+              reject(new Error('이미지 로드 실패'));
+            };
+
+            img.src = e.target?.result as string;
+          } catch (error) {
+            reject(error);
+          }
+        };
+        
+        reader.onerror = () => {
+          reject(new Error('파일 읽기 실패'));
+        };
+
+        reader.readAsDataURL(file);
+      });
+
+      return result;
+
+    } catch (error) {
+      if (attempt === MAX_RETRIES) {
+        return URL.createObjectURL(file);
+      }
       
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const { width, height } = img;
+      // 재시도 전 짧은 대기
+      await new Promise(resolve => setTimeout(resolve, 100 * attempt));
+    }
+  }
 
-        // 정사각형 비율로 맞추기
-        const size = Math.min(width, height);
-        // const scale = THUMB_SIZE / size;
-        
-        canvas.width = THUMB_SIZE;
-        canvas.height = THUMB_SIZE;
-        const ctx = canvas.getContext('2d');
-        
-        if (!ctx) {
-          resolve(URL.createObjectURL(file)); // 실패 시 원본 Blob URL
-          return;
-        }
-
-        // 중앙 크롭
-        const sx = (width - size) / 2;
-        const sy = (height - size) / 2;
-        
-        ctx.drawImage(img, sx, sy, size, size, 0, 0, THUMB_SIZE, THUMB_SIZE);
-
-        // Data URL 반환 (매우 작아서 메모리 효율적)
-        const dataUrl = canvas.toDataURL('image/jpeg', THUMB_QUALITY);
-        resolve(dataUrl);
-      };
-      
-      img.onerror = () => resolve(URL.createObjectURL(file));
-    };
-    
-    reader.onerror = () => resolve(URL.createObjectURL(file));
-  });
+  // 최종 Fallback
+  return URL.createObjectURL(file);
 };
 
 /**
@@ -216,18 +280,15 @@ const compressImageSmart = async (file: File): Promise<File> => {
   
   // 작은 파일은 압축 건너뛰기
   if (file.size <= MAX_FILE_SIZE) {
-    console.log(`⚡ 작은 파일 (${(file.size / 1024 / 1024).toFixed(2)}MB): 압축 건너뛰기`);
     return file;
   }
   
   // 큰 파일은 고품질 압축
   if (file.size > LARGE_FILE_SIZE) {
-    console.log(`🔍 큰 파일 (${(file.size / 1024 / 1024).toFixed(2)}MB): 고품질 압축`);
     return compressImageWithWorker(file);
   }
   
   // 중간 파일은 빠른 압축
-  console.log(`⚡ 중간 파일 (${(file.size / 1024 / 1024).toFixed(2)}MB): 빠른 압축`);
   return compressImageQuick(file);
 };
 const compressImageQuick = async (file: File): Promise<File> => {
@@ -239,18 +300,15 @@ const compressImageQuick = async (file: File): Promise<File> => {
 
   // HEIF/HEIC 파일은 압축 건너뛰기 (Functions에서 변환 처리)
   if (file.type.includes('heic') || file.type.includes('heif')) {
-    console.log('📱 HEIF/HEIC 파일 감지: 압축 건너뛰고 원본 업로드');
     return file;
   }
 
   // 작은 파일은 압축 건너뛰기 (빠른 처리)
   if (file.size <= MAX_FILE_SIZE) {
-    console.log(`⚡ 작은 파일 감지 (${(file.size / 1024 / 1024).toFixed(2)}MB): 압축 건너뛰기`);
     return file;
   }
 
   // 빠른 압축을 위한 최적화
-  console.log(`🚀 이미지 압축 시작: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
 
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -296,7 +354,6 @@ const compressImageQuick = async (file: File): Promise<File> => {
               type: 'image/jpeg',
               lastModified: Date.now(),
             });
-            console.log(`클라이언트 압축: ${(file.size / 1024 / 1024).toFixed(2)}MB → ${(compressedFile.size / 1024 / 1024).toFixed(2)}MB`);
             resolve(compressedFile);
           },
           'image/jpeg',
@@ -341,17 +398,14 @@ export const uploadImage = async (
       // 2단계: Storage 업로드 (Functions 트리거 자동 실행)
       const downloadURL = await uploadFile(compressedFile, path);
       
-      console.log(`✅ 이미지 업로드 성공 (시도 ${attempt}/${maxRetries}):`, fileName);
       return downloadURL;
       
     } catch (error) {
       lastError = error instanceof Error ? error : new Error('알 수 없는 오류');
-      console.warn(`⚠️ 이미지 업로드 실패 (시도 ${attempt}/${maxRetries}):`, lastError.message);
       
       // 마지막 시도가 아니면 잠시 대기 후 재시도
       if (attempt < maxRetries) {
         const delay = Math.pow(2, attempt - 1) * 1000; // 지수 백오프: 1초, 2초, 4초...
-        console.log(`⏳ ${delay}ms 후 재시도...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
@@ -377,15 +431,12 @@ export const uploadImagesParallel = async (
   onProgress?: (current: number, total: number) => void,
   useParallelCompression: boolean = true
 ): Promise<string[]> => {
-  console.log(`🚀 병렬 이미지 업로드 시작: ${files.length}개 파일`);
   
   try {
     // 1단계: 병렬 압축 (선택적)
     let processedFiles = files;
     if (useParallelCompression && files.length > 1) {
-      console.log('📦 병렬 압축 시작...');
       processedFiles = await compressImagesParallel(files);
-      console.log('✅ 병렬 압축 완료');
     }
     
     // 2단계: 병렬 업로드 (배치 처리)
@@ -415,7 +466,6 @@ export const uploadImagesParallel = async (
       await new Promise(resolve => setTimeout(resolve, 50));
     }
     
-    console.log(`✅ 병렬 업로드 완료: ${urls.length}/${files.length}개 성공`);
     return urls;
     
   } catch (error) {
@@ -472,7 +522,6 @@ export class ImageCache {
       };
       
       localStorage.setItem(this.CACHE_KEY, JSON.stringify(cache));
-      console.log(`📦 이미지 캐시 저장: ${urlHash}`);
     } catch (error) {
       console.warn('캐시 저장 실패:', error);
     }
@@ -491,7 +540,6 @@ export class ImageCache {
         // 만료 확인
         const now = Date.now();
         if (now - (cached as { timestamp: number }).timestamp < this.CACHE_EXPIRY) {
-          console.log(`⚡ 캐시 히트: ${urlHash}`);
           return (cached as { url: string }).url;
         } else {
           // 만료된 캐시 삭제
@@ -513,7 +561,6 @@ export class ImageCache {
   static clearCache(): void {
     try {
       localStorage.removeItem(this.CACHE_KEY);
-      console.log('🗑️ 이미지 캐시 초기화');
     } catch (error) {
       console.warn('캐시 초기화 실패:', error);
     }
@@ -603,12 +650,23 @@ export interface ImageUploadState {
  * - 작은 썸네일 생성 (비동기)
  */
 export const createImagePreview = async (file: File): Promise<ImageUploadState> => {
-  const previewUrl = await createQuickThumbnail(file);
-  return {
-    file,
-    previewUrl,
-    status: 'preview',
-  };
+  try {
+    const previewUrl = await createQuickThumbnail(file);
+    
+    return {
+      file,
+      previewUrl,
+      status: 'preview',
+    };
+  } catch (error) {
+    // 실패 시 원본 Blob URL 사용
+    const fallbackUrl = URL.createObjectURL(file);
+    return {
+      file,
+      previewUrl: fallbackUrl,
+      status: 'preview',
+    };
+  }
 };
 
 /**

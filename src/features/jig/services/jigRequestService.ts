@@ -8,12 +8,30 @@ import {
   addDocument,
   updateDocument,
   deleteDocument,
-  getDocumentsWithQuery
+  getDocumentsWithQuery,
+  onCollectionSnapshot
 } from '@/shared/services/firebase/firestore';
 import { uploadImageFiles, deleteFile } from '@/shared/services/firebase/storage';
 import { JigRequest, CreateJigRequestData, UpdateJigRequestData, HistoryEntry, JigComment, JigStatus } from '../types';
 import { JIG_COLLECTIONS, JIG_STORAGE_PATHS } from '../constants';
 import { generateJigRequestId } from '../utils';
+
+// 지그 요청 실시간 구독
+export const subscribeToJigRequests = (
+  onUpdate: (requests: JigRequest[]) => void,
+  onError: (error: Error) => void
+): (() => void) => {
+  return onCollectionSnapshot(
+    JIG_COLLECTIONS.REQUESTS,
+    (snapshot) => {
+      const requests = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as JigRequest));
+      onUpdate(requests);
+    }
+  );
+};
 
 // 지그 요청 목록 조회
 export const getJigRequests = async (): Promise<JigRequest[]> => {

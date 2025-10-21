@@ -6,6 +6,17 @@ import { AuthService } from '@/features/auth/services';
 import { UserProfile } from '@/features/auth/types';
 import { usePermissionsStore } from './permissionsStore';
 
+// 전역 윈도우 객체에 인증 초기 상태 타입 추가
+declare global {
+  interface Window {
+    __AUTH_INITIAL_STATE__?: {
+      user: User | null;
+      isLoading: boolean;
+      error: string | null;
+    };
+  }
+}
+
 interface AuthState {
   user: User | null;
   userProfile: UserProfile | null;
@@ -24,15 +35,29 @@ interface AuthActions {
   refreshUserProfile: () => Promise<void>;
 }
 
+// 스크립트에서 설정한 초기 인증 상태 가져오기
+const getInitialAuthState = () => {
+  if (typeof window !== 'undefined' && window.__AUTH_INITIAL_STATE__) {
+    return {
+      user: window.__AUTH_INITIAL_STATE__.user,
+      isLoading: window.__AUTH_INITIAL_STATE__.isLoading,
+      error: window.__AUTH_INITIAL_STATE__.error
+    };
+  }
+  return {
+    user: null,
+    isLoading: false,
+    error: null
+  };
+};
+
 export const useAuthStore = create<AuthState & AuthActions>()(
   devtools(
     persist(
       (set) => ({
-        // State
-        user: null,
+        // State - 스크립트에서 설정한 초기 상태 사용
+        ...getInitialAuthState(),
         userProfile: null,
-        isLoading: false,
-        error: null,
         
         // Actions
         login: async () => {
@@ -59,7 +84,6 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             usePermissionsStore.getState().clearCache();
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : '로그아웃에 실패했습니다.';
-            console.error('❌ 로그아웃 실패:', errorMessage);
             set({ error: errorMessage });
           } finally {
             set({ isLoading: false });
@@ -80,7 +104,6 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           
           // 타임아웃 설정 (5초 후에도 콜백이 안 오면 강제로 로딩 해제)
           const timeoutId = setTimeout(() => {
-            console.warn('⚠️ Firebase 인증 초기화 타임아웃 - 로딩 상태 해제');
             set({ isLoading: false });
           }, 5000);
           
@@ -88,28 +111,16 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             // 타임아웃 해제
             clearTimeout(timeoutId);
             
-            console.log('🔄 [AuthStore] 인증 상태 변경:', {
-              hasUser: !!user,
-              userEmail: user?.email || 'none',
-              userUid: user?.uid || 'none'
-            });
-            
             set({ user, isLoading: false, error: null });
             
             if (user) {
               // 사용자 프로필 정보도 함께 로드
               try {
-                console.log('📋 [AuthStore] 사용자 프로필 로딩 시작...');
                 
                 // 약간의 지연을 두어 Firebase Auth 상태가 완전히 안정화되도록 함
                 await new Promise(resolve => setTimeout(resolve, 100));
                 
                 const userProfile = await AuthService.getCurrentUserProfile();
-                console.log('✅ [AuthStore] 사용자 프로필 로딩 완료:', {
-                  hasProfile: !!userProfile,
-                  profileName: userProfile?.name || 'none',
-                  profileRole: userProfile?.role || 'none'
-                });
                 
                 set({ userProfile });
               } catch (error) {
@@ -122,7 +133,6 @@ export const useAuthStore = create<AuthState & AuthActions>()(
               }
             } else {
               // ✅ 로그아웃 시 권한 캐시 초기화
-              console.log('🚪 [AuthStore] 사용자 로그아웃 - 상태 초기화');
               set({ userProfile: null });
               usePermissionsStore.getState().clearCache();
             }
@@ -138,20 +148,13 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         refreshUserProfile: async () => {
           const { user } = useAuthStore.getState();
           if (!user) {
-            console.warn('⚠️ [AuthStore] 사용자가 로그인되지 않음 - 프로필 새로고침 불가');
             return;
           }
           
           try {
-            console.log('🔄 [AuthStore] 사용자 프로필 강제 새로고침 시작...');
             set({ isLoading: true });
             
             const userProfile = await AuthService.getCurrentUserProfile();
-            console.log('✅ [AuthStore] 사용자 프로필 새로고침 완료:', {
-              hasProfile: !!userProfile,
-              profileName: userProfile?.name || 'none',
-              profileRole: userProfile?.role || 'none'
-            });
             
             set({ userProfile, isLoading: false });
           } catch (error) {

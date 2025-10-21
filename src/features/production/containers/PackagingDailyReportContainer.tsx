@@ -153,7 +153,6 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
         });
         setShortageRequestsMap(requestsMap);
       } catch (error) {
-        console.error('❌ [생산일보] 부족분 신청 목록 조회 실패:', error);
       }
     };
 
@@ -207,7 +206,6 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
       
       setDeleteConfirmState({ isOpen: false, reportId: null });
     } catch (error) {
-      console.error('삭제 실패:', error);
       const errorInfo = getFirebaseErrorMessage(error);
       toast.error(errorInfo.message);
       setDeleteConfirmState({ isOpen: false, reportId: null });
@@ -272,7 +270,6 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
       setSelectedReport(null);
       setIsEditMode(false);
     } catch (error) {
-      console.error('저장 실패:', error);
       
       // Firebase 에러 분석
       const errorInfo = getFirebaseErrorMessage(error);
@@ -303,7 +300,6 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
       setProcessConditionsModalState({ isOpen: false, report: null });
       toast.success('공정조건이 저장되었습니다.');
     } catch (error) {
-      console.error('공정조건 저장 실패:', error);
       const errorInfo = getFirebaseErrorMessage(error);
       toast.error(errorInfo.message);
     }

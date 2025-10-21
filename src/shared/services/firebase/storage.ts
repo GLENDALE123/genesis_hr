@@ -41,14 +41,12 @@ export const uploadProfilePhoto = async (
     const storageRef = ref(storage, `users/${userId}/profile/${fileName}`);
 
     // 파일 업로드
-    console.log('🔄 프로필 사진 업로드 중...', fileName);
     await uploadBytes(storageRef, file, {
       contentType: file.type,
     });
 
     // 다운로드 URL 가져오기
     const downloadURL = await getDownloadURL(storageRef);
-    console.log('✅ 프로필 사진 업로드 완료:', downloadURL);
 
     return downloadURL;
   } catch (error) {
@@ -82,7 +80,6 @@ export const deleteProfilePhoto = async (photoURL: string): Promise<void> => {
 
     // 파일 삭제
     await deleteObject(storageRef);
-    console.log('✅ 프로필 사진 삭제 완료');
   } catch (error) {
     console.error('❌ 프로필 사진 삭제 실패:', error);
     // 삭제 실패는 치명적이지 않으므로 에러를 throw하지 않음
@@ -154,11 +151,6 @@ export const compressImage = async (
               lastModified: Date.now(),
             });
             
-            console.log('✅ 이미지 압축 완료:', {
-              original: `${(file.size / 1024).toFixed(2)}KB`,
-              compressed: `${(compressedFile.size / 1024).toFixed(2)}KB`,
-            });
-            
             resolve(compressedFile);
           },
           file.type,
@@ -201,7 +193,6 @@ export const uploadFile = async (
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      console.log(`🔄 파일 업로드 시도 ${attempt}/${maxRetries}: ${file.name}`);
       
       const storageRef = ref(storage, path);
       
@@ -217,7 +208,6 @@ export const uploadFile = async (
       await Promise.race([uploadPromise, timeoutPromise]);
       
       const downloadURL = await getDownloadURL(storageRef);
-      console.log(`✅ 파일 업로드 성공 (시도 ${attempt}/${maxRetries}): ${file.name}`);
       
       return downloadURL;
       
@@ -243,7 +233,6 @@ export const uploadFile = async (
       // 마지막 시도가 아니면 지수 백오프로 대기
       if (attempt < maxRetries) {
         const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000); // 최대 10초
-        console.log(`⏳ ${delay}ms 후 재시도...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
@@ -308,13 +297,11 @@ export const deleteFileIfExists = async (path: string): Promise<boolean> => {
   try {
     const exists = await fileExists(path);
     if (!exists) {
-      console.log('📝 파일이 존재하지 않음 (삭제 건너뜀):', path);
       return false;
     }
 
     const storageRef = ref(storage, path);
     await deleteObject(storageRef);
-    console.log('✅ 파일 삭제 성공:', path);
     return true;
   } catch (error) {
     console.error('❌ 파일 삭제 실패:', error);
@@ -334,7 +321,6 @@ export const deleteFile = async (path: string): Promise<void> => {
   try {
     const storageRef = ref(storage, path);
     await deleteObject(storageRef);
-    console.log('✅ 파일 삭제 완료:', path);
   } catch (error) {
     console.error('❌ 파일 삭제 실패:', error);
     throw error;
@@ -425,20 +411,17 @@ export const uploadImageFiles = async (
       const storageRef = ref(storage, `${folderPath}/${fileName}`);
 
       // 파일 업로드
-      console.log(`🔄 이미지 업로드 중... (${index + 1}/${files.length})`, fileName);
       await uploadBytes(storageRef, file, {
         contentType: file.type,
       });
 
       // 다운로드 URL 가져오기
       const downloadURL = await getDownloadURL(storageRef);
-      console.log(`✅ 이미지 업로드 완료 (${index + 1}/${files.length}):`, downloadURL);
 
       return downloadURL;
     });
 
     const downloadURLs = await Promise.all(uploadPromises);
-    console.log(`✅ 모든 이미지 업로드 완료 (${files.length}개)`);
 
     return downloadURLs;
   } catch (error) {

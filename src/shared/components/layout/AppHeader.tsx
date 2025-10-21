@@ -65,14 +65,15 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const [unreadCount, setUnreadCount] = React.useState(0);
   const [isNotificationOpen, setIsNotificationOpen] = React.useState(false);
   const [isMarkingAllRead, setIsMarkingAllRead] = React.useState(false);
+  const prevNotificationsRef = React.useRef<string>('');
   
   // 현재 페이지 제목 및 아이콘 가져오기
   const pageTitle = getRouteTitle(pathname);
   const PageIcon = getRouteIcon(pathname);
 
-  // 실시간 알림 조회
+  // 실시간 알림 조회 (최적화된 버전)
   React.useEffect(() => {
-    if (!user?.uid) return;
+    if (!user || !user.uid) return;
 
     const fetchNotifications = async () => {
       try {
@@ -92,19 +93,45 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           const notifs = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
-          }));
+          })) as Record<string, unknown>[];
           
-          setNotifications(notifs);
-          setUnreadCount(notifs.length); // 모두 읽지 않은 알림이므로 전체 개수
+          // 변경 감지: 간단한 해시 비교로 불필요한 업데이트 방지
+          const currentHash = JSON.stringify(notifs.map(n => ({ id: n.id, read: n.read })));
+          if (prevNotificationsRef.current === currentHash) {
+            return; // 변경사항 없음
+          }
+          
+          prevNotificationsRef.current = currentHash;
+          
+          // 상태 업데이트 최소화
+          setNotifications(prev => {
+            // 길이와 주요 필드만 비교
+            if (prev.length === notifs.length && 
+                prev.every((p, i) => p.id === notifs[i]?.id && p.read === notifs[i]?.read)) {
+              return prev; // 동일한 상태면 이전 배열 반환
+            }
+            return notifs;
+          });
+          
+          setUnreadCount(notifs.length);
         });
 
-        return unsubscribe;
+        return () => {
+          unsubscribe();
+          prevNotificationsRef.current = '';
+        };
       } catch (error) {
         console.error('알림 조회 실패:', error);
       }
     };
 
-    fetchNotifications();
+    const cleanup = fetchNotifications();
+    
+    return () => {
+      if (cleanup) {
+        cleanup.then(unsubscribe => unsubscribe && unsubscribe());
+      }
+    };
   }, [user?.uid]);
 
   const handleLogout = async () => {
@@ -204,7 +231,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                       try {
                         const { NotificationManager } = await import('@/shared/components/common/CustomNotification');
                         await NotificationManager.markAllAsRead(user.uid);
-                        console.log('✅ 백그라운드 읽음 처리 완료 (3일 후 자동 삭제)');
                       } catch (error) {
                         console.error('❌ 백그라운드 읽음 처리 실패:', error);
                       } finally {
@@ -389,7 +415,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                   checked={(resolvedTheme || theme) === 'dark'}
                   onCheckedChange={(checked) => {
                     const newTheme = checked ? 'dark' : 'light';
-                    console.log('테마 변경:', newTheme);
                     
                     // next-themes만 업데이트 (localStorage 자동 저장)
                     // 기기별로 독립적인 테마 설정

@@ -12,6 +12,7 @@ import {
   addJigRequestComment,
   updateJigRequestStatus,
   getMasterData,
+  subscribeToJigRequests,
 } from '../services';
 import { persist } from 'zustand/middleware';
 
@@ -26,6 +27,7 @@ interface JigRequestState {
 
 interface JigRequestActions {
   fetchRequests: () => Promise<void>;
+  subscribeToRequests: () => () => void;
   createRequest: (data: Omit<JigRequest, 'id' | 'createdAt' | 'history' | 'comments' | 'status'>, imageFiles: File[], currentUserUid: string, currentUserName: string) => Promise<void>;
   updateRequest: (id: string, updates: Partial<JigRequest>, currentUserUid: string, currentUserName: string) => Promise<void>;
   deleteRequest: (id: string) => Promise<void>;
@@ -62,6 +64,28 @@ export const useJigRequestStore = create<JigRequestState & JigRequestActions>()(
             isLoading: false 
           });
         }
+      },
+
+      subscribeToRequests: () => {
+        set({ isLoading: true, error: null });
+        
+        const unsubscribe = subscribeToJigRequests(
+          (requests) => {
+            set({ 
+              requests,
+              lastFetchTimestamp: Date.now(),
+              isLoading: false 
+            });
+          },
+          (error) => {
+            set({ 
+              error: error.message,
+              isLoading: false 
+            });
+          }
+        );
+
+        return unsubscribe;
       },
 
       createRequest: async (data, imageFiles, currentUserUid, currentUserName) => {

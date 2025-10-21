@@ -15,7 +15,7 @@ import {
   createImagePreview, 
   uploadImageWithState, 
   ImageUploadState, 
-  revokePreviewUrl 
+  revokePreviewUrl
 } from '@/shared/utils/imageUpload';
 import { UploadingImageGrid, UploadingImageItem } from '@/shared/components/common/UploadingImageGrid';
 
@@ -51,6 +51,7 @@ export const useImageUpload = (): UseImageUploadReturn => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [deletedImageUrls, setDeletedImageUrls] = useState<string[]>([]); // 삭제된 이미지 URL 추적
 
+
   const handleFileSelect = useCallback(async (files: File[]) => {
     if (files.length === 0) return;
 
@@ -58,61 +59,52 @@ export const useImageUpload = (): UseImageUploadReturn => {
     const newItems: UploadingImageItem[] = files.map(file => ({ file, preview: null }));
     setUploadingImages(prev => [...prev, ...newItems]);
     
-    // 2단계: 썸네일 생성
+    // 2단계: 썸네일 생성 (병렬 처리로 성능 향상)
     const startIndex = uploadingImages.length;
-    for (let i = 0; i < files.length; i++) {
+    
+    // 각 파일에 대해 썸네일 생성
+    const thumbnailPromises = files.map(async (file, index) => {
       try {
-        const thumbnail = await createImagePreview(files[i]);
+        const thumbnail = await createImagePreview(file);
+        
         setUploadingImages(prev => {
           const updated = [...prev];
-          updated[startIndex + i] = { file: files[i], preview: thumbnail.previewUrl };
+          updated[startIndex + index] = { file, preview: thumbnail.previewUrl };
           return updated;
         });
+        
+        return { success: true, index, file };
       } catch (error) {
-        console.error('썸네일 생성 실패:', error);
         // 실패한 경우 원본 파일로 대체
         setUploadingImages(prev => {
           const updated = [...prev];
-          updated[startIndex + i] = { file: files[i], preview: URL.createObjectURL(files[i]) };
+          updated[startIndex + index] = { file, preview: URL.createObjectURL(file) };
           return updated;
         });
+        
+        return { success: false, index, file, error };
       }
-    }
+    });
+
+    // 모든 썸네일 생성 완료 대기
+    await Promise.allSettled(thumbnailPromises);
   }, [uploadingImages.length]);
 
   const removeImage = useCallback((index: number) => {
     setUploadingImages(prev => {
       const item = prev[index];
       
-      console.log('🗑️ 이미지 삭제 요청:', {
-        index,
-        item,
-        file: item.file,
-        preview: item.preview,
-        isBlob: item.preview?.startsWith('blob:'),
-        isExistingImage: item.file === null && item.preview && !item.preview.startsWith('blob:')
-      });
-      
       // 기존 이미지 URL인 경우 삭제 목록에 추가
       if (item.file === null && item.preview && !item.preview.startsWith('blob:')) {
-        console.log('✅ 기존 이미지를 삭제 목록에 추가:', item.preview);
         setDeletedImageUrls(prevDeleted => [...prevDeleted, item.preview!]);
       }
       
       // blob URL인 경우에만 해제 (기존 이미지 URL은 해제하지 않음)
       if (item.preview && item.preview.startsWith('blob:')) {
-        console.log('🔄 Blob URL 해제:', item.preview);
         URL.revokeObjectURL(item.preview);
       }
       
-      const filtered = prev.filter((_, i) => i !== index);
-      console.log('🔄 이미지 목록 필터링:', {
-        원본개수: prev.length,
-        필터링후개수: filtered.length,
-        제거된인덱스: index
-      });
-      
-      return filtered;
+      return prev.filter((_, i) => i !== index);
     });
   }, []);
 
@@ -151,11 +143,6 @@ export const useImageUpload = (): UseImageUploadReturn => {
         }
       }
 
-      console.log('📤 이미지 업로드 완료:', {
-        총이미지수: uploadingImages.length,
-        업로드된URL수: uploadedUrls.length,
-        업로드된URLs: uploadedUrls
-      });
 
       return uploadedUrls;
     } catch (error) {
@@ -183,7 +170,14 @@ export const useImageUpload = (): UseImageUploadReturn => {
       file: null, // 기존 이미지는 파일이 없음
       preview: url
     }));
-    setUploadingImages(existingItems);
+    
+    // 기존 이미지만 추가하고, 새로 추가된 이미지들은 유지
+    setUploadingImages(prev => {
+      // 기존 이미지들 중에서 새로 추가된 이미지가 아닌 것들만 필터링
+      const newImages = prev.filter(item => item.file !== null);
+      return [...existingItems, ...newImages];
+    });
+    
     setDeletedImageUrls([]); // 기존 이미지 설정 시 삭제 목록 초기화
   }, []);
 
@@ -230,10 +224,16 @@ export const InspectionCommonForm: React.FC<InspectionCommonFormProps> = ({
   // 파일 선택 핸들러
   const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
+    
     if (files.length > 0) {
-      await handleFileSelect(files);
+      try {
+        await handleFileSelect(files);
+      } catch (error) {
+        console.error('파일 선택 처리 실패:', error);
+      }
     }
-    // input 초기화
+    
+    // input 초기화 (같은 파일을 다시 선택할 수 있도록)
     if (e.target) {
       e.target.value = '';
     }

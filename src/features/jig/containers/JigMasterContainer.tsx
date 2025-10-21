@@ -22,7 +22,6 @@ export const JigMasterContainer: React.FC = () => {
 
   const handleSelectJig = (jig: JigMasterItem) => {
     setSelectedItem(jig);
-    console.log('선택된 지그:', jig);
   };
 
   const handleAddNewJig = () => {
@@ -42,7 +41,6 @@ export const JigMasterContainer: React.FC = () => {
     try {
       await createMasterItem(data, imageFiles);
       setIsFormModalOpen(false);
-      console.log('새 지그 등록 완료');
     } catch (error) {
       console.error('새 지그 등록 실패:', error);
     }

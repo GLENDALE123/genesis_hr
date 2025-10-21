@@ -10,7 +10,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui
 import { Archive, Clock, TrendingUp, CheckCircle } from 'lucide-react';
 import { SampleKpiCard } from './SampleKpiCard';
 import { SampleStatusBoard } from './SampleStatusBoard';
-import { SimpleBarChart } from './SimpleBarChart';
+import dynamic from 'next/dynamic';
+
+// 차트 컴포넌트를 동적 임포트로 분할
+const DynamicSimpleBarChart = dynamic(() => import('./SimpleBarChart'), {
+  ssr: false,
+  loading: () => <div className="h-32 flex items-center justify-center text-muted-foreground">차트 로딩 중...</div>
+});
 import { SampleRequest, SampleStatus } from '../types';
 import { SAMPLE_STATUS_COLORS } from '../constants';
 
@@ -166,7 +172,7 @@ export const SampleDashboard: React.FC<SampleDashboardProps> = ({
             <CardTitle>고객사별 요청 Top 5</CardTitle>
           </CardHeader>
           <CardContent>
-            <SimpleBarChart data={chartData.clients} colorClass="bg-blue-500" />
+            <DynamicSimpleBarChart data={chartData.clients} colorClass="bg-blue-500" />
           </CardContent>
         </Card>
 
@@ -176,7 +182,7 @@ export const SampleDashboard: React.FC<SampleDashboardProps> = ({
             <CardTitle>요청 담당자별 Top 5</CardTitle>
           </CardHeader>
           <CardContent>
-            <SimpleBarChart data={chartData.requesters} colorClass="bg-green-500" />
+            <DynamicSimpleBarChart data={chartData.requesters} colorClass="bg-green-500" />
           </CardContent>
         </Card>
 
@@ -186,7 +192,7 @@ export const SampleDashboard: React.FC<SampleDashboardProps> = ({
             <CardTitle>코팅/증착 방식별 Top 5</CardTitle>
           </CardHeader>
           <CardContent>
-            <SimpleBarChart data={chartData.coatings} colorClass="bg-purple-500" />
+            <DynamicSimpleBarChart data={chartData.coatings} colorClass="bg-purple-500" />
           </CardContent>
         </Card>
       </div>

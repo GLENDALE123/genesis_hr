@@ -28,6 +28,11 @@
 }
 
 @layer base {
+  /* 폰트 변수 설정 */
+  :root {
+    --font-inter: 'Inter', 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+  }
+
   /* 전역 렌더링 최적화 */
   * {
     -webkit-font-smoothing: antialiased;
@@ -248,6 +253,7 @@
     font-size: calc(var(--font-size-base) * var(--font-size-scale)); /* 동적 폰트 크기 */
     line-height: 1.5;
   }
+  
   
   /* SVG 아이콘 안티앨리어싱 최적화 */
   svg {

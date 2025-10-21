@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -16,6 +16,11 @@ import { JigRequest, JigStatus, UserProfile } from '../types';
 import { STATUS_COLORS } from '../constants';
 import { ImageLightbox } from '@/shared/components/common/ImageLightbox';
 import { CommentsSection } from '@/shared/components/common/CommentsSection';
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
+import { Separator } from '@/shared/components/ui/separator';
+import { ProcessingHistory } from '@/shared/components/common/ProcessingHistory';
+import { Progress } from '@/shared/components/ui/progress';
+import { CommentsService } from '@/shared/services/comments/commentsService';
 import { Share, Edit, Trash2, Check, X, Package, ArrowLeft } from 'lucide-react';
 
 interface JigRequestDetailProps {
@@ -28,6 +33,8 @@ interface JigRequestDetailProps {
   onDelete?: (id: string) => void;
   onReceiveItems?: (id: string, quantity: number) => void;
   onAddComment?: (requestId: string, commentText: string, mentionedUserIds?: string[]) => void;
+  onDeleteComment?: (requestId: string, commentId: string) => void;
+  onEditComment?: (requestId: string, commentId: string, newText: string) => void;
 }
 
 export const JigRequestDetail: React.FC<JigRequestDetailProps> = ({
@@ -40,6 +47,8 @@ export const JigRequestDetail: React.FC<JigRequestDetailProps> = ({
   onDelete,
   onReceiveItems,
   onAddComment,
+  onDeleteComment,
+  onEditComment,
 }) => {
   const [lightboxData, setLightboxData] = useState<{ images: string[], initialIndex: number } | null>(null);
   const [actionModal, setActionModal] = useState<{ open: boolean; status: JigStatus | null }>({ open: false, status: null });
@@ -50,9 +59,56 @@ export const JigRequestDetail: React.FC<JigRequestDetailProps> = ({
   
   const detailRef = useRef<HTMLDivElement>(null);
   
+  // 모달이 열릴 때 읽지 않은 댓글 자동 읽음 처리
+  useEffect(() => {
+    const markCommentsAsRead = async () => {
+      if (isOpen && request && currentUserProfile?.uid) {
+        const currentUserUid = currentUserProfile.uid;
+        
+        // 읽지 않은 댓글들 찾기
+        const unreadComments = (request.comments || []).filter(comment => {
+          // readBy 배열이 없으면 빈 배열로 간주
+          const readBy = comment.readBy || [];
+          
+          // 본인이 작성한 댓글은 읽은 것으로 간주
+          if (comment.uid === currentUserUid) return false;
+          
+          // readBy 배열에 currentUserUid가 없으면 읽지 않은 댓글
+          return !readBy.includes(currentUserUid);
+        });
+
+        console.log('📊 댓글 통계:', {
+          totalComments: request.comments?.length || 0,
+          unreadCount: unreadComments.length,
+          currentUserUid
+        });
+
+        // 각 읽지 않은 댓글을 읽음 처리
+        for (const comment of unreadComments) {
+          console.log('📖 댓글 읽음 처리:', {
+            commentId: comment.id,
+            beforeReadBy: comment.readBy || []
+          });
+          
+          try {
+            // 실제 읽음 처리 API 호출
+            await CommentsService.markAsRead('jig-requests', request.id, comment.id, currentUserUid);
+          } catch (error) {
+            console.error(`❌ [지그요청] 댓글 읽음 처리 실패:`, comment.id, error);
+          }
+        }
+
+        console.log('✅ 모든 읽지 않은 댓글 처리 완료');
+      }
+    };
+
+    markCommentsAsRead();
+  }, [isOpen, request, currentUserProfile?.uid]);
+  
+  
   if (!request) return null;
 
-  const userRole = currentUserProfile?.role || 'Member';
+  const userRole = (currentUserProfile && currentUserProfile.role) || 'Member';
   const canManage = userRole === 'Admin' || userRole === 'Manager';
   const canComment = userRole === 'Admin' || userRole === 'Manager';
 
@@ -239,8 +295,12 @@ export const JigRequestDetail: React.FC<JigRequestDetailProps> = ({
           stickyFooter={footerContent}
         >
           <div ref={detailRef} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="md:col-span-2 space-y-4">
+            {/* 기본 정보 및 처리 이력 카드 */}
+            <Card>
+              <CardHeader>
+                <CardTitle>기본 정보</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
                 {/* 기본 정보 */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div><strong>요청 ID:</strong> <span className="font-mono">{request.id}</span></div>
@@ -259,67 +319,44 @@ export const JigRequestDetail: React.FC<JigRequestDetailProps> = ({
                   <div><strong>요청 일시:</strong> {new Date(request.requestDate).toLocaleString('ko-KR')}</div>
                   <div className="col-span-1 sm:col-span-2">
                     <strong>입고 현황:</strong> {request.receivedQuantity.toLocaleString()} / {request.quantity.toLocaleString()}
-                    <div className="w-full bg-muted rounded-full h-2.5 mt-1">
-                      <div 
-                        className="bg-green-500 h-2.5 rounded-full" 
-                        style={{width: `${(request.receivedQuantity/request.quantity)*100}%`}}
-                      ></div>
-                    </div>
+                    <Progress 
+                      value={(request.receivedQuantity / request.quantity) * 100} 
+                      className="mt-1 h-2.5"
+                    />
                   </div>
                 </div>
-                
-                {/* 특이사항 */}
+
+                {/* 비고 */}
                 {request.remarks && (
-                  <div>
-                    <h4 className="font-semibold text-foreground mb-2">비고:</h4>
-                    <p className="text-muted-foreground whitespace-pre-wrap p-3 bg-muted rounded-md">{request.remarks}</p>
-                  </div>
+                  <>
+                    <Separator />
+                    <div>
+                      <h4 className="font-semibold text-sm mb-2">비고</h4>
+                      <p className="text-muted-foreground whitespace-pre-wrap text-sm">{request.remarks}</p>
+                    </div>
+                  </>
                 )}
 
                 {/* 처리 이력 */}
                 {request.history && request.history.length > 0 && (
-                  <div className="space-y-2">
-                    <h4 className="font-semibold text-foreground">처리 이력</h4>
-                    <ul className="space-y-2 text-xs">
-                      {request.history.map((h, index) => (
-                        <li key={index} className="flex items-center gap-4 p-1.5 bg-muted rounded-md">
-                          <span className="font-semibold flex-shrink-0">
-                            {(() => {
-                              try {
-                                // Firestore timestamp 객체인 경우
-                                if (h.date && typeof h.date === 'object' && 'seconds' in h.date) {
-                                  return new Date((h.date as { seconds: number }).seconds * 1000).toLocaleString('ko-KR');
-                                }
-                                // 문자열인 경우
-                                if (typeof h.date === 'string') {
-                                  return new Date(h.date).toLocaleString('ko-KR');
-                                }
-                                return 'Invalid Date';
-                              } catch (error) {
-                                console.error('날짜 파싱 오류:', h.date, error);
-                                return 'Invalid Date';
-                              }
-                            })()}
-                          </span>
-                          <span className="font-semibold text-foreground text-center flex-shrink-0">{h.user}</span>
-                          <span 
-                            className="px-2 py-0.5 text-xs font-semibold rounded-full text-white flex-shrink-0"
-                            style={{ backgroundColor: STATUS_COLORS[h.status as JigStatus] }}
-                          >
-                            {h.status}
-                          </span>
-                          <span className="flex-1 truncate">{h.reason || h.action}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                  <>
+                    <Separator />
+                    <ProcessingHistory 
+                      history={request.history} 
+                      statusColorMap={STATUS_COLORS}
+                    />
+                  </>
                 )}
-              </div>
-              
-              {/* 이미지 */}
-              {request.imageUrls && request.imageUrls.length > 0 && (
-                <div className="border-t pt-4">
-                  <h4 className="font-semibold text-foreground mb-2">첨부 이미지</h4>
+              </CardContent>
+            </Card>
+
+            {/* 이미지 카드 */}
+            {request.imageUrls && request.imageUrls.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>첨부 이미지</CardTitle>
+                </CardHeader>
+                <CardContent>
                   <div className="grid grid-cols-2 gap-2">
                     {request.imageUrls.map((url, index) => (
                       <img 
@@ -336,18 +373,46 @@ export const JigRequestDetail: React.FC<JigRequestDetailProps> = ({
                       />
                     ))}
                   </div>
-                </div>
-              )}
-            </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* 구분선 */}
+            <Separator className="my-4" />
             
-            {/* 댓글 섹션 */}
+            {/* 댓글 섹션 - 동적 로딩 */}
             <CommentsSection 
-              comments={(request.comments || []).map(comment => ({
-                ...comment,
-                user: comment.userName,
-                createdAt: typeof comment.createdAt === 'string' ? comment.createdAt : new Date((comment.createdAt as { seconds: number }).seconds * 1000).toISOString(),
-              }))} 
-              onAddComment={(text, mentionedUserIds) => onAddComment?.(request.id, text)} 
+              comments={(request.comments || []).map(comment => {
+                // HS-jig와 HS-Next 간의 댓글 데이터 호환성 처리
+                const userField = comment.user || comment.userName || '알 수 없음';
+                
+                // 날짜 필드 처리 (HS-jig: date, HS-Next: timestamp, Firestore: createdAt)
+                let timestampField = comment.timestamp;
+                if (!timestampField && comment.date) {
+                  // HS-jig의 date 필드 사용
+                  timestampField = comment.date;
+                } else if (!timestampField && comment.createdAt) {
+                  // Firestore의 createdAt 필드 사용
+                  if (typeof comment.createdAt === 'string') {
+                    timestampField = comment.createdAt;
+                  } else if (comment.createdAt && typeof comment.createdAt === 'object' && 'seconds' in comment.createdAt) {
+                    timestampField = new Date((comment.createdAt as { seconds: number }).seconds * 1000).toISOString();
+                  }
+                }
+                
+                if (!timestampField) {
+                  timestampField = new Date().toISOString();
+                }
+                
+                return {
+                  ...comment,
+                  user: userField,
+                  timestamp: timestampField,
+                };
+              })} 
+              onAddComment={(text, mentionedUserIds) => onAddComment?.(request.id, text, mentionedUserIds)} 
+              onDeleteComment={(commentId) => onDeleteComment?.(request.id, commentId)}
+              onEditComment={(commentId, newText) => onEditComment?.(request.id, commentId, newText)}
               canComment={canComment}
               currentUserUid={currentUserProfile?.uid || ''}
               isAdmin={userRole === 'Admin'}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, memo } from 'react';
 import {
   Table,
   TableBody,
@@ -24,6 +24,33 @@ type SortField = keyof JigRequest;
 type SortDirection = 'asc' | 'desc';
 
 /**
+ * 읽지 않은 댓글 표시 컴포넌트 (메모이제이션 적용)
+ */
+const UnreadIndicator: React.FC<{
+  comments: Array<{ readBy?: string[]; uid?: string }> | undefined;
+  currentUserUid: string | undefined;
+}> = memo(({ comments, currentUserUid }) => {
+  const unread = hasUnreadComments(comments, currentUserUid);
+  
+  return unread ? (
+    <span 
+      title="새로운 댓글" 
+      className="w-2.5 h-2.5 bg-blue-500 rounded-full animate-pulse"
+    />
+  ) : (
+    <span className="w-2.5 h-2.5" />
+  );
+}, (prevProps, nextProps) => {
+  // 파란색 점만의 메모이제이션 비교 함수
+  return (
+    prevProps.currentUserUid === nextProps.currentUserUid &&
+    prevProps.comments?.length === nextProps.comments?.length &&
+    JSON.stringify(prevProps.comments?.map(c => ({ id: c.id, readBy: c.readBy }))) === 
+    JSON.stringify(nextProps.comments?.map(c => ({ id: c.id, readBy: c.readBy })))
+  );
+});
+
+/**
  * 읽지 않은 댓글 확인
  */
 const hasUnreadComments = (
@@ -43,14 +70,18 @@ const RequestTableRow: React.FC<{
   request: JigRequest;
   onSelectRequest: (request: JigRequest) => void;
   currentUserUid?: string;
-}> = ({ request, onSelectRequest, currentUserUid }) => {
+}> = memo(({ request, onSelectRequest, currentUserUid }) => {
   const unread = hasUnreadComments(request.comments, currentUserUid);
   const commentCount = (request.comments && request.comments.length) || 0;
+
+  const handleRowClick = useCallback(() => {
+    onSelectRequest(request);
+  }, [request, onSelectRequest]);
 
   return (
     <TableRow
       className="cursor-pointer"
-      onClick={() => onSelectRequest(request)}
+      onClick={handleRowClick}
     >
       {/* 댓글 컬럼 */}
       <TableCell>
@@ -88,7 +119,7 @@ const RequestTableRow: React.FC<{
       <TableCell className="font-medium whitespace-nowrap">{request.itemName}</TableCell>
       <TableCell className="whitespace-nowrap">{request.partName}</TableCell>
       <TableCell className="whitespace-nowrap">{request.itemNumber}</TableCell>
-      <TableCell>
+      <TableCell className="w-14">
         {request.imageUrls && request.imageUrls.length > 0 ? (
           <div className="flex items-center gap-1 text-primary">
             <ImageIcon className="w-4 h-4" />
@@ -98,14 +129,23 @@ const RequestTableRow: React.FC<{
           <span className="text-xs text-muted-foreground">없음</span>
         )}
       </TableCell>
-      <TableCell className="whitespace-nowrap">{request.specification}</TableCell>
       <TableCell className="text-right whitespace-nowrap">
         {request.receivedQuantity.toLocaleString()}
       </TableCell>
       <TableCell className="text-right whitespace-nowrap">{request.quantity.toLocaleString()}</TableCell>
     </TableRow>
   );
-};
+}, (prevProps, nextProps) => {
+  // 메모이제이션 비교 함수
+  return (
+    prevProps.request.id === nextProps.request.id &&
+    prevProps.request.status === nextProps.request.status &&
+    prevProps.request.comments?.length === nextProps.request.comments?.length &&
+    prevProps.currentUserUid === nextProps.currentUserUid &&
+    JSON.stringify(prevProps.request.comments?.map(c => ({ id: c.id, readBy: c.readBy }))) === 
+    JSON.stringify(nextProps.request.comments?.map(c => ({ id: c.id, readBy: c.readBy })))
+  );
+});
 
 export const JigRequestTable: React.FC<JigRequestTableProps> = ({
   requests,
@@ -137,16 +177,16 @@ export const JigRequestTable: React.FC<JigRequestTableProps> = ({
     });
   }, [requests, sortField, sortDirection]);
 
-  const handleSort = (field: SortField) => {
+  const handleSort = useCallback((field: SortField) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
       setSortField(field);
       setSortDirection('asc');
     }
-  };
+  }, [sortField, sortDirection]);
 
-  const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
+  const SortableHeader = useCallback(({ field, children }: { field: SortField; children: React.ReactNode }) => (
     <TableHead className="whitespace-nowrap text-primary-foreground">
       <button
         onClick={() => handleSort(field)}
@@ -156,7 +196,7 @@ export const JigRequestTable: React.FC<JigRequestTableProps> = ({
         <ArrowUpDown className="h-4 w-4" />
       </button>
     </TableHead>
-  );
+  ), [handleSort]);
 
   return (
     <div className="bg-card rounded-lg shadow-md overflow-hidden h-full flex flex-col">
@@ -174,8 +214,7 @@ export const JigRequestTable: React.FC<JigRequestTableProps> = ({
               <SortableHeader field="itemName">제품명</SortableHeader>
               <SortableHeader field="partName">부속명</SortableHeader>
               <SortableHeader field="itemNumber">지그번호</SortableHeader>
-              <TableHead className="whitespace-nowrap text-primary-foreground">이미지</TableHead>
-              <SortableHeader field="specification">규격</SortableHeader>
+              <TableHead className="whitespace-nowrap text-primary-foreground w-16">이미지</TableHead>
               <SortableHeader field="receivedQuantity">완료수량</SortableHeader>
               <SortableHeader field="quantity">발주수량</SortableHeader>
             </TableRow>
@@ -183,7 +222,7 @@ export const JigRequestTable: React.FC<JigRequestTableProps> = ({
           <TableBody>
             {sortedRequests.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={14} className="text-center py-10 text-muted-foreground">
+                <TableCell colSpan={13} className="text-center py-10 text-muted-foreground">
                   요청이 없습니다.
                 </TableCell>
               </TableRow>

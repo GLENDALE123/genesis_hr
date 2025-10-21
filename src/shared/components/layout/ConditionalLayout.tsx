@@ -13,17 +13,18 @@ interface ConditionalLayoutProps {
 export const ConditionalLayout: React.FC<ConditionalLayoutProps> = ({ 
   children 
 }) => {
+  // 모든 훅을 항상 호출하여 훅의 개수를 일관되게 유지
   const pathname = usePathname();
   const { user } = useAuthStore();
   const [mounted, setMounted] = useState(false);
 
-  // 로그인/회원가입 페이지는 AppLayout 없이 렌더링
-  const authPages = ['/login', '/register'];
-  const isAuthPage = authPages.includes(pathname);
-
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // 로그인/회원가입 페이지는 AppLayout 없이 렌더링
+  const authPages = ['/login', '/register'];
+  const isAuthPage = authPages.includes(pathname);
 
   // 서버 사이드에서는 항상 children만 렌더링 (hydration mismatch 방지)
   if (!mounted) {

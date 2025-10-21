@@ -222,13 +222,6 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     }
   }, [isEditMode, inspectionData]);
 
-  // 수정 모드에서 기존 이미지 설정
-  useEffect(() => {
-    if (isEditMode && inspectionData?.imageUrls && inspectionData.imageUrls.length > 0 && !imagesInitializedRef.current) {
-      imageUploadHook.setExistingImages(inspectionData.imageUrls);
-      imagesInitializedRef.current = true;
-    }
-  }, [isEditMode, inspectionData?.imageUrls]);
 
   // 임시저장 키 생성
   const getTempSaveKey = useCallback(() => `temp_${activeTab}_inspection_anonymous`, [activeTab]);
@@ -308,6 +301,10 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       setIsSaving(false);
       imagesInitializedRef.current = false;
       
+      // 이미지 업로드 훅 초기화
+      imageUploadHook.clearImages();
+      imageUploadHook.clearDeletedUrls();
+      
       // 수정 모드인 경우 해당 검사 타입으로 탭 설정
       if (mode === 'edit' && inspectionData?.inspectionType) {
         setActiveTab(inspectionData.inspectionType);
@@ -316,6 +313,11 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
           ...inspectionData,
           imageUrls: inspectionData.imageUrls || []
         });
+        // 기존 이미지 설정
+        if (inspectionData.imageUrls && inspectionData.imageUrls.length > 0) {
+          imageUploadHook.setExistingImages(inspectionData.imageUrls);
+          imagesInitializedRef.current = true;
+        }
       } else if (initialTab) {
         setActiveTab(initialTab);
       }
@@ -354,20 +356,8 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
 
       // 삭제된 이미지 URL 처리 (썸네일 포함)
       if (imageUploadHook.deletedImageUrls.length > 0) {
-        console.log('🔍 [QualityInspectionForm] 이미지 삭제 시작:', {
-          deletedUrls: imageUploadHook.deletedImageUrls,
-          count: imageUploadHook.deletedImageUrls.length,
-          timestamp: new Date().toISOString()
-        });
-        
         try {
           const deleteResult = await deleteImagesWithThumbnails(imageUploadHook.deletedImageUrls);
-          
-          console.log('🔍 [QualityInspectionForm] 이미지 삭제 완료:', {
-            success: deleteResult.success,
-            failed: deleteResult.failed,
-            thumbnailResults: deleteResult.thumbnailResults
-          });
           
           // 삭제 성공한 이미지들을 imageUrls에서 제거
           const originalImageUrls = [...imageUrls];
@@ -486,18 +476,14 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       };
 
       const docId = await onSubmit(inspectionData);
-      console.log('✅ 문서 저장 완료:', docId);
       
       // 2단계: 이미지가 있으면 업로드 후 문서 업데이트
       if (imageUploadHook.uploadingImages.length > 0) {
-        console.log('📤 이미지 업로드 시작:', imageUploadHook.uploadingImages.length, '개 파일');
         const folder = createUnifiedImagePath(docId, '');
         const imageUrls = await imageUploadHook.uploadImages(folder);
-        console.log('✅ 이미지 업로드 완료:', imageUrls.length, '개 URL');
         
         // 이미지 URL로 문서 업데이트
         await updateQualityInspection(docId, { imageUrls });
-        console.log('✅ 이미지 URL 업데이트 완료');
       }
       
       // 삭제된 이미지가 있다면 처리 (새로 생성하는 경우에는 없어야 함)
@@ -517,15 +503,12 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       });
       
       clearTempData();
-      console.log('🎉 모든 저장 작업 완료');
       
       // onComplete가 있으면 호출 (모달 닫기 등)
       if (onComplete) {
-        console.log('📋 onComplete 콜백 호출');
         onComplete();
       } else {
         // onComplete가 없으면 기본 동작 (모달 닫기)
-        console.log('📋 기본 handleClose 호출');
         handleClose();
       }
     } catch (error) {

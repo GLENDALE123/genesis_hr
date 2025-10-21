@@ -65,7 +65,7 @@ const JigMasterTableRow = memo<{
         {new Date(item.createdAt).toLocaleDateString('ko-KR')}
       </TableCell>
       <TableCell className="whitespace-nowrap">
-        {item.createdBy?.displayName || 'N/A'}
+        {(item.createdBy && item.createdBy.displayName) || 'N/A'}
       </TableCell>
     </TableRow>
   );

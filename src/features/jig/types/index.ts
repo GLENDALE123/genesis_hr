@@ -22,9 +22,12 @@ export interface HistoryEntry {
 export interface JigComment {
   id: string;
   text: string;
-  uid: string;
-  userName: string;
-  createdAt: string | { seconds: number; nanoseconds?: number };
+  uid?: string; // HS-jig 호환성을 위해 optional
+  user: string; // 사용자 이름 (HS-jig와 동일)
+  timestamp?: string; // HS-Next용 날짜 필드
+  date?: string; // HS-jig 호환성을 위한 날짜 필드
+  createdAt?: string | { seconds: number; nanoseconds?: number }; // Firestore 호환성
+  userName?: string; // 기존 호환성 유지
   readBy?: string[];
   mentionedUserIds?: string[];
 }

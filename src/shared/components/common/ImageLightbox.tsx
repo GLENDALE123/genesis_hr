@@ -42,31 +42,16 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
 
   // initialIndex가 변경되면 currentIndex 업데이트
   useEffect(() => {
-    console.log(`🔍 [ImageLightbox] 초기 인덱스 설정:`, {
-      initialIndex,
-      totalImages: images.length,
-      currentImageUrl: images[initialIndex]
-    });
     setCurrentIndex(initialIndex);
   }, [initialIndex, images]);
 
   const handlePrevious = useCallback(() => {
     const newIndex = currentIndex > 0 ? currentIndex - 1 : images.length - 1;
-    console.log(`⬅️ [ImageLightbox] 이전 이미지로 이동:`, {
-      from: currentIndex,
-      to: newIndex,
-      imageUrl: images[newIndex]
-    });
     setCurrentIndex(newIndex);
   }, [currentIndex, images]);
 
   const handleNext = useCallback(() => {
     const newIndex = currentIndex < images.length - 1 ? currentIndex + 1 : 0;
-    console.log(`➡️ [ImageLightbox] 다음 이미지로 이동:`, {
-      from: currentIndex,
-      to: newIndex,
-      imageUrl: images[newIndex]
-    });
     setCurrentIndex(newIndex);
   }, [currentIndex, images]);
 
@@ -131,14 +116,9 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
   // 라이트박스 열림/닫힘 디버그
   useEffect(() => {
     if (open) {
-      console.log(`🔍 [ImageLightbox] 라이트박스 열림:`, {
-        totalImages: images.length,
-        currentIndex,
-        currentImageUrl: images[currentIndex],
-        allImageUrls: images
-      });
+      // 라이트박스가 열렸을 때의 로직
     } else {
-      console.log(`🔍 [ImageLightbox] 라이트박스 닫힘`);
+      // 라이트박스가 닫혔을 때의 로직
     }
   }, [open, images, currentIndex]);
 
@@ -204,16 +184,10 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
             draggable={false}
             onDragStart={(e) => e.preventDefault()}
             onLoad={() => {
-              console.log(`✅ [ImageLightbox] 원본 이미지 로드 성공 (${currentIndex + 1}/${images.length}):`, {
-                imageUrl: images[currentIndex],
-                isOriginal: true
-              });
+              // 이미지 로드 완료
             }}
             onError={() => {
-              console.log(`❌ [ImageLightbox] 원본 이미지 로드 실패 (${currentIndex + 1}/${images.length}):`, {
-                imageUrl: images[currentIndex],
-                error: 'Failed to load original image in lightbox'
-              });
+              // 이미지 로드 실패
             }}
           />
         </div>

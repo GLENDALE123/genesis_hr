@@ -26,7 +26,13 @@ import {
 } from '@/shared/components/ui/table';
 import { Separator } from '@/shared/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/components/ui/collapsible';
-import { CommentsSection } from '@/shared/components/common/CommentsSection';
+import dynamic from 'next/dynamic';
+
+// 무거운 컴포넌트들을 동적 임포트로 분할
+const DynamicCommentsSection = dynamic(() => import('@/shared/components/common/CommentsSection'), {
+  ssr: false,
+  loading: () => <div className="p-4 text-center text-muted-foreground">댓글 로딩 중...</div>
+});
 import { ImageGalleryGrid } from '@/shared/components/common/ImageGalleryGrid';
 import { useComments } from '@/shared/hooks/useComments';
 import { CommentsService } from '@/shared/services/comments/commentsService';
@@ -34,6 +40,7 @@ import { Edit, Trash2, Save, Upload, ChevronDown, ChevronUp } from 'lucide-react
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { SampleRequest, SampleStatus } from '../types';
 import { SAMPLE_STATUS_COLORS, SAMPLE_REQUESTS_COLLECTION } from '../constants';
+import { ProcessingHistory } from '@/shared/components/common/ProcessingHistory';
 
 interface SampleRequestDetailProps {
   open: boolean;
@@ -94,7 +101,7 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
             return !readBy.includes(currentUserUid);
           });
 
-          console.log(`🔍 [샘플요청 상세] 읽지 않은 댓글 확인:`, {
+          console.log('📊 샘플 요청 댓글 통계:', {
             requestId: request.id,
             totalComments: request.comments.length,
             unreadCount: unreadComments.length,
@@ -110,7 +117,6 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
 
           // 각 읽지 않은 댓글을 읽음 처리
           for (const comment of unreadComments) {
-            console.log(`📝 [샘플요청] 댓글 읽음 처리 시작:`, {
               commentId: comment.id,
               beforeReadBy: comment.readBy || []
             });
@@ -122,13 +128,10 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
               currentUserUid
             );
             
-            console.log(`✅ [샘플요청] 댓글 읽음 처리 완료:`, comment.id);
           }
 
           if (unreadComments.length > 0) {
-            console.log(`✅ [샘플요청] ${unreadComments.length}개의 댓글을 읽음 처리했습니다.`);
           } else {
-            console.log(`ℹ️ [샘플요청] 읽지 않은 댓글이 없습니다.`);
           }
         } catch (error) {
           console.error('❌ [샘플요청] 댓글 읽음 처리 실패:', error);
@@ -468,24 +471,15 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
           )}
 
           {/* 처리 이력 (Card 밖에 별도 배치) */}
-          <div className="space-y-2">
-            <Label className="text-base font-semibold">처리 이력</Label>
-            <ul className="space-y-2 text-xs">
-              {request.history.map((item, index) => (
-                <li key={index} className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
-                  <span className="font-semibold">{new Date(item.date).toLocaleString('ko-KR')}</span>
-                  <Badge className={SAMPLE_STATUS_COLORS[item.status]}>
-                    {item.status}
-                  </Badge>
-                  <span>by {item.by}</span>
-                  {item.reason && <span className="text-muted-foreground">- {item.reason}</span>}
-                </li>
-              ))}
-            </ul>
-          </div>
+          <ProcessingHistory 
+            history={request.history} 
+            statusColorMap={SAMPLE_STATUS_COLORS}
+            userField="by"
+            className="space-y-2"
+          />
 
-          {/* 댓글 섹션 (Card 밖에 별도 배치) */}
-          <CommentsSection
+          {/* 댓글 섹션 (Card 밖에 별도 배치) - 동적 로딩 */}
+          <DynamicCommentsSection
             comments={request.comments}
             onAddComment={handleAddComment}
             onDeleteComment={(commentId) => comments.deleteComment(request.id, commentId)}

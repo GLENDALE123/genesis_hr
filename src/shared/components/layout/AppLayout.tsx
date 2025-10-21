@@ -45,12 +45,10 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
       <div className="flex flex-1 overflow-hidden">
         {/* Desktop Sidebar */}
         {!isMobile && (
-          <div className="flex-shrink-0">
-            <AppSidebar
-              className=""
-              collapsed={sidebarCollapsed}
-            />
-          </div>
+          <AppSidebar
+            className=""
+            collapsed={sidebarCollapsed}
+          />
         )}
         
         {/* Mobile Sidebar Sheet */}
@@ -72,7 +70,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
           </Sheet>
         )}
         
-        {/* Main Content Area */}
+        {/* Right Area (Header + Main Content) */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           {/* Header */}
           <AppHeader onMenuClick={handleMenuClick} />
@@ -81,7 +79,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
           <main 
             className={cn(
               "flex-1 transition-all duration-300",
-              isMobile ? "overflow-y-auto overflow-x-hidden" : "overflow-hidden",
+              isMobile ? "overflow-y-auto overflow-x-hidden p-2" : "overflow-y-auto overflow-x-hidden p-4",
               className
             )}
             style={{
@@ -89,7 +87,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
               color: 'hsl(var(--main-foreground))',
             }}
           >
-            <div className="h-full">
+            <div className="h-full w-full">
               {children}
             </div>
           </main>

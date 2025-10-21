@@ -26,6 +26,8 @@ export function ClientThemeProvider({ children }: ClientThemeProviderProps) {
       defaultTheme="system"
       enableSystem
       disableTransitionOnChange
+      storageKey="hs-next-theme"
+      enableColorScheme={false}
     >
       {children}
     </ThemeProvider>

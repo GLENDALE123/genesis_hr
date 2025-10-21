@@ -6,7 +6,46 @@ import { X } from "lucide-react"
 
 import { cn } from "@/shared/lib/utils"
 
-const Dialog = DialogPrimitive.Root
+// 모바일 뒤로가기 처리를 위한 커스텀 Dialog Root
+const Dialog: React.FC<React.ComponentPropsWithoutRef<typeof DialogPrimitive.Root>> = ({ 
+  open, 
+  onOpenChange, 
+  ...props 
+}) => {
+  // 모바일 뒤로가기 처리
+  React.useEffect(() => {
+    if (!open) return;
+
+    const handlePopState = (event: PopStateEvent) => {
+      // 뒤로가기 시 모달 닫기
+      onOpenChange?.(false);
+    };
+
+    // 히스토리에 상태 추가 (모달이 열렸음을 표시)
+    window.history.pushState({ modalOpen: true }, '');
+    
+    // popstate 이벤트 리스너 추가
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      // 정리 함수에서 이벤트 리스너 제거
+      window.removeEventListener('popstate', handlePopState);
+      
+      // 모달이 닫힐 때 히스토리 상태 정리
+      if (window.history.state?.modalOpen) {
+        window.history.back();
+      }
+    };
+  }, [open, onOpenChange]);
+
+  return (
+    <DialogPrimitive.Root
+      open={open}
+      onOpenChange={onOpenChange}
+      {...props}
+    />
+  );
+};
 
 const DialogTrigger = DialogPrimitive.Trigger
 

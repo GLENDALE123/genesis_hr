@@ -13,6 +13,7 @@ export const useJigRequests = () => {
     isLoading,
     error,
     fetchRequests,
+    subscribeToRequests,
     createRequest,
     updateRequest,
     deleteRequest,
@@ -20,10 +21,15 @@ export const useJigRequests = () => {
     updateRequestStatus,
   } = useJigRequestStore();
 
-  // 컴포넌트 마운트 시 데이터 조회
+  // 컴포넌트 마운트 시 실시간 구독 시작
   useEffect(() => {
-    fetchRequests();
-  }, []);
+    const unsubscribe = subscribeToRequests();
+    
+    // 컴포넌트 언마운트 시 구독 해제
+    return () => {
+      unsubscribe();
+    };
+  }, [subscribeToRequests]);
 
   return {
     requests,

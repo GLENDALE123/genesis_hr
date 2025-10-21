@@ -11,7 +11,14 @@ import {
   DialogTitle,
 } from '@/shared/components/ui/dialog';
 import { Textarea } from '@/shared/components/ui/textarea';
-import { CommentsSection } from '@/shared/components/common';
+import { ProcessingHistory } from '@/shared/components/common/ProcessingHistory';
+import dynamic from 'next/dynamic';
+
+// 무거운 컴포넌트들을 동적 임포트로 분할
+const DynamicCommentsSection = dynamic(() => import('@/shared/components/common/CommentsSection'), {
+  ssr: false,
+  loading: () => <div className="p-4 text-center text-muted-foreground">댓글 로딩 중...</div>
+});
 import {
   ProductionRequestStatus,
   type ProductionRequest,
@@ -47,6 +54,15 @@ const getStatusColorClass = (status: ProductionRequestStatus): string => {
     [ProductionRequestStatus.Rejected]: 'bg-[hsl(var(--status-rejected))] text-[hsl(var(--status-rejected-foreground))]',
   };
   return statusMap[status] || '';
+};
+
+// Status color map for ProcessingHistory component
+const PRODUCTION_STATUS_COLORS = {
+  [ProductionRequestStatus.Requested]: 'bg-blue-100 text-blue-800',
+  [ProductionRequestStatus.InProgress]: 'bg-yellow-100 text-yellow-800',
+  [ProductionRequestStatus.Hold]: 'bg-purple-100 text-purple-800',
+  [ProductionRequestStatus.Completed]: 'bg-green-100 text-green-800',
+  [ProductionRequestStatus.Rejected]: 'bg-red-100 text-red-800',
 };
 
 const ProductionRequestDetailModalComponent: React.FC<ProductionRequestDetailModalProps> = ({
@@ -98,7 +114,6 @@ const ProductionRequestDetailModalComponent: React.FC<ProductionRequestDetailMod
           }
 
           if (unreadComments.length > 0) {
-            console.log(`✅ [생산관리부] ${unreadComments.length}개의 댓글을 읽음 처리했습니다.`);
           }
         } catch (error) {
           console.error('댓글 읽음 처리 실패:', error);
@@ -212,24 +227,14 @@ const ProductionRequestDetailModalComponent: React.FC<ProductionRequestDetailMod
             )}
 
             {/* 처리 이력 */}
-            <div className="space-y-2">
-              <Label>처리 이력</Label>
-              <ul className="space-y-2 text-xs">
-                {request.history.map((h, i) => (
-                  <li key={i} className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
-                    <span className="font-semibold">{new Date(h.date).toLocaleString('ko-KR')}</span>
-                    <span className={`px-2 py-0.5 rounded-full ${getStatusColorClass(h.status)}`}>
-                      {h.status}
-                    </span>
-                    <span>by {h.user}</span>
-                    {h.reason && <span className="text-muted-foreground">- {h.reason}</span>}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <ProcessingHistory 
+              history={request.history} 
+              statusColorMap={PRODUCTION_STATUS_COLORS}
+              className="space-y-2"
+            />
 
-            {/* 댓글 섹션 */}
-            <CommentsSection
+            {/* 댓글 섹션 - 동적 로딩 */}
+            <DynamicCommentsSection
               comments={request.comments || []}
               onAddComment={handleAddComment}
               onEditComment={handleEditComment}

@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/components/ui/table';
 import { ShortageRequest } from '@/features/production/types';
 import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
+import { ProcessingHistory } from '@/shared/components/common/ProcessingHistory';
 import { Search, X, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 
@@ -304,25 +305,10 @@ export const ShortageManagementListView: React.FC<ShortageManagementListViewProp
                 </div>
 
                 {selectedRequest.history && selectedRequest.history.length > 0 && (
-                  <div>
-                    <span className="font-medium text-muted-foreground text-sm">처리 이력:</span>
-                    <div className="mt-2 space-y-2">
-                      {selectedRequest.history.map((entry, index) => (
-                        <div key={index} className="p-3 bg-muted rounded-lg text-sm">
-                          <div className="flex justify-between items-start">
-                            <span className="font-medium">{entry.status}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {formatDateTime(entry.date)}
-                            </span>
-                          </div>
-                          <p className="text-muted-foreground">by {entry.user}</p>
-                          {entry.reason && (
-                            <p className="mt-1 text-muted-foreground">{entry.reason}</p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  <ProcessingHistory 
+                    history={selectedRequest.history} 
+                    className="mt-2"
+                  />
                 )}
               </div>
             </div>

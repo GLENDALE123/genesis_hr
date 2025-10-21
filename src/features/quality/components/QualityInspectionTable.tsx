@@ -77,8 +77,8 @@ const QualityInspectionTableComponent: React.FC<QualityInspectionTableProps> = (
       <CardContent className="flex-1 min-h-0 p-0 flex flex-col">
         {/* 테이블 영역 */}
         <div className="flex-1 overflow-auto">
-          <Table className="rounded-lg border min-w-[1400px]">
-            <TableHeader className="sticky top-0 z-50 bg-muted">
+          <Table className="rounded-lg shadow-sm min-w-[1400px]">
+            <TableHeader className="sticky top-0 z-50 bg-muted ">
               <TableRow>
                 <TableHead className="whitespace-nowrap rounded-tl-lg">최근업데이트</TableHead>
                 <TableHead className="whitespace-nowrap">발주번호</TableHead>

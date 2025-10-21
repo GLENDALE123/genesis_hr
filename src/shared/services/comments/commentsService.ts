@@ -23,7 +23,8 @@ import { db } from '@/shared/services/firebase/config';
 
 export interface Comment {
   id: string;
-  timestamp?: string;
+  timestamp?: string; // HS-Next용 날짜 필드
+  date?: string; // HS-jig 호환성을 위한 날짜 필드
   text: string;
   user: string;
   uid?: string;
@@ -82,8 +83,14 @@ export class CommentsService {
       readBy: [commentData.uid],
     };
 
+    // HS-jig 호환성을 위해 댓글에 date 필드도 추가
+    const commentWithDate = {
+      ...newComment,
+      date: now, // HS-jig 호환성을 위한 date 필드
+    };
+
     await updateDoc(docRef, {
-      comments: [...((currentData && currentData.comments) || []), newComment],
+      comments: [...((currentData && currentData.comments) || []), commentWithDate],
     });
 
     // 댓글/멘션 알림 전송 (항상)
@@ -350,7 +357,6 @@ export class CommentsService {
     };
 
     try {
-      console.log('🔍 [댓글 알림] 페이로드:', payload);
       
       const response = await fetch(`${functionsUrl}/createNotification`, {
         method: 'POST',
@@ -364,7 +370,6 @@ export class CommentsService {
         throw new Error(errorData.error || `알림 전송 실패: ${response.status}`);
       }
       
-      console.log('✅ [댓글 알림] 전송 성공');
     } catch (error) {
       console.error('❌ [댓글 알림] 전송 중 오류:', error);
       throw error;
@@ -427,7 +432,6 @@ export class CommentsService {
       const targetUsers = usersSnapshot.docs.map(doc => doc.id);
 
       if (targetUsers.length === 0) {
-        console.log('알림 대상이 없습니다.');
         return;
       }
 
@@ -454,7 +458,6 @@ export class CommentsService {
         throw new Error(`알림 전송 실패: ${response.status}`);
       }
 
-      console.log('✅ 테스트 댓글 알림 발송 완료:', targetUsers.length, '명');
     } catch (error) {
       console.error('테스트 댓글 알림 전송 실패:', error);
       throw error;
