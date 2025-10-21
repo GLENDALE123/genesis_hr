@@ -5,6 +5,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { X } from "lucide-react"
 
 import { cn } from "@/shared/lib/utils"
+import { useMobileBackHandler } from "@/shared/hooks/useMobileBackHandler"
 
 // 모바일 뒤로가기 처리를 위한 커스텀 Dialog Root
 const Dialog: React.FC<React.ComponentPropsWithoutRef<typeof DialogPrimitive.Root>> = ({ 
@@ -12,47 +13,11 @@ const Dialog: React.FC<React.ComponentPropsWithoutRef<typeof DialogPrimitive.Roo
   onOpenChange, 
   ...props 
 }) => {
-  const [historyStateAdded, setHistoryStateAdded] = React.useState(false);
-  
-  // 모바일 환경 감지
-  const isMobile = React.useMemo(() => {
-    return typeof window !== 'undefined' && window.innerWidth <= 768;
-  }, []);
-  
-  // 모바일 뒤로가기 처리 (모바일 환경에서만)
-  React.useEffect(() => {
-    if (!open || !isMobile) {
-      setHistoryStateAdded(false);
-      return;
-    }
-
-    const handlePopState = (event: PopStateEvent) => {
-      // 모달이 열려있고, 히스토리 상태가 모달과 관련된 경우에만 닫기
-      if (open && event.state?.modalOpen === true) {
-        console.log('🔍 [Dialog] 모바일 뒤로가기로 인한 모달 닫기');
-        onOpenChange?.(false);
-      }
-    };
-
-    // 히스토리에 상태 추가 (모달이 열렸음을 표시) - 한 번만 실행
-    if (!historyStateAdded) {
-      window.history.pushState({ modalOpen: true }, '');
-      setHistoryStateAdded(true);
-    }
-    
-    // popstate 이벤트 리스너 추가
-    window.addEventListener('popstate', handlePopState);
-
-    return () => {
-      // 정리 함수에서 이벤트 리스너 제거
-      window.removeEventListener('popstate', handlePopState);
-      
-      // 모달이 닫힐 때 히스토리 상태 정리
-      if (window.history.state?.modalOpen && historyStateAdded) {
-        window.history.back();
-      }
-    };
-  }, [open, onOpenChange, historyStateAdded, isMobile]);
+  useMobileBackHandler({
+    isOpen: open,
+    onClose: () => onOpenChange?.(false),
+    componentType: 'Dialog'
+  });
 
   return (
     <DialogPrimitive.Root

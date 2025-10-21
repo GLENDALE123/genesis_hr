@@ -5,8 +5,28 @@ import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 
 import { cn } from "@/shared/lib/utils"
 import { buttonVariants } from "@/shared/components/ui/button"
+import { useMobileBackHandler } from "@/shared/hooks/useMobileBackHandler"
 
-const AlertDialog = AlertDialogPrimitive.Root
+// 모바일 뒤로가기 처리를 위한 커스텀 AlertDialog Root
+const AlertDialog: React.FC<React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Root>> = ({ 
+  open, 
+  onOpenChange, 
+  ...props 
+}) => {
+  useMobileBackHandler({
+    isOpen: open,
+    onClose: () => onOpenChange?.(false),
+    componentType: 'AlertDialog'
+  });
+
+  return (
+    <AlertDialogPrimitive.Root
+      open={open}
+      onOpenChange={onOpenChange}
+      {...props}
+    />
+  );
+};
 
 const AlertDialogTrigger = AlertDialogPrimitive.Trigger
 

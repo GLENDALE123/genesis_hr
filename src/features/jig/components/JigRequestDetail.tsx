@@ -337,6 +337,32 @@ export const JigRequestDetail: React.FC<JigRequestDetailProps> = ({
                   </>
                 )}
 
+                {/* 첨부 이미지 */}
+                {request.imageUrls && request.imageUrls.length > 0 && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h4 className="font-semibold text-sm mb-3">첨부 이미지 ({request.imageUrls.length}개)</h4>
+                      <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2">
+                        {request.imageUrls.map((url, index) => (
+                          <img 
+                            key={index} 
+                            src={url} 
+                            alt=""
+                            aria-label={`첨부 이미지 ${index + 1}`}
+                            width={120}
+                            height={96}
+                            loading="lazy"
+                            decoding="async"
+                            className="w-full h-24 object-cover rounded-lg cursor-pointer transition-transform hover:scale-105"
+                            onClick={() => openLightbox(request.imageUrls || [], index)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
                 {/* 처리 이력 */}
                 {request.history && request.history.length > 0 && (
                   <>
@@ -349,33 +375,6 @@ export const JigRequestDetail: React.FC<JigRequestDetailProps> = ({
                 )}
               </CardContent>
             </Card>
-
-            {/* 이미지 카드 */}
-            {request.imageUrls && request.imageUrls.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>첨부 이미지</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 gap-2">
-                    {request.imageUrls.map((url, index) => (
-                      <img 
-                        key={index} 
-                        src={url} 
-                        alt=""
-                        aria-label={`첨부 이미지 ${index + 1}`}
-                        width={160}
-                        height={96}
-                        loading="lazy"
-                        decoding="async"
-                        className="w-full h-24 object-cover rounded-lg cursor-pointer transition-transform hover:scale-105"
-                        onClick={() => openLightbox(request.imageUrls || [], index)}
-                      />
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
 
             {/* 구분선 */}
             <Separator className="my-4" />

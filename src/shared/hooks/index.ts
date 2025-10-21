@@ -6,4 +6,5 @@ export { useOrderNumberFormatter } from './useOrderNumberFormatter';
 export { useNetworkStatus } from './useNetworkStatus';
 export { useComments } from './useComments';
 export { useDebounce } from './useDebounce';
+export { useMobileBackHandler } from './useMobileBackHandler';
 

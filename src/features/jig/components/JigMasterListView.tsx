@@ -5,7 +5,7 @@ import { JigMasterItem, UserProfile } from '../types';
 import { Input } from '@/shared/components/ui/input';
 import { Button } from '@/shared/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/components/ui/table';
-import { ImageLightbox } from '@/shared/components/common/ImageLightbox';
+import { Image } from 'lucide-react';
 
 interface JigMasterListViewProps {
   jigs: JigMasterItem[];
@@ -18,15 +18,10 @@ interface JigMasterListViewProps {
 const JigMasterTableRow = memo<{
   item: JigMasterItem;
   onSelectJig: (jig: JigMasterItem) => void;
-  onImageClick: (images: string[], index: number, e: React.MouseEvent) => void;
-}>(({ item, onSelectJig, onImageClick }) => {
+}>(({ item, onSelectJig }) => {
   const handleRowClick = useCallback(() => {
     onSelectJig(item);
   }, [item, onSelectJig]);
-
-  const handleImageClick = useCallback((e: React.MouseEvent) => {
-    onImageClick(item.imageUrls!, 0, e);
-  }, [item.imageUrls, onImageClick]);
 
   return (
     <TableRow
@@ -40,18 +35,7 @@ const JigMasterTableRow = memo<{
       <TableCell>
         {item.imageUrls && item.imageUrls.length > 0 ? (
           <div className="flex items-center gap-1 text-primary">
-            <img
-              src={item.imageUrls[0]}
-              alt={`${item.itemName} 이미지`}
-              className="w-12 h-12 object-cover rounded-md transition-transform hover:scale-110 cursor-pointer"
-              onClick={handleImageClick}
-              loading="lazy"
-              onError={(e) => {
-                // 이미지 로드 실패시 기본 이미지로 대체
-                const target = e.target as HTMLImageElement;
-                target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xOCAxOEgzMFYzMEgxOFYxOFoiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTIxIDIxSDI3VjI3SDIxVjIxWiIgZmlsbD0iI0YzRjRGNiIvPgo8L3N2Zz4K';
-              }}
-            />
+            <Image className="w-4 h-4" />
             <span className="text-xs">{item.imageUrls.length}</span>
           </div>
         ) : (
@@ -75,7 +59,6 @@ JigMasterTableRow.displayName = 'JigMasterTableRow';
 
 export const JigMasterListView: React.FC<JigMasterListViewProps> = ({ jigs, onSelectJig, onAddNewJig, currentUserProfile }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [lightboxData, setLightboxData] = useState<{ images: string[], initialIndex: number } | null>(null);
 
   const filteredJigs = useMemo(() => {
     if (!searchTerm) return jigs;
@@ -97,11 +80,6 @@ export const JigMasterListView: React.FC<JigMasterListViewProps> = ({ jigs, onSe
   const canAddNewJig = currentUserProfile?.role !== 'Member';
 
   const masterItems = filteredJigs;
-
-  const handleImageClick = (images: string[], index: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setLightboxData({ images, initialIndex: index });
-  };
 
   const onSelectItem = onSelectJig;
 
@@ -152,7 +130,6 @@ export const JigMasterListView: React.FC<JigMasterListViewProps> = ({ jigs, onSe
                   key={item.id}
                   item={item}
                   onSelectJig={onSelectItem}
-                  onImageClick={handleImageClick}
                 />
               ))
             )}
@@ -162,7 +139,6 @@ export const JigMasterListView: React.FC<JigMasterListViewProps> = ({ jigs, onSe
       <div className="p-3 text-sm text-center border-t">
         <p>총 {filteredJigs.length.toLocaleString()}개의 고유 지그가 있습니다.</p>
       </div>
-      {lightboxData && <ImageLightbox images={lightboxData.images} initialIndex={lightboxData.initialIndex} open={!!lightboxData} onClose={() => setLightboxData(null)} />}
     </div>
   );
 };
