@@ -17,6 +17,7 @@ import {
   ImageUploadState, 
   revokePreviewUrl
 } from '@/shared/utils/imageUpload';
+import { uploadImageFilesParallel } from '@/shared/services/firebase/storage';
 import { UploadingImageGrid, UploadingImageItem } from '@/shared/components/common/UploadingImageGrid';
 
 interface InspectionCommonFormProps {
@@ -59,35 +60,74 @@ export const useImageUpload = (): UseImageUploadReturn => {
     const newItems: UploadingImageItem[] = files.map(file => ({ file, preview: null }));
     setUploadingImages(prev => [...prev, ...newItems]);
     
-    // 2단계: 썸네일 생성 (병렬 처리로 성능 향상)
+    // 2단계: 썸네일 생성 (동적 배치 병렬 처리로 성능 향상)
     const startIndex = uploadingImages.length;
     
-    // 각 파일에 대해 썸네일 생성
-    const thumbnailPromises = files.map(async (file, index) => {
-      try {
-        const thumbnail = await createImagePreview(file);
-        
-        setUploadingImages(prev => {
-          const updated = [...prev];
-          updated[startIndex + index] = { file, preview: thumbnail.previewUrl };
-          return updated;
-        });
-        
-        return { success: true, index, file };
-      } catch (error) {
-        // 실패한 경우 원본 파일로 대체
-        setUploadingImages(prev => {
-          const updated = [...prev];
-          updated[startIndex + index] = { file, preview: URL.createObjectURL(file) };
-          return updated;
-        });
-        
-        return { success: false, index, file, error };
+    // 동적 배치 크기 계산
+    const calculateThumbnailBatchSize = (fileCount: number, totalSizeMB: number): number => {
+      let batchSize = 4; // 기본값
+      
+      if (fileCount <= 2) {
+        batchSize = fileCount; // 적은 파일은 모두 동시 처리
+      } else if (fileCount <= 8) {
+        batchSize = Math.min(4, fileCount);
+      } else {
+        batchSize = 6; // 많은 파일은 더 큰 배치
       }
-    });
+      
+      // 파일 크기에 따른 조정
+      if (totalSizeMB > 50) {
+        batchSize = Math.max(2, batchSize - 1); // 큰 파일은 배치 크기 감소
+      } else if (totalSizeMB < 5) {
+        batchSize = Math.min(8, batchSize + 2); // 작은 파일은 배치 크기 증가
+      }
+      
+      return batchSize;
+    };
+    
+    const totalSizeMB = files.reduce((sum, file) => sum + file.size, 0) / (1024 * 1024);
+    const THUMBNAIL_BATCH_SIZE = calculateThumbnailBatchSize(files.length, totalSizeMB);
+    
+    
+    // 배치 단위로 썸네일 생성
+    for (let i = 0; i < files.length; i += THUMBNAIL_BATCH_SIZE) {
+      const batch = files.slice(i, i + THUMBNAIL_BATCH_SIZE);
+      const batchStartIndex = startIndex + i;
+      
+      
+      // 배치 내에서 병렬 처리
+      const batchPromises = batch.map(async (file, batchIndex) => {
+        const globalIndex = batchStartIndex + batchIndex;
+        try {
+          const thumbnail = await createImagePreview(file);
+          
+          setUploadingImages(prev => {
+            const updated = [...prev];
+            updated[globalIndex] = { file, preview: thumbnail.previewUrl };
+            return updated;
+          });
+          
+          return { success: true, index: globalIndex, file };
+        } catch (error) {
+          
+          // 실패한 경우 원본 파일로 대체
+          setUploadingImages(prev => {
+            const updated = [...prev];
+            updated[globalIndex] = { file, preview: URL.createObjectURL(file) };
+            return updated;
+          });
+          
+          return { success: false, index: globalIndex, file, error };
+        }
+      });
 
-    // 모든 썸네일 생성 완료 대기
-    await Promise.allSettled(thumbnailPromises);
+      // 배치 완료 대기
+      const batchResults = await Promise.allSettled(batchPromises);
+      
+      
+      // UI 업데이트를 위한 짧은 대기
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
   }, [uploadingImages.length]);
 
   const removeImage = useCallback((index: number) => {
@@ -117,32 +157,27 @@ export const useImageUpload = (): UseImageUploadReturn => {
     try {
       const uploadedUrls: string[] = [];
       
-      for (let i = 0; i < uploadingImages.length; i++) {
-        const item = uploadingImages[i];
-        
-        
-        // 기존 이미지인 경우 (file이 null) URL을 그대로 사용
+      // 기존 이미지 URL들 먼저 추가
+      for (const item of uploadingImages) {
         if (item.file === null && item.preview) {
           uploadedUrls.push(item.preview);
-          continue;
-        }
-        
-        // 새로 업로드할 이미지인 경우
-        if (item.file) {
-          const uploadState = await createImagePreview(item.file);
-          
-          const uploadedState = await uploadImageWithState(uploadState, folder, (state) => {
-            // 진행률 업데이트
-            const currentProgress = ((i + (state.progress || 0) / 100) / uploadingImages.length) * 100;
-            setUploadProgress(currentProgress);
-          });
-
-          if (uploadedState.status === 'uploaded' && uploadedState.uploadedUrl) {
-            uploadedUrls.push(uploadedState.uploadedUrl);
-          }
         }
       }
-
+      
+      // 새로 업로드할 파일들만 필터링
+      const newFiles = uploadingImages
+        .filter(item => item.file !== null)
+        .map(item => item.file!);
+      
+      if (newFiles.length > 0) {
+        console.log(`📤 ${newFiles.length}개 새 이미지 병렬 업로드 시작`);
+        
+        // 병렬처리로 업로드
+        const newUrls = await uploadImageFilesParallel(newFiles, folder);
+        uploadedUrls.push(...newUrls);
+        
+        console.log(`🎉 병렬 업로드 완료: ${newUrls.length}개 파일`);
+      }
 
       return uploadedUrls;
     } catch (error) {

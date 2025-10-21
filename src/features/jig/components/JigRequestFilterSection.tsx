@@ -94,8 +94,8 @@ export const JigRequestFilterSection: React.FC<JigRequestFilterSectionProps> = (
                 label="상태"
                 placeholder="전체"
                 options={Object.values(JigStatus)}
-                selectedValues={selectedStatuses}
-                onSelectionChange={onStatusChange}
+                selectedValues={new Set(Array.from(selectedStatuses).map(status => status as string))}
+                onSelectionChange={(values) => onStatusChange(new Set(Array.from(values).map(value => value as JigStatus)))}
                 className="min-w-[120px]"
               />
 

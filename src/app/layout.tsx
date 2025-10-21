@@ -29,44 +29,47 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className={`overflow-x-hidden ${inter.variable}`}>
+    <html lang="ko" className={`overflow-x-hidden ${inter.variable}`} suppressHydrationWarning>
       <head>
         {/* 테마 깜빡임 방지를 위한 스크립트 */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              try {
-                // 테마 초기화
-                const theme = localStorage.getItem('hs-next-theme') || 'system';
-                const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-                const resolvedTheme = theme === 'system' ? systemTheme : theme;
-                
-                if (resolvedTheme === 'dark') {
-                  document.documentElement.classList.add('dark');
-                } else {
+              (function() {
+                try {
+                  // 테마 초기화 (hydration mismatch 방지)
+                  const theme = localStorage.getItem('hs-next-theme') || 'system';
+                  const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                  const resolvedTheme = theme === 'system' ? systemTheme : theme;
+                  
+                  // 즉시 적용하여 깜빡임 방지
+                  if (resolvedTheme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                  } else {
+                    document.documentElement.classList.remove('dark');
+                  }
+                  
+                  // 인증 상태 초기화
+                  const authData = localStorage.getItem('auth-store');
+                  if (authData) {
+                    try {
+                      const parsed = JSON.parse(authData);
+                      if (parsed.state && parsed.state.user) {
+                        window.__AUTH_INITIAL_STATE__ = {
+                          user: parsed.state.user,
+                          isLoading: true,
+                          error: null
+                        };
+                      }
+                    } catch (e) {
+                      // JSON 파싱 실패 무시
+                    }
+                  }
+                } catch (e) {
+                  // localStorage 접근 실패 시 기본 테마 사용
                   document.documentElement.classList.remove('dark');
                 }
-                
-                // 인증 상태 초기화
-                const authData = localStorage.getItem('auth-store');
-                if (authData) {
-                  try {
-                    const parsed = JSON.parse(authData);
-                    if (parsed.state && parsed.state.user) {
-                      // 인증된 사용자가 있으면 로딩 상태로 설정
-                      window.__AUTH_INITIAL_STATE__ = {
-                        user: parsed.state.user,
-                        isLoading: true,
-                        error: null
-                      };
-                    }
-                  } catch (e) {
-                  }
-                }
-              } catch (e) {
-                // localStorage 접근 실패 시 기본 테마 사용
-                document.documentElement.classList.remove('dark');
-              }
+              })();
             `,
           }}
         />

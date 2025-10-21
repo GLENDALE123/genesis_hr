@@ -50,8 +50,14 @@ export const createQualityIssue = async (
     const imageUrls: string[] = [];
     
     if (imageFiles.length > 0) {
-      const { uploadImageFiles } = await import('@/shared/services/firebase/storage');
-      imageUrls.push(...await uploadImageFiles(imageFiles, `quality-issues/${Date.now()}`));
+      const { uploadImageFilesParallel } = await import('@/shared/services/firebase/storage');
+      try {
+        // 병렬처리 함수 사용 (압축 + 업로드 동시 처리)
+        imageUrls.push(...await uploadImageFilesParallel(imageFiles, `quality-issues/${Date.now()}`));
+      } catch (error) {
+        console.error('이미지 업로드 실패:', error);
+        throw new Error(`이미지 업로드 실패: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+      }
     }
 
     // Firestore에 저장할 데이터 준비

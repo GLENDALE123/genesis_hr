@@ -45,10 +45,12 @@ const UnreadIndicator: React.FC<{
   return (
     prevProps.currentUserUid === nextProps.currentUserUid &&
     prevProps.comments?.length === nextProps.comments?.length &&
-    JSON.stringify(prevProps.comments?.map(c => ({ id: c.id, readBy: c.readBy }))) === 
-    JSON.stringify(nextProps.comments?.map(c => ({ id: c.id, readBy: c.readBy })))
+    JSON.stringify(prevProps.comments?.map(c => ({ uid: c.uid, readBy: c.readBy }))) === 
+    JSON.stringify(nextProps.comments?.map(c => ({ uid: c.uid, readBy: c.readBy })))
   );
 });
+
+UnreadIndicator.displayName = 'UnreadIndicator';
 
 /**
  * 읽지 않은 댓글 확인
@@ -142,10 +144,12 @@ const RequestTableRow: React.FC<{
     prevProps.request.status === nextProps.request.status &&
     prevProps.request.comments?.length === nextProps.request.comments?.length &&
     prevProps.currentUserUid === nextProps.currentUserUid &&
-    JSON.stringify(prevProps.request.comments?.map(c => ({ id: c.id, readBy: c.readBy }))) === 
-    JSON.stringify(nextProps.request.comments?.map(c => ({ id: c.id, readBy: c.readBy })))
+    JSON.stringify(prevProps.request.comments?.map(c => ({ uid: c.uid, readBy: c.readBy }))) === 
+    JSON.stringify(nextProps.request.comments?.map(c => ({ uid: c.uid, readBy: c.readBy })))
   );
 });
+
+RequestTableRow.displayName = 'RequestTableRow';
 
 export const JigRequestTable: React.FC<JigRequestTableProps> = ({
   requests,

@@ -16,7 +16,11 @@ export function ClientThemeProvider({ children }: ClientThemeProviderProps) {
 
   // 서버 사이드에서는 기본 테마로 렌더링 (hydration mismatch 방지)
   if (!mounted) {
-    return <>{children}</>;
+    return (
+      <div suppressHydrationWarning>
+        {children}
+      </div>
+    );
   }
 
   // 클라이언트 사이드에서는 ThemeProvider 사용

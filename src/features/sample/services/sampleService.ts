@@ -18,7 +18,7 @@ import {
   onSnapshot,
   arrayUnion
 } from 'firebase/firestore';
-import { uploadImages } from '@/shared/utils/imageUpload';
+import { uploadImageFilesParallel } from '@/shared/services/firebase/storage';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
 import {
   SampleRequest,
@@ -55,7 +55,7 @@ export class SampleService {
       // 이미지 업로드
       let imageUrls: string[] = [];
       if (imageFiles.length > 0) {
-        imageUrls = await uploadImages(imageFiles, 'sample-requests');
+        imageUrls = await uploadImageFilesParallel(imageFiles, 'sample-requests');
       }
 
       const requestData: Omit<SampleRequest, 'id'> = {
@@ -464,7 +464,7 @@ export class SampleService {
       }
 
       // 이미지 업로드
-      const imageUrls = await uploadImages([file], 'sample-requests');
+      const imageUrls = await uploadImageFilesParallel([file], 'sample-requests');
       const imageUrl = imageUrls[0];
 
       // Firestore 업데이트
@@ -491,7 +491,7 @@ export class SampleService {
       }
 
       // 이미지 업로드
-      const imageUrls = await uploadImages([file], 'sample-work-images');
+      const imageUrls = await uploadImageFilesParallel([file], 'sample-work-images');
       const imageUrl = imageUrls[0];
 
       // Firestore 업데이트

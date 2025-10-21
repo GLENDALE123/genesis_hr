@@ -14,47 +14,68 @@ export const createQuickThumbnail = async (file: File): Promise<string> => {
   const THUMB_QUALITY = 0.6;
   const MAX_RETRIES = 3;
 
-
   // 파일 유효성 검사
   if (!file || file.size === 0) {
+    console.warn('⚠️ 빈 파일 또는 크기가 0인 파일:', file.name);
     return URL.createObjectURL(file);
   }
 
   // 지원되는 이미지 타입 확인
   const supportedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
   if (!supportedTypes.includes(file.type.toLowerCase())) {
+    console.warn('⚠️ 지원되지 않는 이미지 타입:', file.type, file.name);
     return URL.createObjectURL(file);
   }
+
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       const result = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
+        let img: HTMLImageElement | null = null;
+        let canvas: HTMLCanvasElement | null = null;
+        
+        // 리소스 정리 함수
+        const cleanup = () => {
+          if (img) {
+            img.onload = null;
+            img.onerror = null;
+            img.src = '';
+            img = null;
+          }
+          if (canvas) {
+            canvas.width = 0;
+            canvas.height = 0;
+            canvas = null;
+          }
+        };
         
         reader.onload = (e) => {
           try {
-            const img = new Image();
+            img = new Image();
             img.crossOrigin = 'anonymous'; // CORS 문제 방지
             
             img.onload = () => {
               try {
-                const canvas = document.createElement('canvas');
-                const { width, height } = img;
+                canvas = document.createElement('canvas');
+                const { width, height } = img!;
 
                 // 이미지 크기 유효성 검사
                 if (width === 0 || height === 0) {
-                  reject(new Error('이미지 크기가 0입니다'));
+                  cleanup();
+                  reject(new Error(`이미지 크기가 0입니다: ${width}x${height}`));
                   return;
                 }
 
                 // 정사각형 비율로 맞추기
                 const size = Math.min(width, height);
                 
-                canvas.width = THUMB_SIZE;
-                canvas.height = THUMB_SIZE;
-                const ctx = canvas.getContext('2d');
+                canvas!.width = THUMB_SIZE;
+                canvas!.height = THUMB_SIZE;
+                const ctx = canvas!.getContext('2d');
                 
                 if (!ctx) {
+                  cleanup();
                   reject(new Error('Canvas context를 가져올 수 없습니다'));
                   return;
                 }
@@ -68,29 +89,34 @@ export const createQuickThumbnail = async (file: File): Promise<string> => {
                 const sy = Math.max(0, (height - size) / 2);
                 
                 // 이미지 그리기 (안전한 범위 체크)
-                ctx.drawImage(img, sx, sy, size, size, 0, 0, THUMB_SIZE, THUMB_SIZE);
+                ctx.drawImage(img!, sx, sy, size, size, 0, 0, THUMB_SIZE, THUMB_SIZE);
 
                 // Data URL 생성
-                const dataUrl = canvas.toDataURL('image/jpeg', THUMB_QUALITY);
+                const dataUrl = canvas!.toDataURL('image/jpeg', THUMB_QUALITY);
                 
                 // 생성된 Data URL 유효성 검사
                 if (!dataUrl || dataUrl === 'data:,') {
-                  reject(new Error('썸네일 생성 실패'));
+                  cleanup();
+                  reject(new Error('썸네일 생성 실패: 빈 Data URL'));
                   return;
                 }
 
+                cleanup();
                 resolve(dataUrl);
               } catch (error) {
+                cleanup();
                 reject(error);
               }
             };
             
             img.onerror = () => {
+              cleanup();
               reject(new Error('이미지 로드 실패'));
             };
 
             img.src = e.target?.result as string;
           } catch (error) {
+            cleanup();
             reject(error);
           }
         };
@@ -109,8 +135,9 @@ export const createQuickThumbnail = async (file: File): Promise<string> => {
         return URL.createObjectURL(file);
       }
       
-      // 재시도 전 짧은 대기
-      await new Promise(resolve => setTimeout(resolve, 100 * attempt));
+      // 재시도 전 더 긴 대기 (500ms, 1000ms, 2000ms)
+      const waitTime = 500 * Math.pow(2, attempt - 1);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
     }
   }
 
@@ -129,12 +156,48 @@ export const revokePreviewUrl = (url: string): void => {
 };
 
 /**
+ * 동적 배치 크기 계산 (파일 수와 크기에 따라 최적화)
+ */
+const calculateOptimalBatchSize = (files: File[], operation: 'compress' | 'upload'): number => {
+  const fileCount = files.length;
+  const totalSizeMB = files.reduce((sum, file) => sum + file.size, 0) / (1024 * 1024);
+  
+  // 기본 배치 크기
+  let baseBatchSize = 4;
+  
+  // 파일 수에 따른 조정
+  if (fileCount <= 2) {
+    baseBatchSize = fileCount; // 적은 파일은 모두 동시 처리
+  } else if (fileCount <= 8) {
+    baseBatchSize = Math.min(4, fileCount); // 중간 파일 수
+  } else {
+    baseBatchSize = 6; // 많은 파일은 더 큰 배치
+  }
+  
+  // 파일 크기에 따른 조정
+  if (totalSizeMB > 100) {
+    baseBatchSize = Math.max(2, baseBatchSize - 2); // 큰 파일은 배치 크기 감소
+  } else if (totalSizeMB < 10) {
+    baseBatchSize = Math.min(8, baseBatchSize + 2); // 작은 파일은 배치 크기 증가
+  }
+  
+  // 작업 유형에 따른 조정
+  if (operation === 'compress') {
+    baseBatchSize = Math.min(6, baseBatchSize); // 압축은 CPU 집약적
+  } else if (operation === 'upload') {
+    baseBatchSize = Math.min(8, baseBatchSize); // 업로드는 네트워크 집약적
+  }
+  
+  return baseBatchSize;
+};
+
+/**
  * 여러 이미지를 병렬로 압축 (Web Workers 활용)
  * - 동시에 여러 이미지 압축 처리
  * - CPU 코어를 최대한 활용
  */
 const compressImagesParallel = async (files: File[]): Promise<File[]> => {
-  const BATCH_SIZE = 2; // 동시 처리할 이미지 수 (서버 부하 감소)
+  const BATCH_SIZE = calculateOptimalBatchSize(files, 'compress');
   const compressedFiles: File[] = [];
   
   // 배치 단위로 나누어 처리
@@ -440,7 +503,7 @@ export const uploadImagesParallel = async (
     }
     
     // 2단계: 병렬 업로드 (배치 처리)
-    const BATCH_SIZE = 2; // 동시 업로드할 파일 수 (서버 부하 감소)
+    const BATCH_SIZE = calculateOptimalBatchSize(processedFiles, 'upload');
     const urls: string[] = [];
     
     for (let i = 0; i < processedFiles.length; i += BATCH_SIZE) {

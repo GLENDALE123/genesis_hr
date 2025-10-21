@@ -612,7 +612,11 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) {
+        handleClose();
+      }
+    }}>
       <DialogContent className="w-[95vw] h-[95vh] max-w-[1400px] overflow-hidden pb-0">
         <DialogTitle className="sr-only">
           {isCreateMode ? '품질검사 작성' : isEditMode ? '품질검사 수정' : '품질검사 상세'}

@@ -11,7 +11,7 @@ import {
   getDocumentsWithQuery,
   onCollectionSnapshot
 } from '@/shared/services/firebase/firestore';
-import { uploadImageFiles, deleteFile } from '@/shared/services/firebase/storage';
+import { uploadImageFilesParallel, deleteFile } from '@/shared/services/firebase/storage';
 import { JigRequest, CreateJigRequestData, UpdateJigRequestData, HistoryEntry, JigComment, JigStatus } from '../types';
 import { JIG_COLLECTIONS, JIG_STORAGE_PATHS } from '../constants';
 import { generateJigRequestId } from '../utils';
@@ -54,10 +54,16 @@ export const createJigRequest = async (
   const id = await generateJigRequestId();
   const now = new Date().toISOString();
   
-  // 이미지 업로드
+  // 이미지 업로드 (병렬 압축 + 업로드)
   let imageUrls: string[] = [];
   if (imageFiles.length > 0) {
-    imageUrls = await uploadImageFiles(imageFiles, JIG_STORAGE_PATHS.IMAGES);
+    try {
+      // 병렬처리 함수 사용 (압축 + 업로드 동시 처리)
+      imageUrls = await uploadImageFilesParallel(imageFiles, JIG_STORAGE_PATHS.IMAGES);
+    } catch (error) {
+      console.error('이미지 업로드 실패:', error);
+      throw new Error(`이미지 업로드 실패: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+    }
   }
 
   const historyEntry: HistoryEntry = {

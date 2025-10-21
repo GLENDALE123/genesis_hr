@@ -44,7 +44,8 @@ export {
   uploadProfilePhoto,
   deleteProfilePhoto,
   compressImage,
-  uploadImageFiles
+  uploadImageFilesWithRetry,
+  uploadImageFilesParallel
 } from './storage';
 
 // Messaging 서비스

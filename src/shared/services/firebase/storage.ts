@@ -193,34 +193,61 @@ export const uploadFile = async (
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
+      console.log(`📤 파일 업로드 시도 ${attempt}/${maxRetries}: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
       
       const storageRef = ref(storage, path);
       
-      // 업로드 타임아웃 설정 (30초)
+      // 파일 크기에 따른 동적 타임아웃 설정
+      const fileSizeMB = file.size / (1024 * 1024);
+      const baseTimeout = 60000; // 기본 60초
+      const sizeTimeout = Math.max(fileSizeMB * 10000, 30000); // 파일 크기당 10초, 최소 30초
+      const dynamicTimeout = Math.min(baseTimeout + sizeTimeout, 300000); // 최대 5분
+      
+      console.log(`⏱️ 타임아웃 설정: ${dynamicTimeout / 1000}초`);
+      
+      // 업로드 실행
       const uploadPromise = uploadBytes(storageRef, file, {
         contentType: file.type,
       });
       
+      // 타임아웃 Promise (AbortController 사용)
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('업로드 타임아웃')), 30000);
+        setTimeout(() => {
+          reject(new Error(`업로드 타임아웃 (${dynamicTimeout / 1000}초)`));
+        }, dynamicTimeout);
       });
       
+      // 업로드 실행 및 타임아웃 처리
       await Promise.race([uploadPromise, timeoutPromise]);
       
-      const downloadURL = await getDownloadURL(storageRef);
+      console.log(`✅ 업로드 완료: ${file.name}`);
       
+      // 다운로드 URL 가져오기 (별도 타임아웃)
+      const downloadURLPromise = getDownloadURL(storageRef);
+      const downloadTimeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('다운로드 URL 가져오기 타임아웃')), 10000);
+      });
+      
+      const downloadURL = await Promise.race([downloadURLPromise, downloadTimeoutPromise]);
+      
+      console.log(`🔗 다운로드 URL 생성 완료: ${file.name}`);
       return downloadURL;
       
     } catch (error) {
       lastError = error instanceof Error ? error : new Error('알 수 없는 오류');
       
-      // 재시도 가능한 오류인지 확인
+      // 재시도 가능한 오류인지 확인 (타임아웃 오류 포함)
       const isRetryableError = (
         lastError.message.includes('retry-limit-exceeded') ||
         lastError.message.includes('network') ||
         lastError.message.includes('timeout') ||
+        lastError.message.includes('업로드 타임아웃') ||
+        lastError.message.includes('다운로드 URL 가져오기 타임아웃') ||
         lastError.message.includes('quota') ||
-        lastError.message.includes('unavailable')
+        lastError.message.includes('unavailable') ||
+        lastError.message.includes('connection') ||
+        lastError.message.includes('aborted') ||
+        lastError.message.includes('cancelled')
       );
       
       if (!isRetryableError) {
@@ -232,7 +259,8 @@ export const uploadFile = async (
       
       // 마지막 시도가 아니면 지수 백오프로 대기
       if (attempt < maxRetries) {
-        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000); // 최대 10초
+        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 15000); // 최대 15초
+        console.log(`⏳ ${delay / 1000}초 후 재시도...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
@@ -370,13 +398,14 @@ export const getFileMetadata = async (path: string): Promise<Record<string, unkn
   }
 };
 
+
 /**
- * 여러 이미지 파일 업로드
+ * 여러 이미지 파일 업로드 (병렬 압축 + 업로드)
  * @param files - 업로드할 파일 배열
  * @param folderPath - 업로드할 폴더 경로
  * @returns 업로드된 이미지들의 다운로드 URL 배열
  */
-export const uploadImageFiles = async (
+export const uploadImageFilesParallel = async (
   files: File[],
   folderPath: string
 ): Promise<string[]> => {
@@ -385,49 +414,157 @@ export const uploadImageFiles = async (
   }
 
   try {
-    const uploadPromises = files.map(async (file, index) => {
-      // 파일 크기 제한 (10MB)
-      const MAX_FILE_SIZE = 10 * 1024 * 1024;
-      if (file.size > MAX_FILE_SIZE) {
-        throw new Error(`파일 ${file.name}의 크기는 10MB 이하여야 합니다.`);
-      }
-
-      // 파일 확장자 확인
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif'];
-      if (!allowedTypes.includes(file.type)) {
-        throw new Error(`지원되지 않는 파일 형식입니다: ${file.type}`);
-      }
-
-      // 파일명 생성 (타임스탬프 + 인덱스)
-      const timestamp = Date.now();
-      const fileExtension = file.name.split('.').pop() || 'jpg';
-      const fileName = `image_${timestamp}_${index}.${fileExtension}`;
-      
-      if (!storage) {
-        throw new Error('Firebase Storage가 초기화되지 않았습니다.');
-      }
-
-      // Storage 경로
-      const storageRef = ref(storage, `${folderPath}/${fileName}`);
-
-      // 파일 업로드
-      await uploadBytes(storageRef, file, {
-        contentType: file.type,
-      });
-
-      // 다운로드 URL 가져오기
-      const downloadURL = await getDownloadURL(storageRef);
-
-      return downloadURL;
-    });
-
-    const downloadURLs = await Promise.all(uploadPromises);
-
+    // imageUpload.ts의 병렬처리 함수 사용
+    const { uploadImagesParallel } = await import('@/shared/utils/imageUpload');
+    
+    const downloadURLs = await uploadImagesParallel(
+      files,
+      folderPath,
+      (current, total) => {
+        // 진행률 콜백 (필요시 활성화)
+        // console.log(`📊 업로드 진행률: ${current}/${total} (${Math.round((current/total)*100)}%)`);
+      },
+      true // 병렬 압축 사용
+    );
+    
     return downloadURLs;
   } catch (error) {
-    console.error('❌ 이미지 업로드 실패:', error);
+    console.error('❌ 병렬 이미지 업로드 실패:', error);
     throw error;
   }
+};
+
+/**
+ * 재시도 로직이 포함된 이미지 파일 업로드
+ * @param files - 업로드할 파일 배열
+ * @param folderPath - 업로드할 폴더 경로
+ * @param maxRetries - 최대 재시도 횟수 (기본값: 3)
+ * @returns 업로드된 이미지들의 다운로드 URL 배열
+ */
+export const uploadImageFilesWithRetry = async (
+  files: File[],
+  folderPath: string,
+  maxRetries: number = 3
+): Promise<string[]> => {
+  if (!storage) {
+    throw new Error('Firebase Storage가 초기화되지 않았습니다.');
+  }
+
+  console.log(`📤 ${files.length}개 이미지 파일 업로드 시작 (최대 ${maxRetries}회 재시도)`);
+  
+  const results: string[] = [];
+  const failedFiles: { file: File; error: Error; attempts: number }[] = [];
+  
+  for (const file of files) {
+    let lastError: Error | null = null;
+    let success = false;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        // 파일 크기 제한 (10MB)
+        const MAX_FILE_SIZE = 10 * 1024 * 1024;
+        if (file.size > MAX_FILE_SIZE) {
+          throw new Error(`파일 ${file.name}의 크기는 10MB 이하여야 합니다.`);
+        }
+
+        // 파일 확장자 확인
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif'];
+        if (!allowedTypes.includes(file.type)) {
+          throw new Error(`지원되지 않는 파일 형식입니다: ${file.type}`);
+        }
+
+        // 파일명 생성 (타임스탬프 + 시도 횟수)
+        const timestamp = Date.now();
+        const fileExtension = file.name.split('.').pop() || 'jpg';
+        const fileName = `image_${timestamp}_${attempt}.${fileExtension}`;
+        
+        // Storage 경로
+        const storageRef = ref(storage, `${folderPath}/${fileName}`);
+
+        // 파일 크기에 따른 동적 타임아웃 설정
+        const fileSizeMB = file.size / (1024 * 1024);
+        const baseTimeout = 60000; // 기본 60초
+        const sizeTimeout = Math.max(fileSizeMB * 10000, 30000); // 파일 크기당 10초, 최소 30초
+        const dynamicTimeout = Math.min(baseTimeout + sizeTimeout, 300000); // 최대 5분
+        
+        console.log(`📤 ${file.name} 업로드 시도 ${attempt}/${maxRetries} (${(file.size / 1024 / 1024).toFixed(2)}MB, 타임아웃: ${dynamicTimeout / 1000}초)`);
+
+        // 업로드 실행
+        const uploadPromise = uploadBytes(storageRef, file, {
+          contentType: file.type,
+        });
+        
+        // 타임아웃 Promise
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => {
+            reject(new Error(`업로드 타임아웃 (${dynamicTimeout / 1000}초)`));
+          }, dynamicTimeout);
+        });
+        
+        // 업로드 실행 및 타임아웃 처리
+        await Promise.race([uploadPromise, timeoutPromise]);
+        
+        console.log(`✅ ${file.name} 업로드 완료`);
+
+        // 다운로드 URL 가져오기 (별도 타임아웃)
+        const downloadURLPromise = getDownloadURL(storageRef);
+        const downloadTimeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('다운로드 URL 가져오기 타임아웃')), 10000);
+        });
+        
+        const downloadURL = await Promise.race([downloadURLPromise, downloadTimeoutPromise]);
+        
+        console.log(`🔗 ${file.name} 다운로드 URL 생성 완료`);
+        results.push(downloadURL);
+        success = true;
+        break;
+        
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error('알 수 없는 오류');
+        
+        // 재시도 가능한 오류인지 확인
+        const isRetryableError = (
+          lastError.message.includes('retry-limit-exceeded') ||
+          lastError.message.includes('network') ||
+          lastError.message.includes('timeout') ||
+          lastError.message.includes('업로드 타임아웃') ||
+          lastError.message.includes('다운로드 URL 가져오기 타임아웃') ||
+          lastError.message.includes('quota') ||
+          lastError.message.includes('unavailable') ||
+          lastError.message.includes('connection') ||
+          lastError.message.includes('aborted') ||
+          lastError.message.includes('cancelled')
+        );
+        
+        if (!isRetryableError) {
+          console.error(`❌ ${file.name} 재시도 불가능한 오류: ${lastError.message}`);
+          break;
+        }
+        
+        console.warn(`⚠️ ${file.name} 업로드 실패 (시도 ${attempt}/${maxRetries}): ${lastError.message}`);
+        
+        // 마지막 시도가 아니면 지수 백오프로 대기
+        if (attempt < maxRetries) {
+          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 15000); // 최대 15초
+          console.log(`⏳ ${file.name} ${delay / 1000}초 후 재시도...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+    
+    if (!success && lastError) {
+      failedFiles.push({ file, error: lastError, attempts: maxRetries });
+    }
+  }
+  
+  // 결과 로깅
+  console.log(`🎉 업로드 완료: ${results.length}/${files.length}개 성공`);
+  if (failedFiles.length > 0) {
+    console.error(`❌ 실패한 파일들:`, failedFiles.map(f => `${f.file.name}: ${f.error.message}`));
+    throw new Error(`${failedFiles.length}개 파일 업로드 실패: ${failedFiles.map(f => f.file.name).join(', ')}`);
+  }
+  
+  return results;
 };
 
 const storageService = {
@@ -439,7 +576,8 @@ const storageService = {
   deleteFile,
   listFiles,
   getFileMetadata,
-  uploadImageFiles,
+  uploadImageFilesWithRetry,
+  uploadImageFilesParallel,
 };
 
 export default storageService;

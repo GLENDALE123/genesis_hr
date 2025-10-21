@@ -23,7 +23,7 @@ import {
 } from '../services/productionRequestService';
 import { ProductionRequestFormModal } from './ProductionRequestFormModal';
 import { ProductionRequestDetailModal } from './ProductionRequestDetailModal';
-import { uploadImages } from '../../../shared/utils/imageUpload';
+import { uploadImageFilesParallel } from '@/shared/services/firebase/storage';
 import { 
   getUserDisplayName, 
   formatOrderNumber, 
@@ -105,10 +105,8 @@ const ProductionManagementCenterComponent: React.FC = () => {
   ) => {
     if (!userProfile) return;
 
-    // 이미지 압축 및 업로드 (진행률 표시)
-    const imageUrls = await uploadImages(imageFiles, 'production-requests', (current, total) => {
-      console.log(`이미지 업로드 중: ${current}/${total}`);
-    });
+    // 이미지 압축 및 업로드 (병렬처리)
+    const imageUrls = await uploadImageFilesParallel(imageFiles, 'production-requests');
 
     // 요청 생성
     await createRequest({

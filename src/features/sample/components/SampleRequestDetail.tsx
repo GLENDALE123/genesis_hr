@@ -117,6 +117,7 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
 
           // 각 읽지 않은 댓글을 읽음 처리
           for (const comment of unreadComments) {
+            console.log('읽음 처리 중:', {
               commentId: comment.id,
               beforeReadBy: comment.readBy || []
             });
