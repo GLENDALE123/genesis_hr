@@ -1,16 +1,14 @@
 'use client';
 
-import React, { useState, useMemo, memo, useCallback } from 'react';
+import React, { useState, useMemo, memo, useCallback, useEffect } from 'react';
 import { JigMasterItem, UserProfile } from '../types';
 import { Input } from '@/shared/components/ui/input';
-import { Button } from '@/shared/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/components/ui/table';
 import { Image } from 'lucide-react';
 
 interface JigMasterListViewProps {
   jigs: JigMasterItem[];
   onSelectJig: (jig: JigMasterItem) => void;
-  onAddNewJig: () => void;
   currentUserProfile: UserProfile | null;
 }
 
@@ -23,6 +21,16 @@ const JigMasterTableRow = memo<{
     onSelectJig(item);
   }, [item, onSelectJig]);
 
+  // 날짜 포맷팅을 메모이제이션
+  const formattedDate = useMemo(() => {
+    return new Date(item.createdAt).toLocaleDateString('ko-KR');
+  }, [item.createdAt]);
+
+  // 이미지 개수를 메모이제이션
+  const imageCount = useMemo(() => {
+    return item.imageUrls?.length || 0;
+  }, [item.imageUrls]);
+
   return (
     <TableRow
       className="cursor-pointer"
@@ -33,10 +41,10 @@ const JigMasterTableRow = memo<{
       <TableCell className="whitespace-nowrap">{item.partName}</TableCell>
       <TableCell className="whitespace-nowrap">{item.itemNumber}</TableCell>
       <TableCell>
-        {item.imageUrls && item.imageUrls.length > 0 ? (
+        {imageCount > 0 ? (
           <div className="flex items-center gap-1 text-primary">
             <Image className="w-4 h-4" />
-            <span className="text-xs">{item.imageUrls.length}</span>
+            <span className="text-xs">{imageCount}</span>
           </div>
         ) : (
           <span className="text-muted-foreground text-xs">없음</span>
@@ -46,7 +54,7 @@ const JigMasterTableRow = memo<{
         {item.remarks || '-'}
       </TableCell>
       <TableCell className="text-xs whitespace-nowrap">
-        {new Date(item.createdAt).toLocaleDateString('ko-KR')}
+        {formattedDate}
       </TableCell>
       <TableCell className="whitespace-nowrap">
         {(item.createdBy && item.createdBy.displayName) || 'N/A'}
@@ -57,13 +65,23 @@ const JigMasterTableRow = memo<{
 
 JigMasterTableRow.displayName = 'JigMasterTableRow';
 
-export const JigMasterListView: React.FC<JigMasterListViewProps> = ({ jigs, onSelectJig, onAddNewJig, currentUserProfile }) => {
+export const JigMasterListView: React.FC<JigMasterListViewProps> = ({ jigs, onSelectJig, currentUserProfile }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+
+  // 검색어 디바운싱 (300ms 지연)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const filteredJigs = useMemo(() => {
-    if (!searchTerm) return jigs;
+    if (!debouncedSearchTerm) return jigs;
     
-    const search = searchTerm.toLowerCase();
+    const search = debouncedSearchTerm.toLowerCase();
     return jigs.filter(jig =>
       jig.itemName.toLowerCase().includes(search) ||
       jig.partName.toLowerCase().includes(search) ||
@@ -71,13 +89,11 @@ export const JigMasterListView: React.FC<JigMasterListViewProps> = ({ jigs, onSe
       jig.requestType.toLowerCase().includes(search) ||
       (jig.remarks && jig.remarks.toLowerCase().includes(search))
     );
-  }, [jigs, searchTerm]);
+  }, [jigs, debouncedSearchTerm]);
 
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
   }, []);
-
-  const canAddNewJig = currentUserProfile?.role !== 'Member';
 
   const masterItems = filteredJigs;
 
@@ -96,11 +112,6 @@ export const JigMasterListView: React.FC<JigMasterListViewProps> = ({ jigs, onSe
             className="w-full sm:w-64"
             lang="ko"
           />
-          {canAddNewJig && (
-            <Button onClick={onAddNewJig} className="flex-shrink-0">
-              신규 등록
-            </Button>
-          )}
         </div>
       </div>
       <div className="overflow-auto flex-1">
@@ -121,7 +132,8 @@ export const JigMasterListView: React.FC<JigMasterListViewProps> = ({ jigs, onSe
             {masterItems.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
-                  {searchTerm ? '검색된 지그가 없습니다.' : '등록된 지그가 없습니다.'}
+                  {searchTerm !== debouncedSearchTerm ? '검색 중...' : 
+                   debouncedSearchTerm ? '검색된 지그가 없습니다.' : '등록된 지그가 없습니다.'}
                 </TableCell>
               </TableRow>
             ) : (

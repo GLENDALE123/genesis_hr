@@ -6,6 +6,7 @@ export * from './JigRequestTable';
 export * from './JigRequestCard';
 export * from './JigRequestKanban';
 export * from './JigMasterListView';
+export * from './JigMasterDetail';
 export * from './JigRequestDetail';
 export * from './JigRequestForm';
 export * from './MultiSelectFilter';

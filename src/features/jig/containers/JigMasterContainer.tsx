@@ -1,63 +1,47 @@
 'use client';
 
 import React, { useState } from 'react';
-import { JigMasterListView } from '../components';
-import { JigMasterItem, CreateJigMasterItemData } from '../types';
+import { JigMasterListView, JigMasterDetail } from '../components';
+import { JigMasterItem } from '../types';
 import { useJigMaster } from '../hooks/useJigMaster';
 import { useUserRole } from '@/features/auth/hooks/useUserRole';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { Button } from '@/shared/components/ui/button';
 import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
-import { createTestJigMasterData } from '../services/jigMasterService';
-import { Plus, TestTube } from 'lucide-react';
 
 export const JigMasterContainer: React.FC = () => {
-  const { masterItems, isLoading, error, setSelectedItem, createMasterItem } = useJigMaster();
+  const { masterItems, isLoading, error, updateMasterItem, deleteMasterItem } = useJigMaster();
   const userRole = useUserRole() || 'Member';
   const { user } = useAuthStore();
   
-  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
-
-  const canAddNew = userRole === 'Admin' || userRole === 'Manager';
+  const [selectedJig, setSelectedJig] = useState<JigMasterItem | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   const handleSelectJig = (jig: JigMasterItem) => {
-    setSelectedItem(jig);
+    setSelectedJig(jig);
+    setIsDetailModalOpen(true);
   };
 
-  const handleAddNewJig = () => {
-    setIsFormModalOpen(true);
+  const handleCloseDetailModal = () => {
+    setIsDetailModalOpen(false);
+    setSelectedJig(null);
   };
 
-  const handleCloseFormModal = () => {
-    setIsFormModalOpen(false);
-  };
-
-  const handleSaveNewJig = async (data: CreateJigMasterItemData, imageFiles: File[]) => {
-    if (!user) {
-      console.error('사용자 정보가 없습니다.');
-      return;
-    }
-    
+  const handleUpdateJig = async (id: string, updates: Partial<Omit<JigMasterItem, 'id' | 'createdAt'>>) => {
     try {
-      await createMasterItem(data, imageFiles);
-      setIsFormModalOpen(false);
+      await updateMasterItem(id, updates);
     } catch (error) {
-      console.error('새 지그 등록 실패:', error);
+      console.error('지그 업데이트 실패:', error);
+      throw error;
     }
   };
 
-  const handleCreateTestData = async () => {
-    if (!user) {
-      alert('로그인이 필요합니다.');
-      return;
-    }
-    
+  const handleDeleteJig = async (id: string) => {
     try {
-      await createTestJigMasterData({ uid: user.uid, displayName: user.displayName || 'Unknown User' });
-      alert('테스트 데이터가 생성되었습니다!');
+      await deleteMasterItem(id);
     } catch (error) {
-      console.error('테스트 데이터 생성 실패:', error);
-      alert('테스트 데이터 생성에 실패했습니다.');
+      console.error('지그 삭제 실패:', error);
+      throw error;
     }
   };
 
@@ -70,20 +54,6 @@ export const JigMasterContainer: React.FC = () => {
           <p className="text-muted-foreground">지그 마스터 데이터를 관리하세요</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {canAddNew && (
-            <Button onClick={handleAddNewJig} className="flex-shrink-0">
-              <Plus className="h-4 w-4 mr-2" />
-              신규 지그 등록
-            </Button>
-          )}
-          <Button 
-            onClick={handleCreateTestData} 
-            variant="outline" 
-            className="flex-shrink-0"
-          >
-            <TestTube className="h-4 w-4 mr-2" />
-            테스트 데이터 생성
-          </Button>
         </div>
       </div>
 
@@ -109,12 +79,21 @@ export const JigMasterContainer: React.FC = () => {
             <JigMasterListView
               jigs={masterItems}
               onSelectJig={handleSelectJig}
-              onAddNewJig={handleAddNewJig}
               currentUserProfile={user ? { uid: user.uid, displayName: user.displayName || '', email: user.email || '', role: userRole } : null}
             />
           </div>
         )}
       </div>
+
+      {/* 지그 상세 모달 */}
+      <JigMasterDetail
+        jig={selectedJig}
+        onSave={handleUpdateJig}
+        onDelete={handleDeleteJig}
+        currentUserProfile={user ? { uid: user.uid, displayName: user.displayName || '', email: user.email || '', role: userRole } : null}
+        isOpen={isDetailModalOpen}
+        onClose={handleCloseDetailModal}
+      />
     </div>
   );
 };

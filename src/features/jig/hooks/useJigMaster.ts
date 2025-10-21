@@ -18,6 +18,7 @@ export const useJigMaster = () => {
     selectedItem,
     autocompleteData,
     fetchMasterItems,
+    subscribeToMasters,
     createMasterItem,
     updateMasterItem,
     deleteMasterItem,
@@ -26,9 +27,13 @@ export const useJigMaster = () => {
   } = useJigMasterStore();
 
   useEffect(() => {
-    fetchMasterItems();
+    const unsubscribe = subscribeToMasters();
     fetchAutocompleteData();
-  }, [fetchMasterItems, fetchAutocompleteData]);
+    
+    return () => {
+      unsubscribe();
+    };
+  }, [subscribeToMasters, fetchAutocompleteData]);
 
   const handleCreateMasterItem = async (data: CreateJigMasterItemData, imageFiles: File[]) => {
     if (!user) throw new Error('User not authenticated');

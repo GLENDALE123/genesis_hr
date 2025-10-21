@@ -10,6 +10,7 @@ import {
   updateJigMasterItem,
   deleteJigMasterItem,
   getAutocompleteData,
+  subscribeToJigMasters,
 } from '../services';
 import { persist } from 'zustand/middleware';
 
@@ -28,6 +29,7 @@ interface JigMasterState {
 
 interface JigMasterActions {
   fetchMasterItems: () => Promise<void>;
+  subscribeToMasters: () => () => void;
   createMasterItem: (data: Omit<JigMasterItem, 'id' | 'createdAt'>, imageFiles: File[], currentUserUid: string) => Promise<void>;
   updateMasterItem: (id: string, updates: Partial<JigMasterItem>) => Promise<void>;
   deleteMasterItem: (id: string) => Promise<void>;
@@ -68,12 +70,33 @@ export const useJigMasterStore = create<JigMasterState & JigMasterActions>()(
         }
       },
 
+      subscribeToMasters: () => {
+        set({ isLoading: true, error: null });
+        
+        const unsubscribe = subscribeToJigMasters(
+          (masters) => {
+            set({ 
+              masterItems: masters,
+              lastFetchTimestamp: Date.now(),
+              isLoading: false 
+            });
+          },
+          (error) => {
+            set({ 
+              error: error.message,
+              isLoading: false 
+            });
+          }
+        );
+
+        return unsubscribe;
+      },
+
       createMasterItem: async (data, imageFiles, currentUserUid) => {
         set({ isLoading: true, error: null });
         try {
           await createJigMasterItem(data, imageFiles, { uid: currentUserUid, displayName: 'Unknown User' });
-          // 생성 후 목록 새로고침
-          await get().fetchMasterItems();
+          // 실시간 구독으로 자동 업데이트되므로 수동 새로고침 불필요
         } catch (error) {
           set({ 
             error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
@@ -86,8 +109,7 @@ export const useJigMasterStore = create<JigMasterState & JigMasterActions>()(
         set({ isLoading: true, error: null });
         try {
           await updateJigMasterItem(id, updates);
-          // 업데이트 후 목록 새로고침
-          await get().fetchMasterItems();
+          // 실시간 구독으로 자동 업데이트되므로 수동 새로고침 불필요
         } catch (error) {
           set({ 
             error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
@@ -100,8 +122,7 @@ export const useJigMasterStore = create<JigMasterState & JigMasterActions>()(
         set({ isLoading: true, error: null });
         try {
           await deleteJigMasterItem(id);
-          // 삭제 후 목록 새로고침
-          await get().fetchMasterItems();
+          // 실시간 구독으로 자동 업데이트되므로 수동 새로고침 불필요
         } catch (error) {
           set({ 
             error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
