@@ -49,3 +49,4 @@ export const getStatusColor = (status: string, colorMap?: StatusColorMap): strin
 export const getStatusColorClass = (status: string, colorMap?: StatusColorMap): string => {
   return getStatusColor(status, colorMap);
 };
+

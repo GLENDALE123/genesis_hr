@@ -43,6 +43,7 @@ export interface UseImageUploadReturn {
   setExistingImages: (urls: string[]) => void;
   deletedImageUrls: string[]; // 삭제된 이미지 URL 추적
   clearDeletedUrls: () => void; // 삭제된 URL 목록 초기화
+  cancelUpload: () => void; // 업로드 중단
 }
 
 // 이미지 업로드 훅
@@ -197,7 +198,16 @@ export const useImageUpload = (): UseImageUploadReturn => {
       }
     });
     setUploadingImages([]);
+    setIsUploading(false);
+    setUploadProgress(0);
   }, [uploadingImages]);
+
+  const cancelUpload = useCallback(() => {
+    // 업로드 진행 상태 강제 중단
+    setIsUploading(false);
+    setUploadProgress(0);
+    console.log('🛑 이미지 업로드 중단됨');
+  }, []);
 
   const setExistingImages = useCallback((urls: string[]) => {
     // 기존 이미지 URL들을 uploadingImages 형태로 변환
@@ -230,7 +240,8 @@ export const useImageUpload = (): UseImageUploadReturn => {
     clearImages,
     setExistingImages,
     deletedImageUrls,
-    clearDeletedUrls
+    clearDeletedUrls,
+    cancelUpload
   };
 };
 

@@ -141,16 +141,32 @@ const AppSidebarComponent = ({
   }, [pathname]);
 
   // 즉시 페이지 이동 핸들러
-  const handleNavigate = React.useCallback((href: string) => {
+  const handleNavigate = React.useCallback((href: string, event?: React.MouseEvent | React.TouchEvent) => {
+    // 이벤트 전파 중지 (모바일에서 중요)
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    
+    console.log('Navigation attempt:', { href, pathname, isMobile }); // 디버깅용 로그
+    
     if (pathname === href) {
+      console.log('Already on the same page, skipping navigation');
       return;
     }
     
-    router.push(href);
-    
-    // 모바일에서는 메뉴 클릭 후 사이드바 닫기
+    // 모바일에서는 메뉴 클릭 후 사이드바 닫기 (페이지 이동 전에)
     if (isMobile && onMobileClose) {
+      console.log('Mobile navigation: closing sidebar first');
       onMobileClose();
+      // 모바일에서는 사이드바가 닫힌 후 페이지 이동
+      setTimeout(() => {
+        console.log('Mobile navigation: navigating to', href);
+        router.push(href);
+      }, 200); // 지연 시간을 200ms로 증가
+    } else {
+      console.log('Desktop navigation: navigating to', href);
+      router.push(href);
     }
   }, [pathname, router, isMobile, onMobileClose]);
 
@@ -177,7 +193,8 @@ const AppSidebarComponent = ({
 
     const navItemContent = (
       <button
-        onClick={() => handleNavigate(item.href)}
+        onClick={(event) => handleNavigate(item.href, event)}
+        onTouchEnd={(event) => handleNavigate(item.href, event)}
         className={cn(
           "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors text-left",
           // 태블릿 최적화: 터치 영역 최소 44px 보장

@@ -245,36 +245,41 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
         imagesInitializedRef.current = false;
       }
     }
-  }, [isEditMode, inspectionData, imageUploadHook]);
+  }, [isEditMode, inspectionData]);
 
 
-  // 임시저장 키 생성
-  const getTempSaveKey = useCallback(() => `temp_${activeTab}_inspection_anonymous`, [activeTab]);
+  // 임시저장 키 생성 (useRef로 안정화)
+  const tempSaveKeyRef = useRef(`temp_${activeTab}_inspection_anonymous`);
+  
+  // activeTab이 변경될 때만 키 업데이트
+  useEffect(() => {
+    tempSaveKeyRef.current = `temp_${activeTab}_inspection_anonymous`;
+  }, [activeTab]);
   
   // 임시저장 데이터 저장 (이미지 URL 제외)
   const saveTempData = useCallback((data: Record<string, unknown>) => {
     try {
       // 이미지 URL과 관련된 필드들을 제외하고 저장
       const { imageUrls, ...dataWithoutImages } = data;
-      localStorage.setItem(getTempSaveKey(), JSON.stringify(dataWithoutImages));
+      localStorage.setItem(tempSaveKeyRef.current, JSON.stringify(dataWithoutImages));
     } catch (error) {
       console.error('임시저장 데이터 저장 실패:', error);
     }
-  }, [getTempSaveKey]);
+  }, []);
   
   // 임시저장 데이터 삭제
-  const clearTempData = () => {
+  const clearTempData = useCallback(() => {
     try {
-      localStorage.removeItem(getTempSaveKey());
+      localStorage.removeItem(tempSaveKeyRef.current);
     } catch (error) {
       console.error('임시저장 데이터 삭제 실패:', error);
     }
-  };
+  }, []);
 
-  // 임시저장 데이터 로드
+  // 임시저장 데이터 로드 (안정화된 함수)
   const loadTempData = useCallback(() => {
     try {
-      const savedData = localStorage.getItem(getTempSaveKey());
+      const savedData = localStorage.getItem(tempSaveKeyRef.current);
       if (savedData) {
         const parsedData = JSON.parse(savedData);
         console.log('📁 임시저장 데이터 로드:', parsedData);
@@ -284,10 +289,13 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       console.error('임시저장 데이터 로드 실패:', error);
     }
     return null;
-  }, [getTempSaveKey]);
+  }, []);
 
   // 자동 임시저장을 위한 디바운스 타이머
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
+  // 이전 formData를 추적하여 실제 변경이 있을 때만 임시저장
+  const prevFormDataRef = useRef<Partial<QualityInspection> | undefined>(undefined);
   
   // autocompleteData 구독
   useEffect(() => {
@@ -324,6 +332,18 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     // 수정 모드에서는 임시저장하지 않음
     if (mode === 'edit') return;
     
+    // 초기 로드 시에는 임시저장하지 않음 (무한 루프 방지)
+    if (!isOpen) return;
+    
+    // 이전 데이터와 비교하여 실제 변경이 있는지 확인
+    const prevData = prevFormDataRef.current;
+    if (prevData && JSON.stringify(prevData) === JSON.stringify(formData)) {
+      return; // 변경사항이 없으면 임시저장하지 않음
+    }
+    
+    // 현재 데이터를 이전 데이터로 저장
+    prevFormDataRef.current = { ...formData };
+    
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
@@ -337,7 +357,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [formData, saveTempData, mode]);
+  }, [formData, saveTempData, mode, isOpen]);
 
   // 모달이 열릴 때 기본 초기화
   useEffect(() => {
@@ -346,9 +366,18 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       setIsSaving(false);
       imagesInitializedRef.current = false;
       
-      // 이미지 업로드 훅 초기화
+      // 이전 formData 추적 초기화
+      prevFormDataRef.current = undefined;
+      
+      // 이미지 업로드 훅 완전 초기화 (업로드 진행 상태 포함)
       imageUploadHook.clearImages();
       imageUploadHook.clearDeletedUrls();
+      
+      // 업로드 진행 상태 강제 초기화 (추가 안전장치)
+      if (imageUploadHook.isUploading) {
+        imageUploadHook.cancelUpload();
+        console.log('🔄 모달 열림 시 진행 중인 업로드 강제 중단');
+      }
       
       // 수정 모드가 아닌 경우에만 탭 설정 및 임시저장 데이터 로드
       if (mode !== 'edit') {
@@ -356,23 +385,33 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
           setActiveTab(initialTab);
         }
         
-        // 생성 모드에서만 임시저장 데이터 로드
-        if (mode === 'create') {
-          const tempData = loadTempData();
-          if (tempData) {
-            console.log('📁 임시저장 데이터 복원:', tempData);
-            setFormData(prev => ({
-              ...prev,
-              ...tempData,
-              // 중요한 기본값들은 보호
-              reliabilityTestResult: tempData.reliabilityTestResult || { result: '양호', action: '', decisionMaker: '' } as TestResultDetail,
-              colorCheckResult: tempData.colorCheckResult || { result: '견본과 색상동일', action: '', decisionMaker: '' } as TestResultDetail,
-            }));
-          }
+        // 생성 모드에서만 임시저장 데이터 로드 (initialData가 없는 경우에만)
+        if (mode === 'create' && !initialData) {
+          // 약간의 지연을 두어 초기화가 완료된 후 로드
+          const loadTimer = setTimeout(() => {
+            const tempData = loadTempData();
+            if (tempData) {
+              console.log('📁 임시저장 데이터 복원:', tempData);
+              setFormData(prev => {
+                const restoredData = {
+                  ...prev,
+                  ...tempData,
+                  // 중요한 기본값들은 보호
+                  reliabilityTestResult: tempData.reliabilityTestResult || { result: '양호', action: '', decisionMaker: '' } as TestResultDetail,
+                  colorCheckResult: tempData.colorCheckResult || { result: '견본과 색상동일', action: '', decisionMaker: '' } as TestResultDetail,
+                };
+                // 복원된 데이터를 이전 데이터로 설정하여 즉시 임시저장되지 않도록 함
+                prevFormDataRef.current = { ...restoredData };
+                return restoredData;
+              });
+            }
+          }, 100); // 100ms 지연
+          
+          return () => clearTimeout(loadTimer);
         }
       }
     }
-  }, [isOpen, mode, initialTab, imageUploadHook, loadTempData]);
+  }, [isOpen, mode, initialTab, loadTempData, initialData]);
 
 
 
@@ -461,6 +500,13 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     setIsSaving(true);
     
     try {
+      // 디버깅: formData 확인
+      console.log('🔍 [QualityInspectionForm] handleSubmit - formData:', {
+        reliabilityTestResult: formData.reliabilityTestResult,
+        colorCheckResult: formData.colorCheckResult,
+        inspectionType: activeTab
+      });
+      
       // 1단계: 먼저 문서 생성 (이미지 없이)
       const inspectionData: Omit<QualityInspection, 'id' | 'createdAt' | 'updatedAt'> = {
         inspectionType: activeTab,
@@ -496,8 +542,8 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
         dryerUsed: formData.dryerUsed,
         flameTreatment: formData.flameTreatment,
         processLines: formData.processLines || [],
-        reliabilityTestResult: formData.reliabilityTestResult,
-        colorCheckResult: formData.colorCheckResult,
+        reliabilityTestResult: formData.reliabilityTestResult || { result: '양호', action: '', decisionMaker: '' },
+        colorCheckResult: formData.colorCheckResult || { result: '견본과 색상동일', action: '', decisionMaker: '' },
         injectionPackaging: formData.injectionPackaging,
         postProcessPackaging: formData.postProcessPackaging,
         preInspectionHistory: formData.preInspectionHistory,
@@ -515,6 +561,13 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
         createdBy: user?.uid || '',
         updatedBy: user?.uid || ''
       };
+
+      // 디버깅: inspectionData 확인
+      console.log('🔍 [QualityInspectionForm] handleSubmit - inspectionData:', {
+        reliabilityTestResult: inspectionData.reliabilityTestResult,
+        colorCheckResult: inspectionData.colorCheckResult,
+        inspectionType: inspectionData.inspectionType
+      });
 
       const docId = await onSubmit(inspectionData);
       
@@ -604,9 +657,15 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       reinspectionContent: ''
     });
     
-    // 이미지 상태 완전 정리
+    // 이미지 상태 완전 정리 (업로드 진행 상태 포함)
     imageUploadHook.clearImages();
     imageUploadHook.clearDeletedUrls();
+    
+    // 업로드 진행 상태 강제 초기화 (추가 안전장치)
+    if (imageUploadHook.isUploading) {
+      imageUploadHook.cancelUpload();
+      console.log('🔄 모달 닫힘 시 진행 중인 업로드 강제 중단');
+    }
     
     // 임시저장 데이터 삭제
     clearTempData();

@@ -54,7 +54,15 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         {/* Mobile Sidebar Sheet */}
         {isMobile && (
           <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
-            <SheetContent side="left" className="w-72 p-0">
+            <SheetContent 
+              side="left" 
+              className="w-72 p-0"
+              onPointerDownOutside={(event) => {
+                // 모바일에서 외부 클릭 시 사이드바 닫기
+                event.preventDefault();
+                setMobileSidebarOpen(false);
+              }}
+            >
               <VisuallyHidden>
                 <SheetTitle>네비게이션 메뉴</SheetTitle>
                 <SheetDescription>
