@@ -40,12 +40,46 @@ export const createQualityInspection = async (
   inspectionData: Omit<QualityInspection, 'id' | 'createdAt'>
 ): Promise<string> => {
   try {
-    const docRef = await addDoc(getCollectionRef(), {
+    // undefined 값 제거 함수
+    const removeUndefinedValues = (obj: any): any => {
+      if (obj === null || obj === undefined) {
+        return null;
+      }
+      if (Array.isArray(obj)) {
+        return obj.map(removeUndefinedValues).filter(item => item !== null);
+      }
+      if (typeof obj === 'object') {
+        const cleaned: any = {};
+        for (const [key, value] of Object.entries(obj)) {
+          if (value !== undefined) {
+            const cleanedValue = removeUndefinedValues(value);
+            if (cleanedValue !== null) {
+              cleaned[key] = cleanedValue;
+            }
+          }
+        }
+        return cleaned;
+      }
+      return obj;
+    };
+
+    // reliabilityTestResult 기본값 설정
+    const processedData = {
       ...inspectionData,
+      reliabilityTestResult: inspectionData.reliabilityTestResult || { result: '양호', action: '', decisionMaker: '' },
+      colorCheckResult: inspectionData.colorCheckResult || { result: '견본과 색상동일', action: '', decisionMaker: '' },
       createdAt: new Date().toISOString(),
-    });
+    };
+
+    // undefined 값 제거
+    const cleanedData = removeUndefinedValues(processedData);
+
+    console.log('💾 [QualityInspectionService] 저장할 데이터:', cleanedData);
+    
+    const docRef = await addDoc(getCollectionRef(), cleanedData);
     return docRef.id;
   } catch (error) {
+    console.error('❌ [QualityInspectionService] 품질검사 생성 실패:', error);
     throw error;
   }
 };
@@ -60,15 +94,41 @@ export const updateQualityInspection = async (
   try {
     console.log('🔄 [QualityInspectionService] 업데이트 시작:', { docId, updateData });
     
+    // undefined 값 제거 함수
+    const removeUndefinedValues = (obj: any): any => {
+      if (obj === null || obj === undefined) {
+        return null;
+      }
+      if (Array.isArray(obj)) {
+        return obj.map(removeUndefinedValues).filter(item => item !== null);
+      }
+      if (typeof obj === 'object') {
+        const cleaned: any = {};
+        for (const [key, value] of Object.entries(obj)) {
+          if (value !== undefined) {
+            const cleanedValue = removeUndefinedValues(value);
+            if (cleanedValue !== null) {
+              cleaned[key] = cleanedValue;
+            }
+          }
+        }
+        return cleaned;
+      }
+      return obj;
+    };
+
     const docRef = getDocRef(docId);
     const finalUpdateData = {
       ...updateData,
       updatedAt: new Date().toISOString(),
     };
     
-    console.log('💾 [QualityInspectionService] Firestore 업데이트 데이터:', finalUpdateData);
+    // undefined 값 제거
+    const cleanedData = removeUndefinedValues(finalUpdateData);
     
-    await updateDoc(docRef, finalUpdateData);
+    console.log('💾 [QualityInspectionService] Firestore 업데이트 데이터:', cleanedData);
+    
+    await updateDoc(docRef, cleanedData);
     
     console.log('✅ [QualityInspectionService] 업데이트 완료:', docId);
   } catch (error) {

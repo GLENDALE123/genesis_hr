@@ -106,7 +106,10 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       return {
         ...inspectionData,
         // 이미지 URL을 업로드 훅에 설정
-        imageUrls: inspectionData.imageUrls || []
+        imageUrls: inspectionData.imageUrls || [],
+        // 중요한 기본값들 보호
+        reliabilityTestResult: inspectionData.reliabilityTestResult || { result: '양호', action: '', decisionMaker: '' } as TestResultDetail,
+        colorCheckResult: inspectionData.colorCheckResult || { result: '견본과 색상동일', action: '', decisionMaker: '' } as TestResultDetail,
       };
     }
 
@@ -146,17 +149,24 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
         dryerUsed: '미사용' as '사용' | '미사용' | '',
         flameTreatment: '미사용' as '사용' | '미사용' | '',
         processLines: [{ workLine: '', lineSpeed: '', lineConditions: [{ type: '하도' as const, value: 0 }, { type: '상도' as const, value: 0 }], lampUsage: [] }] as ProcessLineData[],
-        
-        // 출하검사 필드
-        workerCount: '',
         injectionPackaging: '',
         postProcessPackaging: '',
+        preInspectionHistory: '',
+        inProcessInspectionHistory: '',
+        keywordPairs: [{ process: '', defect: '' }] as KeywordPair[],
         
-        // 공통 필드
-        keywordPairs: [] as KeywordPair[],
+        // 출하검사 필드
+        workerCount: '1',
+        workers: [{ name: '', totalInspected: 0, defectQuantity: 0, result: '합격' as '합격' | '불합격', defectReasons: [], directInputResult: '', action: '', decisionMaker: '' }] as WorkerInspectionData[],
+        reliabilityReview: { method: '' as ReliabilityReview['method'], result: '양호' as ReliabilityReview['result'], action: '', decisionMaker: '' } as ReliabilityReview,
+        reinspectionKeyword: '',
+        reinspectionContent: '',
         
         // initialData로 덮어쓰기
-        ...initialData
+        ...initialData,
+        // 중요한 기본값들은 보호 - initialData에 값이 없으면 기본값 사용
+        reliabilityTestResult: initialData.reliabilityTestResult || { result: '양호', action: '', decisionMaker: '' } as TestResultDetail,
+        colorCheckResult: initialData.colorCheckResult || { result: '견본과 색상동일', action: '', decisionMaker: '' } as TestResultDetail,
       };
     }
 
@@ -215,21 +225,38 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
   // 수정 모드에서 inspectionData가 변경될 때 formData 업데이트
   useEffect(() => {
     if (isEditMode && inspectionData) {
+      // 이미지 상태 완전 초기화
+      imageUploadHook.clearImages();
+      imageUploadHook.clearDeletedUrls();
+      
       setFormData({
         ...inspectionData,
-        imageUrls: inspectionData.imageUrls || []
+        imageUrls: inspectionData.imageUrls || [],
+        // 중요한 기본값들 보호
+        reliabilityTestResult: inspectionData.reliabilityTestResult || { result: '양호', action: '', decisionMaker: '' } as TestResultDetail,
+        colorCheckResult: inspectionData.colorCheckResult || { result: '견본과 색상동일', action: '', decisionMaker: '' } as TestResultDetail,
       });
+      
+      // 기존 이미지 설정
+      if (inspectionData.imageUrls && inspectionData.imageUrls.length > 0) {
+        imageUploadHook.setExistingImages(inspectionData.imageUrls);
+        imagesInitializedRef.current = true;
+      } else {
+        imagesInitializedRef.current = false;
+      }
     }
-  }, [isEditMode, inspectionData]);
+  }, [isEditMode, inspectionData, imageUploadHook]);
 
 
   // 임시저장 키 생성
   const getTempSaveKey = useCallback(() => `temp_${activeTab}_inspection_anonymous`, [activeTab]);
   
-  // 임시저장 데이터 저장
+  // 임시저장 데이터 저장 (이미지 URL 제외)
   const saveTempData = useCallback((data: Record<string, unknown>) => {
     try {
-      localStorage.setItem(getTempSaveKey(), JSON.stringify(data));
+      // 이미지 URL과 관련된 필드들을 제외하고 저장
+      const { imageUrls, ...dataWithoutImages } = data;
+      localStorage.setItem(getTempSaveKey(), JSON.stringify(dataWithoutImages));
     } catch (error) {
       console.error('임시저장 데이터 저장 실패:', error);
     }
@@ -243,6 +270,21 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       console.error('임시저장 데이터 삭제 실패:', error);
     }
   };
+
+  // 임시저장 데이터 로드
+  const loadTempData = useCallback(() => {
+    try {
+      const savedData = localStorage.getItem(getTempSaveKey());
+      if (savedData) {
+        const parsedData = JSON.parse(savedData);
+        console.log('📁 임시저장 데이터 로드:', parsedData);
+        return parsedData;
+      }
+    } catch (error) {
+      console.error('임시저장 데이터 로드 실패:', error);
+    }
+    return null;
+  }, [getTempSaveKey]);
 
   // 자동 임시저장을 위한 디바운스 타이머
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -277,8 +319,11 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     return () => unsubscribe();
   }, []);
   
-  // formData 변경시 자동 임시저장
+  // formData 변경시 자동 임시저장 (생성 모드에서만)
   useEffect(() => {
+    // 수정 모드에서는 임시저장하지 않음
+    if (mode === 'edit') return;
+    
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
@@ -292,12 +337,12 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [formData, saveTempData]);
+  }, [formData, saveTempData, mode]);
 
-  // 모달이 열릴 때마다 초기화 및 탭 설정
+  // 모달이 열릴 때 기본 초기화
   useEffect(() => {
     if (isOpen) {
-      // 모달이 열릴 때 초기화
+      // 모달이 열릴 때 기본 초기화
       setIsSaving(false);
       imagesInitializedRef.current = false;
       
@@ -305,34 +350,30 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       imageUploadHook.clearImages();
       imageUploadHook.clearDeletedUrls();
       
-      // 수정 모드인 경우 해당 검사 타입으로 탭 설정
-      if (mode === 'edit' && inspectionData?.inspectionType) {
-        setActiveTab(inspectionData.inspectionType);
-        // 수정 모드에서는 해당 검사 데이터로 폼 초기화
-        setFormData({
-          ...inspectionData,
-          imageUrls: inspectionData.imageUrls || []
-        });
-        // 기존 이미지 설정
-        if (inspectionData.imageUrls && inspectionData.imageUrls.length > 0) {
-          imageUploadHook.setExistingImages(inspectionData.imageUrls);
-          imagesInitializedRef.current = true;
+      // 수정 모드가 아닌 경우에만 탭 설정 및 임시저장 데이터 로드
+      if (mode !== 'edit') {
+        if (initialTab) {
+          setActiveTab(initialTab);
         }
-      } else if (initialTab) {
-        setActiveTab(initialTab);
+        
+        // 생성 모드에서만 임시저장 데이터 로드
+        if (mode === 'create') {
+          const tempData = loadTempData();
+          if (tempData) {
+            console.log('📁 임시저장 데이터 복원:', tempData);
+            setFormData(prev => ({
+              ...prev,
+              ...tempData,
+              // 중요한 기본값들은 보호
+              reliabilityTestResult: tempData.reliabilityTestResult || { result: '양호', action: '', decisionMaker: '' } as TestResultDetail,
+              colorCheckResult: tempData.colorCheckResult || { result: '견본과 색상동일', action: '', decisionMaker: '' } as TestResultDetail,
+            }));
+          }
+        }
       }
     }
-  }, [isOpen, mode, inspectionData?.inspectionType, initialTab]);
+  }, [isOpen, mode, initialTab, imageUploadHook, loadTempData]);
 
-  // 수정 모드에서 탭 변경 시 폼 데이터 초기화 방지
-  useEffect(() => {
-    if (mode === 'edit' && inspectionData) {
-      setFormData({
-        ...inspectionData,
-        imageUrls: inspectionData.imageUrls || []
-      });
-    }
-  }, [mode, inspectionData]);
 
 
 
@@ -519,6 +560,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
   };
 
   const handleClose = () => {
+    // 폼 데이터 초기화
     setFormData({
       orderNumber: 'T',
       supplier: '',
@@ -561,7 +603,15 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       reinspectionKeyword: '',
       reinspectionContent: ''
     });
+    
+    // 이미지 상태 완전 정리
     imageUploadHook.clearImages();
+    imageUploadHook.clearDeletedUrls();
+    
+    // 임시저장 데이터 삭제
+    clearTempData();
+    
+    // 모달 닫기
     onClose();
   };
 

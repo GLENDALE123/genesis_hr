@@ -119,6 +119,10 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
       injectionColor: currentGroup.common.injectionColor,
       // injectionCompany: currentGroup.common.injectionCompany, // 속성이 없으므로 제거
       // 이미지는 포함하지 않음 (사용자가 새로 업로드)
+      
+      // 중요한 기본값들 추가 (Firebase undefined 오류 방지)
+      reliabilityTestResult: { result: '양호', action: '', decisionMaker: '' },
+      colorCheckResult: { result: '견본과 색상동일', action: '', decisionMaker: '' },
     };
   };
   
