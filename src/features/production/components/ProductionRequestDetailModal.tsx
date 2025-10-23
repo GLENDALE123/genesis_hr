@@ -171,8 +171,9 @@ const ProductionRequestDetailModalComponent: React.FC<ProductionRequestDetailMod
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0">
-          <DialogHeader className="px-6 pt-6 pb-4 border-b">
+        <DialogContent 
+          className="max-w-4xl max-h-[90vh] p-0"
+          stickyHeader={
             <div className="flex justify-between items-start">
               <div>
                 <DialogTitle className="text-xl font-bold">
@@ -186,10 +187,52 @@ const ProductionRequestDetailModalComponent: React.FC<ProductionRequestDetailMod
                 {request.status}
               </span>
             </div>
-          </DialogHeader>
-
-          {/* 상세 정보 */}
-          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+          }
+          stickyFooter={
+            <div className="flex flex-wrap gap-2">
+              {canManage && request.status === ProductionRequestStatus.Requested && (
+                <>
+                  <Button
+                    onClick={() => onStatusUpdate && onStatusUpdate(request.id, ProductionRequestStatus.InProgress, '접수됨')}
+                    className="bg-green-500 hover:bg-green-600"
+                  >
+                    접수
+                  </Button>
+                  <Button
+                    onClick={() => setActionModalState({ open: true, status: ProductionRequestStatus.Hold, reason: '' })}
+                    className="bg-orange-500 hover:bg-orange-600"
+                  >
+                    보류
+                  </Button>
+                  <Button
+                    onClick={() => setActionModalState({ open: true, status: ProductionRequestStatus.Rejected, reason: '' })}
+                    variant="destructive"
+                  >
+                    반려
+                  </Button>
+                </>
+              )}
+              {canManage && request.status === ProductionRequestStatus.InProgress && (
+                <Button
+                  onClick={() => onStatusUpdate && onStatusUpdate(request.id, ProductionRequestStatus.Completed, '완료 처리됨')}
+                  className="bg-blue-500 hover:bg-blue-600"
+                >
+                  완료 처리
+                </Button>
+              )}
+              {isAdmin && (
+                <Button
+                  variant="destructive"
+                  className="ml-auto"
+                  onClick={() => setIsDeleteModalOpen(true)}
+                >
+                  삭제
+                </Button>
+              )}
+            </div>
+          }
+        >
+          <div className="space-y-6">
             {/* 기본 정보 */}
             <dl className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-6">
               <DetailItem label="요청 ID" value={<span className="font-mono text-sm">{request.id}</span>} />
@@ -243,49 +286,6 @@ const ProductionRequestDetailModalComponent: React.FC<ProductionRequestDetailMod
               currentUserUid={currentUserUid}
               isAdmin={isAdmin}
             />
-          </div>
-
-          {/* 하단 액션 버튼 */}
-          <div className="flex-shrink-0 flex flex-wrap gap-2 px-6 py-4 border-t bg-muted/30">
-            {canManage && request.status === ProductionRequestStatus.Requested && (
-              <>
-                <Button
-                  onClick={() => onStatusUpdate && onStatusUpdate(request.id, ProductionRequestStatus.InProgress, '접수됨')}
-                  className="bg-green-500 hover:bg-green-600"
-                >
-                  접수
-                </Button>
-                <Button
-                  onClick={() => setActionModalState({ open: true, status: ProductionRequestStatus.Hold, reason: '' })}
-                  className="bg-orange-500 hover:bg-orange-600"
-                >
-                  보류
-                </Button>
-                <Button
-                  onClick={() => setActionModalState({ open: true, status: ProductionRequestStatus.Rejected, reason: '' })}
-                  variant="destructive"
-                >
-                  반려
-                </Button>
-              </>
-            )}
-            {canManage && request.status === ProductionRequestStatus.InProgress && (
-              <Button
-                onClick={() => onStatusUpdate && onStatusUpdate(request.id, ProductionRequestStatus.Completed, '완료 처리됨')}
-                className="bg-blue-500 hover:bg-blue-600"
-              >
-                완료 처리
-              </Button>
-            )}
-            {isAdmin && (
-              <Button
-                variant="ghost"
-                className="ml-auto text-destructive hover:text-destructive"
-                onClick={() => setIsDeleteModalOpen(true)}
-              >
-                삭제
-              </Button>
-            )}
           </div>
         </DialogContent>
       </Dialog>

@@ -1,4 +1,5 @@
 import { db } from '@/shared/services/firebase/config';
+import { getUserDisplayName } from '@/shared/utils/userUtils';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '@/shared/services/firebase/config';
@@ -9,6 +10,11 @@ interface RequestUser {
   uid: string;
   displayName: string;
   photoURL?: string;
+}
+
+interface UserProfile {
+  displayName?: string;
+  email?: string;
 }
 
 interface NotificationPayload {
@@ -206,7 +212,8 @@ export class UnifiedNotificationService {
     oldStatus: ProductionStatus | undefined,
     newStatus: ProductionStatus,
     report: PackagingReport,
-    user: RequestUser
+    user: RequestUser,
+    userProfile?: UserProfile | null
   ): Promise<void> {
     try {
       // 상태 변경이 없으면 알림 전송하지 않음
@@ -227,7 +234,7 @@ export class UnifiedNotificationService {
       switch (newStatus) {
         case ProductionStatus.Pending:
           title = '생산일보 상태 변경';
-          body = `${user.displayName}님이 생산일보 상태를 "대기"로 변경했습니다.
+          body = `${getUserDisplayName(userProfile, user)}님이 생산일보 상태를 "대기"로 변경했습니다.
 
 제품: ${productInfo}
 라인: ${lineInfo}
@@ -239,7 +246,7 @@ export class UnifiedNotificationService {
           
         case ProductionStatus.InProgress:
           title = '생산일보 상태 변경';
-          body = `${user.displayName}님이 생산일보 상태를 "작업중"으로 변경했습니다.
+          body = `${getUserDisplayName(userProfile, user)}님이 생산일보 상태를 "작업중"으로 변경했습니다.
 
 제품: ${productInfo}
 라인: ${lineInfo}
@@ -251,7 +258,7 @@ export class UnifiedNotificationService {
           
         case ProductionStatus.Completed:
           title = '생산일보 상태 변경';
-          body = `${user.displayName}님이 생산일보 상태를 "생산완료"로 변경했습니다.
+          body = `${getUserDisplayName(userProfile, user)}님이 생산일보 상태를 "생산완료"로 변경했습니다.
 
 제품: ${productInfo}
 라인: ${lineInfo}
@@ -271,7 +278,7 @@ export class UnifiedNotificationService {
         body,
         requestId: report.id,
         subtitle,
-        senderName: user.displayName,
+        senderName: getUserDisplayName(userProfile, user),
         senderUid: user.uid,
         senderAvatar: user.photoURL,
         priority: 'normal',
@@ -298,7 +305,8 @@ export class UnifiedNotificationService {
   static async sendDailyReportActionNotification(
     action: 'created' | 'updated' | 'deleted',
     report: PackagingReport,
-    user: RequestUser
+    user: RequestUser,
+    userProfile?: UserProfile | null
   ): Promise<void> {
     try {
       // 알림 내용 구성
@@ -313,7 +321,7 @@ export class UnifiedNotificationService {
       switch (action) {
         case 'created':
           title = '생산일보 등록';
-          body = `${user.displayName}님이 새로운 생산일보를 등록했습니다.
+          body = `${getUserDisplayName(userProfile, user)}님이 새로운 생산일보를 등록했습니다.
 
 제품: ${productInfo}
 라인: ${lineInfo}
@@ -324,7 +332,7 @@ export class UnifiedNotificationService {
           
         case 'updated':
           title = '생산일보 수정';
-          body = `${user.displayName}님이 생산일보를 수정했습니다.
+          body = `${getUserDisplayName(userProfile, user)}님이 생산일보를 수정했습니다.
 
 제품: ${productInfo}
 라인: ${lineInfo}
@@ -335,7 +343,7 @@ export class UnifiedNotificationService {
           
         case 'deleted':
           title = '생산일보 삭제';
-          body = `${user.displayName}님이 생산일보를 삭제했습니다.
+          body = `${getUserDisplayName(userProfile, user)}님이 생산일보를 삭제했습니다.
 
 제품: ${productInfo}
 라인: ${lineInfo}
@@ -353,7 +361,7 @@ export class UnifiedNotificationService {
         body,
         requestId: `DAILY-REPORT-${action.toUpperCase()}-${Date.now()}`,
         subtitle,
-        senderName: user.displayName,
+        senderName: getUserDisplayName(userProfile, user),
         senderUid: user.uid,
         senderAvatar: user.photoURL,
         priority: 'normal',
@@ -399,10 +407,10 @@ export class UnifiedNotificationService {
       await this.sendNotification({
         type: 'production-schedule',
         title: '생산일정',
-        body: `${user.displayName}님이 ${actionMessages[action]}`,
+        body: `${getUserDisplayName(userProfile, user)}님이 ${actionMessages[action]}`,
         requestId: `SCHEDULE-${action.toUpperCase()}-${Date.now()}`,
         subtitle: `${scheduleData.productName}/${scheduleData.partName} (${scheduleData.productionLine})`,
-        senderName: user.displayName,
+        senderName: getUserDisplayName(userProfile, user),
         senderUid: user.uid,
         senderAvatar: user.photoURL,
         priority: 'normal',
@@ -445,10 +453,10 @@ export class UnifiedNotificationService {
       await this.sendNotification({
         type: 'production-schedule',
         title: '생산일정',
-        body: `${user.displayName}님이 ${schedules.length}건의 생산일정을 일괄 등록했습니다.`,
+        body: `${getUserDisplayName(userProfile, user)}님이 ${schedules.length}건의 생산일정을 일괄 등록했습니다.`,
         requestId: `SCHEDULE-BULK-${Date.now()}`,
         subtitle: `${dateRange} (${schedules.length}건)`,
-        senderName: user.displayName,
+        senderName: getUserDisplayName(userProfile, user),
         senderUid: user.uid,
         senderAvatar: user.photoURL,
         priority: 'normal',
@@ -468,6 +476,46 @@ export class UnifiedNotificationService {
       console.log('✅ 생산일정 일괄 알림 전송 완료');
     } catch (error) {
       console.error('생산일정 일괄 알림 전송 중 오류:', error);
+    }
+  }
+
+  // ==================== 근무계획 알림 ====================
+
+  /**
+   * 근무계획 변경 알림 생성
+   */
+  static async notifyWorkScheduleChange(
+    dateStr: string,
+    scheduleId: string,
+    action: 'created' | 'updated' | 'deleted',
+    description: string
+  ): Promise<void> {
+    try {
+      const actionMessages = {
+        created: '근무계획을 등록했습니다.',
+        updated: '근무계획을 변경했습니다.',
+        deleted: '근무계획을 삭제했습니다.'
+      };
+
+      await this.sendNotification({
+        type: 'work-schedule',
+        title: '근무계획 변경',
+        body: `${dateStr} ${description}`,
+        requestId: scheduleId,
+        subtitle: actionMessages[action],
+        senderName: '시스템',
+        senderUid: 'system',
+        priority: 'normal',
+        metadata: {
+          action,
+          dateStr,
+          description
+        }
+      });
+
+      console.log(`✅ 근무계획 변경 알림 전송 완료: ${dateStr} - ${action}`);
+    } catch (error) {
+      console.error('근무계획 변경 알림 전송 중 오류:', error);
     }
   }
 
@@ -598,7 +646,7 @@ export class UnifiedNotificationService {
       workDate: new Date().toISOString().split('T')[0],
       author: {
         uid: user.uid,
-        displayName: user.displayName
+        displayName: getUserDisplayName(userProfile, user)
       },
       productionLine: '증착1',
       orderNumbers: ['PO-TEST-001'],
@@ -630,7 +678,7 @@ export class UnifiedNotificationService {
       workDate: new Date().toISOString().split('T')[0],
       author: {
         uid: user.uid,
-        displayName: user.displayName
+        displayName: getUserDisplayName(userProfile, user)
       },
       productionLine: '증착1',
       orderNumbers: ['PO-TEST-001'],

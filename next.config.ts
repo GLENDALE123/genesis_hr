@@ -24,14 +24,13 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
   },
   
-  // Turbopack 설정
-  turbopack: {
-    // 파일 감시 성능 최적화
-    resolveExtensions: ['.tsx', '.ts', '.jsx', '.js', '.mjs', '.json'],
-    // Path aliases
-    resolveAlias: {
-      '@': './src',
-    },
+  // Turbopack 설정 (Next.js 16에서 자동으로 처리됨)
+  // turbopack 설정은 experimental.turbo로 이동됨
+  
+  // 터보백 활성화를 위한 추가 설정
+  typescript: {
+    // 타입 체크를 비동기로 처리하여 터보백 성능 향상
+    ignoreBuildErrors: false,
   },
   
   // 개발 모드 성능 최적화

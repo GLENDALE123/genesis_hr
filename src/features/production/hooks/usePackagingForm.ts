@@ -48,7 +48,7 @@ interface UseProductionFormProps {
  * - 박스 정보 관리
  */
 export const usePackagingForm = ({ report, isEditMode = false }: UseProductionFormProps) => {
-  const { user } = useAuthStore();
+  const { user, userProfile } = useAuthStore();
   const [formData, setFormData] = useState<PackagingFormData>(initialFormData);
   const [isSaving, setIsSaving] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -138,10 +138,10 @@ export const usePackagingForm = ({ report, isEditMode = false }: UseProductionFo
       // 새 생산일보 작성 시 로그인한 사용자 정보 자동 채우기
       setFormData({
         ...initialFormData,
-        authorName: getUserDisplayName(user)
+        authorName: getUserDisplayName(userProfile, user)
       });
     }
-  }, [report, isEditMode, user]);
+  }, [report, isEditMode, user, userProfile]);
 
   // 일반 입력 필드 변경
   const handleInputChange = (field: keyof PackagingFormData, value: string | string[]) => {

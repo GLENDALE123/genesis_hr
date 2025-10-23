@@ -3,7 +3,7 @@
 import React from 'react';
 import { Badge } from '@/shared/components/ui/badge';
 import { cn } from '@/shared/lib/utils';
-import { WorkSchedule, WORK_TYPES, WorkType } from '../types';
+import { WorkSchedule, WORK_TYPES, WorkType, CalendarDay } from '../types';
 import { WEEKDAYS, generateMonthCalendar } from '../utils/scheduleUtils';
 
 interface MonthCalendarProps {
@@ -13,7 +13,6 @@ interface MonthCalendarProps {
   selectedDates: Set<string>;
   canManage: boolean;
   onDateClick?: (dateStr: string) => void;
-  isPrintMode?: boolean;
   calendarData?: CalendarDay[][]; // 메모이제이션된 달력 데이터
 }
 
@@ -24,9 +23,8 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
   selectedDates,
   canManage,
   onDateClick,
-  isPrintMode = false,
   calendarData,
-}) => {
+}: MonthCalendarProps) => {
   // 메모이제이션된 달력 데이터 사용, 없으면 fallback으로 직접 생성
   const calendar = calendarData && calendarData.length > 0 
     ? calendarData 
@@ -43,7 +41,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
 
       {/* 요일 헤더 */}
       <div className="grid grid-cols-7 border-b bg-muted/30">
-        {WEEKDAYS.map((day, index) => (
+        {WEEKDAYS.map((day: string, index: number) => (
           <div
             key={day}
             className={cn(
@@ -59,9 +57,9 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
 
       {/* 달력 그리드 - 반응형 높이 */}
       <div className="flex-1 grid grid-rows-6 gap-px bg-border">
-        {calendar.map((week, weekIndex) => (
+        {calendar.map((week: CalendarDay[], weekIndex: number) => (
           <div key={weekIndex} className="grid grid-cols-7 gap-px">
-            {week.map((dayData) => {
+            {week.map((dayData: CalendarDay) => {
               if (!dayData) return null;
               
               const isSelected = selectedDates.has(dayData.dateString);
@@ -73,7 +71,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
                   key={dayData.dateString}
                   className={cn(
                     'relative flex flex-col transition-colors duration-200',
-                    isPrintMode ? 'min-h-[8rem] p-2' : 'min-h-[5rem] sm:min-h-[6rem] lg:min-h-[8rem] p-2',
+                    'min-h-[4rem] sm:min-h-[5rem] lg:min-h-[6rem] p-2',
                     dayData.isCurrentMonth
                       ? 'bg-background hover:bg-muted/30'
                       : 'bg-muted/20 text-muted-foreground',
@@ -87,7 +85,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
                   }}
                 >
                   {/* 날짜 숫자 */}
-                  <div className="flex items-start justify-between mb-1">
+                  <div className="flex items-start justify-between mb-2">
                     <span
                       className={cn(
                         'text-sm font-medium',
@@ -104,10 +102,9 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
                   {/* 공휴일 */}
                   {dayData.isCurrentMonth && dayData.holiday && (
                     <Badge
-                      variant="destructive"
                       className={cn(
-                        'text-xs mb-1 font-semibold rounded-md',
-                        isPrintMode ? 'whitespace-pre-wrap break-words' : 'truncate'
+                        'text-xs mb-2 font-semibold rounded-md bg-red-500 text-white',
+                        'truncate'
                       )}
                     >
                       {dayData.holiday}
@@ -117,17 +114,10 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
                   {/* 근무 타입 */}
                   {dayData.isCurrentMonth && hasSchedule && dayData.schedule && (
                     <div
-                      className={cn(
-                        'text-xs space-y-0.5',
-                        isPrintMode ? 'overflow-visible whitespace-pre-wrap break-words' : 'overflow-hidden'
-                      )}
+                      className="text-xs space-y-1 overflow-hidden"
                     >
                       <Badge
-                        variant="secondary"
-                        className={cn(
-                          'text-xs font-semibold border-0 rounded-md',
-                          isPrintMode ? '' : 'truncate'
-                        )}
+                        className="text-xs font-semibold border-0 rounded-md truncate"
                         style={{ 
                           backgroundColor: WORK_TYPES[dayData.schedule.type as WorkType]?.color + '20',
                           color: WORK_TYPES[dayData.schedule.type as WorkType]?.color,
@@ -137,12 +127,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
                         {dayData.schedule.type}
                       </Badge>
                       {dayData.schedule.description && (
-                        <p
-                          className={cn(
-                            'text-muted-foreground text-xs',
-                            isPrintMode ? '' : 'truncate'
-                          )}
-                        >
+                        <p className="text-muted-foreground text-xs truncate">
                           {dayData.schedule.description}
                         </p>
                       )}

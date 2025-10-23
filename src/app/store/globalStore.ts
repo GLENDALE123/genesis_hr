@@ -77,6 +77,9 @@ const initialState: GlobalState = {
 // 알림 timeout ID를 저장하는 Map
 const notificationTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 
+// 안전한 ID 생성을 위한 카운터
+let notificationIdCounter = 0;
+
 export const useGlobalStore = create<GlobalState & GlobalActions>()(
   devtools(
     persist(
@@ -94,7 +97,7 @@ export const useGlobalStore = create<GlobalState & GlobalActions>()(
         addNotification: (notificationData) => {
           const notification: Notification = {
             ...notificationData,
-            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+            id: `notification-${++notificationIdCounter}-${Date.now()}`,
             timestamp: new Date(),
           };
           

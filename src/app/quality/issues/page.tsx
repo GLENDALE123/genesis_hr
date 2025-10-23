@@ -18,6 +18,7 @@ import { IssueItem } from '@/features/quality/types';
 import { addIssueItem, deleteQualityIssue } from '@/features/quality/services/qualityIssueService';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/features/auth/store/authStore';
+import { getUserDisplayName } from '@/shared/utils/userUtils';
 
 export default function QualityIssuesPage() {
   const { issues, isLoading, searchTerm, setSearchTerm, setStatusFilter, stats } = useQualityIssues();
@@ -44,7 +45,7 @@ export default function QualityIssuesPage() {
     if (typeof issue.author === 'object' && issue.author) {
       return issue.author.uid === user.uid || 
              issue.author.email === user.email ||
-             issue.author.displayName === (userProfile?.displayName || user.displayName);
+             issue.author.displayName === getUserDisplayName(userProfile, user);
     }
     
     return false;

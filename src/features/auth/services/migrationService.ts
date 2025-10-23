@@ -147,7 +147,7 @@ export class MigrationService {
         return newProfile;
       } else if (!existingProfile) {
         // 프로필이 전혀 없으면 새로 생성
-        const userName = getUserDisplayName(user, user.email.split('@')[0]);
+        const userName = getUserDisplayName(null, user, user.email.split('@')[0]);
         const newProfile: UserProfile = {
           uid: user.uid,
           email: user.email,

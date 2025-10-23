@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, KeyboardEvent } from 'react';
 import { Button } from '@/shared/components/ui/button';
 import { Avatar, AvatarFallback } from '@/shared/components/ui/avatar';
-import { getUserInitial } from '@/shared/utils/userUtils';
+import { getUserDisplayName, getUserInitial } from '@/shared/utils/userUtils';
 import type { UserProfile } from '@/features/auth/types';
 
 interface ChatInputProps {
@@ -44,7 +44,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   // @ 뒤의 텍스트로 사용자 필터링 (자기 자신 제외)
   const filteredUsers = users.filter(user => 
     user.uid !== currentUserUid && // 자기 자신 제외
-    user.displayName?.toLowerCase().includes(mentionSearch.toLowerCase())
+    getUserDisplayName(user, null)?.toLowerCase().includes(mentionSearch.toLowerCase())
   ).slice(0, 5); // 최대 5명만 표시
 
   // 텍스트 추출 (HTML -> @[DisplayName](UID) 형태)
@@ -218,8 +218,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         mentionSpan.className = 'mention';
         mentionSpan.setAttribute('contenteditable', 'false');
         mentionSpan.setAttribute('data-user-id', user.uid || '');
-        mentionSpan.setAttribute('data-display-name', user.displayName || '');
-        mentionSpan.textContent = `@${user.displayName}`;
+        mentionSpan.setAttribute('data-display-name', getUserDisplayName(user, null) || '');
+        mentionSpan.textContent = `@${getUserDisplayName(user, null)}`;
         
         // 스타일 적용 - 파란색 굵은 텍스트
         mentionSpan.style.cssText = `
@@ -249,7 +249,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     // 멘션된 사용자 추가
     const newMentionUser: MentionUser = {
       id: user.uid || '',
-      displayName: user.displayName || '',
+      displayName: getUserDisplayName(user, null) || '',
       uid: user.uid || '',
     };
     
@@ -389,7 +389,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     </AvatarFallback>
                   </Avatar>
                   <span className="text-sm font-medium">
-                    {user.displayName || '알 수 없음'}
+                    {getUserDisplayName(user, null) || '알 수 없음'}
                   </span>
                 </div>
               ))}

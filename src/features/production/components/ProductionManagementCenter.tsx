@@ -115,7 +115,7 @@ const ProductionManagementCenterComponent: React.FC = () => {
       status: ProductionRequestStatus.Requested,
       author: {
         uid: userProfile.uid,
-        displayName: getUserDisplayName(userProfile),
+        displayName: getUserDisplayName(userProfile, null),
       },
       imageUrls,
     });
@@ -123,7 +123,7 @@ const ProductionManagementCenterComponent: React.FC = () => {
 
   const handleStatusUpdate = useCallback(async (id: string, status: ProductionRequestStatus, reason?: string) => {
     if (!userProfile) return;
-    await updateRequestStatus(id, status, getUserDisplayName(userProfile), reason);
+    await updateRequestStatus(id, status, getUserDisplayName(userProfile, null), reason);
   }, [userProfile, updateRequestStatus]);
 
   const handleDelete = useCallback(async (id: string) => deleteRequest(id), [deleteRequest]);
@@ -132,7 +132,7 @@ const ProductionManagementCenterComponent: React.FC = () => {
     if (!userProfile) return;
     await addComment(id, {
       text,
-      user: getUserDisplayName(userProfile),
+      user: getUserDisplayName(userProfile, null),
       uid: userProfile.uid,
       mentionedUserIds,
     });
@@ -289,7 +289,7 @@ const ProductionManagementCenterComponent: React.FC = () => {
         isOpen={isFormModalOpen}
         onClose={() => setIsFormModalOpen(false)}
         onSave={handleSaveRequest}
-        currentUserName={getUserDisplayName(userProfile)}
+        currentUserName={getUserDisplayName(userProfile, null)}
       />
 
       {/* 상세보기 모달 */}

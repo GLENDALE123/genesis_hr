@@ -1,21 +1,37 @@
 'use client';
 
-import React, { useState } from 'react';
-import { JigMasterListView, JigMasterDetail } from '../components';
-import { JigMasterItem } from '../types';
+import React, { useState, useMemo } from 'react';
+import { JigMasterListView, JigMasterDetail, JigListForm } from '../components';
+import { JigMasterItem, CreateJigMasterItemData } from '../types';
 import { useJigMaster } from '../hooks/useJigMaster';
 import { useUserRole } from '@/features/auth/hooks/useUserRole';
+import { getUserDisplayName } from '@/shared/utils/userUtils';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { Button } from '@/shared/components/ui/button';
 import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
 
 export const JigMasterContainer: React.FC = () => {
-  const { masterItems, isLoading, error, updateMasterItem, deleteMasterItem } = useJigMaster();
+  const { masterItems, isLoading, error, updateMasterItem, deleteMasterItem, createMasterItem, autocompleteData } = useJigMaster();
   const userRole = useUserRole() || 'Member';
-  const { user } = useAuthStore();
+  const { user, userProfile } = useAuthStore();
+  const currentUserProfile = useMemo(() => {
+    if (!user) return null;
+    
+    // userProfile이 아직 로드되지 않았어도 기본 정보는 제공
+    const displayName = getUserDisplayName(userProfile, user, '로딩 중...');
+    
+    return {
+      uid: user.uid,
+      displayName,
+      email: user.email || '',
+      role: userRole,
+      isLoading: !userProfile // userProfile 로딩 상태 표시
+    };
+  }, [user, userProfile, userRole]);
   
   const [selectedJig, setSelectedJig] = useState<JigMasterItem | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
 
   const handleSelectJig = (jig: JigMasterItem) => {
     setSelectedJig(jig);
@@ -45,20 +61,28 @@ export const JigMasterContainer: React.FC = () => {
     }
   };
 
+  const handleCreateJig = async (data: CreateJigMasterItemData, imageFiles: File[]) => {
+    try {
+      await createMasterItem(data, imageFiles);
+      setIsFormModalOpen(false);
+    } catch (error) {
+      console.error('지그 생성 실패:', error);
+      throw error;
+    }
+  };
+
+  const handleOpenFormModal = () => {
+    setIsFormModalOpen(true);
+  };
+
+  const handleCloseFormModal = () => {
+    setIsFormModalOpen(false);
+  };
+
   return (
     <div className="flex flex-col h-full">
-      {/* 헤더 */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-6 pb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">지그목록표</h1>
-          <p className="text-muted-foreground">지그 마스터 데이터를 관리하세요</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-        </div>
-      </div>
-
       {/* 메인 콘텐츠 */}
-      <div className="flex-1 px-6 pb-6 flex flex-col min-h-0">
+      <div className="flex-1 flex flex-col min-h-0">
         {isLoading ? (
           <LoadingSpinner 
             size="lg" 
@@ -79,7 +103,8 @@ export const JigMasterContainer: React.FC = () => {
             <JigMasterListView
               jigs={masterItems}
               onSelectJig={handleSelectJig}
-              currentUserProfile={user ? { uid: user.uid, displayName: user.displayName || '', email: user.email || '', role: userRole } : null}
+              currentUserProfile={currentUserProfile}
+              onOpenFormModal={handleOpenFormModal}
             />
           </div>
         )}
@@ -90,9 +115,18 @@ export const JigMasterContainer: React.FC = () => {
         jig={selectedJig}
         onSave={handleUpdateJig}
         onDelete={handleDeleteJig}
-        currentUserProfile={user ? { uid: user.uid, displayName: user.displayName || '', email: user.email || '', role: userRole } : null}
+        currentUserProfile={currentUserProfile}
         isOpen={isDetailModalOpen}
         onClose={handleCloseDetailModal}
+      />
+
+      {/* 지그 등록 폼 모달 */}
+      <JigListForm
+        isOpen={isFormModalOpen}
+        onClose={handleCloseFormModal}
+        onSave={handleCreateJig}
+        isLoading={isLoading}
+        autocompleteData={autocompleteData}
       />
     </div>
   );

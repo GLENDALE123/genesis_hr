@@ -284,7 +284,7 @@ const PermissionSettingsButtonComponent: React.FC<PermissionSettingsButtonProps>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <p className="font-semibold text-sm truncate">
-                              {getUserDisplayName(user)}
+                              {getUserDisplayName(user, null)}
                             </p>
                             <Badge variant={getUserRoleBadgeVariant(user)} className="text-xs">
                               {user.role}
@@ -372,7 +372,7 @@ const PermissionSettingsButtonComponent: React.FC<PermissionSettingsButtonProps>
                   </div>
                   <div className="flex-1 text-left">
                     <p className="font-semibold">
-                      {getUserDisplayName(selectedUser)}
+                      {getUserDisplayName(selectedUser, null)}
                     </p>
                     <p className="text-sm text-muted-foreground font-normal">
                       {selectedUser.email}

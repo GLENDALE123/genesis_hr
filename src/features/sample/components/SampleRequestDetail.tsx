@@ -41,6 +41,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui
 import { SampleRequest, SampleStatus } from '../types';
 import { SAMPLE_STATUS_COLORS, SAMPLE_REQUESTS_COLLECTION } from '../constants';
 import { ProcessingHistory } from '@/shared/components/common/ProcessingHistory';
+import { useAuthStore } from '@/features/auth/store/authStore';
 
 interface SampleRequestDetailProps {
   open: boolean;
@@ -218,7 +219,7 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
 
   // 댓글 추가
   const handleAddComment = async (text: string) => {
-    const { user: authUser } = await import('@/features/auth/store/authStore').then(m => m.useAuthStore.getState());
+    const { user: authUser } = useAuthStore.getState();
     const displayName = authUser?.displayName || authUser?.email || currentUserUid;
     
     await comments.addComment(request.id, {
@@ -270,8 +271,9 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b">
+      <DialogContent 
+        className="max-w-5xl max-h-[90vh] p-0"
+        stickyHeader={
           <div className="flex justify-between items-start">
             <DialogTitle className="text-xl font-bold">
               {request.productName} ({request.clientName})
@@ -280,10 +282,66 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
               {request.status}
             </Badge>
           </div>
-        </DialogHeader>
+        }
+        stickyFooter={
+          <div className="flex flex-wrap gap-2">
+            <div className="flex gap-2">
+              {canManage && (
+                <>
+                  <Button variant="outline" onClick={() => onEdit(request)}>
+                    <Edit className="h-4 w-4 mr-1" />
+                    수정
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => setShowDeleteConfirm(true)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    삭제
+                  </Button>
+                </>
+              )}
+            </div>
 
+            <div className="flex gap-2 ml-auto">
+              {request.status === SampleStatus.Received && (
+                <Button onClick={() => handleStatusChange(SampleStatus.InProgress)}>
+                  진행중으로 변경
+                </Button>
+              )}
+              {request.status === SampleStatus.InProgress && (
+                <>
+                  <Button onClick={() => handleStatusChange(SampleStatus.Completed)}>
+                    완료
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleStatusChange(SampleStatus.OnHold)}
+                  >
+                    보류
+                  </Button>
+                </>
+              )}
+              {request.status === SampleStatus.OnHold && (
+                <Button onClick={() => handleStatusChange(SampleStatus.InProgress)}>
+                  진행중으로 재개
+                </Button>
+              )}
+              {(request.status === SampleStatus.Received ||
+                request.status === SampleStatus.InProgress) && (
+                <Button
+                  variant="destructive"
+                  onClick={() => handleStatusChange(SampleStatus.Rejected)}
+                >
+                  반려
+                </Button>
+              )}
+            </div>
+          </div>
+        }
+      >
         {/* 상세 정보 */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+        <div className="space-y-6">
           {/* Card 1: 요청사항 */}
           <Card>
             <CardHeader>
@@ -501,56 +559,6 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
           className="hidden"
         />
 
-        {/* 하단 액션 버튼 */}
-        <div className="flex-shrink-0 flex flex-wrap gap-2 px-6 py-4 border-t bg-muted/30">
-          <div className="flex gap-2">
-            {canManage && (
-              <>
-                <Button variant="outline" onClick={() => onEdit(request)}>
-                  <Edit className="h-4 w-4 mr-1" />
-                  수정
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => setShowDeleteConfirm(true)}
-                >
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  삭제
-                </Button>
-              </>
-            )}
-          </div>
-
-          <div className="flex gap-2 ml-auto">
-            {request.status === SampleStatus.Received && (
-              <Button onClick={() => handleStatusChange(SampleStatus.InProgress)}>
-                진행중으로 변경
-              </Button>
-            )}
-            {request.status === SampleStatus.InProgress && (
-              <>
-                <Button onClick={() => handleStatusChange(SampleStatus.Completed)}>
-                  완료
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => handleStatusChange(SampleStatus.OnHold)}
-                >
-                  보류
-                </Button>
-              </>
-            )}
-            {(request.status === SampleStatus.Received ||
-              request.status === SampleStatus.InProgress) && (
-              <Button
-                variant="destructive"
-                onClick={() => handleStatusChange(SampleStatus.Rejected)}
-              >
-                반려
-              </Button>
-            )}
-          </div>
-        </div>
 
         {/* 삭제 확인 다이얼로그 */}
         <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>

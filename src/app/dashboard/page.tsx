@@ -40,19 +40,7 @@ export default function DashboardPage() {
   const [selectedRequestType, setSelectedRequestType] = useState('물류이동');
   const [notificationTarget, setNotificationTarget] = useState<'admin-manager' | 'current-user'>('admin-manager');
 
-  // UserProfile 콘솔 로그
-  useEffect(() => {
-    // UserProfile이 null인 경우 수동으로 프로필 조회 시도
-    if (user && !userProfile) {
-      console.warn('⚠️ UserProfile이 null입니다. 수동으로 프로필 조회를 시도합니다...');
-      import('@/shared/services/firebase/userProfile').then(({ getUserProfile }) => {
-        getUserProfile(user.uid).then(() => {
-        }).catch(err => {
-          console.error('❌ [Manual Fetch] 프로필 조회 실패:', err);
-        });
-      });
-    }
-  }, [user, userProfile]);
+  // UserProfile은 authStore의 initializeAuth에서 자동으로 로드됨 (재시도 로직 포함)
 
   // Firestore에서 할 일 목록 가져오기
   const loadTodos = async () => {

@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { PackagingReport, PackagingFormData } from '@/features/production/types';
 import { PackagingReportsService } from '@/features/production/services/packagingReportsService';
 import { waitForFirebaseInit } from '@/shared/services/firebase/config';
-import { useAuthStore } from '@/features/auth/store/authStore';
+import { getUserDisplayName } from '@/shared/utils/userUtils';
 import { usePackagingReportsStore } from '@/features/production/store/packagingReportsStore';
+import { useAuthStore } from '@/features/auth/store/authStore';
 
 /**
  * Packaging Reports 데이터를 관리하는 커스텀 훅
@@ -14,7 +15,12 @@ import { usePackagingReportsStore } from '@/features/production/store/packagingR
  * - 캐시된 데이터 즉시 표시 → 백그라운드에서 최신 데이터 업데이트
  */
 export const usePackagingReports = () => {
-  const { user } = useAuthStore();
+  const { user, userProfile } = useAuthStore();
+  const userInfo = useMemo(() => ({
+    uid: user?.uid || '',
+    displayName: getUserDisplayName(userProfile, user),
+    email: user?.email || ''
+  }), [user, userProfile]);
   const [mounted, setMounted] = useState(false);
   
   // 현재 구독 중인 날짜 범위 (실시간 구독 관리용)
@@ -175,9 +181,9 @@ export const usePackagingReports = () => {
 
     try {
       await PackagingReportsService.deletePackagingReport(reportId, {
-        uid: user.uid,
-        displayName: user.displayName,
-        email: user.email
+            uid: userInfo.uid,
+            displayName: userInfo.displayName,
+            email: userInfo.email
       }, reportData);
       // Zustand 스토어에서도 제거 (캐시 동기화)
       deleteCachedReport(reportId);
@@ -185,7 +191,7 @@ export const usePackagingReports = () => {
       setError(err as Error);
       throw err;
     }
-  }, [user, deleteCachedReport, setError]);
+  }, [user, userProfile, deleteCachedReport, setError]);
 
   // 보고서 업데이트
   const updateReport = useCallback(async (reportId: string, updateData: Partial<PackagingReport>) => {
@@ -197,9 +203,9 @@ export const usePackagingReports = () => {
 
     try {
       await PackagingReportsService.updatePackagingReport(reportId, updateData, {
-        uid: user.uid,
-        displayName: user.displayName,
-        email: user.email
+            uid: userInfo.uid,
+            displayName: userInfo.displayName,
+            email: userInfo.email
       });
       // Zustand 스토어에서도 업데이트 (캐시 동기화)
       updateCachedReport(reportId, updateData);
@@ -207,7 +213,7 @@ export const usePackagingReports = () => {
       setError(err as Error);
       throw err;
     }
-  }, [user, updateCachedReport, setError]);
+  }, [user, userProfile, updateCachedReport, setError]);
 
   // 보고서 생성
   const createReport = useCallback(async (formData: PackagingFormData) => {
@@ -219,9 +225,9 @@ export const usePackagingReports = () => {
 
     try {
       const reportId = await PackagingReportsService.createPackagingReport(formData, {
-        uid: user.uid,
-        displayName: user.displayName,
-        email: user.email
+            uid: userInfo.uid,
+            displayName: userInfo.displayName,
+            email: userInfo.email
       });
       // 생성 후 목록 새로고침 (실시간 구독이 자동으로 업데이트하지만, 즉시 반영 위해)
       await refetch();
@@ -230,7 +236,7 @@ export const usePackagingReports = () => {
       setError(err as Error);
       throw err;
     }
-  }, [user, refetch, setError]);
+  }, [user, userProfile, refetch, setError]);
 
   return {
     reports,

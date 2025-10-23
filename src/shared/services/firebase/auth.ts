@@ -14,6 +14,7 @@ import {
 } from './userProfile';
 import { SignUpData, LoginData, UserProfile } from '@/features/auth/types';
 import { settingsService } from '../settings/settingsService';
+import { getUserDisplayName } from '@/shared/utils/userUtils';
 
 // 로그인 함수 (이메일로 로그인)
 export const signIn = async (loginData: LoginData) => {
@@ -85,10 +86,11 @@ export const signUp = async (signUpData: SignUpData) => {
     // Firebase Auth로 계정 생성 (이메일 중복은 Firebase Auth가 자동으로 체크)
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     
-    // 사용자 프로필 업데이트
-    if (displayName) {
-      await updateProfile(userCredential.user, { displayName });
-    }
+    // 사용자 프로필 업데이트 (현재 프로젝트에서는 Firebase Auth에 displayName 사용하지 않음)
+    // displayName은 Firestore users/{uid}에만 저장
+    // if (displayName) {
+    //   await updateProfile(userCredential.user, { displayName });
+    // }
     
     // Firestore에 사용자 프로필 생성
     await createUserProfile(signUpData, userCredential.user.uid);
@@ -138,7 +140,7 @@ export const onAuthStateChange = (callback: (user: User | null) => void) => {
         uid: user.uid,
         email: user.email,
         emailVerified: user.emailVerified,
-        displayName: user.displayName
+        displayName: getUserDisplayName(null, user)
       } : null,
       timestamp: new Date().toISOString()
     });

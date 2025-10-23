@@ -197,7 +197,6 @@ export const subscribeToQualityInspections = (
     return onSnapshot(
       q,
       (snapshot) => {
-        console.log(`📊 [Quality Inspection Service] 전체 데이터 수신: ${snapshot.docs.length}건`);
         
         const inspections = snapshot.docs.map(doc => {
           const data = doc.data();
@@ -219,7 +218,6 @@ export const subscribeToQualityInspections = (
           return acc;
         }, {} as Record<string, number>);
         
-        console.log('📈 [Quality Inspection Service] 타입별 통계:', typeStats);
         
         callback(inspections);
       },
@@ -360,7 +358,6 @@ export const subscribeToQualityInspectionsByDateRange = (
 
           // 날짜 필터링된 검사들의 orderNumber 추출
           const orderNumbers = [...new Set(dateFilteredInspections.map(i => i.orderNumber))];
-          console.log(`📅 날짜 범위 내 검사 그룹: ${orderNumbers.length}개 (${orderNumbers.slice(0, 3).join(', ')}${orderNumbers.length > 3 ? '...' : ''})`);
 
           if (orderNumbers.length === 0) {
             callback([]);
@@ -396,7 +393,6 @@ export const subscribeToQualityInspectionsByDateRange = (
               index === self.findIndex(i => i.id === inspection.id)
             ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-            console.log(`✅ 그룹 전체 검사 데이터 수신: ${uniqueInspections.length}건 (${orderNumbers.length}개 그룹)`);
             callback(uniqueInspections);
           }).catch(error => {
             console.error('Error fetching group data:', error);

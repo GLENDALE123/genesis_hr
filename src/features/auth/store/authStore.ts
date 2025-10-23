@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { getUserDisplayName } from '@/shared/utils/userUtils';
 import { devtools, persist } from 'zustand/middleware';
 import { User } from 'firebase/auth';
 import { onAuthStateChange } from '@/shared/services/firebase/auth';
@@ -31,7 +32,7 @@ interface AuthActions {
   setUserProfile: (userProfile: UserProfile | null) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
-  initializeAuth: () => void;
+  initializeAuth: () => (() => void);
   refreshUserProfile: () => Promise<void>;
 }
 
@@ -114,22 +115,43 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             set({ user, isLoading: false, error: null });
             
             if (user) {
-              // 사용자 프로필 정보도 함께 로드
-              try {
-                
-                // 약간의 지연을 두어 Firebase Auth 상태가 완전히 안정화되도록 함
-                await new Promise(resolve => setTimeout(resolve, 100));
-                
-                const userProfile = await AuthService.getCurrentUserProfile();
-                
-                set({ userProfile });
-              } catch (error) {
-                // 권한 에러는 조용히 처리 (로그인 전 상태)
-                const errorMessage = error instanceof Error ? error.message : '';
-                if (!errorMessage.includes('permission') && !errorMessage.includes('insufficient')) {
-                  console.error('❌ [AuthStore] 사용자 프로필 로드 실패:', error);
+              // 사용자 프로필 정보도 함께 로드 (재시도 로직 포함)
+              let retries = 0;
+              const maxRetries = 3;
+              
+              while (retries < maxRetries) {
+                try {
+                  const userProfile = await AuthService.getCurrentUserProfile();
+                  
+                  if (userProfile) {
+                    set({ userProfile });
+                    console.log('✅ [AuthStore] 사용자 프로필 로드 성공');
+                    break;
+                  }
+                  
+                  // userProfile이 null이면 재시도
+                  retries++;
+                  if (retries < maxRetries) {
+                    console.warn(`⚠️ [AuthStore] 프로필 로드 재시도 ${retries}/${maxRetries}`);
+                    await new Promise(resolve => setTimeout(resolve, 500 * retries));
+                  }
+                } catch (error) {
+                  retries++;
+                  
+                  // 권한 에러는 조용히 처리 (로그인 전 상태)
+                  const errorMessage = error instanceof Error ? error.message : '';
+                  const isPermissionError = errorMessage.includes('permission') || errorMessage.includes('insufficient');
+                  
+                  if (retries >= maxRetries) {
+                    if (!isPermissionError) {
+                      console.error('❌ [AuthStore] 사용자 프로필 로드 최종 실패:', error);
+                    }
+                    set({ userProfile: null });
+                  } else if (!isPermissionError) {
+                    console.warn(`⚠️ [AuthStore] 프로필 로드 재시도 ${retries}/${maxRetries} (에러)`, error);
+                    await new Promise(resolve => setTimeout(resolve, 500 * retries));
+                  }
                 }
-                set({ userProfile: null });
               }
             } else {
               // ✅ 로그아웃 시 권한 캐시 초기화
@@ -170,7 +192,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           user: state.user ? {
             uid: state.user.uid,
             email: state.user.email,
-            displayName: state.user.displayName,
+            displayName: getUserDisplayName(state.userProfile, state.user),
             photoURL: state.user.photoURL,
           } : null
         }),

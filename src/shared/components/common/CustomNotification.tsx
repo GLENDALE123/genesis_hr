@@ -191,7 +191,7 @@ export class NotificationManager {
   static async notify(notification: Omit<NotificationData, 'id' | 'timestamp'>) {
     const newNotification: NotificationData = {
       ...notification,
-      id: `notification-${Date.now()}-${Math.random()}`,
+      id: `notification-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
       timestamp: new Date()
     };
 

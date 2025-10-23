@@ -1,14 +1,14 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
-import { useUserProfile } from '@/features/auth';
+import { useAuthStore } from '@/features/auth';
 import { useWorkSchedule } from '../hooks/useWorkSchedule';
 import { useScheduleActions } from '../hooks/useScheduleActions';
 import { CalendarHeader } from '../components/CalendarHeader';
 import { MonthCalendar } from '../components/MonthCalendar';
 import { YearCalendar } from '../components/YearCalendar';
 import { WorkType } from '../types';
-import { ScheduleSummary } from '../components/ScheduleSummary';
+import { ScheduleSummaryView } from '../components/ScheduleSummary';
 import { ScheduleAdminPanel } from '../components/ScheduleAdminPanel';
 import { LoadingSpinner } from '@/shared/components/common';
 import { Card, CardContent } from '@/shared/components/ui/card';
@@ -17,7 +17,7 @@ import { useIsMobile } from '@/shared/hooks/use-mobile';
 import { toast } from 'sonner';
 
 export const WorkScheduleContainer: React.FC = () => {
-  const userProfile = useUserProfile();
+  const { userProfile } = useAuthStore();
   const isMobile = useIsMobile();
   
   const {
@@ -40,7 +40,6 @@ export const WorkScheduleContainer: React.FC = () => {
   const { isSubmitting, applySchedule, deleteSchedule } = useScheduleActions();
 
   const monthlyCalendarRef = useRef<HTMLDivElement>(null);
-  const [isPrintMode, setIsPrintMode] = useState(false);
   const [mobileSelectedDate, setMobileSelectedDate] = useState<string | null>(null);
 
   const canManage = userProfile?.role === 'Admin';
@@ -74,80 +73,6 @@ export const WorkScheduleContainer: React.FC = () => {
     }
   };
 
-  // 인쇄 기능
-  const handlePrint = async () => {
-    if (!monthlyCalendarRef.current) {
-      toast.error('달력 요소를 찾을 수 없습니다.');
-      return;
-    }
-
-    try {
-      setIsPrintMode(true);
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      const html2canvas = (await import('html2canvas')).default;
-      const isDark = document.documentElement.classList.contains('dark');
-      const bgColor = isDark ? '#0f172a' : '#ffffff';
-
-      const canvas = await html2canvas(monthlyCalendarRef.current, {
-        useCORS: true,
-        backgroundColor: bgColor,
-        scale: 3,
-      });
-
-      const dataUrl = canvas.toDataURL('image/png');
-      setIsPrintMode(false);
-
-      const printWindow = window.open('', '_blank');
-      if (!printWindow) return;
-
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>근무계획 - ${year}년 ${month + 1}월</title>
-            <style>
-              @page { size: A4 landscape; margin: 0; }
-              html, body { margin: 0; padding: 0; height: 100%; }
-              .page { 
-                width: 297mm; 
-                height: 209mm; 
-                display: flex; 
-                align-items: center; 
-                justify-content: center; 
-                overflow: hidden; 
-                padding: 0 5mm; 
-                box-sizing: border-box; 
-              }
-              .page img { 
-                display: block; 
-                width: 100%; 
-                height: 100%; 
-                object-fit: contain; 
-              }
-            </style>
-          </head>
-          <body>
-            <div class="page">
-              <img src="${dataUrl}" alt="schedule" />
-            </div>
-            <script>
-              window.onload = function() { 
-                window.focus(); 
-                window.print(); 
-                setTimeout(() => window.close(), 300); 
-              }
-            </script>
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
-    } catch (error) {
-      console.error(error);
-      toast.error('인쇄 준비 중 오류가 발생했습니다.');
-      setIsPrintMode(false);
-    }
-  };
-
   return (
     <>
       <Card className="h-full">
@@ -161,11 +86,10 @@ export const WorkScheduleContainer: React.FC = () => {
             onYearChange={changeYear}
             onMonthChange={changeMonth}
             onToday={goToToday}
-            onPrint={view === 'month' ? handlePrint : undefined}
           />
 
           {/* 통계 요약 */}
-          <ScheduleSummary summary={summary} />
+          <ScheduleSummaryView summary={summary} />
 
           {/* 메인 영역 */}
           <div className="flex flex-col lg:flex-row gap-4 pt-2 overflow-hidden">
@@ -193,7 +117,6 @@ export const WorkScheduleContainer: React.FC = () => {
                         selectedDates={selectedDates}
                         canManage={canManage}
                         onDateClick={handleDateClick}
-                        isPrintMode={isPrintMode}
                         calendarData={calendarData}
                       />
                     </div>
@@ -201,13 +124,17 @@ export const WorkScheduleContainer: React.FC = () => {
                     {/* 데스크톱 관리 패널 */}
                     {canManage && (
                       <div className="hidden lg:block lg:w-80 lg:flex-shrink-0">
-                        <ScheduleAdminPanel
-                          dates={selectedDates}
-                          onApply={handleApply}
-                          onDelete={handleDelete}
-                          onCancel={clearSelection}
-                          isSubmitting={isSubmitting}
-                        />
+                        <Card className="h-full">
+                          <CardContent className="p-0 h-full flex flex-col">
+                            <ScheduleAdminPanel
+                              dates={selectedDates}
+                              onApply={handleApply}
+                              onDelete={handleDelete}
+                              onCancel={clearSelection}
+                              isSubmitting={isSubmitting}
+                            />
+                          </CardContent>
+                        </Card>
                       </div>
                     )}
                   </>
@@ -222,7 +149,7 @@ export const WorkScheduleContainer: React.FC = () => {
       {canManage && (
         <Sheet 
           open={!!mobileSelectedDate} 
-          onOpenChange={(open) => !open && setMobileSelectedDate(null)}
+          onOpenChange={(open: boolean) => !open && setMobileSelectedDate(null)}
         >
           <SheetContent side="bottom" className="h-[80vh] flex flex-col">
             <SheetHeader>

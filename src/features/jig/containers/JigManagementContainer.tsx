@@ -6,6 +6,7 @@ import { JigStatus, JigRequest, CreateJigRequestData } from '../types';
 import { useJigRequests } from '../hooks/useJigRequests';
 import { useJigRequestFilters } from '../hooks/useJigRequestFilters';
 import { useUserRole } from '@/features/auth/hooks/useUserRole';
+import { getUserDisplayName } from '@/shared/utils/userUtils';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { CommentsService } from '@/shared/services/comments/commentsService';
 import { Button } from '@/shared/components/ui/button';
@@ -17,7 +18,21 @@ import { Plus } from 'lucide-react';
 export const JigManagementContainer: React.FC = () => {
   const { requests, isLoading, error, updateRequestStatus, createRequest } = useJigRequests();
   const userRole = useUserRole() || 'Member';
-  const { user } = useAuthStore();
+  const { user, userProfile } = useAuthStore();
+  const currentUserProfile = useMemo(() => {
+    if (!user) return undefined;
+    
+    // userProfile이 아직 로드되지 않았어도 기본 정보는 제공
+    const displayName = getUserDisplayName(userProfile, user, '로딩 중...');
+    
+    return {
+      uid: user.uid,
+      displayName,
+      email: user.email || '',
+      role: userRole,
+      isLoading: !userProfile // userProfile 로딩 상태 표시
+    };
+  }, [user, userProfile, userRole]);
   
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [selectedRequest, setSelectedRequest] = useState<JigRequest | null>(null);
@@ -47,7 +62,7 @@ export const JigManagementContainer: React.FC = () => {
   const canAddNew = userRole === 'Admin' || userRole === 'Manager';
 
   const handleAddComment = useCallback(async (requestId: string, commentText: string, mentionedUserIds?: string[]) => {
-    if (!user || !user.displayName) {
+      if (!user || !getUserDisplayName(userProfile, user)) {
       console.error('사용자 정보가 없습니다.');
       return;
     }
@@ -55,7 +70,7 @@ export const JigManagementContainer: React.FC = () => {
     try {
       await CommentsService.addComment('jig-requests', requestId, {
         text: commentText,
-        user: user.displayName,
+            user: getUserDisplayName(userProfile, user),
         uid: user.uid,
         mentionedUserIds: mentionedUserIds || []
       });
@@ -63,7 +78,7 @@ export const JigManagementContainer: React.FC = () => {
     } catch (error) {
       console.error('댓글 추가 실패:', error);
     }
-  }, [user]);
+  }, [user, userProfile]);
 
   const handleDeleteComment = useCallback(async (requestId: string, commentId: string) => {
     try {
@@ -115,7 +130,7 @@ export const JigManagementContainer: React.FC = () => {
     
     try {
       // imageUrls가 이미 data에 포함되어 있으므로 그대로 사용
-      await createRequest(data, imageFiles, user.uid, user.displayName || 'Unknown User');
+        await createRequest(data, imageFiles, user.uid, getUserDisplayName(userProfile, user, 'Unknown User'));
       setIsFormModalOpen(false);
     } catch (error) {
       console.error('새 요청 등록 실패:', error);
@@ -124,7 +139,7 @@ export const JigManagementContainer: React.FC = () => {
 
   const handleUpdateStatus = async (id: string, status: JigStatus, reason?: string) => {
     try {
-      await updateRequestStatus(id, status, (user && user.uid) || '', (user && user.displayName) || 'Unknown User', reason);
+        await updateRequestStatus(id, status, (user && user.uid) || '', getUserDisplayName(userProfile, user, 'Unknown User'), reason);
     } catch (error) {
       console.error('상태 업데이트 실패:', error);
     }
@@ -235,7 +250,7 @@ export const JigManagementContainer: React.FC = () => {
         isOpen={isDetailModalOpen}
         onClose={handleCloseDetailModal}
         request={selectedRequest}
-        currentUserProfile={user ? { uid: user.uid, displayName: user.displayName || '', email: user.email || '', role: userRole } : undefined}
+        currentUserProfile={currentUserProfile}
         onStatusUpdate={handleUpdateStatus}
         onEdit={(request) => {
         }}

@@ -88,11 +88,9 @@ export const useQualityInspectionStore = create<QualityInspectionStore>()(
           // 캐시 유효 시간 확인
           const now = Date.now();
           if (now - cache.timestamp > CACHE_DURATION) {
-            console.log('📦 품질검사 캐시 만료 - 새로고침 필요');
             return null;
           }
           
-          console.log('📦 품질검사 캐시 히트 - 즉시 표시');
           return cache.inspections;
         },
         
@@ -113,7 +111,6 @@ export const useQualityInspectionStore = create<QualityInspectionStore>()(
             error: null
           });
           
-          console.log(`📦 품질검사 캐시 저장: ${inspections.length}건 (${startDate} ~ ${endDate})`);
         },
         
         setLoading: (isLoading: boolean) => {
@@ -130,7 +127,6 @@ export const useQualityInspectionStore = create<QualityInspectionStore>()(
         
         clearCache: () => {
           set({ cache: null });
-          console.log('📦 품질검사 캐시 초기화');
         },
         
         updateInspection: (inspectionId: string, updateData: Partial<QualityInspection>) => {
@@ -178,7 +174,6 @@ export const useQualityInspectionStore = create<QualityInspectionStore>()(
             });
           }
           
-          console.log(`📦 품질검사 업데이트: ${inspectionId}`);
         },
         
         deleteInspection: (inspectionId: string) => {
@@ -204,7 +199,6 @@ export const useQualityInspectionStore = create<QualityInspectionStore>()(
             });
           }
           
-          console.log(`📦 품질검사 삭제: ${inspectionId}`);
         },
         
         addInspection: (inspection: QualityInspection) => {
@@ -226,7 +220,6 @@ export const useQualityInspectionStore = create<QualityInspectionStore>()(
             });
           }
           
-          console.log(`📦 품질검사 추가: ${inspection.id}`);
         }
       }),
       {

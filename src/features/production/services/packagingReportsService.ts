@@ -1,4 +1,3 @@
-import { db } from '@/shared/services/firebase/config';
 import { 
   collection, 
   query, 
@@ -13,6 +12,7 @@ import {
   addDoc
 } from 'firebase/firestore';
 import { PackagingReport, PackagingFormData, ProductionStatus } from '@/features/production/types';
+import { db } from '@/shared/services/firebase/config';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
 import { DailyReportNotificationService } from './notificationService';
 
@@ -31,6 +31,11 @@ interface ReportUser {
   uid: string;
   displayName?: string | null;
   email?: string | null;
+  userProfile?: {
+    displayName?: string | null;
+    name?: string | null;
+    email?: string | null;
+  } | null;
 }
 
 /**
@@ -60,7 +65,7 @@ export class PackagingReportsService {
         workDate: formData.workDate,
         author: {
           uid: user.uid,
-          displayName: getUserDisplayName(user, '알 수 없음')
+          displayName: getUserDisplayName(user.userProfile, user, '알 수 없음')
         },
         productionLine: formData.productionLine,
         orderNumbers: formData.orderNumbers.filter(num => num.trim() !== ''),
@@ -108,7 +113,7 @@ export class PackagingReportsService {
           createdReport,
           {
             uid: user.uid,
-            displayName: user.displayName || 'Unknown User',
+            displayName: getUserDisplayName(user.userProfile, user, 'Unknown User'),
             photoURL: undefined
           }
         );
@@ -412,7 +417,7 @@ export class PackagingReportsService {
             reportData,
             {
               uid: user.uid,
-              displayName: user.displayName || 'Unknown User',
+              displayName: getUserDisplayName(user.userProfile, user, 'Unknown User'),
               photoURL: undefined
             }
           );
@@ -486,7 +491,7 @@ export class PackagingReportsService {
                 updatedReport,
                 {
                   uid: user.uid,
-                  displayName: user.displayName || 'Unknown User',
+                  displayName: getUserDisplayName(user.userProfile, user, 'Unknown User'),
                   photoURL: undefined
                 }
               );
@@ -502,7 +507,7 @@ export class PackagingReportsService {
                 updatedReport,
                 {
                   uid: user.uid,
-                  displayName: user.displayName || 'Unknown User',
+                  displayName: getUserDisplayName(user.userProfile, user, 'Unknown User'),
                   photoURL: undefined
                 }
               );
@@ -559,7 +564,7 @@ export class PackagingReportsService {
           updatedReport,
           {
             uid: user.uid,
-            displayName: user.displayName || 'Unknown User',
+            displayName: getUserDisplayName(user.userProfile, user, 'Unknown User'),
             photoURL: undefined
           }
         );

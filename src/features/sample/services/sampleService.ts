@@ -69,13 +69,13 @@ export class SampleService {
         },
         requesterInfo: {
           uid: user.uid,
-          displayName: getUserDisplayName(user, '알 수 없음')
+          displayName: getUserDisplayName(null, user, '알 수 없음')
         },
         history: [
           {
             status: SampleStatus.Received,
             date: new Date().toISOString(),
-            by: getUserDisplayName(user, '알 수 없음')
+            by: getUserDisplayName(null, user, '알 수 없음')
           }
         ],
         comments: [],
@@ -100,7 +100,7 @@ export class SampleService {
           createdRequest,
           {
             uid: user.uid,
-            displayName: getUserDisplayName(user, '알 수 없음')
+            displayName: getUserDisplayName(null, user, '알 수 없음')
           }
         );
       } catch (error) {
@@ -135,7 +135,7 @@ export class SampleService {
         updatedAt: new Date().toISOString(),
         updatedBy: {
           uid: user.uid,
-          displayName: getUserDisplayName(user, '알 수 없음')
+          displayName: getUserDisplayName(null, user, '알 수 없음')
         }
       });
 
@@ -208,7 +208,7 @@ export class SampleService {
           updatedRequest,
           {
             uid: user.uid,
-            displayName: getUserDisplayName(user, '알 수 없음')
+            displayName: getUserDisplayName(null, user, '알 수 없음')
           }
         );
       } catch (error) {
@@ -283,7 +283,7 @@ export class SampleService {
             requestData,
             {
               uid: user.uid,
-              displayName: getUserDisplayName(user, '알 수 없음')
+              displayName: getUserDisplayName(null, user, '알 수 없음')
             }
           );
         } catch (error) {
@@ -327,10 +327,10 @@ export class SampleService {
         targetUsers,
         type: 'sample-request',
         title: '샘플 요청',
-        body: `${getUserDisplayName(user)}님이 샘플 요청을 등록했습니다.`,
+        body: `${getUserDisplayName(null, user)}님이 샘플 요청을 등록했습니다.`,
         requestId,
         subtitle: `${formData.productName}/${formData.items.length > 0 ? formData.items[0].partName : ''}`,
-        senderName: getUserDisplayName(user),
+        senderName: getUserDisplayName(null, user),
         senderUid: user.uid,
         priority: 'normal'
       };

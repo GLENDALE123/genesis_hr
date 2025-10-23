@@ -13,7 +13,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/shared/services/firebase/config';
 import { QualityIssue, QualityIssueFormData } from '../types';
-import { QualityIssueNotificationService } from './qualityIssueNotificationService';
+import { getUserDisplayName } from '@/shared/utils/userUtils';
 
 const COLLECTION_NAME = 'quality-issues';
 
@@ -43,7 +43,11 @@ export const createQualityIssue = async (
     uid: string;
     displayName: string;
     email: string;
-  }
+  },
+  userProfile?: {
+    displayName?: string;
+    email?: string;
+  } | null
 ): Promise<string> => {
   try {
     // 이미지 파일들을 Firebase Storage에 업로드
@@ -80,7 +84,7 @@ export const createQualityIssue = async (
       createdAt: new Date().toISOString(),
       author: {
         uid: user.uid,
-        displayName: user.displayName,
+        displayName: getUserDisplayName(userProfile, user),
         email: user.email,
       },
       status: 'in-progress' as const,
@@ -95,7 +99,7 @@ export const createQualityIssue = async (
         { ...qualityIssueData, id: docRef.id } as QualityIssue,
         {
           uid: user.uid,
-          displayName: user.displayName,
+          displayName: getUserDisplayName(userProfile, user),
           photoURL: undefined // 필요시 user 객체에서 photoURL 추가
         }
       );

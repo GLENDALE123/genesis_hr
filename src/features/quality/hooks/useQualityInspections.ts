@@ -89,8 +89,6 @@ export const useQualityInspections = (
     // 캐시된 데이터 확인
     const cachedInspections = getCachedInspections(rangeStartDate, rangeEndDate);
     if (cachedInspections) {
-      console.log('📦 캐시된 데이터 즉시 표시 - 백그라운드 동기화 시작');
-      
       // 백그라운드에서 최신 데이터 가져오기
       setFetching(true);
       
@@ -105,7 +103,6 @@ export const useQualityInspections = (
         rangeStartDate,
         rangeEndDate,
         (newInspections) => {
-          console.log(`🔄 백그라운드 동기화 완료: ${newInspections.length}건`);
           setInspections(newInspections, rangeStartDate, rangeEndDate);
           setFetching(false);
         },
@@ -120,7 +117,6 @@ export const useQualityInspections = (
     }
     
     // 캐시가 없으면 일반 구독 시작
-    console.log('📦 캐시 없음 - 실시간 구독 시작');
   }, [mounted, currentDateRange, getCachedInspections, setFetching, setInspections, limitCount]);
 
   // ✅ 날짜 범위 또는 검색어 변경 시 실시간 구독 재시작
@@ -135,30 +131,17 @@ export const useQualityInspections = (
       setError(null);
       if (isCancelled) return;
       
-      console.log('✅ Firebase 초기화 완료 - 실시간 구독 시작');
-
       // 기존 구독 해제
       if (unsubscribeRef.current) {
-        console.log('🔄 기존 구독 해제');
         unsubscribeRef.current();
         unsubscribeRef.current = null;
       }
 
       // 검색어가 있으면 모든 데이터 구독 (날짜 필터 무시)
       if (debouncedSearchTerm && debouncedSearchTerm.trim()) {
-        console.log(`🔍 검색어 모드: "${debouncedSearchTerm}" - 전체 데이터 구독`);
-        
         unsubscribeRef.current = subscribeToQualityInspections(
           (newInspections) => {
             if (!isCancelled) {
-              console.log(`✅ 품질검사 전체 데이터 수신 성공: ${newInspections.length}건`);
-              console.log('📊 수신된 데이터 샘플:', newInspections.slice(0, 3).map(i => ({
-                id: i.id,
-                type: i.inspectionType,
-                date: i.inspectionDate,
-                createdAt: i.createdAt,
-                orderNumber: i.orderNumber
-              })));
               setInspections(newInspections, '', ''); // 검색어 모드에서는 캐싱하지 않음
               setLoading(false);
               setError(null);
@@ -176,21 +159,12 @@ export const useQualityInspections = (
       } else if (currentDateRange) {
         // 검색어가 없으면 날짜 범위별 구독 (복합 인덱스 최적화)
         const { startDate: rangeStartDate, endDate: rangeEndDate } = currentDateRange;
-        console.log(`📅 복합 인덱스 모드: ${rangeStartDate} ~ ${rangeEndDate} - 서버 사이드 필터링`);
         
         unsubscribeRef.current = subscribeToQualityInspectionsByDateRange(
           rangeStartDate,
           rangeEndDate,
           (newInspections) => {
             if (!isCancelled) {
-              console.log(`✅ 품질검사 날짜 범위 데이터 수신 성공: ${newInspections.length}건`);
-              console.log('📊 수신된 데이터 샘플:', newInspections.slice(0, 3).map(i => ({
-                id: i.id,
-                type: i.inspectionType,
-                date: i.inspectionDate,
-                createdAt: i.createdAt,
-                orderNumber: i.orderNumber
-              })));
               setInspections(newInspections, rangeStartDate, rangeEndDate); // 캐싱
               setLoading(false);
               setError(null);
@@ -213,7 +187,6 @@ export const useQualityInspections = (
     return () => {
       isCancelled = true;
       if (unsubscribeRef.current) {
-        console.log('🔄 구독 해제 (cleanup)');
         unsubscribeRef.current();
         unsubscribeRef.current = null;
       }
@@ -228,8 +201,6 @@ export const useQualityInspections = (
   // 수동 새로고침 (현재 날짜 범위 유지하면서 재구독)
   const refetch = useCallback(() => {
     if (!mounted || !currentDateRange) return;
-    
-    console.log('🔄 수동 새로고침: 구독 재시작');
     
     // 동일한 날짜 범위로 재설정 → useEffect가 구독 재시작
     setCurrentDateRange({ ...currentDateRange });
@@ -246,8 +217,6 @@ export const useQualityInspections = (
     
     // 300ms 후에 실행 (연속된 요청 방지)
     debounceTimerRef.current = setTimeout(() => {
-      console.log(`📅 날짜 범위 변경 요청 (debounced): ${startDate} ~ ${endDate}`);
-      
       // 날짜 범위 상태 변경 → useEffect가 자동으로 구독 재시작
       setCurrentDateRange({ startDate, endDate });
     }, 300);

@@ -59,7 +59,7 @@ const getStatusBadge = (status: QualityIssue['status']) => {
 const QualityIssueRow = React.memo<{
   issue: QualityIssue;
   onSelectIssue?: (issue: QualityIssue) => void;
-}>(({ issue, onSelectIssue }) => {
+}>(({ issue, onSelectIssue }: { issue: QualityIssue; onSelectIssue?: (issue: QualityIssue) => void }) => {
   const handleClick = useCallback(() => {
     onSelectIssue?.(issue);
   }, [issue, onSelectIssue]);
@@ -175,7 +175,7 @@ export const QualityIssueTable: React.FC<QualityIssueTableProps> = ({
                 <Input
                   placeholder="검색..."
                   value={searchTerm}
-                  onChange={(e) => onSearchChange(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => onSearchChange(e.target.value)}
                   className="pl-10"
                 />
               </div>

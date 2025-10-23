@@ -9,16 +9,26 @@ import {
   updateDocument,
   deleteDocument,
   getDocumentsWithQuery,
-  onCollectionSnapshot
+  onCollectionSnapshot,
+  getCollectionRef
 } from '@/shared/services/firebase/firestore';
+import { query, orderBy, getDocs, onSnapshot } from 'firebase/firestore';
 import { uploadImageFilesParallel, deleteFile } from '@/shared/services/firebase/storage';
 import { JigMasterItem, CreateJigMasterItemData, UpdateJigMasterItemData } from '../types';
 import { JIG_COLLECTIONS, JIG_STORAGE_PATHS } from '../constants';
 
 // 지그 마스터 목록 조회
 export const getJigMasterItems = async (): Promise<JigMasterItem[]> => {
-  const docs = await getDocuments(JIG_COLLECTIONS.MASTER);
-  return docs.map(doc => doc as JigMasterItem);
+  const q = query(
+    getCollectionRef(JIG_COLLECTIONS.MASTER),
+    orderBy('createdAt', 'desc') // 입력일자 최신순 정렬
+  );
+  
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  } as JigMasterItem));
 };
 
 // 지그 마스터 단일 조회
@@ -93,17 +103,18 @@ export const subscribeToJigMasters = (
   onUpdate: (masters: JigMasterItem[]) => void,
   onError: (error: Error) => void
 ): (() => void) => {
-  return onCollectionSnapshot(
-    JIG_COLLECTIONS.MASTER,
-    (snapshot) => {
-      const masters = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as JigMasterItem));
-      onUpdate(masters);
-    },
-    onError
+  const q = query(
+    getCollectionRef(JIG_COLLECTIONS.MASTER),
+    orderBy('createdAt', 'desc') // 입력일자 최신순 정렬
   );
+  
+  return onSnapshot(q, (snapshot) => {
+    const masters = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as JigMasterItem));
+    onUpdate(masters);
+  }, onError);
 };
 
 // 자동완성 데이터 조회

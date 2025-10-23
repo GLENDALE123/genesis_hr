@@ -29,25 +29,57 @@ interface UserWithRole extends UserLike {
 // ============================================================================
 
 /**
- * 사용자 표시 이름 가져오기
+ * 사용자 표시 이름 가져오기 (개선된 버전)
  * 
  * @description
- * 우선순위: displayName > name > email > fallback
+ * 우선순위: userProfile.displayName > user.displayName > user.email > email에서 이름 추출 > fallback
  * 
- * @param user - 사용자 객체 (UserProfile, User, 또는 유사 인터페이스)
+ * @param userProfile - Firestore 사용자 프로필 (우선순위 1)
+ * @param user - Firebase Auth 사용자 (우선순위 2)
  * @param fallback - 기본값 (기본: 'Unknown')
  * @returns 표시할 사용자 이름
  * 
  * @example
- * const userName = getUserDisplayName(userProfile); // "홍길동"
- * const userName = getUserDisplayName(user, '알 수 없음'); // "알 수 없음"
+ * const userName = getUserDisplayName(userProfile, user); // "홍길동"
+ * const userName = getUserDisplayName(null, user, '알 수 없음'); // "알 수 없음"
  */
 export const getUserDisplayName = (
-  user: UserLike | null | undefined,
+  userProfile: UserLike | null | undefined,
+  user: UserLike | null | undefined = null,
   fallback: string = 'Unknown'
 ): string => {
-  if (!user) return fallback;
-  return user.displayName || user.name || user.email || fallback;
+  // 1순위: userProfile.displayName (Firestore에서 가져온 정확한 이름)
+  if (userProfile?.displayName) {
+    return userProfile.displayName;
+  }
+  
+  // 2순위: user.displayName (Firebase Auth, 일반적으로 null이지만 혹시 모를 경우)
+  if (user?.displayName) {
+    return user.displayName;
+  }
+  
+  // 3순위: userProfile.name (혹시 다른 필드명으로 저장된 경우)
+  if (userProfile?.name) {
+    return userProfile.name;
+  }
+  
+  // 4순위: user.name (혹시 다른 필드명으로 저장된 경우)
+  if (user?.name) {
+    return user.name;
+  }
+  
+  // 5순위: 이메일에서 이름 추출 (userProfile.email 우선)
+  const email = userProfile?.email || user?.email;
+  if (email) {
+    const emailName = email.split('@')[0];
+    // 이메일이 의미있는 이름인지 확인 (숫자나 특수문자만 있는 경우 제외)
+    if (emailName && /[a-zA-Z가-힣]/.test(emailName)) {
+      return emailName;
+    }
+  }
+  
+  // 6순위: fallback
+  return fallback;
 };
 
 /**

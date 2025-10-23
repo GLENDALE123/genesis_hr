@@ -52,7 +52,15 @@ function createWindow() {
     ? 'http://localhost:3000'
     : `file://${path.join(__dirname, '../out/index.html')}`;
 
-  mainWindow.loadURL(startUrl);
+  // 개발 모드에서 캐시 클리어 후 로드
+  if (isDev) {
+    mainWindow.webContents.session.clearCache().then(() => {
+      console.log('🧹 [Electron] 개발 모드 캐시 클리어 완료');
+      mainWindow.loadURL(startUrl);
+    });
+  } else {
+    mainWindow.loadURL(startUrl);
+  }
 
   // 알림 권한 자동 허용
   const { session } = mainWindow.webContents;

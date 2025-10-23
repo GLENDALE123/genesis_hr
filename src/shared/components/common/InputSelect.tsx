@@ -36,6 +36,9 @@ interface InputSelectProps {
   className?: string;
   disabled?: boolean;
   autoComplete?: string;
+  allowCustomInput?: boolean;
+  autoFocus?: boolean;
+  tabIndex?: number;
   'data-testid'?: string;
 }
 
@@ -47,8 +50,11 @@ export const InputSelect: React.FC<InputSelectProps> = ({
   className,
   disabled = false,
   autoComplete = "off",
+  allowCustomInput = true,
+  autoFocus = false,
+  tabIndex,
   ...props
-}) => {
+}: InputSelectProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -110,7 +116,9 @@ export const InputSelect: React.FC<InputSelectProps> = ({
     if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
+      const viewportWidth = window.innerWidth;
       const dropdownHeight = 300; // max-h-[300px]
+      const dropdownWidth = Math.max(rect.width, 200); // 최소 너비 200px
       const spacing = 4;
       
       // 하단에 공간이 충분한지 확인
@@ -123,10 +131,23 @@ export const InputSelect: React.FC<InputSelectProps> = ({
         top = rect.top - dropdownHeight - spacing;
       }
       
+      // 좌우 위치 계산 (화면 가장자리 고려)
+      let left = rect.left;
+      
+      // 오른쪽으로 넘어가는 경우 조정
+      if (left + dropdownWidth > viewportWidth - 16) { // 16px 여백
+        left = viewportWidth - dropdownWidth - 16;
+      }
+      
+      // 왼쪽으로 넘어가는 경우 조정
+      if (left < 16) { // 16px 여백
+        left = 16;
+      }
+      
       setDropdownPosition({
         top,
-        left: rect.left,
-        width: rect.width
+        left,
+        width: dropdownWidth
       });
     }
   };
@@ -176,20 +197,20 @@ export const InputSelect: React.FC<InputSelectProps> = ({
       return;
     }
 
-    const filteredOptions = options.filter(option =>
+    const filteredOptions = options.filter((option: string) =>
       option.toLowerCase().includes((value || '').toLowerCase())
     );
 
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setHighlightedIndex(prev => 
+        setHighlightedIndex((prev: number) => 
           prev < filteredOptions.length - 1 ? prev + 1 : 0
         );
         break;
       case 'ArrowUp':
         e.preventDefault();
-        setHighlightedIndex(prev => 
+        setHighlightedIndex((prev: number) => 
           prev > 0 ? prev - 1 : filteredOptions.length - 1
         );
         break;
@@ -215,7 +236,7 @@ export const InputSelect: React.FC<InputSelectProps> = ({
     }
   };
 
-  const filteredOptions = options.filter(option =>
+  const filteredOptions = options.filter((option: string) =>
     option.toLowerCase().includes((value || '').toLowerCase())
   );
 
@@ -240,9 +261,11 @@ export const InputSelect: React.FC<InputSelectProps> = ({
           )}
           onFocus={handleFocus}
           onKeyDown={handleKeyDown}
-          autoComplete="off"
+          autoComplete={autoComplete}
           list=""
           disabled={disabled}
+          autoFocus={autoFocus}
+          tabIndex={tabIndex}
           {...props}
         />
         <button
@@ -284,7 +307,7 @@ export const InputSelect: React.FC<InputSelectProps> = ({
           onWheel={handleWheel}
         >
           <div className="p-1">
-            {filteredOptions.map((option, index) => (
+            {filteredOptions.map((option: string, index: number) => (
               <div
                 key={option}
                 className={cn(

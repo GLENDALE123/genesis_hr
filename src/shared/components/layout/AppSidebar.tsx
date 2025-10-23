@@ -4,7 +4,6 @@ import React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
-import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import Link from 'next/link';
@@ -82,9 +81,9 @@ const mainNavigationItems: NavItem[] = [
 // 서브 메뉴 (작은 메뉴들)
 const subNavigationItems: NavItem[] = [
   {
-    title: '일정 관리',
-    href: '/calendar',
-    icon: ROUTE_ICONS['/calendar'],
+    title: '근무계획',
+    href: '/work-schedule',
+    icon: ROUTE_ICONS['/work-schedule'],
   },
   {
     title: '알림',
@@ -218,7 +217,7 @@ const AppSidebarComponent = ({
             <>
               <span className="truncate">{item.title}</span>
               {item.badge && (
-                <Badge variant="secondary" className="ml-auto">
+                <Badge className="ml-auto bg-secondary text-secondary-foreground">
                   {item.badge}
                 </Badge>
               )}
@@ -287,8 +286,8 @@ const AppSidebarComponent = ({
       </div>
 
       {/* Navigation */}
-      <ScrollArea className="flex-1 py-4">
-        <nav className="space-y-1">
+      <div className="flex-1 py-4 overflow-y-auto">
+        <div className="space-y-1">
           {/* 메인 메뉴 섹션 */}
           <div className="space-y-1 px-2">
             {mainNavigationItems.map(item => renderNavItem(item))}
@@ -305,8 +304,8 @@ const AppSidebarComponent = ({
           <div className="space-y-1 px-2">
             {subNavigationItems.map(item => renderNavItem(item))}
           </div>
-        </nav>
-      </ScrollArea>
+        </div>
+      </div>
 
       {/* Sidebar Footer */}
       <div className="border-t p-3">
@@ -314,7 +313,6 @@ const AppSidebarComponent = ({
           {isExpanded && (
             <>
               <Button
-                variant="ghost"
                 className="w-full justify-start min-h-[44px] md:min-h-[40px]"
                 asChild
               >
@@ -324,7 +322,6 @@ const AppSidebarComponent = ({
                 </Link>
               </Button>
               <Button
-                variant="ghost"
                 className="w-full justify-start min-h-[44px] md:min-h-[40px]"
                 asChild
               >
@@ -341,8 +338,6 @@ const AppSidebarComponent = ({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button 
-                      variant="ghost" 
-                      size="icon"
                       className="min-h-[44px] min-w-[44px] md:min-h-[40px] md:min-w-[40px]"
                       asChild
                     >
@@ -360,8 +355,6 @@ const AppSidebarComponent = ({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button 
-                      variant="ghost" 
-                      size="icon"
                       className="min-h-[44px] min-w-[44px] md:min-h-[40px] md:min-w-[40px]"
                       asChild
                     >
