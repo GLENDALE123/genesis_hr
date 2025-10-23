@@ -16,7 +16,8 @@ import {
   Settings,
   HelpCircle,
   User,
-  Wrench
+  Wrench,
+  Megaphone
 } from 'lucide-react';
 
 // 경로별 아이콘 매핑
@@ -34,6 +35,7 @@ export const ROUTE_ICONS: Record<string, React.ComponentType<{ className?: strin
   '/jig/master-list': ClipboardList,
   '/calendar': Calendar,
   '/work-schedule': Calendar,
+  '/announcements': Megaphone,
   '/notifications': Bell,
   '/messages': MessageSquare,
   '/settings': Settings,
@@ -56,6 +58,7 @@ export const ROUTE_TITLES: Record<string, string> = {
   '/jig/master-list': '지그목록표',
   '/calendar': '일정 관리',
   '/work-schedule': '근무계획',
+  '/announcements': '공지사항',
   '/notifications': '알림',
   '/messages': '메시지',
   '/settings': '설정',

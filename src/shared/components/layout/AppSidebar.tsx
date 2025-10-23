@@ -81,21 +81,14 @@ const mainNavigationItems: NavItem[] = [
 // 서브 메뉴 (작은 메뉴들)
 const subNavigationItems: NavItem[] = [
   {
+    title: '공지사항',
+    href: '/announcements',
+    icon: ROUTE_ICONS['/announcements'],
+  },
+  {
     title: '근무계획',
     href: '/work-schedule',
     icon: ROUTE_ICONS['/work-schedule'],
-  },
-  {
-    title: '알림',
-    href: '/notifications',
-    icon: ROUTE_ICONS['/notifications'],
-    badge: '3',
-  },
-  {
-    title: '메시지',
-    href: '/messages',
-    icon: ROUTE_ICONS['/messages'],
-    badge: '12',
   },
 ];
 
