@@ -13,7 +13,7 @@ import {
   getDocument
 } from '@/shared/services/firebase/firestore';
 import { ShortageRequest, PackagingReport } from '@/features/production/types';
-import { createShortageNotification } from './notificationService';
+import { createShortageNotification } from '@/shared/services/notificationService';
 
 const SHORTAGE_REQUESTS_COLLECTION = 'shortage-requests';
 

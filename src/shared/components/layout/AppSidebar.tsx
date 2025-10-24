@@ -194,7 +194,7 @@ const AppSidebarComponent = ({
           // 서브메뉴는 버튼 너비를 줄임
           level === 0 ? "w-full" : "w-[calc(100%-1.5rem)] ml-6",
           active
-            ? "bg-accent text-accent-foreground"
+            ? "bg-primary text-primary-foreground"
             : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
           // 접힌 상태에서는 정사각형 터치 영역
           !isExpanded && "justify-center px-1 py-2 md:px-1 md:py-2 min-w-[44px] md:min-w-[40px]"
@@ -204,7 +204,7 @@ const AppSidebarComponent = ({
           <item.icon className={cn(
             // 태블릿에서 아이콘 크기 증가 (모바일: 5x5, 데스크톱: 4x4)
             "h-5 w-5 md:h-4 md:w-4 flex-shrink-0",
-            active && "text-accent-foreground"
+            active && "text-primary-foreground"
           )} />
           {isExpanded && (
             <>
@@ -305,24 +305,32 @@ const AppSidebarComponent = ({
         <div className="space-y-2">
           {isExpanded && (
             <>
-              <Button
-                className="w-full justify-start min-h-[44px] md:min-h-[40px]"
-                asChild
+              <button
+                onClick={() => handleNavigate('/settings')}
+                className={cn(
+                  "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors text-left",
+                  "min-h-[44px] px-2 py-2 md:px-2 md:py-2 w-full",
+                  isActive('/settings')
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                )}
               >
-                <Link href="/settings">
-                  <Settings className="mr-2 h-5 w-5 md:h-4 md:w-4" />
-                  설정
-                </Link>
-              </Button>
-              <Button
-                className="w-full justify-start min-h-[44px] md:min-h-[40px]"
-                asChild
+                <Settings className="mr-2 h-5 w-5 md:h-4 md:w-4" />
+                설정
+              </button>
+              <button
+                onClick={() => handleNavigate('/help')}
+                className={cn(
+                  "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors text-left",
+                  "min-h-[44px] px-2 py-2 md:px-2 md:py-2 w-full",
+                  isActive('/help')
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                )}
               >
-                <Link href="/help">
-                  <HelpCircle className="mr-2 h-5 w-5 md:h-4 md:w-4" />
-                  도움말
-                </Link>
-              </Button>
+                <HelpCircle className="mr-2 h-5 w-5 md:h-4 md:w-4" />
+                도움말
+              </button>
             </>
           )}
           {!isExpanded && (
@@ -330,14 +338,18 @@ const AppSidebarComponent = ({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button 
-                      className="min-h-[44px] min-w-[44px] md:min-h-[40px] md:min-w-[40px]"
-                      asChild
+                    <button
+                      onClick={() => handleNavigate('/settings')}
+                      className={cn(
+                        "flex items-center justify-center cursor-pointer rounded-md text-sm font-medium transition-colors",
+                        "min-h-[44px] min-w-[44px] md:min-h-[40px] md:min-w-[40px]",
+                        isActive('/settings')
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      )}
                     >
-                      <Link href="/settings">
-                        <Settings className="h-5 w-5 md:h-4 md:w-4" />
-                      </Link>
-                    </Button>
+                      <Settings className="h-5 w-5 md:h-4 md:w-4" />
+                    </button>
                   </TooltipTrigger>
                   <TooltipContent side="right" className="ml-2">
                     <p>설정</p>
@@ -347,14 +359,18 @@ const AppSidebarComponent = ({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button 
-                      className="min-h-[44px] min-w-[44px] md:min-h-[40px] md:min-w-[40px]"
-                      asChild
+                    <button
+                      onClick={() => handleNavigate('/help')}
+                      className={cn(
+                        "flex items-center justify-center cursor-pointer rounded-md text-sm font-medium transition-colors",
+                        "min-h-[44px] min-w-[44px] md:min-h-[40px] md:min-w-[40px]",
+                        isActive('/help')
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      )}
                     >
-                      <Link href="/help">
-                        <HelpCircle className="h-5 w-5 md:h-4 md:w-4" />
-                      </Link>
-                    </Button>
+                      <HelpCircle className="h-5 w-5 md:h-4 md:w-4" />
+                    </button>
                   </TooltipTrigger>
                   <TooltipContent side="right" className="ml-2">
                     <p>도움말</p>

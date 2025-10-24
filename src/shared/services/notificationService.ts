@@ -234,7 +234,7 @@ export class UnifiedNotificationService {
       switch (newStatus) {
         case ProductionStatus.Pending:
           title = '생산일보 상태 변경';
-          body = `${getUserDisplayName(userProfile, user)}님이 생산일보 상태를 "대기"로 변경했습니다.
+          body = `${getUserDisplayName(null, user)}님이 생산일보 상태를 "대기"로 변경했습니다.
 
 제품: ${productInfo}
 라인: ${lineInfo}
@@ -246,7 +246,7 @@ export class UnifiedNotificationService {
           
         case ProductionStatus.InProgress:
           title = '생산일보 상태 변경';
-          body = `${getUserDisplayName(userProfile, user)}님이 생산일보 상태를 "작업중"으로 변경했습니다.
+          body = `${getUserDisplayName(null, user)}님이 생산일보 상태를 "작업중"으로 변경했습니다.
 
 제품: ${productInfo}
 라인: ${lineInfo}
@@ -258,7 +258,7 @@ export class UnifiedNotificationService {
           
         case ProductionStatus.Completed:
           title = '생산일보 상태 변경';
-          body = `${getUserDisplayName(userProfile, user)}님이 생산일보 상태를 "생산완료"로 변경했습니다.
+          body = `${getUserDisplayName(null, user)}님이 생산일보 상태를 "생산완료"로 변경했습니다.
 
 제품: ${productInfo}
 라인: ${lineInfo}
@@ -278,7 +278,7 @@ export class UnifiedNotificationService {
         body,
         requestId: report.id,
         subtitle,
-        senderName: getUserDisplayName(userProfile, user),
+        senderName: getUserDisplayName(null, user),
         senderUid: user.uid,
         senderAvatar: user.photoURL,
         priority: 'normal',
@@ -321,7 +321,7 @@ export class UnifiedNotificationService {
       switch (action) {
         case 'created':
           title = '생산일보 등록';
-          body = `${getUserDisplayName(userProfile, user)}님이 새로운 생산일보를 등록했습니다.
+          body = `${getUserDisplayName(null, user)}님이 새로운 생산일보를 등록했습니다.
 
 제품: ${productInfo}
 라인: ${lineInfo}
@@ -332,7 +332,7 @@ export class UnifiedNotificationService {
           
         case 'updated':
           title = '생산일보 수정';
-          body = `${getUserDisplayName(userProfile, user)}님이 생산일보를 수정했습니다.
+          body = `${getUserDisplayName(null, user)}님이 생산일보를 수정했습니다.
 
 제품: ${productInfo}
 라인: ${lineInfo}
@@ -343,7 +343,7 @@ export class UnifiedNotificationService {
           
         case 'deleted':
           title = '생산일보 삭제';
-          body = `${getUserDisplayName(userProfile, user)}님이 생산일보를 삭제했습니다.
+          body = `${getUserDisplayName(null, user)}님이 생산일보를 삭제했습니다.
 
 제품: ${productInfo}
 라인: ${lineInfo}
@@ -361,7 +361,7 @@ export class UnifiedNotificationService {
         body,
         requestId: `DAILY-REPORT-${action.toUpperCase()}-${Date.now()}`,
         subtitle,
-        senderName: getUserDisplayName(userProfile, user),
+        senderName: getUserDisplayName(null, user),
         senderUid: user.uid,
         senderAvatar: user.photoURL,
         priority: 'normal',
@@ -407,10 +407,10 @@ export class UnifiedNotificationService {
       await this.sendNotification({
         type: 'production-schedule',
         title: '생산일정',
-        body: `${getUserDisplayName(userProfile, user)}님이 ${actionMessages[action]}`,
+        body: `${getUserDisplayName(null, user)}님이 ${actionMessages[action]}`,
         requestId: `SCHEDULE-${action.toUpperCase()}-${Date.now()}`,
         subtitle: `${scheduleData.productName}/${scheduleData.partName} (${scheduleData.productionLine})`,
-        senderName: getUserDisplayName(userProfile, user),
+        senderName: getUserDisplayName(null, user),
         senderUid: user.uid,
         senderAvatar: user.photoURL,
         priority: 'normal',
@@ -453,10 +453,10 @@ export class UnifiedNotificationService {
       await this.sendNotification({
         type: 'production-schedule',
         title: '생산일정',
-        body: `${getUserDisplayName(userProfile, user)}님이 ${schedules.length}건의 생산일정을 일괄 등록했습니다.`,
+        body: `${getUserDisplayName(null, user)}님이 ${schedules.length}건의 생산일정을 일괄 등록했습니다.`,
         requestId: `SCHEDULE-BULK-${Date.now()}`,
         subtitle: `${dateRange} (${schedules.length}건)`,
-        senderName: getUserDisplayName(userProfile, user),
+        senderName: getUserDisplayName(null, user),
         senderUid: user.uid,
         senderAvatar: user.photoURL,
         priority: 'normal',
@@ -476,6 +476,40 @@ export class UnifiedNotificationService {
       console.log('✅ 생산일정 일괄 알림 전송 완료');
     } catch (error) {
       console.error('생산일정 일괄 알림 전송 중 오류:', error);
+    }
+  }
+
+  // ==================== 공지사항 알림 ====================
+
+  /**
+   * 공지사항 등록 알림 생성
+   */
+  static async sendAnnouncementNotification(
+    announcementTitle: string,
+    author: string,
+    authorId: string,
+    announcementId?: string
+  ): Promise<void> {
+    try {
+      await this.sendNotification({
+        type: 'announcement',
+        title: '새 공지사항이 등록되었습니다',
+        body: `"${announcementTitle}" 공지사항이 등록되었습니다.`,
+        requestId: announcementId || `ANNOUNCEMENT-${Date.now()}`,
+        subtitle: announcementTitle,
+        senderName: author,
+        senderUid: authorId,
+        priority: 'normal',
+        centerInfo: '공지사항 등록',
+        metadata: {
+          announcementTitle,
+          announcementId
+        }
+      }, authorId);
+
+      console.log(`✅ 공지사항 등록 알림 전송 완료: ${announcementTitle}`);
+    } catch (error) {
+      console.error('공지사항 등록 알림 전송 중 오류:', error);
     }
   }
 
@@ -646,7 +680,7 @@ export class UnifiedNotificationService {
       workDate: new Date().toISOString().split('T')[0],
       author: {
         uid: user.uid,
-        displayName: getUserDisplayName(userProfile, user)
+        displayName: getUserDisplayName(null, user)
       },
       productionLine: '증착1',
       orderNumbers: ['PO-TEST-001'],
@@ -678,7 +712,7 @@ export class UnifiedNotificationService {
       workDate: new Date().toISOString().split('T')[0],
       author: {
         uid: user.uid,
-        displayName: getUserDisplayName(userProfile, user)
+        displayName: getUserDisplayName(null, user)
       },
       productionLine: '증착1',
       orderNumbers: ['PO-TEST-001'],

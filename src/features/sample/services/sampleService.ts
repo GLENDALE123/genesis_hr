@@ -175,7 +175,7 @@ export class SampleService {
       const historyItem: SampleHistoryItem = {
         status,
         date: new Date().toISOString(),
-        by: getUserDisplayName(user, '알 수 없음'),
+        by: getUserDisplayName(user, null, '알 수 없음'),
         ...(reason && { reason })
       };
 

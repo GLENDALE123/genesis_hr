@@ -14,7 +14,7 @@ const Dialog: React.FC<React.ComponentPropsWithoutRef<typeof DialogPrimitive.Roo
   ...props 
 }) => {
   useMobileBackHandler({
-    isOpen: open,
+    isOpen: !!open,
     onClose: () => onOpenChange?.(false),
     componentType: 'Dialog'
   });
@@ -50,6 +50,8 @@ const DialogOverlay = React.forwardRef<
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
 interface DialogContentProps extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
+  children: React.ReactNode;
+  className?: string;
   stickyHeader?: React.ReactNode;
   stickyFooter?: React.ReactNode;
 }

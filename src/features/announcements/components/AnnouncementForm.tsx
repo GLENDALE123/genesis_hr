@@ -12,6 +12,7 @@ import { Textarea } from '@/shared/components/ui/textarea';
 import { Label } from '@/shared/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { UploadingImageGrid, UploadingImageItem } from '@/shared/components/common/UploadingImageGrid';
+import { Spinner } from '@/shared/components/ui/spinner';
 import { createQuickThumbnail } from '@/shared/utils/imageUpload';
 import { AnnouncementFormData } from '../types/announcement.types';
 
@@ -21,6 +22,7 @@ const announcementSchema = z.object({
   cooperationRequest: z.string().max(200, '협조요청은 200자 이하여야 합니다.'),
   planStartDate: z.string().optional(),
   planEndDate: z.string().optional(),
+  imageUrls: z.array(z.union([z.string(), z.instanceof(File)])).optional(),
 });
 
 interface AnnouncementFormProps {
@@ -71,10 +73,12 @@ export const AnnouncementForm: React.FC<AnnouncementFormProps> = ({
   // 기존 이미지 URL들을 UploadingImageItem으로 변환
   React.useEffect(() => {
     if (initialData?.imageUrls && initialData.imageUrls.length > 0) {
-      const existingItems: UploadingImageItem[] = initialData.imageUrls.map(url => ({
-        file: null,
-        preview: url
-      }));
+      const existingItems: UploadingImageItem[] = initialData.imageUrls
+        .filter((url): url is string => typeof url === 'string')
+        .map(url => ({
+          file: null,
+          preview: url
+        }));
       setImageItems(existingItems);
     }
   }, [initialData?.imageUrls]);
@@ -303,7 +307,7 @@ export const AnnouncementForm: React.FC<AnnouncementFormProps> = ({
               className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
             >
               {isSubmitting && (
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                <Spinner size="sm" variant="secondary" />
               )}
               {isSubmitting ? '저장 중...' : '저장'}
             </Button>

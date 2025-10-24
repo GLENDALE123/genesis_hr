@@ -7,6 +7,7 @@ import { Input } from '@/shared/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/shared/components/ui/alert-dialog';
+import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
 import { toast } from 'sonner';
 
 import { AnnouncementService } from '../services/announcementService';
@@ -16,6 +17,7 @@ import { AnnouncementList } from '../components/AnnouncementList';
 import { AnnouncementDetailModal } from '../components/AnnouncementDetailModal';
 import { Announcement, AnnouncementFormData, ViewMode } from '../types/announcement.types';
 import { useAuthStore } from '@/features/auth/store/authStore';
+import { UnifiedNotificationService } from '@/shared/services/notificationService';
 
 interface AnnouncementContainerProps {
   className?: string;
@@ -95,8 +97,8 @@ export const AnnouncementContainer: React.FC<AnnouncementContainerProps> = ({
     setIsSubmitting(true);
     try {
       // 이미지 업로드 처리
-      const imageFiles = data.imageUrls.filter(url => url instanceof File) as File[];
-      const existingImageUrls = data.imageUrls.filter(url => typeof url === 'string') as string[];
+      const imageFiles = (data.imageUrls || []).filter(url => url instanceof File) as File[];
+      const existingImageUrls = (data.imageUrls || []).filter(url => typeof url === 'string') as string[];
       
       let uploadedImageUrls: string[] = [];
       if (imageFiles.length > 0) {
@@ -121,6 +123,19 @@ export const AnnouncementContainer: React.FC<AnnouncementContainerProps> = ({
           },
           userProfile?.displayName || userProfile?.name || '관리자'
         );
+        
+        // 알림 생성
+        try {
+          await UnifiedNotificationService.sendAnnouncementNotification(
+            data.title,
+            userProfile?.displayName || userProfile?.name || '관리자',
+            user?.uid || 'unknown',
+            'new-announcement'
+          );
+        } catch (notificationError) {
+          console.warn('알림 생성 실패:', notificationError);
+        }
+        
         toast.success('공지사항이 등록되었습니다.');
       }
 
@@ -154,12 +169,11 @@ export const AnnouncementContainer: React.FC<AnnouncementContainerProps> = ({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">공지사항을 불러오는 중...</p>
-        </div>
-      </div>
+      <LoadingSpinner 
+        size="lg" 
+        loadingVariant="card"
+        label="공지사항을 불러오는 중..."
+      />
     );
   }
 
@@ -167,14 +181,7 @@ export const AnnouncementContainer: React.FC<AnnouncementContainerProps> = ({
     <div className={`${className || ''}`}>
       <div className="space-y-6">
       {/* 헤더 */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">공지사항</h1>
-          <p className="text-muted-foreground">
-            총 {filteredAnnouncements.length}개의 공지사항
-          </p>
-        </div>
-        
+      <div className="flex flex-col sm:flex-row justify-end items-start sm:items-center gap-4">
         {canManage && (
           <Button onClick={handleCreateAnnouncement} className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
             <Plus className="h-4 w-4" />
@@ -202,16 +209,14 @@ export const AnnouncementContainer: React.FC<AnnouncementContainerProps> = ({
             <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
               <Button
                 onClick={() => setViewMode('card')}
-                size="sm"
-                className={`h-8 px-3 ${viewMode === 'card' ? 'bg-primary text-primary-foreground' : 'bg-transparent hover:bg-muted'}`}
+                className={`h-8 px-3 ${viewMode === 'card' ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground hover:bg-muted'}`}
               >
                 <Grid3X3 className="h-4 w-4 mr-1" />
                 카드
               </Button>
               <Button
                 onClick={() => setViewMode('list')}
-                size="sm"
-                className={`h-8 px-3 ${viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'bg-transparent hover:bg-muted'}`}
+                className={`h-8 px-3 ${viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground hover:bg-muted'}`}
               >
                 <List className="h-4 w-4 mr-1" />
                 리스트
@@ -270,7 +275,7 @@ export const AnnouncementContainer: React.FC<AnnouncementContainerProps> = ({
 
       {/* 폼 모달 */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>
               {editingAnnouncement ? '공지사항 수정' : '새 공지사항 작성'}
@@ -279,9 +284,9 @@ export const AnnouncementContainer: React.FC<AnnouncementContainerProps> = ({
           <AnnouncementForm
             onSubmit={handleFormSubmit}
             onCancel={handleFormCancel}
-            initialData={editingAnnouncement}
+            initialData={editingAnnouncement || undefined}
             isSubmitting={isSubmitting}
-            currentUser={userProfile}
+            currentUser={userProfile || undefined}
           />
         </DialogContent>
       </Dialog>
@@ -308,7 +313,7 @@ export const AnnouncementContainer: React.FC<AnnouncementContainerProps> = ({
           <AlertDialogHeader>
             <AlertDialogTitle>공지사항 삭제</AlertDialogTitle>
             <AlertDialogDescription>
-              '{deletingAnnouncement?.title}' 공지사항을 정말 삭제하시겠습니까?
+              &apos;{deletingAnnouncement?.title}&apos; 공지사항을 정말 삭제하시겠습니까?
               <br />
               이 작업은 되돌릴 수 없습니다.
             </AlertDialogDescription>

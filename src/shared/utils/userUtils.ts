@@ -100,7 +100,7 @@ export const getUserInitial = (
   user: UserLike | null | undefined,
   fallback: string = '?'
 ): string => {
-  const displayName = getUserDisplayName(user, fallback);
+  const displayName = getUserDisplayName(user, null, fallback);
   return displayName.charAt(0).toUpperCase();
 };
 

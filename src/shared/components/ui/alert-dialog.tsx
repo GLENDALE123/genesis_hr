@@ -14,7 +14,7 @@ const AlertDialog: React.FC<React.ComponentPropsWithoutRef<typeof AlertDialogPri
   ...props 
 }) => {
   useMobileBackHandler({
-    isOpen: open,
+    isOpen: !!open,
     onClose: () => onOpenChange?.(false),
     componentType: 'AlertDialog'
   });

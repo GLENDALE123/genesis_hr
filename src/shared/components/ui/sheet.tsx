@@ -15,7 +15,7 @@ const Sheet: React.FC<React.ComponentPropsWithoutRef<typeof SheetPrimitive.Root>
   ...props 
 }) => {
   useMobileBackHandler({
-    isOpen: open,
+    isOpen: !!open,
     onClose: () => onOpenChange?.(false),
     componentType: 'Sheet'
   });

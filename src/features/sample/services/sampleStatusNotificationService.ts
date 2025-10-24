@@ -42,7 +42,7 @@ export class SampleStatusNotificationService {
 
       if (oldStatus && oldStatus !== newStatus) {
         // 상태 변경
-        body = `${getUserDisplayName(userProfile, user)}님이 샘플 요청 상태를 "${oldStatus}"에서 "${newStatus}"로 변경했습니다.
+        body = `${getUserDisplayName(null, user)}님이 샘플 요청 상태를 "${oldStatus}"에서 "${newStatus}"로 변경했습니다.
 제품: ${sampleRequest.productName}
 고객사: ${sampleRequest.clientName}
 요청일: ${sampleRequest.requestDate}
@@ -50,14 +50,14 @@ export class SampleStatusNotificationService {
 현재 상태: ${newStatus}`;
       } else if (!oldStatus) {
         // 신규 등록
-        body = `${getUserDisplayName(userProfile, user)}님이 새로운 샘플 요청을 등록했습니다.
+        body = `${getUserDisplayName(null, user)}님이 새로운 샘플 요청을 등록했습니다.
 제품: ${sampleRequest.productName}
 고객사: ${sampleRequest.clientName}
 요청일: ${sampleRequest.requestDate}
 상태: ${newStatus}`;
       } else {
         // 상태 변경 없음 (다른 필드 변경)
-        body = `${getUserDisplayName(userProfile, user)}님이 샘플 요청을 수정했습니다.
+        body = `${getUserDisplayName(null, user)}님이 샘플 요청을 수정했습니다.
 제품: ${sampleRequest.productName}
 고객사: ${sampleRequest.clientName}
 요청일: ${sampleRequest.requestDate}
@@ -95,7 +95,7 @@ export class SampleStatusNotificationService {
         body,
         requestId: sampleRequest.id,
         subtitle: `${sampleRequest.productName}/${sampleRequest.clientName}`,
-        senderName: getUserDisplayName(userProfile, user),
+        senderName: getUserDisplayName(null, user),
         senderUid: user.uid,
         priority: 'normal',
         centerInfo: '샘플 요청 상태 변경'
@@ -130,7 +130,7 @@ export class SampleStatusNotificationService {
       switch (action) {
         case 'created':
           title = '새로운 샘플 요청';
-          body = `${getUserDisplayName(userProfile, user)}님이 새로운 샘플 요청을 등록했습니다.
+          body = `${getUserDisplayName(null, user)}님이 새로운 샘플 요청을 등록했습니다.
 제품: ${sampleRequest.productName}
 고객사: ${sampleRequest.clientName}
 요청일: ${sampleRequest.requestDate}
@@ -138,7 +138,7 @@ export class SampleStatusNotificationService {
           break;
         case 'updated':
           title = '샘플 요청 수정';
-          body = `${getUserDisplayName(userProfile, user)}님이 샘플 요청을 수정했습니다.
+          body = `${getUserDisplayName(null, user)}님이 샘플 요청을 수정했습니다.
 제품: ${sampleRequest.productName}
 고객사: ${sampleRequest.clientName}
 요청일: ${sampleRequest.requestDate}
@@ -146,7 +146,7 @@ export class SampleStatusNotificationService {
           break;
         case 'deleted':
           title = '샘플 요청 삭제';
-          body = `${getUserDisplayName(userProfile, user)}님이 샘플 요청을 삭제했습니다.
+          body = `${getUserDisplayName(null, user)}님이 샘플 요청을 삭제했습니다.
 제품: ${sampleRequest.productName}
 고객사: ${sampleRequest.clientName}`;
           break;
@@ -183,7 +183,7 @@ export class SampleStatusNotificationService {
         body,
         requestId: sampleRequest.id,
         subtitle: `${sampleRequest.productName}/${sampleRequest.clientName}`,
-        senderName: getUserDisplayName(userProfile, user),
+        senderName: getUserDisplayName(null, user),
         senderUid: user.uid,
         priority: 'normal',
         centerInfo: '샘플 요청 상태 변경'
@@ -235,13 +235,13 @@ export class SampleStatusNotificationService {
         },
         requesterInfo: {
           uid: user.uid,
-          displayName: getUserDisplayName(userProfile, user)
+          displayName: getUserDisplayName(null, user)
         },
         history: [
           {
             status: newStatus,
             date: new Date().toISOString(),
-            by: getUserDisplayName(userProfile, user)
+            by: getUserDisplayName(null, user)
           }
         ],
         comments: [],

@@ -127,7 +127,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
         specification: '',
         postProcess: '',
         injectionCompany: '',
-        inspector: getUserDisplayName(userProfile || user, ''),
+        inspector: getUserDisplayName(userProfile || user, null, ''),
         inspectionDate: new Date().toISOString().split('T')[0],
         imageUrls: [] as string[],
         
@@ -183,7 +183,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     specification: '',
     postProcess: '',
     injectionCompany: '',
-      inspector: getUserDisplayName(userProfile || user, ''),
+      inspector: getUserDisplayName(userProfile || user, null, ''),
     inspectionDate: new Date().toISOString().split('T')[0],
     imageUrls: [] as string[],
     

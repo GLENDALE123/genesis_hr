@@ -3,7 +3,7 @@ import { collection, doc, runTransaction, query, orderBy, limit, getDocs } from 
 import { LogisticsRequest, ProductionRequestStatus, ProductionRequestType } from '@/features/production/types/logistics';
 import type { PackagingReport } from '@/features/production/types';
 import { LogisticsTransferData } from '@/features/production/components/LogisticsTransferModal';
-import { createProductionRequestNotification } from './notificationService';
+import { createProductionRequestNotification } from '@/shared/services/notificationService';
 
 /**
  * 물류이동 요청 생성

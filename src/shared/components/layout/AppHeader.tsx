@@ -360,13 +360,13 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 px-3 rounded-full flex items-center gap-2">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={user?.photoURL || ''} alt={getUserDisplayName(userProfile || user, '')} />
+                  <AvatarImage src={user?.photoURL || ''} alt={getUserDisplayName(userProfile || user, null, '')} />
                   <AvatarFallback>
                     {getUserInitial(userProfile || user, 'U')}
                   </AvatarFallback>
                 </Avatar>
                 <span className="hidden sm:block text-sm font-medium">
-                  {getUserDisplayName(userProfile || user, '사용자')}
+                  {getUserDisplayName(userProfile || user, null, '사용자')}
                 </span>
               </Button>
             </DropdownMenuTrigger>
@@ -374,7 +374,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-medium leading-none">
-                    {getUserDisplayName(userProfile || user, '사용자')}
+                    {getUserDisplayName(userProfile || user, null, '사용자')}
                   </p>
                   <p className="text-xs leading-none text-muted-foreground">
                     {user?.email}

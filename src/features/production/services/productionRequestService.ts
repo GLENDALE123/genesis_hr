@@ -164,7 +164,7 @@ export const ProductionRequestService = {
 
     // 알림 발송 (물류이동 제외)
     if (requestData.requestType !== ProductionRequestType.LogisticsTransfer) {
-      const { createProductionRequestNotification } = await import('./notificationService');
+      const { createProductionRequestNotification } = await import('@/shared/services/notificationService');
       createProductionRequestNotification(
         docRef.id,
         requestData.requestType,

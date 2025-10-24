@@ -158,7 +158,6 @@ export const JigListForm: React.FC<JigListFormProps> = ({
               <div className="space-y-2">
                 <Label htmlFor="requestType">생산 구분</Label>
                 <InputSelect
-                  id="requestType"
                   value={formData.requestType}
                   onChange={(value: string) => handleInputChange('requestType', value)}
                   options={PRODUCTION_TYPES}
@@ -170,7 +169,6 @@ export const JigListForm: React.FC<JigListFormProps> = ({
               <div className="space-y-2">
                 <Label htmlFor="itemName">품목명 *</Label>
                 <InputSelect
-                  id="itemName"
                   value={formData.itemName}
                   onChange={(value: string) => handleInputChange('itemName', value)}
                   options={autocompleteData?.itemNames || []}
@@ -183,7 +181,6 @@ export const JigListForm: React.FC<JigListFormProps> = ({
               <div className="space-y-2">
                 <Label htmlFor="partName">부품명 *</Label>
                 <InputSelect
-                  id="partName"
                   value={formData.partName}
                   onChange={(value: string) => handleInputChange('partName', value)}
                   options={autocompleteData?.partNames || []}
@@ -196,7 +193,6 @@ export const JigListForm: React.FC<JigListFormProps> = ({
               <div className="space-y-2">
                 <Label htmlFor="itemNumber">품목번호 *</Label>
                 <InputSelect
-                  id="itemNumber"
                   value={formData.itemNumber}
                   onChange={(value: string) => handleInputChange('itemNumber', value)}
                   options={autocompleteData?.itemNumbers || []}

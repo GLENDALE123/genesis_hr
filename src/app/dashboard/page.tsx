@@ -18,7 +18,7 @@ import { RadioGroup, RadioGroupItem } from '@/shared/components/ui/radio-group';
 import { Label } from '@/shared/components/ui/label';
 import { toast } from 'sonner';
 import { Shield, Lock, TestTube, Bell, Send, Users, User } from 'lucide-react';
-// import { createTestShortageNotification } from '@/features/production/services/notificationService';
+// import { createTestShortageNotification } from '@/shared/services/notificationService';
 
 interface Todo {
   id: string;
@@ -157,7 +157,7 @@ export default function DashboardPage() {
   //   }
 
   //   try {
-  //     const { createTestLogisticsNotification } = await import('@/features/production/services/notificationService');
+  //     const { createTestLogisticsNotification } = await import('@/shared/services/notificationService');
   //     await createTestLogisticsNotification(userProfile.displayName, user.uid, user.photoURL || undefined);
   //     toast.success('물류이동 테스트 알림이 Admin/Manager에게 발송되었습니다!');
   //   } catch (error) {
@@ -174,7 +174,7 @@ export default function DashboardPage() {
   //   }
 
   //   try {
-  //     const { createTestShortageNotification } = await import('@/features/production/services/notificationService');
+  //     const { createTestShortageNotification } = await import('@/shared/services/notificationService');
   //     await createTestShortageNotification(userProfile.displayName, user.uid, user.photoURL || undefined);
   //     toast.success('부족분 신청 테스트 알림이 Admin/Manager에게 발송되었습니다!');
   //   } catch (error) {
@@ -462,7 +462,7 @@ export default function DashboardPage() {
         createTestLogisticsNotification,
         createTestShortageNotification,
         createTestProductionRequestNotification
-      } = await import('@/features/production/services/notificationService');
+      } = await import('@/shared/services/notificationService');
 
       if (selectedRequestType === '물류이동') {
         await createTestLogisticsNotification(userProfile.displayName, user.uid, user.photoURL || undefined);
@@ -474,7 +474,7 @@ export default function DashboardPage() {
         await createTestProductionRequestNotification(userProfile.displayName, user.uid, user.photoURL || undefined, '영업부 긴급요청');
       } else if (selectedRequestType === '생산일정') {
         // 생산일정 알림 테스트 - 실제 비즈니스 로직 호출
-        const { sendProductionScheduleNotification } = await import('@/features/production/services/notificationService');
+        const { sendProductionScheduleNotification } = await import('@/shared/services/notificationService');
         await sendProductionScheduleNotification(
           'created',
           {
@@ -492,7 +492,7 @@ export default function DashboardPage() {
         );
       } else if (selectedRequestType === '생산일보 상태 변경') {
         // 생산일보 상태 변경 알림 테스트 - 실제 비즈니스 로직 호출
-        const { DailyReportNotificationService } = await import('@/features/production/services/notificationService');
+        const { DailyReportNotificationService } = await import('@/shared/services/notificationService');
         const { ProductionStatus } = await import('@/features/production/types');
         await DailyReportNotificationService.sendTestDailyReportStatusNotification(
           ProductionStatus.Pending,

@@ -137,6 +137,7 @@ export const addJigRequestComment = async (
     id: `comment_${Date.now()}`,
     text: commentText,
     uid: currentUser.uid,
+    user: currentUser.displayName,
     userName: currentUser.displayName,
     createdAt: now,
   };

@@ -14,7 +14,7 @@ import {
 import { PackagingReport, PackagingFormData, ProductionStatus } from '@/features/production/types';
 import { db } from '@/shared/services/firebase/config';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
-import { DailyReportNotificationService } from './notificationService';
+import { DailyReportNotificationService } from '@/shared/services/notificationService';
 
 // 기존 상태 계산 함수 (startTime, endTime 기반)
 const calculateStatus = (startTime: string, endTime: string): ProductionStatus => {

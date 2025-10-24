@@ -44,7 +44,7 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
 
   return (
     <Card 
-      className="cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] group"
+      className="cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] group h-full flex flex-col"
       onClick={onClick}
     >
       {/* 이미지 섹션 */}
@@ -68,7 +68,7 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
         </div>
       )}
 
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-3 flex-shrink-0">
         {/* 공지기간 배지 */}
         {planDate && (
           <Badge variant="outline" className="w-fit mb-2 text-blue-600 border-blue-600">
@@ -83,7 +83,7 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
         </h3>
       </CardHeader>
 
-      <CardContent className="pt-0">
+      <CardContent className="pt-0 flex-grow flex flex-col">
         {/* 메타 정보 */}
         <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
           <div className="flex items-center gap-1">
@@ -106,14 +106,14 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
         )}
 
         {/* 내용 미리보기 */}
-        <p className="text-sm text-muted-foreground line-clamp-3 mb-4">
+        <p className="text-sm text-muted-foreground line-clamp-3 mb-4 flex-grow">
           {announcement.content}
         </p>
 
         {/* 관리 버튼 */}
         {canManage && (
           <div 
-            className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="flex justify-end gap-2 mt-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {onEdit && (

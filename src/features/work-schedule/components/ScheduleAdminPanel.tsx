@@ -38,7 +38,7 @@ export const ScheduleAdminPanel: React.FC<ScheduleAdminPanelProps> = ({
       {/* 헤더 영역 - 고정 */}
       <div className={cn("flex-shrink-0", isMobile ? "pb-0" : "p-4 pb-0")}>
         <h3 className="font-bold">
-          {isMobile ? `${new Date(dates.values().next().value).getDate()}일 계획` : "근무 계획 입력"}
+          {isMobile ? `${new Date(dates.values().next().value || new Date()).getDate()}일 계획` : "근무 계획 입력"}
         </h3>
         <p className="text-xs text-muted-foreground">
           {isMobile ? "근무 유형을 선택하고 적용하세요." : "날짜와 근무 유형을 선택한 후 '적용' 버튼을 누르세요."}

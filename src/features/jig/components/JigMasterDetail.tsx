@@ -32,7 +32,8 @@ import {
   Upload,
   Image as ImageIcon,
   Save,
-  RotateCcw
+  RotateCcw,
+  X
 } from 'lucide-react';
 
 interface JigMasterDetailProps {

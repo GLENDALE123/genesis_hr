@@ -27,9 +27,9 @@ export interface AnnouncementFormData {
   title: string;
   content: string;
   cooperationRequest: string;
-  planStartDate: string;
-  planEndDate: string;
-  imageUrls: string[];
+  planStartDate?: string;
+  planEndDate?: string;
+  imageUrls?: (string | File)[];
 }
 
 export type ViewMode = 'card' | 'list';

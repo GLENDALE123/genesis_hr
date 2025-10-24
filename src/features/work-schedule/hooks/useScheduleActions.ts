@@ -4,9 +4,11 @@ import { useState, useEffect } from 'react';
 import { WorkScheduleService } from '../services/workScheduleService';
 import { WorkType, WORK_TYPES } from '../types';
 import { toast } from 'sonner';
+import { useAuthStore } from '@/features/auth';
 
 export const useScheduleActions = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user, userProfile } = useAuthStore();
 
   // 지난 날짜 근무계획 자동 삭제 (하루 1회)
   useEffect(() => {
@@ -49,20 +51,13 @@ export const useScheduleActions = () => {
     setIsSubmitting(true);
     try {
       const scheduleData = WORK_TYPES[type];
-      await WorkScheduleService.applySchedule(type, dates, scheduleData.description);
-      
-      // 근무계획 변경 알림 생성 (지난 일자 제외)
-      const today = new Date().toISOString().split('T')[0];
-      for (const dateStr of dates) {
-        if (dateStr >= today) { // 오늘 포함, 미래 날짜만 알림
-          await WorkScheduleService.notifyWorkScheduleChange(
-            dateStr,
-            dateStr, // scheduleId로 날짜 사용
-            'created',
-            `${type} - ${scheduleData.description}`
-          );
-        }
-      }
+      await WorkScheduleService.applySchedule(
+        type, 
+        dates, 
+        scheduleData.description,
+        userProfile?.displayName || userProfile?.name || '관리자',
+        user?.uid || 'unknown'
+      );
       
       toast.success(`${dates.size}개 날짜에 '${type}' 적용됨`);
       return true;

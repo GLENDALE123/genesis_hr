@@ -25,7 +25,9 @@ const nextConfig: NextConfig = {
   },
   
   // Turbopack 설정 (Next.js 16에서 자동으로 처리됨)
-  // turbopack 설정은 experimental.turbo로 이동됨
+  turbopack: {
+    // Turbopack 설정이 필요한 경우 여기에 추가
+  },
   
   // 터보백 활성화를 위한 추가 설정
   typescript: {

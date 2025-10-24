@@ -2,7 +2,7 @@ import { db } from '@/shared/services/firebase/config';
 import { collection, query, where, getDocs, doc, setDoc, deleteDoc, writeBatch, orderBy, limit } from 'firebase/firestore';
 import { WorkSchedule, WorkType } from '../types';
 import { getMonthRange, getYearRange } from '../utils/scheduleUtils';
-import { UnifiedNotificationService } from '@/features/production/services/notificationService';
+import { UnifiedNotificationService } from '@/shared/services/notificationService';
 
 export class WorkScheduleService {
   /**
@@ -61,7 +61,9 @@ export class WorkScheduleService {
   static async applySchedule(
     type: WorkType,
     dates: Set<string>,
-    description: string
+    description: string,
+    author?: string,
+    authorId?: string
   ): Promise<void> {
     if (!db) {
       throw new Error('Firebase가 초기화되지 않았습니다.');
@@ -70,7 +72,7 @@ export class WorkScheduleService {
     const batch = writeBatch(db);
     
     dates.forEach(dateStr => {
-      const docRef = doc(db, 'work-schedules', dateStr);
+      const docRef = doc(db!, 'work-schedules', dateStr);
       batch.set(docRef, {
         date: dateStr,
         type,
@@ -79,6 +81,25 @@ export class WorkScheduleService {
     });
     
     await batch.commit();
+
+    // 근무계획 변경 알림 생성
+    if (author && authorId) {
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const futureDates = Array.from(dates).filter(date => date >= today);
+        
+        if (futureDates.length > 0) {
+          await UnifiedNotificationService.notifyWorkScheduleChange(
+            futureDates[0], // 첫 번째 날짜를 대표로 사용
+            `WORK-SCHEDULE-${Date.now()}`,
+            'created',
+            `${type} 근무계획 (${futureDates.length}일)`
+          );
+        }
+      } catch (notificationError) {
+        console.warn('근무계획 알림 생성 실패:', notificationError);
+      }
+    }
   }
 
   /**
@@ -92,7 +113,7 @@ export class WorkScheduleService {
     const batch = writeBatch(db);
     
     dates.forEach(dateStr => {
-      const docRef = doc(db, 'work-schedules', dateStr);
+      const docRef = doc(db!, 'work-schedules', dateStr);
       batch.delete(docRef);
     });
     
