@@ -132,8 +132,39 @@ const AppSidebarComponent = ({
     return pathname === href || pathname.startsWith(href + '/');
   }, [pathname]);
 
+  // 터치 시작 위치와 이동 거리를 추적하는 상태
+  const [touchStart, setTouchStart] = React.useState<{ x: number; y: number } | null>(null);
+  const [touchMoved, setTouchMoved] = React.useState(false);
+
+  // 터치 시작 핸들러
+  const handleTouchStart = React.useCallback((event: React.TouchEvent) => {
+    const touch = event.touches[0];
+    setTouchStart({ x: touch.clientX, y: touch.clientY });
+    setTouchMoved(false);
+  }, []);
+
+  // 터치 이동 핸들러
+  const handleTouchMove = React.useCallback((event: React.TouchEvent) => {
+    if (!touchStart) return;
+    
+    const touch = event.touches[0];
+    const deltaX = Math.abs(touch.clientX - touchStart.x);
+    const deltaY = Math.abs(touch.clientY - touchStart.y);
+    
+    // 10px 이상 이동하면 드래그로 간주
+    if (deltaX > 10 || deltaY > 10) {
+      setTouchMoved(true);
+    }
+  }, [touchStart]);
+
   // 즉시 페이지 이동 핸들러
   const handleNavigate = React.useCallback((href: string, event?: React.MouseEvent | React.TouchEvent) => {
+    // 터치 이벤트인 경우 드래그 여부 확인
+    if (event && 'touches' in event && touchMoved) {
+      console.log('Touch drag detected, preventing navigation');
+      return;
+    }
+    
     // 이벤트 전파 중지 (모바일에서 중요)
     if (event) {
       event.preventDefault();
@@ -160,7 +191,7 @@ const AppSidebarComponent = ({
       console.log('Desktop navigation: navigating to', href);
       router.push(href);
     }
-  }, [pathname, router, isMobile, onMobileClose]);
+  }, [pathname, router, isMobile, onMobileClose, touchMoved]);
 
   const renderNavItem = React.useCallback((item: NavItem, level = 0) => {
     const hasChildren = item.children && item.children.length > 0;
@@ -186,6 +217,8 @@ const AppSidebarComponent = ({
     const navItemContent = (
       <button
         onClick={(event) => handleNavigate(item.href, event)}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
         onTouchEnd={(event) => handleNavigate(item.href, event)}
         className={cn(
           "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors text-left",
@@ -268,12 +301,16 @@ const AppSidebarComponent = ({
     >
       {/* Sidebar Header */}
       <div className="flex h-16 items-center justify-center border-b px-3">
-        {isExpanded && (
-          <div className="flex items-center gap-2">
-            <div className="h-6 w-6 rounded bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-xs">HS</span>
+        {isExpanded ? (
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="h-8 w-8 rounded bg-primary flex items-center justify-center flex-shrink-0">
+              <span className="text-white font-bold text-sm">TMS</span>
             </div>
-            <span className="font-semibold">HS Next</span>
+            <span className="font-semibold whitespace-nowrap overflow-hidden text-ellipsis">통합관리시스템</span>
+          </div>
+        ) : (
+          <div className="h-8 w-8 rounded bg-primary flex items-center justify-center">
+            <span className="text-white font-bold text-sm">TMS</span>
           </div>
         )}
       </div>
@@ -306,7 +343,10 @@ const AppSidebarComponent = ({
           {isExpanded && (
             <>
               <button
-                onClick={() => handleNavigate('/settings')}
+                onClick={(event) => handleNavigate('/settings', event)}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={(event) => handleNavigate('/settings', event)}
                 className={cn(
                   "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors text-left",
                   "min-h-[44px] px-2 py-2 md:px-2 md:py-2 w-full",
@@ -319,7 +359,10 @@ const AppSidebarComponent = ({
                 설정
               </button>
               <button
-                onClick={() => handleNavigate('/help')}
+                onClick={(event) => handleNavigate('/help', event)}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={(event) => handleNavigate('/help', event)}
                 className={cn(
                   "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors text-left",
                   "min-h-[44px] px-2 py-2 md:px-2 md:py-2 w-full",
@@ -339,7 +382,10 @@ const AppSidebarComponent = ({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
-                      onClick={() => handleNavigate('/settings')}
+                      onClick={(event) => handleNavigate('/settings', event)}
+                      onTouchStart={handleTouchStart}
+                      onTouchMove={handleTouchMove}
+                      onTouchEnd={(event) => handleNavigate('/settings', event)}
                       className={cn(
                         "flex items-center justify-center cursor-pointer rounded-md text-sm font-medium transition-colors",
                         "min-h-[44px] min-w-[44px] md:min-h-[40px] md:min-w-[40px]",
@@ -360,7 +406,10 @@ const AppSidebarComponent = ({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
-                      onClick={() => handleNavigate('/help')}
+                      onClick={(event) => handleNavigate('/help', event)}
+                      onTouchStart={handleTouchStart}
+                      onTouchMove={handleTouchMove}
+                      onTouchEnd={(event) => handleNavigate('/help', event)}
                       className={cn(
                         "flex items-center justify-center cursor-pointer rounded-md text-sm font-medium transition-colors",
                         "min-h-[44px] min-w-[44px] md:min-h-[40px] md:min-w-[40px]",

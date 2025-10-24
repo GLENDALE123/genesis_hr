@@ -10,7 +10,8 @@ import { INSPECTION_TYPE_LABELS, INSPECTION_RESULT_COLORS, INJECTION_COLOR_OPTIO
 import { subscribeToAutocompleteData, updateAutocompleteData, AutocompleteData } from '../services/autocompleteService';
 import { updateQualityInspection } from '../services/qualityInspectionService';
 import { createUnifiedImagePath, deleteImagesWithThumbnails } from '@/shared/utils/imagePathMigration';
-import { InspectionCommonForm, useImageUpload } from './InspectionCommonForm';
+import { InspectionCommonForm } from './InspectionCommonForm';
+import { useImageUpload } from '@/shared/hooks';
 import { IncomingInspectionForm } from './IncomingInspectionForm';
 import { ProcessInspectionForm } from './ProcessInspectionForm';
 import { OutgoingInspectionForm } from './OutgoingInspectionForm';
@@ -21,9 +22,36 @@ import { cn } from '@/shared/lib/utils';
 import { toast } from 'sonner';
 import { 
   updateProgressToast, 
-  createTimeoutPromise, 
-  createRetryableUploadPromise 
+  createTimeoutPromise
 } from '@/shared/components/common/ProgressToast';
+
+// 재시도 로직을 포함한 업로드 함수 (직접 정의)
+const createRetryableUploadPromise = (
+  uploadFunction: () => Promise<string[]>,
+  maxRetries: number = 3,
+  delayMs: number = 1000
+) => {
+  return new Promise<string[]>(async (resolve, reject) => {
+    let lastError: any;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const result = await uploadFunction();
+        resolve(result);
+        return;
+      } catch (error) {
+        lastError = error;
+        
+        if (attempt < maxRetries) {
+          // 재시도 전 대기
+          await new Promise(resolve => setTimeout(resolve, delayMs * attempt));
+        }
+      }
+    }
+    
+    reject(lastError);
+  });
+};
 
 interface QualityInspectionFormProps {
   isOpen: boolean;
@@ -72,6 +100,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     return 'incoming';
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [currentUploadCount, setCurrentUploadCount] = useState(0); // 현재 업로드 완료된 파일 수
   
   // 이미지 설정 완료 여부 추적
   const imagesInitializedRef = useRef(false);
@@ -102,7 +131,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     lastUpdated: ''
   });
   
-  // initialTab이 변경될 때 activeTab 업데이트
+  // initialTab이 변경될 때 activeTab 업데이트 (수정 모드에서도 적용)
   useEffect(() => {
     if (initialTab && initialTab !== activeTab) {
       setActiveTab(initialTab);
@@ -111,10 +140,21 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
 
   // 수정 모드에서 inspectionData가 변경될 때 activeTab 업데이트
   useEffect(() => {
-    if (isEditMode && inspectionData?.inspectionType && inspectionData.inspectionType !== activeTab) {
+    if (isEditMode && inspectionData?.inspectionType) {
       setActiveTab(inspectionData.inspectionType);
     }
-  }, [isEditMode, inspectionData?.inspectionType, activeTab]);
+  }, [isEditMode, inspectionData?.inspectionType]);
+
+  // 모달이 열릴 때 activeTab 초기화 (수정 모드 우선)
+  useEffect(() => {
+    if (isOpen) {
+      if (isEditMode && inspectionData?.inspectionType) {
+        setActiveTab(inspectionData.inspectionType);
+      } else if (initialTab) {
+        setActiveTab(initialTab);
+      }
+    }
+  }, [isOpen, isEditMode, inspectionData?.inspectionType, initialTab]);
   
   // 이미지 업로드 훅 사용
   const imageUploadHook = useImageUpload();
@@ -259,9 +299,11 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       
       // 기존 이미지 설정
       if (inspectionData.imageUrls && inspectionData.imageUrls.length > 0) {
+        console.log('🖼️ 수정 모드: 기존 이미지 설정 중', inspectionData.imageUrls);
         imageUploadHook.setExistingImages(inspectionData.imageUrls);
         imagesInitializedRef.current = true;
       } else {
+        console.log('🖼️ 수정 모드: 기존 이미지 없음');
         imagesInitializedRef.current = false;
       }
     }
@@ -389,9 +431,12 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       // 이전 formData 추적 초기화
       prevFormDataRef.current = undefined;
       
-      // 이미지 업로드 훅 완전 초기화 (업로드 진행 상태 포함)
-      imageUploadHook.clearImages();
-      imageUploadHook.clearDeletedUrls();
+      // 수정 모드가 아닌 경우에만 이미지 초기화
+      if (mode !== 'edit') {
+        // 이미지 업로드 훅 완전 초기화 (업로드 진행 상태 포함)
+        imageUploadHook.clearImages();
+        imageUploadHook.clearDeletedUrls();
+      }
       
       // 업로드 진행 상태 강제 초기화 (추가 안전장치)
       if (imageUploadHook.isUploading) {
@@ -449,17 +494,27 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       // 이미지 업로드 처리
       let imageUrls: string[] = formData.imageUrls || [];
       if (imageUploadHook.uploadingImages.length > 0) {
+        // 업로드 시작 시 현재 파일 수 초기화
+        setCurrentUploadCount(0);
+        
         const folder = createUnifiedImagePath(inspectionData.id);
         
         try {
           // 타임아웃과 재시도 로직을 포함한 업로드 Promise 생성
           const uploadFunction = () => imageUploadHook.uploadImages(folder, (progress) => {
-            // 진행률 업데이트 (취소 기능 포함)
-            updateProgressToast(toast, progress, imageUploadHook.uploadingImages.length, () => {
+            // 진행률을 안정적으로 처리 (디바운싱)
+            const stableProgress = Math.min(100, Math.max(0, progress));
+            const currentCount = Math.round((stableProgress / 100) * imageUploadHook.uploadingImages.length);
+            
+            // 진행률이 이전보다 낮아지는 것을 방지
+            setCurrentUploadCount(prev => Math.max(prev, currentCount));
+            
+            // 진행률 업데이트 (취소 기능 포함) - 실제 진행률을 정확히 전달
+            updateProgressToast(toast, stableProgress, imageUploadHook.uploadingImages.length, () => {
               // 취소 시 이미지 업로드 중단 및 완전 초기화
               imageUploadHook.cancelUpload();
               imageUploadHook.clearUploadingImages();
-            });
+            }, Math.max(currentUploadCount, currentCount));
           });
           
           // 재시도 가능한 업로드 Promise
@@ -473,8 +528,21 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
             timeoutPromise
           ]);
           
-          imageUrls = [...imageUrls, ...newImageUrls];
+          // 수정 모드에서는 기존 이미지와 새 이미지를 합쳐서 저장
+          const existingImageUrls = imageUploadHook.uploadingImages
+            .filter(item => item.file === null && item.preview) // 기존 이미지들
+            .map(item => item.preview!)
+            .filter(url => !imageUploadHook.deletedImageUrls.includes(url)); // 삭제된 이미지 제외
+          
+          console.log('🖼️ 수정 모드 이미지 처리:', {
+            기존이미지: existingImageUrls,
+            새이미지: newImageUrls,
+            삭제된이미지: imageUploadHook.deletedImageUrls
+          });
+          
+          imageUrls = [...existingImageUrls, ...(newImageUrls as string[])];
           // 이미지 업로드 성공 토스트는 제거 (수정 완료 토스트로 대체)
+          toast.dismiss('image-upload-progress');
           
         } catch (error: any) {
           console.error('이미지 업로드 실패:', error);
@@ -490,6 +558,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
           
           // 업로드 실패 시 폼 제출 중단
           setIsSaving(false);
+          toast.dismiss('image-upload-progress');
           return;
         }
       }
@@ -640,17 +709,27 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       
       // 2단계: 이미지가 있으면 업로드 후 문서 업데이트
       if (imageUploadHook.uploadingImages.length > 0) {
+        // 업로드 시작 시 현재 파일 수 초기화
+        setCurrentUploadCount(0);
+        
         const folder = createUnifiedImagePath(docId, '');
         
         try {
           // 타임아웃과 재시도 로직을 포함한 업로드 Promise 생성
           const uploadFunction = () => imageUploadHook.uploadImages(folder, (progress) => {
-            // 진행률 업데이트 (취소 기능 포함)
-            updateProgressToast(toast, progress, imageUploadHook.uploadingImages.length, () => {
+            // 진행률을 안정적으로 처리 (디바운싱)
+            const stableProgress = Math.min(100, Math.max(0, progress));
+            const currentCount = Math.round((stableProgress / 100) * imageUploadHook.uploadingImages.length);
+            
+            // 진행률이 이전보다 낮아지는 것을 방지
+            setCurrentUploadCount(prev => Math.max(prev, currentCount));
+            
+            // 진행률 업데이트 (취소 기능 포함) - 실제 진행률을 정확히 전달
+            updateProgressToast(toast, stableProgress, imageUploadHook.uploadingImages.length, () => {
               // 취소 시 이미지 업로드 중단 및 완전 초기화
               imageUploadHook.cancelUpload();
               imageUploadHook.clearUploadingImages();
-            });
+            }, Math.max(currentUploadCount, currentCount));
           });
           
           // 재시도 가능한 업로드 Promise
@@ -665,8 +744,9 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
           ]);
           
           // 이미지 URL로 문서 업데이트
-          await updateQualityInspection(docId, { imageUrls });
+          await updateQualityInspection(docId, { imageUrls: imageUrls as string[] });
           // 이미지 업로드 성공 토스트는 제거 (등록 완료 토스트로 대체)
+          toast.dismiss('image-upload-progress');
           
         } catch (error: any) {
           console.error('이미지 업로드 실패:', error);
@@ -682,6 +762,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
           
           // 업로드 실패 시 폼 제출 중단
           setIsSaving(false);
+          toast.dismiss('image-upload-progress');
           return;
         }
       }
@@ -722,6 +803,9 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
   };
 
   const handleClose = () => {
+    // 진행 중인 토스트 정리
+    toast.dismiss('image-upload-progress');
+    
     // 폼 데이터 초기화
     setFormData({
       orderNumber: 'T',
@@ -869,7 +953,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
           </DialogHeader>
 
           <div className="flex-1 overflow-hidden">
-            <Tabs value={activeTab} onValueChange={(value: InspectionType) => {
+            <Tabs value={activeTab} onValueChange={(value: string) => {
               // 수정 모드에서는 탭 변경을 허용하지 않음 (해당 검사 타입만 수정 가능)
               if (mode === 'edit') {
                 return;

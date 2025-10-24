@@ -23,11 +23,11 @@ import {
   DialogHeader, 
   DialogTitle 
 } from '@/shared/components/ui/dialog';
+import { ImageLightbox } from '@/shared/components/common/ImageLightbox';
 import { toast } from 'sonner';
 import { 
   Edit, 
   Trash2, 
-  Share2, 
   Camera, 
   Upload,
   Image as ImageIcon,
@@ -45,87 +45,6 @@ interface JigMasterDetailProps {
   onClose: () => void;
 }
 
-// 이미지 라이트박스 컴포넌트
-const ImageLightbox: React.FC<{
-  images: string[];
-  initialIndex: number;
-  onClose: () => void;
-}> = ({ images, initialIndex, onClose }) => {
-  const [currentIndex, setCurrentIndex] = useState(initialIndex);
-
-  const handlePrevious = () => {
-    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
-  };
-
-  const handleNext = () => {
-    setCurrentIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') onClose();
-    if (e.key === 'ArrowLeft') handlePrevious();
-    if (e.key === 'ArrowRight') handleNext();
-  };
-
-  return (
-    <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent 
-        className="max-w-4xl max-h-[90vh] p-0"
-        stickyHeader={
-          <DialogHeader>
-            <DialogTitle>이미지 뷰어 ({currentIndex + 1} / {images.length})</DialogTitle>
-          </DialogHeader>
-        }
-        onKeyDown={handleKeyDown}
-      >
-        <div className="relative p-6">
-          <div className="relative">
-            <img
-              src={images[currentIndex]}
-              alt={`이미지 ${currentIndex + 1}`}
-              className="w-full h-auto max-h-[60vh] object-contain rounded-lg"
-            />
-            
-            {images.length > 1 && (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="absolute left-4 top-1/2 -translate-y-1/2"
-                  onClick={handlePrevious}
-                >
-                  ←
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="absolute right-4 top-1/2 -translate-y-1/2"
-                  onClick={handleNext}
-                >
-                  →
-                </Button>
-              </>
-            )}
-          </div>
-          
-          {images.length > 1 && (
-            <div className="flex justify-center mt-4 gap-2">
-              {images.map((_, index) => (
-                <button
-                  key={index}
-                  className={`w-2 h-2 rounded-full transition-colors ${
-                    index === currentIndex ? 'bg-primary' : 'bg-muted'
-                  }`}
-                  onClick={() => setCurrentIndex(index)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-};
 
 export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({ 
   jig, 
@@ -149,7 +68,8 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [deletedImages, setDeletedImages] = useState<string[]>([]);
-  const [lightboxData, setLightboxData] = useState<{ images: string[], initialIndex: number } | null>(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -205,46 +125,6 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
     }
   };
 
-  const handleShare = async () => {
-    if (!jig) return;
-    
-    const elementToCapture = detailRef.current;
-    if (!elementToCapture) {
-      toast.error('공유할 대상을 찾을 수 없습니다.');
-      return;
-    }
-    
-    toast.info('이미지 생성 중...');
-
-    try {
-      // html2canvas가 없으면 기본 공유 기능 사용
-      if (typeof window !== 'undefined' && 'navigator' in window && navigator.share) {
-        const shareData = {
-          title: `지그 정보: ${jig.itemName}`,
-          text: `T.M.S. 지그 마스터 정보 공유\n제품명: ${jig.itemName}\n부속명: ${jig.partName}\n지그번호: ${jig.itemNumber}`,
-        };
-        
-        if (navigator.canShare && navigator.canShare(shareData)) {
-          await navigator.share(shareData);
-          toast.success('지그 정보가 공유되었습니다.');
-        } else {
-          // 클립보드에 복사
-          await navigator.clipboard.writeText(shareData.text);
-          toast.success('지그 정보가 클립보드에 복사되었습니다.');
-        }
-      } else {
-        // 클립보드에 텍스트 복사
-        const text = `지그 정보: ${jig.itemName}\n부속명: ${jig.partName}\n지그번호: ${jig.itemNumber}\n특이사항: ${jig.remarks || '없음'}`;
-        await navigator.clipboard.writeText(text);
-        toast.success('지그 정보가 클립보드에 복사되었습니다.');
-      }
-    } catch (err: any) {
-      if (err.name !== 'AbortError') {
-        console.error('Sharing failed:', err);
-        toast.error('공유에 실패했습니다.');
-      }
-    }
-  };
 
   const handleSave = async () => {
     if (!jig) return;
@@ -345,13 +225,6 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
                 </>
               ) : (
                 <>
-                  <Button 
-                    variant="outline" 
-                    onClick={handleShare}
-                  >
-                    <Share2 className="h-4 w-4 mr-2" />
-                    공유
-                  </Button>
                   {currentUserProfile?.role === 'Admin' && (
                     <Button 
                       type="button" 
@@ -486,10 +359,8 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
                                 className="w-full h-24 object-cover rounded-md cursor-pointer transition-transform hover:scale-105"
                                 onClick={() => {
                                   if (!isEditing) {
-                                    setLightboxData({ 
-                                      images: existingImages, 
-                                      initialIndex: index 
-                                    });
+                                    setLightboxIndex(index);
+                                    setLightboxOpen(true);
                                   }
                                 }}
                               />
@@ -525,10 +396,10 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
                                 loading="lazy"
                                 decoding="async"
                                 className="w-full h-24 object-cover rounded-md cursor-pointer transition-transform hover:scale-105"
-                                onClick={() => setLightboxData({ 
-                                  images: imagePreviews, 
-                                  initialIndex: index 
-                                })}
+                                onClick={() => {
+                                  setLightboxIndex(index);
+                                  setLightboxOpen(true);
+                                }}
                               />
                               <Button
                                 type="button"
@@ -562,7 +433,6 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
                             ref={cameraInputRef} 
                             onChange={handleImageChange} 
                             accept="image/*,image/heic,image/heif" 
-                            capture="environment" 
                             className="hidden" 
                           />
                           <Button 
@@ -615,13 +485,12 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
       </AlertDialog>
 
       {/* 이미지 라이트박스 */}
-      {lightboxData && (
-        <ImageLightbox 
-          images={lightboxData.images} 
-          initialIndex={lightboxData.initialIndex} 
-          onClose={() => setLightboxData(null)} 
-        />
-      )}
+      <ImageLightbox 
+        images={[...existingImages, ...imagePreviews]} 
+        initialIndex={lightboxIndex} 
+        open={lightboxOpen}
+        onClose={() => setLightboxOpen(false)} 
+      />
     </>
   );
 };

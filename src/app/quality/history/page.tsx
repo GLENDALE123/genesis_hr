@@ -139,7 +139,7 @@ export default function QualityHistoryPage() {
         }}
         mode="edit"
         inspectionData={selectedInspection || undefined}
-        initialTab={selectedInspection?.inspectionType || 'incoming'}
+        initialTab={selectedInspection?.inspectionType}
         onSubmit={async () => ''} // 수정 모드에서는 사용하지 않음
         onUpdate={async (id, inspection) => {
           await handleUpdateInspection(id, inspection);

@@ -505,6 +505,7 @@ export const uploadImagesParallel = async (
     // 2단계: 병렬 업로드 (배치 처리)
     const BATCH_SIZE = calculateOptimalBatchSize(processedFiles, 'upload');
     const urls: string[] = [];
+    let completedCount = 0; // 완료된 파일 수 추적
     
     for (let i = 0; i < processedFiles.length; i += BATCH_SIZE) {
       const batch = processedFiles.slice(i, i + BATCH_SIZE);
@@ -513,11 +514,13 @@ export const uploadImagesParallel = async (
       const batchPromises = batch.map(async (file, index) => {
         try {
           const url = await uploadImage(file, folder, 5); // 재시도 횟수 5회로 증가
-          onProgress?.(urls.length + index + 1, files.length);
+          completedCount++;
+          onProgress?.(completedCount, files.length);
           return url;
         } catch (error) {
           console.error(`업로드 실패: ${file.name}`, error);
-          onProgress?.(urls.length + index + 1, files.length);
+          completedCount++;
+          onProgress?.(completedCount, files.length);
           return null;
         }
       });

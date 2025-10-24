@@ -6,7 +6,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import { Textarea } from '@/shared/components/ui/textarea';
-import { UploadingImageGrid, UploadingImageItem } from '@/shared/components/common';
+import { UploadingImageGrid } from '@/shared/components/common';
 import {
   Select,
   SelectContent,
@@ -21,7 +21,8 @@ import {
   DialogTitle,
 } from '@/shared/components/ui/dialog';
 import { ProductionRequestType } from '../services/productionRequestService';
-import { useOrderNumberFormatter } from '@/shared/hooks/useOrderNumberFormatter';
+import { useImageUpload } from '@/shared/hooks';
+import { toast } from 'sonner';
 
 interface ProductionRequestFormModalProps {
   isOpen: boolean;
@@ -45,6 +46,9 @@ const ProductionRequestFormModalComponent: React.FC<ProductionRequestFormModalPr
   onSave,
   currentUserName = '',
 }) => {
+  // 이미지 업로드 훅 사용
+  const imageUploadHook = useImageUpload();
+  
   const [formData, setFormData] = useState({
     requestType: ProductionRequestType.Urgent,
     requester: currentUserName,
@@ -56,7 +60,6 @@ const ProductionRequestFormModalComponent: React.FC<ProductionRequestFormModalPr
     content: '',
   });
   const [isSaving, setIsSaving] = useState(false);
-  const [imagePreviewItems, setImagePreviewItems] = useState<UploadingImageItem[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -95,65 +98,37 @@ const ProductionRequestFormModalComponent: React.FC<ProductionRequestFormModalPr
         quantity: '',
         content: '',
       });
-      setImagePreviewItems([]);
+      imageUploadHook.clearImages();
       setIsSaving(false); // 저장 상태 초기화
     }
-  }, [isOpen, currentUserName]);
+  }, [isOpen, currentUserName, imageUploadHook]);
 
   // 이미지 미리보기 정리 (컴포넌트 언마운트 시)
   useEffect(() => {
     return () => {
-      imagePreviewItems.forEach(item => {
-        if (item.preview && item.preview.startsWith('blob:')) {
-          URL.revokeObjectURL(item.preview);
-        }
-      });
+      imageUploadHook.clearImages();
     };
-  }, [imagePreviewItems]);
+  }, [imageUploadHook]);
 
-  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const files = Array.from(e.target.files);
-      
-      // 1단계: 즉시 로딩 상태로 추가 (preview: null)
-      const newItems: UploadingImageItem[] = files.map(file => ({
-        file,
-        preview: null, // null = 로딩 중
-      }));
-      setImagePreviewItems(prev => [...prev, ...newItems]);
-      
-      // 2단계: 썸네일 생성 (200x200px, 60% quality) - 0.1~0.2초
-      const { createQuickThumbnail } = await import('@/shared/utils/imageUpload');
-      const startIndex = imagePreviewItems.length;
-      
-      // 각 이미지를 순차적으로 처리하여 UX 개선
-      for (let i = 0; i < files.length; i++) {
-        const thumbnail = await createQuickThumbnail(files[i]);
-        const targetIndex = startIndex + i;
-        
-        // 썸네일 생성 완료 → preview 업데이트
-        setImagePreviewItems(prev => {
-          const updated = [...prev];
-          updated[targetIndex] = {
-            file: files[i],
-            preview: thumbnail,
-          };
-          return updated;
-        });
+  // 파일 선택 핸들러
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    
+    if (files.length > 0) {
+      try {
+        await imageUploadHook.handleFileSelect(files);
+      } catch (error) {
+        console.error('파일 선택 처리 실패:', error);
+        toast.error(error instanceof Error ? error.message : '파일 선택에 실패했습니다.');
       }
+    }
+    
+    // input 초기화 (같은 파일을 다시 선택할 수 있도록)
+    if (e.target) {
+      e.target.value = '';
     }
   };
 
-  const removeImage = (index: number) => {
-    setImagePreviewItems(prev => {
-      const item = prev[index];
-      // Blob URL 메모리 해제
-      if (item.preview && item.preview.startsWith('blob:')) {
-        URL.revokeObjectURL(item.preview);
-      }
-      return prev.filter((_, i) => i !== index);
-    });
-  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -171,11 +146,20 @@ const ProductionRequestFormModalComponent: React.FC<ProductionRequestFormModalPr
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
+    
     try {
-      const imageFiles = imagePreviewItems.map(item => item.file).filter((file): file is File => file !== null);
+      // 새로 업로드할 파일들만 추출
+      const imageFiles = imageUploadHook.uploadingImages
+        .filter(item => item.file !== null)
+        .map(item => item.file!);
+      
       await onSave(formData, imageFiles);
+      toast.success('생산 요청이 등록되었습니다.');
       onClose();
-    } catch {
+    } catch (error) {
+      console.error('생산 요청 등록 실패:', error);
+      toast.error('생산 요청 등록에 실패했습니다. 다시 시도해주세요.');
+    } finally {
       setIsSaving(false);
     }
   };
@@ -310,7 +294,7 @@ const ProductionRequestFormModalComponent: React.FC<ProductionRequestFormModalPr
               <input
                 type="file"
                 ref={fileInputRef}
-                onChange={handleImageChange}
+                onChange={handleFileInputChange}
                 multiple
                 accept="image/*,image/heic,image/heif"
                 className="hidden"
@@ -318,7 +302,7 @@ const ProductionRequestFormModalComponent: React.FC<ProductionRequestFormModalPr
               <input
                 type="file"
                 ref={cameraInputRef}
-                onChange={handleImageChange}
+                onChange={handleFileInputChange}
                 accept="image/*,image/heic,image/heif"
                 className="hidden"
               />
@@ -341,10 +325,15 @@ const ProductionRequestFormModalComponent: React.FC<ProductionRequestFormModalPr
                 사진 촬영
               </Button>
             </div>
-            <UploadingImageGrid
-              items={imagePreviewItems}
-              onRemove={removeImage}
-            />
+            {/* 이미지 그리드 */}
+            {imageUploadHook.uploadingImages.length > 0 && (
+              <UploadingImageGrid
+                items={imageUploadHook.uploadingImages}
+                onRemove={imageUploadHook.removeImage}
+                gridClassName="grid-cols-[repeat(auto-fill,minmax(100px,1fr))]"
+                imageClassName="h-24"
+              />
+            )}
           </div>
         </form>
 

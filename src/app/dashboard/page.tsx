@@ -563,7 +563,7 @@ export default function DashboardPage() {
       } else if (selectedRequestType === '품질이슈 등록') {
         // 품질이슈 등록 알림 테스트 - 실제 비즈니스 로직 호출
         const { QualityIssueNotificationService } = await import('@/shared/services/notificationService');
-        await QualityIssueNotificationService.sendTestQualityIssueCreatedNotification({
+        await QualityIssueNotificationService.sendTestQualityIssueNotification({
           uid: user.uid,
           displayName: userProfile.displayName,
           photoURL: user.photoURL || undefined
@@ -571,11 +571,15 @@ export default function DashboardPage() {
       } else if (selectedRequestType === '품질이슈사항 추가') {
         // 품질이슈사항 추가 알림 테스트 - 실제 비즈니스 로직 호출
         const { QualityIssueNotificationService } = await import('@/shared/services/notificationService');
-        await QualityIssueNotificationService.sendTestQualityIssueItemAddedNotification({
-          uid: user.uid,
-          displayName: userProfile.displayName,
-          photoURL: user.photoURL || undefined
-        });
+        await QualityIssueNotificationService.sendTestQualityIssueStatusNotification(
+          '열림',
+          '해결됨',
+          {
+            uid: user.uid,
+            displayName: userProfile.displayName,
+            photoURL: user.photoURL || undefined
+          }
+        );
       }
 
       toast.success(`${selectedRequestType} 테스트 알림이 성공적으로 발송되었습니다!`);

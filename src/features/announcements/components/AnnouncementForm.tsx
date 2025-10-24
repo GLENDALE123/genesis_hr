@@ -11,9 +11,10 @@ import { Input } from '@/shared/components/ui/input';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { Label } from '@/shared/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
-import { UploadingImageGrid, UploadingImageItem } from '@/shared/components/common/UploadingImageGrid';
+import { UploadingImageGrid } from '@/shared/components/common/UploadingImageGrid';
 import { Spinner } from '@/shared/components/ui/spinner';
-import { createQuickThumbnail } from '@/shared/utils/imageUpload';
+import { useImageUpload } from '@/shared/hooks';
+import { toast } from 'sonner';
 import { AnnouncementFormData } from '../types/announcement.types';
 
 const announcementSchema = z.object({
@@ -44,8 +45,8 @@ export const AnnouncementForm: React.FC<AnnouncementFormProps> = ({
   isSubmitting = false,
   currentUser
 }) => {
-  const [imageItems, setImageItems] = useState<UploadingImageItem[]>([]);
-  const [isUploadingImages, setIsUploadingImages] = useState(false);
+  // 이미지 업로드 훅 사용
+  const imageUploadHook = useImageUpload();
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -73,64 +74,48 @@ export const AnnouncementForm: React.FC<AnnouncementFormProps> = ({
   // 기존 이미지 URL들을 UploadingImageItem으로 변환
   React.useEffect(() => {
     if (initialData?.imageUrls && initialData.imageUrls.length > 0) {
-      const existingItems: UploadingImageItem[] = initialData.imageUrls
+      const existingItems = initialData.imageUrls
         .filter((url): url is string => typeof url === 'string')
         .map(url => ({
           file: null,
           preview: url
         }));
-      setImageItems(existingItems);
+      imageUploadHook.setExistingImages(existingItems as any);
     }
-  }, [initialData?.imageUrls]);
+  }, [initialData?.imageUrls, imageUploadHook]);
 
-  const handleFileSelect = async (files: File[]) => {
-    if (files.length === 0) return;
-
-    setIsUploadingImages(true);
+  // 파일 선택 핸들러
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
     
-    // 즉시 로딩 상태로 추가
-    const newItems: UploadingImageItem[] = files.map(file => ({ file, preview: null }));
-    setImageItems(prev => [...prev, ...newItems]);
-    
-    // 썸네일 생성
-    const startIndex = imageItems.length;
-    for (let i = 0; i < files.length; i++) {
+    if (files.length > 0) {
       try {
-        const thumbnail = await createQuickThumbnail(files[i]);
-        setImageItems(prev => {
-          const updated = [...prev];
-          updated[startIndex + i] = { file: files[i], preview: thumbnail };
-          return updated;
-        });
+        await imageUploadHook.handleFileSelect(files);
       } catch (error) {
-        console.error('썸네일 생성 실패:', error);
-        // 실패한 경우 원본 파일로 폴백
-        setImageItems(prev => {
-          const updated = [...prev];
-          updated[startIndex + i] = { file: files[i], preview: URL.createObjectURL(files[i]) };
-          return updated;
-        });
+        console.error('파일 선택 처리 실패:', error);
+        toast.error(error instanceof Error ? error.message : '파일 선택에 실패했습니다.');
       }
     }
     
-    setIsUploadingImages(false);
+    // input 초기화 (같은 파일을 다시 선택할 수 있도록)
+    if (e.target) {
+      e.target.value = '';
+    }
   };
 
-  const handleRemoveImage = (index: number) => {
-    setImageItems(prev => prev.filter((_, i) => i !== index));
-  };
 
   const handleFormSubmit = async (data: AnnouncementFormData) => {
     try {
-      // 이미지 URL 추출 (기존 URL + 새로 업로드할 파일들)
-      const existingImageUrls = imageItems
-        .filter(item => item.file === null) // 기존 이미지 URL들
-        .map(item => item.preview!)
-        .filter(url => typeof url === 'string') as string[];
+      // 기존 이미지 URL들 추출
+      const existingImageUrls = imageUploadHook.uploadingImages
+        .filter((item: any) => item.file === null)
+        .map((item: any) => item.preview!)
+        .filter((url: any) => typeof url === 'string') as string[];
 
-      const newImageFiles = imageItems
-        .filter(item => item.file !== null) // 새로 업로드할 파일들
-        .map(item => item.file!);
+      // 새로 업로드할 파일들 추출
+      const newImageFiles = imageUploadHook.uploadingImages
+        .filter((item: any) => item.file !== null)
+        .map((item: any) => item.file!);
 
       const formData: AnnouncementFormData = {
         ...data,
@@ -140,6 +125,7 @@ export const AnnouncementForm: React.FC<AnnouncementFormProps> = ({
       await onSubmit(formData);
     } catch (error) {
       console.error('폼 제출 실패:', error);
+      toast.error('공지사항 제출에 실패했습니다. 다시 시도해주세요.');
     }
   };
 
@@ -238,7 +224,7 @@ export const AnnouncementForm: React.FC<AnnouncementFormProps> = ({
               <Button
                 type="button"
                 onClick={openFileDialog}
-                disabled={isUploadingImages}
+                disabled={imageUploadHook.isUploading}
                 className="flex items-center gap-2 bg-secondary text-secondary-foreground hover:bg-secondary/80"
               >
                 <ImageIcon className="h-4 w-4" />
@@ -247,7 +233,7 @@ export const AnnouncementForm: React.FC<AnnouncementFormProps> = ({
               <Button
                 type="button"
                 onClick={openCameraDialog}
-                disabled={isUploadingImages}
+                disabled={imageUploadHook.isUploading}
                 className="flex items-center gap-2 bg-secondary text-secondary-foreground hover:bg-secondary/80"
               >
                 <Camera className="h-4 w-4" />
@@ -261,34 +247,27 @@ export const AnnouncementForm: React.FC<AnnouncementFormProps> = ({
               type="file"
               accept="image/*"
               multiple
-              onChange={(e) => {
-                if (e.target.files) {
-                  handleFileSelect(Array.from(e.target.files));
-                }
-              }}
+              onChange={handleFileInputChange}
               className="hidden"
             />
             <input
               ref={cameraInputRef}
               type="file"
               accept="image/*"
-              capture="environment"
               multiple
-              onChange={(e) => {
-                if (e.target.files) {
-                  handleFileSelect(Array.from(e.target.files));
-                }
-              }}
+              onChange={handleFileInputChange}
               className="hidden"
             />
 
             {/* 이미지 미리보기 */}
-            <UploadingImageGrid
-              items={imageItems}
-              onRemove={handleRemoveImage}
-              gridClassName="grid-cols-[repeat(auto-fill,minmax(120px,1fr))]"
-              imageClassName="h-24"
-            />
+            {imageUploadHook.uploadingImages.length > 0 && (
+              <UploadingImageGrid
+                items={imageUploadHook.uploadingImages}
+                onRemove={imageUploadHook.removeImage}
+                gridClassName="grid-cols-[repeat(auto-fill,minmax(120px,1fr))]"
+                imageClassName="h-24"
+              />
+            )}
           </div>
 
           {/* 버튼 */}
@@ -303,7 +282,7 @@ export const AnnouncementForm: React.FC<AnnouncementFormProps> = ({
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || isUploadingImages}
+                disabled={isSubmitting || imageUploadHook.isUploading}
               className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
             >
               {isSubmitting && (

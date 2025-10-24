@@ -15,14 +15,15 @@ interface JigMasterListViewProps {
   onOpenFormModal?: () => void;
 }
 
-// 메모이제이션된 테이블 행 컴포넌트
+// 메모이제이션된 테이블 행 컴포넌트 - 성능 최적화
 const JigMasterTableRow = memo<{
   item: JigMasterItem;
   onSelectJig: (jig: JigMasterItem) => void;
 }>(({ item, onSelectJig }) => {
+  // 클릭 핸들러를 메모이제이션 (item.id만 의존성으로 사용)
   const handleRowClick = useCallback(() => {
     onSelectJig(item);
-  }, [item, onSelectJig]);
+  }, [item.id, onSelectJig]); // item 전체 대신 id만 의존성으로 사용
 
   // 날짜 포맷팅을 메모이제이션
   const formattedDate = useMemo(() => {
@@ -33,6 +34,11 @@ const JigMasterTableRow = memo<{
   const imageCount = useMemo(() => {
     return item.imageUrls?.length || 0;
   }, [item.imageUrls]);
+
+  // 작성자 이름을 메모이제이션
+  const creatorName = useMemo(() => {
+    return (item.createdBy && item.createdBy.displayName) || 'N/A';
+  }, [item.createdBy?.displayName]);
 
   return (
     <TableRow 
@@ -58,9 +64,23 @@ const JigMasterTableRow = memo<{
       </TableCell>
       <TableCell className="px-2 py-3 whitespace-nowrap">{formattedDate}</TableCell>
       <TableCell className="px-2 py-3 whitespace-nowrap">
-        {(item.createdBy && item.createdBy.displayName) || 'N/A'}
+        {creatorName}
       </TableCell>
     </TableRow>
+  );
+}, (prevProps, nextProps) => {
+  // 커스텀 비교 함수로 불필요한 리렌더링 방지
+  return (
+    prevProps.item.id === nextProps.item.id &&
+    prevProps.item.itemName === nextProps.item.itemName &&
+    prevProps.item.partName === nextProps.item.partName &&
+    prevProps.item.itemNumber === nextProps.item.itemNumber &&
+    prevProps.item.requestType === nextProps.item.requestType &&
+    prevProps.item.remarks === nextProps.item.remarks &&
+    prevProps.item.createdAt === nextProps.item.createdAt &&
+    prevProps.item.imageUrls?.length === nextProps.item.imageUrls?.length &&
+    prevProps.item.createdBy?.displayName === nextProps.item.createdBy?.displayName &&
+    prevProps.onSelectJig === nextProps.onSelectJig
   );
 });
 
@@ -84,26 +104,37 @@ export const JigMasterListView: React.FC<JigMasterListViewProps> = ({
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
+  // 필터링 로직 최적화 - 검색어가 없으면 원본 배열 반환
   const filteredJigs = useMemo(() => {
-    if (!debouncedSearchTerm) return jigs;
+    if (!debouncedSearchTerm.trim()) return jigs;
     
-    const search = debouncedSearchTerm.toLowerCase();
-    return jigs.filter(jig =>
-      jig.itemName.toLowerCase().includes(search) ||
-      jig.partName.toLowerCase().includes(search) ||
-      jig.itemNumber.toLowerCase().includes(search) ||
-      jig.requestType.toLowerCase().includes(search) ||
-      (jig.remarks && jig.remarks.toLowerCase().includes(search))
-    );
+    const search = debouncedSearchTerm.toLowerCase().trim();
+    
+    // 검색어가 너무 짧으면 필터링하지 않음 (성능 최적화)
+    if (search.length < 2) return jigs;
+    
+    return jigs.filter(jig => {
+      // 각 필드를 미리 소문자로 변환하여 캐시
+      const itemName = jig.itemName.toLowerCase();
+      const partName = jig.partName.toLowerCase();
+      const itemNumber = jig.itemNumber.toLowerCase();
+      const requestType = jig.requestType.toLowerCase();
+      const remarks = jig.remarks?.toLowerCase() || '';
+      
+      return itemName.includes(search) ||
+             partName.includes(search) ||
+             itemNumber.includes(search) ||
+             requestType.includes(search) ||
+             remarks.includes(search);
+    });
   }, [jigs, debouncedSearchTerm]);
 
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
   }, []);
 
+  // 불필요한 변수 제거
   const masterItems = filteredJigs;
-
-  const onSelectItem = onSelectJig;
 
   return (
     <Card className="h-full flex flex-col">
@@ -160,7 +191,7 @@ export const JigMasterListView: React.FC<JigMasterListViewProps> = ({
                   <JigMasterTableRow
                     key={item.id}
                     item={item}
-                    onSelectJig={onSelectItem}
+                    onSelectJig={onSelectJig}
                   />
                 ))
               )}

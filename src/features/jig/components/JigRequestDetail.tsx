@@ -21,7 +21,7 @@ import { Separator } from '@/shared/components/ui/separator';
 import { ProcessingHistory } from '@/shared/components/common/ProcessingHistory';
 import { Progress } from '@/shared/components/ui/progress';
 import { CommentsService } from '@/shared/services/comments/commentsService';
-import { Share, Edit, Trash2, Check, X, Package, ArrowLeft } from 'lucide-react';
+import { Edit, Trash2, Check, X, Package, ArrowLeft } from 'lucide-react';
 
 interface JigRequestDetailProps {
   isOpen: boolean;
@@ -263,10 +263,6 @@ export const JigRequestDetail: React.FC<JigRequestDetailProps> = ({
         </div>
       )}
 
-      <Button onClick={() => {}} className="bg-indigo-500 hover:bg-indigo-600">
-        <Share className="h-4 w-4 mr-2" />
-        이미지로 공유
-      </Button>
       
       {canManage && (
         <Button onClick={() => onEdit?.(request)} variant="outline">

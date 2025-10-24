@@ -96,13 +96,11 @@ export const createQualityIssue = async (
 
     // 알림 발송
     try {
-      await QualityIssueNotificationService.sendQualityIssueCreatedNotification(
-        { ...qualityIssueData, id: docRef.id } as QualityIssue,
-        {
-          uid: user.uid,
-          displayName: getUserDisplayName(userProfile, user),
-          photoURL: undefined // 필요시 user 객체에서 photoURL 추가
-        }
+      await QualityIssueNotificationService.sendQualityIssueNotification(
+        `${qualityIssueData.productName} - ${qualityIssueData.partName}`,
+        getUserDisplayName(userProfile, user),
+        user.uid,
+        docRef.id
       );
     } catch (error) {
       console.error('알림 발송 실패:', error);
@@ -305,11 +303,13 @@ export const addIssueItem = async (
         const issueData = issueDoc.data();
         
         if (issueData) {
-          await QualityIssueNotificationService.sendQualityIssueItemAddedNotification(
-            issueId,
-            `${issueData.productName} - ${issueData.partName}`,
+          await QualityIssueNotificationService.sendQualityIssueStatusChangeNotification(
+            issueData.status,
             newStatus || '해결완료',
-            currentUser
+            issueData.title,
+            getUserDisplayName(null, currentUser),
+            currentUser.uid,
+            issueId
           );
         }
       } catch (error) {

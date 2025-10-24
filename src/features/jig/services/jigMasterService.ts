@@ -98,7 +98,7 @@ export const deleteJigMasterItem = async (id: string): Promise<void> => {
   await deleteDocument(JIG_COLLECTIONS.MASTER, id);
 };
 
-// 지그 마스터 실시간 구독
+// 지그 마스터 실시간 구독 (디바운싱 적용)
 export const subscribeToJigMasters = (
   onUpdate: (masters: JigMasterItem[]) => void,
   onError: (error: Error) => void
@@ -108,12 +108,33 @@ export const subscribeToJigMasters = (
     orderBy('createdAt', 'desc') // 입력일자 최신순 정렬
   );
   
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let lastUpdateTime = 0;
+  const DEBOUNCE_DELAY = 500; // 500ms 디바운싱
+  const MIN_UPDATE_INTERVAL = 1000; // 최소 1초 간격으로 업데이트
+  
   return onSnapshot(q, (snapshot) => {
-    const masters = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    } as JigMasterItem));
-    onUpdate(masters);
+    const now = Date.now();
+    
+    // 디바운싱 적용
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+    }
+    
+    debounceTimer = setTimeout(() => {
+      // 최소 업데이트 간격 체크
+      if (now - lastUpdateTime < MIN_UPDATE_INTERVAL) {
+        return;
+      }
+      
+      const masters = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as JigMasterItem));
+      
+      onUpdate(masters);
+      lastUpdateTime = now;
+    }, DEBOUNCE_DELAY);
   }, onError);
 };
 

@@ -43,17 +43,19 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
   // initialIndex가 변경되면 currentIndex 업데이트
   useEffect(() => {
     setCurrentIndex(initialIndex);
-  }, [initialIndex, images]);
+  }, [initialIndex]);
 
   const handlePrevious = useCallback(() => {
-    const newIndex = currentIndex > 0 ? currentIndex - 1 : images.length - 1;
-    setCurrentIndex(newIndex);
-  }, [currentIndex, images]);
+    setCurrentIndex(prevIndex => {
+      return prevIndex > 0 ? prevIndex - 1 : images.length - 1;
+    });
+  }, [images.length]);
 
   const handleNext = useCallback(() => {
-    const newIndex = currentIndex < images.length - 1 ? currentIndex + 1 : 0;
-    setCurrentIndex(newIndex);
-  }, [currentIndex, images]);
+    setCurrentIndex(prevIndex => {
+      return prevIndex < images.length - 1 ? prevIndex + 1 : 0;
+    });
+  }, [images.length]);
 
   // 키보드 이벤트 핸들러
   useEffect(() => {

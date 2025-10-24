@@ -199,6 +199,8 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
 
     // 2. Firestore 리스너 폴백 (FCM 실패 시 또는 에뮬레이터)
     // 웹 환경에서도 Firestore inbox 감지하여 알림 표시
+    let firestoreUnsubscribe: (() => void) | undefined;
+    
     if (!isElectron) {
       const setupFirestoreListener = async () => {
         const { collection, query, where, onSnapshot, orderBy, limit } = await import('firebase/firestore');
@@ -217,7 +219,7 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
         let isFirstSnapshot = true;
         const recentIds = getRecentNotificationIds();
 
-        const unsubscribe = onSnapshot(q, async (snapshot) => {
+        firestoreUnsubscribe = onSnapshot(q, async (snapshot) => {
           if (isFirstSnapshot) {
             isFirstSnapshot = false;
             return;
@@ -292,12 +294,16 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
             }
           });
         });
-
-        return unsubscribe;
       };
       
       setupFirestoreListener();
     }
+
+    return () => {
+      if (firestoreUnsubscribe) {
+        firestoreUnsubscribe();
+      }
+    };
   }, [state.isInitialized, user]);
 
 const getRecentNotificationIds = () => {
@@ -361,6 +367,8 @@ const getRecentNotificationIds = () => {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
+    let cleanup: (() => void) | undefined;
+
     const handlePermissionChange = async () => {
       const currentPermission = checkNotificationPermission();
       if (currentPermission !== state.permission) {
@@ -389,19 +397,25 @@ const getRecentNotificationIds = () => {
     if ('permissions' in navigator) {
       navigator.permissions.query({ name: 'notifications' as PermissionName }).then((result) => {
         result.addEventListener('change', handlePermissionChange);
-        return () => {
+        cleanup = () => {
           result.removeEventListener('change', handlePermissionChange);
         };
       }).catch(() => {
         // 권한 API를 지원하지 않는 경우 폴링으로 대체
         const interval = setInterval(handlePermissionChange, 2000);
-        return () => clearInterval(interval);
+        cleanup = () => clearInterval(interval);
       });
     } else {
       // 권한 API를 지원하지 않는 경우 폴링으로 대체
       const interval = setInterval(handlePermissionChange, 2000);
-      return () => clearInterval(interval);
+      cleanup = () => clearInterval(interval);
     }
+
+    return () => {
+      if (cleanup) {
+        cleanup();
+      }
+    };
   }, [state.permission, state.token]);
 
   // 알림 권한 요청

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -14,15 +14,18 @@ import { Label } from '@/shared/components/ui/label';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import { InputSelect } from '@/shared/components/common/InputSelect';
-import { UploadingImageGrid, UploadingImageItem } from '@/shared/components/common/UploadingImageGrid';
+import { UploadingImageGrid } from '@/shared/components/common/UploadingImageGrid';
 import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
-import { createImagePreview, ImageUploadState } from '@/shared/utils/imageUpload';
-import { uploadImageFilesParallel } from '@/shared/services/firebase/storage';
 import { toast } from 'sonner';
-import { updateProgressToast } from '@/shared/components/common/ProgressToast';
+import { 
+  updateProgressToast, 
+  createTimeoutPromise,
+  createRetryableUploadPromise
+} from '@/shared/components/common/ProgressToast';
 import { JigStatus, CreateJigRequestData } from '../types';
 import { PRODUCTION_TYPES } from '../constants';
 import { useAuthStore } from '@/features/auth/store/authStore';
+import { useImageUpload } from '@/shared/hooks';
 
 interface JigRequestFormProps {
   isOpen: boolean;
@@ -47,6 +50,9 @@ export const JigRequestForm: React.FC<JigRequestFormProps> = ({
 }) => {
   const { user } = useAuthStore();
   
+  // 이미지 업로드 훅 사용
+  const imageUploadHook = useImageUpload();
+  
   // 폼 상태
   const [formData, setFormData] = useState<CreateJigRequestData>({
     requestDate: new Date().toISOString().split('T')[0],
@@ -67,10 +73,8 @@ export const JigRequestForm: React.FC<JigRequestFormProps> = ({
     status: 'pending' as JigStatus,
   });
 
-  // 이미지 상태
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [imagePreviews, setImagePreviews] = useState<UploadingImageItem[]>([]);
-  const [imageUploadState, setImageUploadState] = useState<ImageUploadState | null>(null);
+  // 업로드 진행 상태 추적
+  const [currentUploadCount, setCurrentUploadCount] = useState(0);
 
   // 폼 초기화
   useEffect(() => {
@@ -93,69 +97,109 @@ export const JigRequestForm: React.FC<JigRequestFormProps> = ({
         remarks: '',
         status: 'pending' as JigStatus,
       });
-      setImageFiles([]);
-      setImagePreviews([]);
-      setImageUploadState(null);
+      
+      // 이미지 상태 완전 초기화
+      imageUploadHook.clearImages();
+      imageUploadHook.clearDeletedUrls();
+      setCurrentUploadCount(0);
+      
+      // 진행 중인 업로드가 있으면 중단
+      if (imageUploadHook.isUploading) {
+        imageUploadHook.cancelUpload();
+        console.log('🔄 모달 열림 시 진행 중인 업로드 강제 중단');
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, imageUploadHook]);
 
-  // 이미지 파일 처리
-  const handleImageChange = async (files: FileList | null) => {
-    if (!files) return;
-
-    const newFiles = Array.from(files);
-    const totalFiles = imageFiles.length + newFiles.length;
+  // 파일 선택 핸들러
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
     
-    if (totalFiles > 10) {
-      alert('최대 10개의 이미지만 업로드할 수 있습니다.');
-      return;
+    if (files.length > 0) {
+      try {
+        await imageUploadHook.handleFileSelect(files);
+      } catch (error) {
+        console.error('파일 선택 처리 실패:', error);
+        toast.error(error instanceof Error ? error.message : '파일 선택에 실패했습니다.');
+      }
     }
-
-    setImageFiles(prev => [...prev, ...newFiles]);
     
-    // 이미지 미리보기 생성
-    const newPreviews = await Promise.all(
-      newFiles.map(async (file) => {
-        const preview = await createImagePreview(file);
-        return {
-          file,
-          preview: preview.previewUrl,
-        };
-      })
-    );
-
-    setImagePreviews(prev => [...prev, ...newPreviews]);
-  };
-
-  // 이미지 제거
-  const handleRemoveImage = (index: number) => {
-    if (index >= 0 && index < imagePreviews.length) {
-      const fileToRemove = imagePreviews[index].file;
-      setImageFiles(prev => prev.filter(file => file !== fileToRemove));
-      setImagePreviews(prev => prev.filter((_, i) => i !== index));
+    // input 초기화 (같은 파일을 다시 선택할 수 있도록)
+    if (e.target) {
+      e.target.value = '';
     }
   };
 
   // 폼 제출
   const handleSubmit = async () => {
     if (!user) {
-      alert('로그인이 필요합니다.');
+      toast.error('로그인이 필요합니다.');
       return;
     }
 
     // 필수 필드 검증
     if (!formData.requester || !formData.destination || !formData.itemName) {
-      alert('필수 항목을 모두 입력해주세요.');
+      toast.error('필수 항목을 모두 입력해주세요.');
       return;
     }
 
     try {
-      setImageUploadState(null);
-      
-      // 이미지 업로드
+      // 이미지 업로드 처리
       let imageUrls: string[] = [];
-      if (imageFiles.length > 0) {
-        imageUrls = await uploadImagesParallel(imageFiles, 'jig-images');
+      if (imageUploadHook.uploadingImages.length > 0) {
+        // 업로드 시작 시 현재 파일 수 초기화
+        setCurrentUploadCount(0);
+        
+        const folder = 'jig-images';
+        
+        try {
+          // 타임아웃과 재시도 로직을 포함한 업로드 Promise 생성
+          const uploadFunction = () => imageUploadHook.uploadImages(folder, (progress) => {
+            // 진행률을 안정적으로 처리 (디바운싱)
+            const stableProgress = Math.min(100, Math.max(0, progress));
+            const currentCount = Math.round((stableProgress / 100) * imageUploadHook.uploadingImages.length);
+            
+            // 진행률이 이전보다 낮아지는 것을 방지
+            setCurrentUploadCount(prev => Math.max(prev, currentCount));
+            
+            // 진행률 업데이트 (취소 기능 포함)
+            updateProgressToast(toast, stableProgress, imageUploadHook.uploadingImages.length, () => {
+              // 취소 시 이미지 업로드 중단 및 완전 초기화
+              imageUploadHook.cancelUpload();
+              imageUploadHook.clearUploadingImages();
+            }, Math.max(currentUploadCount, currentCount));
+          });
+          
+          // 재시도 가능한 업로드 Promise
+          const retryableUploadPromise = createRetryableUploadPromise(uploadFunction, 3, 1000);
+          
+          // 타임아웃 Promise와 경쟁
+          const timeoutPromise = createTimeoutPromise(30000); // 30초 타임아웃
+          
+          imageUrls = await Promise.race([
+            retryableUploadPromise,
+            timeoutPromise
+          ]) as string[];
+          
+          // 이미지 업로드 성공 토스트는 제거 (등록 완료 토스트로 대체)
+          toast.dismiss('image-upload-progress');
+          
+        } catch (error: any) {
+          console.error('이미지 업로드 실패:', error);
+          
+          // 에러 타입에 따른 처리
+          if (error.message?.includes('취소')) {
+            toast.error('이미지 업로드가 취소되었습니다.');
+          } else if (error.message?.includes('시간이 초과')) {
+            toast.error('업로드 시간이 초과되었습니다. 네트워크 연결을 확인해주세요.');
+          } else {
+            toast.error(`이미지 업로드에 실패했습니다: ${error.message || '알 수 없는 오류'}`);
+          }
+          
+          // 업로드 실패 시 폼 제출 중단
+          toast.dismiss('image-upload-progress');
+          return;
+        }
       }
 
       // 폼 데이터와 이미지 URL 결합
@@ -164,17 +208,35 @@ export const JigRequestForm: React.FC<JigRequestFormProps> = ({
         imageUrls,
       };
 
-      await onSave(submitData, imageFiles);
+      // 새로 업로드할 파일들만 추출
+      const newFiles = imageUploadHook.uploadingImages
+        .filter(item => item.file !== null)
+        .map(item => item.file!);
+
+      await onSave(submitData, newFiles);
+      toast.success('지그 요청이 등록되었습니다.');
+      onClose();
     } catch (error) {
-      console.error('이미지 업로드 실패:', error);
-      alert('이미지 업로드에 실패했습니다.');
-    } finally {
-      setImageUploadState(null);
+      console.error('지그 요청 등록 실패:', error);
+      toast.error('지그 요청 등록에 실패했습니다. 다시 시도해주세요.');
     }
   };
 
   // 취소
   const handleCancel = () => {
+    // 진행 중인 토스트 정리
+    toast.dismiss('image-upload-progress');
+    
+    // 이미지 상태 완전 정리 (업로드 진행 상태 포함)
+    imageUploadHook.clearImages();
+    imageUploadHook.clearDeletedUrls();
+    
+    // 업로드 진행 상태 강제 초기화 (추가 안전장치)
+    if (imageUploadHook.isUploading) {
+      imageUploadHook.cancelUpload();
+      console.log('🔄 모달 닫힘 시 진행 중인 업로드 강제 중단');
+    }
+    
     onClose();
   };
 
@@ -341,18 +403,45 @@ export const JigRequestForm: React.FC<JigRequestFormProps> = ({
             {/* 이미지 업로드 */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">이미지 첨부</h3>
-              <div>
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={(e) => handleImageChange(e.target.files)}
-                  className="mb-4"
-                />
-                {imagePreviews.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = 'image/*';
+                      input.multiple = true;
+                      input.onchange = (e) => handleFileInputChange(e as any);
+                      input.click();
+                    }}
+                  >
+                    파일 선택
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = 'image/*';
+                      input.capture = 'environment';
+                      input.onchange = (e) => handleFileInputChange(e as any);
+                      input.click();
+                    }}
+                  >
+                    사진 촬영
+                  </Button>
+                </div>
+                
+                {/* 이미지 그리드 */}
+                {imageUploadHook.uploadingImages.length > 0 && (
                   <UploadingImageGrid
-                    items={imagePreviews}
-                    onRemove={handleRemoveImage}
+                    items={imageUploadHook.uploadingImages}
+                    onRemove={imageUploadHook.removeImage}
+                    gridClassName="grid-cols-[repeat(auto-fill,minmax(100px,1fr))]"
+                    imageClassName="h-24"
                   />
                 )}
               </div>
@@ -376,14 +465,14 @@ export const JigRequestForm: React.FC<JigRequestFormProps> = ({
         </ScrollArea>
 
         <DialogFooter className="flex justify-end gap-2">
-          <Button variant="outline" onClick={handleCancel} disabled={isLoading}>
+          <Button variant="outline" onClick={handleCancel} disabled={isLoading || imageUploadHook.isUploading}>
             취소
           </Button>
-          <Button onClick={handleSubmit} disabled={isLoading}>
-            {isLoading ? (
+          <Button onClick={handleSubmit} disabled={isLoading || imageUploadHook.isUploading}>
+            {isLoading || imageUploadHook.isUploading ? (
               <div className="flex items-center gap-2">
                 <LoadingSpinner size="sm" variant="secondary" />
-                저장 중...
+                {imageUploadHook.isUploading ? '업로드 중...' : '저장 중...'}
               </div>
             ) : (
               '등록'

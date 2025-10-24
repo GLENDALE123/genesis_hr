@@ -16,6 +16,8 @@ interface ProgressToastProps {
   onRetry?: () => void;
   isCancellable?: boolean;
   error?: string;
+  currentCount?: number; // 현재 완료된 파일 수
+  totalCount?: number; // 전체 파일 수
 }
 
 export const ProgressToast: React.FC<ProgressToastProps> = ({
@@ -27,7 +29,9 @@ export const ProgressToast: React.FC<ProgressToastProps> = ({
   onCancel,
   onRetry,
   isCancellable = false,
-  error
+  error,
+  currentCount,
+  totalCount
 }) => {
   const getStatusIcon = () => {
     switch (status) {
@@ -71,7 +75,7 @@ export const ProgressToast: React.FC<ProgressToastProps> = ({
           </h4>
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-500">
-              {Math.round(progress)}%
+              {currentCount && totalCount ? `${currentCount}/${totalCount}` : `${Math.round(progress)}%`}
             </span>
             {status === 'uploading' && isCancellable && onCancel && (
               <Button
@@ -166,9 +170,10 @@ export const createImageUploadPromise = (
     
     // 취소 핸들러 등록
     if (onCancel) {
+      const originalOnCancel = onCancel;
       onCancel = () => {
         cancelHandler();
-        onCancel();
+        originalOnCancel();
       };
     }
   });
@@ -242,16 +247,25 @@ export const updateProgressToast = (
   toast: any, 
   progress: number, 
   fileCount: number,
-  onCancel?: () => void
+  onCancel?: () => void,
+  currentCount?: number // 현재 완료된 파일 수
 ) => {
+  // 진행률을 0-100 범위로 정규화
+  const normalizedProgress = Math.max(0, Math.min(100, progress));
+  
+  // 현재 파일 수가 제공되지 않으면 진행률에서 계산
+  const actualCurrentCount = currentCount || Math.round((normalizedProgress / 100) * fileCount);
+  
   toast.custom((t: any) => (
     <ProgressToast
       title="이미지 업로드 중..."
-      progress={progress}
+      progress={normalizedProgress}
       status="uploading"
       message={`${fileCount}개 파일 업로드 중`}
       isCancellable={true}
       onCancel={onCancel}
+      currentCount={actualCurrentCount}
+      totalCount={fileCount}
     />
   ), {
     duration: Infinity,

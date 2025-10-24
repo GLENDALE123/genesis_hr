@@ -75,11 +75,17 @@ export const useJigMasterStore = create<JigMasterState & JigMasterActions>()(
         
         const unsubscribe = subscribeToJigMasters(
           (masters) => {
-            set({ 
-              masterItems: masters,
-              lastFetchTimestamp: Date.now(),
-              isLoading: false 
-            });
+            // 데이터가 실제로 변경되었을 때만 업데이트
+            const currentItems = get().masterItems;
+            const hasChanged = JSON.stringify(currentItems) !== JSON.stringify(masters);
+            
+            if (hasChanged) {
+              set({ 
+                masterItems: masters,
+                lastFetchTimestamp: Date.now(),
+                isLoading: false 
+              });
+            }
           },
           (error) => {
             set({ 

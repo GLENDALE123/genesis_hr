@@ -95,13 +95,11 @@ export class SampleService {
           id: docRef.id,
           ...requestData
         };
-        await SampleStatusNotificationService.sendSampleActionNotification(
-          'created',
-          createdRequest,
-          {
-            uid: user.uid,
-            displayName: getUserDisplayName(null, user, '알 수 없음')
-          }
+        await SampleStatusNotificationService.sendSampleRequestNotification(
+          createdRequest.productName,
+          getUserDisplayName(null, user, '알 수 없음'),
+          user.uid,
+          createdRequest.id
         );
       } catch (error) {
         console.error('❌ 샘플 요청 알림 전송 실패:', error);
@@ -205,11 +203,10 @@ export class SampleService {
         await SampleStatusNotificationService.sendSampleStatusChangeNotification(
           oldStatus,
           status,
-          updatedRequest,
-          {
-            uid: user.uid,
-            displayName: getUserDisplayName(null, user, '알 수 없음')
-          }
+          updatedRequest.productName,
+          getUserDisplayName(null, user, '알 수 없음'),
+          user.uid,
+          updatedRequest.id
         );
       } catch (error) {
         console.error('❌ 샘플 상태변경 알림 전송 실패:', error);
@@ -278,13 +275,14 @@ export class SampleService {
       // 삭제 알림 전송
       if (requestData && user) {
         try {
-          await SampleStatusNotificationService.sendSampleActionNotification(
+          // 삭제 알림은 별도 함수가 없으므로 상태 변경 알림으로 대체
+          await SampleStatusNotificationService.sendSampleStatusChangeNotification(
+            requestData.status,
             'deleted',
-            requestData,
-            {
-              uid: user.uid,
-              displayName: getUserDisplayName(null, user, '알 수 없음')
-            }
+            requestData.productName,
+            getUserDisplayName(null, user, '알 수 없음'),
+            user.uid,
+            requestData.id
           );
         } catch (error) {
           console.error('❌ 샘플 삭제 알림 전송 실패:', error);

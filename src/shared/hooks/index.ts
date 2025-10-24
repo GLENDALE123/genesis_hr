@@ -7,4 +7,5 @@ export { useNetworkStatus } from './useNetworkStatus';
 export { useComments } from './useComments';
 export { useDebounce } from './useDebounce';
 export { useMobileBackHandler } from './useMobileBackHandler';
+export { useImageUpload, type UseImageUploadReturn } from './useImageUpload';
 
