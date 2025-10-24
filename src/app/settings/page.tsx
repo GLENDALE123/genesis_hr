@@ -26,19 +26,19 @@ export default function SettingsPage() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-4 h-auto">
-          <TabsTrigger value="profile" className="flex flex-col gap-1 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsTrigger value="profile" className="flex flex-col gap-1 py-3">
             <User className="h-4 w-4" />
             <span className="text-xs">프로필</span>
           </TabsTrigger>
-          <TabsTrigger value="notifications" className="flex flex-col gap-1 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsTrigger value="notifications" className="flex flex-col gap-1 py-3">
             <Bell className="h-4 w-4" />
             <span className="text-xs">알림</span>
           </TabsTrigger>
-          <TabsTrigger value="appearance" className="flex flex-col gap-1 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsTrigger value="appearance" className="flex flex-col gap-1 py-3">
             <Palette className="h-4 w-4" />
             <span className="text-xs">화면</span>
           </TabsTrigger>
-          <TabsTrigger value="about" className="flex flex-col gap-1 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsTrigger value="about" className="flex flex-col gap-1 py-3">
             <Info className="h-4 w-4" />
             <span className="text-xs">정보</span>
           </TabsTrigger>

@@ -33,7 +33,11 @@ import {
   CalendarClock,
   AlertTriangle,
   ShieldAlert,
-  Shield
+  Shield,
+  Megaphone,
+  CalendarDays,
+  FileText,
+  TestTube
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { logout } from '@/shared/services/firebase/auth';
@@ -199,7 +203,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
                   <Badge 
-                    variant="destructive" 
+                    variant="destructive"
                     className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
                   >
                     {unreadCount > 9 ? '9+' : unreadCount}
@@ -251,12 +255,27 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                   notifications.map((notif) => {
                     // 알림 타입 감지 (실제 표시되는 필드)
                     const requestType = (notif.metadata as Record<string, unknown>)?.centerInfo;
-                    const isLogisticsType = requestType || (notif.title as string)?.includes('생산관리부') || (notif.title as string)?.includes('부족분') || (notif.title as string)?.includes('품질이슈');
+                    const title = notif.title as string;
+                    const isLogisticsType = requestType || title?.includes('생산관리부') || title?.includes('부족분') || title?.includes('품질이슈') || title?.includes('공지사항') || title?.includes('근무계획') || title?.includes('샘플') || title?.includes('생산일정') || title?.includes('생산일보');
                     const timestamp = (notif.createdAt as { toDate?: () => Date })?.toDate ? (notif.createdAt as { toDate: () => Date }).toDate() : new Date((notif.createdAt as string | number) || Date.now());
                     const senderName = (notif.metadata as Record<string, unknown>)?.senderName || '시스템';
                     const senderAvatar = (notif.metadata as Record<string, unknown>)?.senderAvatar;
                     const productName = (notif.metadata as Record<string, unknown>)?.productName;
                     const supplier = (notif.metadata as Record<string, unknown>)?.supplier;
+                    
+                    // 알림 타입별 아이콘 결정
+                    const getNotificationIcon = (title: string) => {
+                      if (title?.includes('댓글 : 생산관리부')) return <MessageSquare className="h-3.5 w-3.5 text-blue-500" />;
+                      if (title?.includes('공지사항')) return <Megaphone className="h-3.5 w-3.5 text-blue-500" />;
+                      if (title?.includes('근무계획')) return <CalendarClock className="h-3.5 w-3.5 text-purple-500" />;
+                      if (title?.includes('생산일정')) return <CalendarDays className="h-3.5 w-3.5 text-green-500" />;
+                      if (title?.includes('생산일보')) return <FileText className="h-3.5 w-3.5 text-green-500" />;
+                      if (title?.includes('생산관리부') && !title?.includes('댓글 :')) return <CalendarClock className="h-3.5 w-3.5 text-blue-500" />;
+                      if (title?.includes('부족분')) return <AlertTriangle className="h-3.5 w-3.5 text-orange-500" />;
+                      if (title?.includes('품질이슈')) return <ShieldAlert className="h-3.5 w-3.5 text-red-500" />;
+                      if (title?.includes('샘플')) return <TestTube className="h-3.5 w-3.5 text-purple-500" />;
+                      return <Bell className="h-3.5 w-3.5 text-gray-500" />;
+                    };
                     
                     return (
                       <Link
@@ -287,11 +306,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                           <>
                             <div className="flex items-center justify-between mb-2">
                               <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
-                                {(notif.title as string)?.includes('댓글 : 생산관리부') && <MessageSquare className="h-3.5 w-3.5 text-blue-500" />}
-                                {(notif.title as string)?.includes('생산관리부') && !(notif.title as string)?.includes('댓글 :') && <CalendarClock className="h-3.5 w-3.5 text-blue-500" />}
-                                {(notif.title as string)?.includes('부족분') && <AlertTriangle className="h-3.5 w-3.5 text-orange-500" />}
-                                {(notif.title as string)?.includes('품질이슈') && <ShieldAlert className="h-3.5 w-3.5 text-red-500" />}
-                                {notif.title as string}
+                                {getNotificationIcon(title)}
+                                {title}
                               </span>
                               {(requestType as string) && (
                                 <span className="text-xs font-semibold text-primary">
@@ -380,7 +396,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                     {user?.email}
                   </p>
                   <div className="flex items-center gap-2 mt-2">
-                    <Badge variant={getUserRoleBadgeVariant(dummyRole ? { role: dummyRole } : userProfile)}>
+                    <Badge variant="default">
                       {getUserRoleText(dummyRole ? { role: dummyRole } : userProfile)}
                     </Badge>
                     {dummyRole && (
@@ -413,7 +429,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                 </div>
                 <Switch
                   checked={(resolvedTheme || theme) === 'dark'}
-                  onCheckedChange={(checked) => {
+                  onCheckedChange={(checked: boolean) => {
                     const newTheme = checked ? 'dark' : 'light';
                     
                     // next-themes만 업데이트 (localStorage 자동 저장)
@@ -458,7 +474,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                       Manager로 보기
                     </Button>
                     <Button
-                      variant={dummyRole === 'Member' ? 'outline' : 'outline'}
+                      variant="outline"
                       size="sm"
                       className="w-full justify-start"
                       onClick={() => setDummyRole(dummyRole === 'Member' ? null : 'Member')}

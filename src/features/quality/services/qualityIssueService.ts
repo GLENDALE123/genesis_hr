@@ -14,7 +14,7 @@ import {
 import { db } from '@/shared/services/firebase/config';
 import { QualityIssue, QualityIssueFormData } from '../types';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
-import { QualityIssueNotificationService } from './qualityIssueNotificationService';
+import { QualityIssueNotificationService } from '@/shared/services/notificationService';
 
 const COLLECTION_NAME = 'quality-issues';
 

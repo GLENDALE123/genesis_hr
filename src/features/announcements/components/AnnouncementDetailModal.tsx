@@ -129,8 +129,9 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
             <div className="flex justify-end gap-2 pt-4 border-t">
               {onEdit && (
                 <Button
+                  variant="secondary"
                   onClick={onEdit}
-                  className="flex items-center gap-2 bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                  className="flex items-center gap-2"
                 >
                   <Edit className="h-4 w-4" />
                   수정
@@ -138,8 +139,9 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
               )}
               {onDelete && (
                 <Button
+                  variant="destructive"
                   onClick={onDelete}
-                  className="flex items-center gap-2 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  className="flex items-center gap-2"
                 >
                   <Trash2 className="h-4 w-4" />
                   삭제

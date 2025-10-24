@@ -54,11 +54,23 @@ export const NOTIFICATION_CHANNELS = {
     description: '품질이슈 등록 알림',
     section: 'quality-center',
   },
-  'quality-issue-item-added': {
-    label: '품질이슈사항 추가',
+  'quality-issue-status': {
+    label: '품질이슈 상태 변경',
     icon: 'ShieldAlert',
-    description: '품질이슈사항 추가 및 상태 변경 알림',
+    description: '품질이슈 상태 변경 및 항목 추가 알림',
     section: 'quality-center',
+  },
+  'announcement': {
+    label: '공지사항',
+    icon: 'Megaphone',
+    description: '새 공지사항 등록 알림',
+    section: 'communication',
+  },
+  'work-schedule': {
+    label: '근무계획',
+    icon: 'CalendarClock',
+    description: '근무계획 등록/변경 알림',
+    section: 'communication',
   },
   // 🆕 새 채널 추가 시 여기만 수정하면 UI 자동 업데이트
 } as const;
@@ -129,7 +141,9 @@ export const DEFAULT_SETTINGS: UserSettings = {
         'sample-status': true,
         'comment-mention': true,
         'quality-issue-created': true,
-        'quality-issue-item-added': true,
+        'announcement': true,
+        'work-schedule': true,
+        'quality-issue-status': true,
     },
     schedule: {
       enabled: false,

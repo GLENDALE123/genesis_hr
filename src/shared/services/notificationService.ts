@@ -4,6 +4,8 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '@/shared/services/firebase/config';
 import { PackagingReport, ProductionStatus } from '@/features/production/types';
+import { settingsService } from '@/shared/services/settings/settingsService';
+import { NotificationChannelType } from '@/shared/types/settings';
 
 // 공통 타입 정의
 interface RequestUser {
@@ -17,9 +19,35 @@ interface UserProfile {
   email?: string;
 }
 
+// 알림 타입 열거형
+export enum NotificationType {
+  PRODUCTION_REQUEST = 'production-request',
+  SHORTAGE_REQUEST = 'shortage-request',
+  DAILY_REPORT = 'daily-report',
+  PRODUCTION_SCHEDULE = 'production-schedule',
+  ANNOUNCEMENT = 'announcement',
+  WORK_SCHEDULE = 'work-schedule',
+  QUALITY_ISSUE = 'quality-issue',
+  QUALITY_ISSUE_STATUS = 'quality-issue-status',
+  SAMPLE_REQUEST = 'sample-request',
+  SAMPLE_STATUS = 'sample-status'
+}
+
+// 우선순위 열거형
+export enum NotificationPriority {
+  LOW = 'low',
+  NORMAL = 'normal',
+  HIGH = 'high'
+}
+
+// 상태 메시지 타입
+export interface StatusMessages {
+  [key: string]: string;
+}
+
 interface NotificationPayload {
   targetUsers: string[];
-  type: string;
+  type: NotificationType;
   title: string;
   body: string;
   requestId: string;
@@ -27,7 +55,7 @@ interface NotificationPayload {
   senderName: string;
   senderUid: string;
   senderAvatar?: string;
-  priority?: 'low' | 'normal' | 'high';
+  priority?: NotificationPriority;
   centerInfo?: string;
   metadata?: Record<string, unknown>;
 }
@@ -37,25 +65,86 @@ const getFunctionsUrl = () => {
   return 'https://asia-northeast3-hs-jig-b2093.cloudfunctions.net';
 };
 
+// 상태 메시지 상수
+const STATUS_MESSAGES: Record<string, StatusMessages> = {
+  production: {
+    'pending': '대기중',
+    'approved': '승인됨',
+    'rejected': '거부됨',
+    'in-progress': '진행중',
+    'completed': '완료됨',
+    'cancelled': '취소됨'
+  },
+  quality: {
+    'open': '열림',
+    'in-progress': '진행중',
+    'resolved': '해결됨',
+    'closed': '종료됨'
+  },
+  sample: {
+    'pending': '대기중',
+    'approved': '승인됨',
+    'rejected': '거부됨',
+    'in-progress': '진행중',
+    'completed': '완료됨',
+    'cancelled': '취소됨'
+  },
+  workSchedule: {
+    'created': '근무계획을 등록했습니다.',
+    'updated': '근무계획을 변경했습니다.',
+    'deleted': '근무계획을 삭제했습니다.'
+  }
+};
+
+// 상태 메시지 헬퍼 함수
+const getStatusMessage = (category: string, status: string): string => {
+  return STATUS_MESSAGES[category]?.[status] || status;
+};
+
 /**
  * 통합 알림 서비스
  * 생산 피처의 모든 알림을 통합 관리
  */
 export class UnifiedNotificationService {
   /**
-   * Firebase Functions를 통한 알림 발송 공통 함수
+   * Firebase Functions를 통한 알림 발송 공통 함수 (재시도 로직 포함)
    */
-  private static async sendNotificationViaFunctions(payload: NotificationPayload): Promise<void> {
+  private static async sendNotificationViaFunctions(
+    payload: NotificationPayload, 
+    retryCount = 3
+  ): Promise<void> {
     const functionsUrl = getFunctionsUrl();
-    const response = await fetch(`${functionsUrl}/createNotification`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+    
+    for (let attempt = 1; attempt <= retryCount; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10초 타임아웃
+        
+        const response = await fetch(`${functionsUrl}/createNotification`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `알림 전송 실패: ${response.status}`);
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `알림 전송 실패: ${response.status}`);
+        }
+        
+        return; // 성공시 즉시 반환
+      } catch (error) {
+        console.warn(`알림 전송 시도 ${attempt}/${retryCount} 실패:`, error);
+        
+        if (attempt === retryCount) {
+          throw new Error(`알림 전송 실패 (${retryCount}회 시도 후): ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+        
+        // 지수 백오프: 1초, 2초, 4초 대기
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000));
+      }
     }
   }
 
@@ -71,44 +160,107 @@ export class UnifiedNotificationService {
     await createNotification(payload);
   }
 
+  // 사용자 목록 캐싱
+  private static userCache = new Map<string, { users: string[], timestamp: number }>();
+  private static readonly CACHE_DURATION = 5 * 60 * 1000; // 5분
+
   /**
-   * Admin/Manager 사용자 목록 조회 (발신자 제외)
+   * Admin/Manager 사용자 목록 조회 (캐싱 포함, 발신자 제외)
    */
   private static async getAdminManagerUsers(excludeUid?: string): Promise<string[]> {
     if (!db) {
       throw new Error('Firebase가 초기화되지 않았습니다.');
     }
 
-    const usersRef = collection(db, 'users');
-    const q = query(usersRef, where('role', 'in', ['Admin', 'Manager']));
-    const usersSnapshot = await getDocs(q);
+    const cacheKey = excludeUid || 'all';
+    const cached = this.userCache.get(cacheKey);
+    const now = Date.now();
 
-    const targetUsers = usersSnapshot.docs
-      .filter(doc => !excludeUid || doc.id !== excludeUid)
-      .map(doc => doc.id);
+    // 캐시가 유효한 경우 캐시된 데이터 사용
+    if (cached && (now - cached.timestamp) < this.CACHE_DURATION) {
+      return excludeUid ? cached.users.filter(uid => uid !== excludeUid) : cached.users;
+    }
 
-    return targetUsers;
+    try {
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('role', 'in', ['Admin', 'Manager']));
+      const usersSnapshot = await getDocs(q);
+
+      const targetUsers = usersSnapshot.docs.map(doc => doc.id);
+
+      // 캐시에 저장
+      this.userCache.set(cacheKey, {
+        users: targetUsers,
+        timestamp: now
+      });
+
+      return excludeUid ? targetUsers.filter(uid => uid !== excludeUid) : targetUsers;
+    } catch (error) {
+      console.error('사용자 목록 조회 실패:', error);
+      // 캐시된 데이터가 있으면 사용
+      if (cached) {
+        console.warn('캐시된 사용자 목록을 사용합니다.');
+        return excludeUid ? cached.users.filter(uid => uid !== excludeUid) : cached.users;
+      }
+      throw error;
+    }
   }
 
   /**
-   * 알림 전송 공통 메서드
+   * 사용자 알림 설정 확인
+   * @param userId - 사용자 ID
+   * @param notificationType - 알림 타입
+   * @returns 알림 허용 여부
+   */
+  private static async isUserNotificationAllowed(
+    userId: string, 
+    notificationType: NotificationChannelType
+  ): Promise<boolean> {
+    try {
+      const settings = await settingsService.getSettings(userId);
+      return settingsService.isNotificationAllowed(settings, notificationType);
+    } catch (error) {
+      console.error('❌ 사용자 알림 설정 확인 실패:', error);
+      // 설정 확인 실패 시 기본적으로 허용
+      return true;
+    }
+  }
+
+  /**
+   * 알림 전송 공통 메서드 (개선된 에러 처리)
    */
   private static async sendNotification(
     payload: Omit<NotificationPayload, 'targetUsers'>,
     excludeUid?: string,
     useCallable = false
-  ): Promise<void> {
+  ): Promise<{ success: boolean; targetCount: number; error?: string }> {
     try {
       const targetUsers = await this.getAdminManagerUsers(excludeUid);
 
       if (targetUsers.length === 0) {
         console.log('알림 대상이 없습니다.');
-        return;
+        return { success: true, targetCount: 0 };
+      }
+
+      // 사용자별 알림 설정 확인 및 필터링
+      const allowedUsers: string[] = [];
+      for (const userId of targetUsers) {
+        const isAllowed = await this.isUserNotificationAllowed(userId, payload.type as NotificationChannelType);
+        if (isAllowed) {
+          allowedUsers.push(userId);
+        }
+      }
+
+      if (allowedUsers.length === 0) {
+        console.log('알림 설정에 의해 모든 사용자가 차단되었습니다.');
+        return { success: true, targetCount: 0 };
       }
 
       const fullPayload: NotificationPayload = {
         ...payload,
-        targetUsers
+        type: NotificationType.PRODUCTION_REQUEST,
+        priority: NotificationPriority.NORMAL,
+        targetUsers: allowedUsers
       };
 
       if (useCallable) {
@@ -117,10 +269,18 @@ export class UnifiedNotificationService {
         await this.sendNotificationViaFunctions(fullPayload);
       }
 
-      console.log(`✅ 알림이 발송되었습니다. (작성자 제외, ${targetUsers.length}명)`);
+      console.log(`✅ 알림이 발송되었습니다. (설정 확인 후 ${allowedUsers.length}명)`);
+      return { success: true, targetCount: allowedUsers.length };
     } catch (error) {
-      console.error('알림 생성 중 오류 발생:', error);
-      // 알림 실패해도 메인 로직은 계속 진행
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('알림 생성 중 오류 발생:', errorMessage);
+      
+      // 알림 실패해도 메인 로직은 계속 진행하되, 결과를 반환
+      return { 
+        success: false, 
+        targetCount: 0, 
+        error: errorMessage 
+      };
     }
   }
 
@@ -138,7 +298,7 @@ export class UnifiedNotificationService {
     requesterAvatar?: string
   ): Promise<void> {
     await this.sendNotification({
-      type: 'production-request',
+      type: NotificationType.PRODUCTION_REQUEST,
       title: '생산관리부 요청사항',
       body: content,
       requestId,
@@ -147,7 +307,7 @@ export class UnifiedNotificationService {
       senderName: requester,
       senderUid: requesterUid,
       senderAvatar: requesterAvatar,
-      priority: 'normal'
+      priority: NotificationPriority.NORMAL
     }, requesterUid);
   }
 
@@ -163,7 +323,7 @@ export class UnifiedNotificationService {
     requesterAvatar?: string
   ): Promise<void> {
     await this.sendNotification({
-      type: 'shortage-request',
+      type: NotificationType.SHORTAGE_REQUEST,
       title: '부족분 신청',
       body: content,
       requestId,
@@ -172,7 +332,7 @@ export class UnifiedNotificationService {
       senderName: requester,
       senderUid: requesterUid,
       senderAvatar: requesterAvatar,
-      priority: 'normal'
+      priority: NotificationPriority.NORMAL
     }, requesterUid);
   }
 
@@ -190,7 +350,7 @@ export class UnifiedNotificationService {
     requesterAvatar?: string
   ): Promise<void> {
     await this.sendNotification({
-      type: 'production-request',
+      type: NotificationType.PRODUCTION_REQUEST,
       centerInfo: requestType,
       title: '생산관리부 요청사항',
       body: content,
@@ -199,7 +359,7 @@ export class UnifiedNotificationService {
       senderName: requester,
       senderUid: requesterUid,
       senderAvatar: requesterAvatar,
-      priority: 'normal'
+      priority: NotificationPriority.NORMAL
     }, requesterUid);
   }
 
@@ -273,7 +433,7 @@ export class UnifiedNotificationService {
       }
 
       await this.sendNotification({
-        type: 'daily-report',
+        type: NotificationType.DAILY_REPORT,
         title,
         body,
         requestId: report.id,
@@ -281,7 +441,7 @@ export class UnifiedNotificationService {
         senderName: getUserDisplayName(null, user),
         senderUid: user.uid,
         senderAvatar: user.photoURL,
-        priority: 'normal',
+        priority: NotificationPriority.NORMAL,
         centerInfo: '생산일보 상태 변경'
       }, user.uid, true); // httpsCallable 방식 사용
 
@@ -356,7 +516,7 @@ export class UnifiedNotificationService {
       }
 
       await this.sendNotification({
-        type: 'daily-report',
+        type: NotificationType.DAILY_REPORT,
         title,
         body,
         requestId: `DAILY-REPORT-${action.toUpperCase()}-${Date.now()}`,
@@ -364,7 +524,7 @@ export class UnifiedNotificationService {
         senderName: getUserDisplayName(null, user),
         senderUid: user.uid,
         senderAvatar: user.photoURL,
-        priority: 'normal',
+        priority: NotificationPriority.NORMAL,
         centerInfo: '생산일보 상태 변경'
       }, user.uid, true); // httpsCallable 방식 사용
 
@@ -405,7 +565,7 @@ export class UnifiedNotificationService {
       };
       
       await this.sendNotification({
-        type: 'production-schedule',
+        type: NotificationType.PRODUCTION_SCHEDULE,
         title: '생산일정',
         body: `${getUserDisplayName(null, user)}님이 ${actionMessages[action]}`,
         requestId: `SCHEDULE-${action.toUpperCase()}-${Date.now()}`,
@@ -413,7 +573,7 @@ export class UnifiedNotificationService {
         senderName: getUserDisplayName(null, user),
         senderUid: user.uid,
         senderAvatar: user.photoURL,
-        priority: 'normal',
+        priority: NotificationPriority.NORMAL,
         metadata: {
           action,
           planDate: scheduleData.planDate,
@@ -451,7 +611,7 @@ export class UnifiedNotificationService {
         : `${uniqueDates[0]} ~ ${uniqueDates[uniqueDates.length - 1]}`;
       
       await this.sendNotification({
-        type: 'production-schedule',
+        type: NotificationType.PRODUCTION_SCHEDULE,
         title: '생산일정',
         body: `${getUserDisplayName(null, user)}님이 ${schedules.length}건의 생산일정을 일괄 등록했습니다.`,
         requestId: `SCHEDULE-BULK-${Date.now()}`,
@@ -459,7 +619,7 @@ export class UnifiedNotificationService {
         senderName: getUserDisplayName(null, user),
         senderUid: user.uid,
         senderAvatar: user.photoURL,
-        priority: 'normal',
+        priority: NotificationPriority.NORMAL,
         metadata: {
           action: 'bulk_created',
           scheduleCount: schedules.length,
@@ -489,17 +649,17 @@ export class UnifiedNotificationService {
     author: string,
     authorId: string,
     announcementId?: string
-  ): Promise<void> {
+  ): Promise<{ success: boolean; targetCount: number; error?: string }> {
     try {
-      await this.sendNotification({
-        type: 'announcement',
+      const result = await this.sendNotification({
+        type: NotificationType.ANNOUNCEMENT,
         title: '새 공지사항이 등록되었습니다',
         body: `"${announcementTitle}" 공지사항이 등록되었습니다.`,
         requestId: announcementId || `ANNOUNCEMENT-${Date.now()}`,
         subtitle: announcementTitle,
         senderName: author,
         senderUid: authorId,
-        priority: 'normal',
+        priority: NotificationPriority.NORMAL,
         centerInfo: '공지사항 등록',
         metadata: {
           announcementTitle,
@@ -507,9 +667,17 @@ export class UnifiedNotificationService {
         }
       }, authorId);
 
-      console.log(`✅ 공지사항 등록 알림 전송 완료: ${announcementTitle}`);
+      if (result.success) {
+        console.log(`✅ 공지사항 등록 알림 전송 완료: ${announcementTitle}`);
+      } else {
+        console.warn(`⚠️ 공지사항 등록 알림 전송 실패: ${result.error}`);
+      }
+
+      return result;
     } catch (error) {
-      console.error('공지사항 등록 알림 전송 중 오류:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('공지사항 등록 알림 전송 중 오류:', errorMessage);
+      return { success: false, targetCount: 0, error: errorMessage };
     }
   }
 
@@ -523,23 +691,18 @@ export class UnifiedNotificationService {
     scheduleId: string,
     action: 'created' | 'updated' | 'deleted',
     description: string
-  ): Promise<void> {
+  ): Promise<{ success: boolean; targetCount: number; error?: string }> {
     try {
-      const actionMessages = {
-        created: '근무계획을 등록했습니다.',
-        updated: '근무계획을 변경했습니다.',
-        deleted: '근무계획을 삭제했습니다.'
-      };
-
-      await this.sendNotification({
-        type: 'work-schedule',
+      const result = await this.sendNotification({
+        type: NotificationType.WORK_SCHEDULE,
         title: '근무계획 변경',
         body: `${dateStr} ${description}`,
         requestId: scheduleId,
-        subtitle: actionMessages[action],
+        subtitle: getStatusMessage('workSchedule', action),
         senderName: '시스템',
         senderUid: 'system',
-        priority: 'normal',
+        priority: NotificationPriority.NORMAL,
+        centerInfo: '근무계획 변경',
         metadata: {
           action,
           dateStr,
@@ -547,9 +710,173 @@ export class UnifiedNotificationService {
         }
       });
 
-      console.log(`✅ 근무계획 변경 알림 전송 완료: ${dateStr} - ${action}`);
+      if (result.success) {
+        console.log(`✅ 근무계획 변경 알림 전송 완료: ${dateStr} - ${action}`);
+      } else {
+        console.warn(`⚠️ 근무계획 변경 알림 전송 실패: ${result.error}`);
+      }
+
+      return result;
     } catch (error) {
-      console.error('근무계획 변경 알림 전송 중 오류:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('근무계획 변경 알림 전송 중 오류:', errorMessage);
+      return { success: false, targetCount: 0, error: errorMessage };
+    }
+  }
+
+  // ==================== 품질관리 알림 ====================
+
+  /**
+   * 품질이슈 등록 알림 생성
+   */
+  static async sendQualityIssueNotification(
+    issueTitle: string,
+    author: string,
+    authorId: string,
+    issueId?: string
+  ): Promise<void> {
+    try {
+      await this.sendNotification({
+        type: NotificationType.QUALITY_ISSUE,
+        title: '새 품질이슈가 등록되었습니다',
+        body: `"${issueTitle}" 품질이슈가 등록되었습니다.`,
+        requestId: issueId || `QUALITY-ISSUE-${Date.now()}`,
+        subtitle: issueTitle,
+        senderName: author,
+        senderUid: authorId,
+        priority: NotificationPriority.HIGH,
+        centerInfo: '품질이슈 등록',
+        metadata: {
+          issueTitle,
+          issueId
+        }
+      }, authorId);
+
+      console.log(`✅ 품질이슈 등록 알림 전송 완료: ${issueTitle}`);
+    } catch (error) {
+      console.error('품질이슈 등록 알림 전송 중 오류:', error);
+    }
+  }
+
+  /**
+   * 품질이슈 상태 변경 알림 생성
+   */
+  static async sendQualityIssueStatusChangeNotification(
+    oldStatus: string | undefined,
+    newStatus: string,
+    issueTitle: string,
+    author: string,
+    authorId: string,
+    issueId?: string
+  ): Promise<{ success: boolean; targetCount: number; error?: string }> {
+    try {
+      const result = await this.sendNotification({
+        type: NotificationType.QUALITY_ISSUE_STATUS,
+        title: '품질이슈 상태 변경',
+        body: `"${issueTitle}" 품질이슈 상태가 "${getStatusMessage('quality', oldStatus || '')}"에서 "${getStatusMessage('quality', newStatus)}"로 변경되었습니다.`,
+        requestId: issueId || `QUALITY-STATUS-${Date.now()}`,
+        subtitle: getStatusMessage('quality', newStatus),
+        senderName: author,
+        senderUid: authorId,
+        priority: NotificationPriority.NORMAL,
+        centerInfo: '품질이슈 상태 변경',
+        metadata: {
+          issueTitle,
+          issueId,
+          oldStatus,
+          newStatus
+        }
+      }, authorId);
+
+      if (result.success) {
+        console.log(`✅ 품질이슈 상태 변경 알림 전송 완료: ${issueTitle} - ${newStatus}`);
+      } else {
+        console.warn(`⚠️ 품질이슈 상태 변경 알림 전송 실패: ${result.error}`);
+      }
+
+      return result;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('품질이슈 상태 변경 알림 전송 중 오류:', errorMessage);
+      return { success: false, targetCount: 0, error: errorMessage };
+    }
+  }
+
+  // ==================== 샘플 관리 알림 ====================
+
+  /**
+   * 샘플 요청 상태 변경 알림 생성
+   */
+  static async sendSampleStatusChangeNotification(
+    oldStatus: string | undefined,
+    newStatus: string,
+    sampleTitle: string,
+    author: string,
+    authorId: string,
+    sampleId?: string
+  ): Promise<{ success: boolean; targetCount: number; error?: string }> {
+    try {
+      const result = await this.sendNotification({
+        type: NotificationType.SAMPLE_STATUS,
+        title: '샘플 요청 상태 변경',
+        body: `"${sampleTitle}" 샘플 요청 상태가 "${getStatusMessage('sample', oldStatus || '')}"에서 "${getStatusMessage('sample', newStatus)}"로 변경되었습니다.`,
+        requestId: sampleId || `SAMPLE-STATUS-${Date.now()}`,
+        subtitle: getStatusMessage('sample', newStatus),
+        senderName: author,
+        senderUid: authorId,
+        priority: NotificationPriority.NORMAL,
+        centerInfo: '샘플 요청 상태 변경',
+        metadata: {
+          sampleTitle,
+          sampleId,
+          oldStatus,
+          newStatus
+        }
+      }, authorId);
+
+      if (result.success) {
+        console.log(`✅ 샘플 상태 변경 알림 전송 완료: ${sampleTitle} - ${newStatus}`);
+      } else {
+        console.warn(`⚠️ 샘플 상태 변경 알림 전송 실패: ${result.error}`);
+      }
+
+      return result;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('샘플 상태 변경 알림 전송 중 오류:', errorMessage);
+      return { success: false, targetCount: 0, error: errorMessage };
+    }
+  }
+
+  /**
+   * 샘플 요청 등록 알림 생성
+   */
+  static async sendSampleRequestNotification(
+    sampleTitle: string,
+    author: string,
+    authorId: string,
+    sampleId?: string
+  ): Promise<void> {
+    try {
+      await this.sendNotification({
+        type: NotificationType.SAMPLE_REQUEST,
+        title: '새 샘플 요청이 등록되었습니다',
+        body: `"${sampleTitle}" 샘플 요청이 등록되었습니다.`,
+        requestId: sampleId || `SAMPLE-REQUEST-${Date.now()}`,
+        subtitle: sampleTitle,
+        senderName: author,
+        senderUid: authorId,
+        priority: NotificationPriority.NORMAL,
+        centerInfo: '샘플 요청 등록',
+        metadata: {
+          sampleTitle,
+          sampleId
+        }
+      }, authorId);
+
+      console.log(`✅ 샘플 요청 등록 알림 전송 완료: ${sampleTitle}`);
+    } catch (error) {
+      console.error('샘플 요청 등록 알림 전송 중 오류:', error);
     }
   }
 
@@ -589,7 +916,7 @@ export class UnifiedNotificationService {
 - 추가 요청: 오후 3시까지 도착 요망`;
 
     await this.sendNotification({
-      type: 'production-request',
+      type: NotificationType.PRODUCTION_REQUEST,
       title: '생산관리부 요청사항',
       body: testContent,
       requestId: 'P-TEST-001',
@@ -598,7 +925,7 @@ export class UnifiedNotificationService {
       senderName: userName,
       senderUid: userUid,
       senderAvatar: userAvatar,
-      priority: 'normal'
+      priority: NotificationPriority.NORMAL
     }); // 테스트는 본인에게도 발송
   }
 
@@ -613,7 +940,7 @@ export class UnifiedNotificationService {
     const testContent = `1,000EA, 사유: 테스트용 부족분 신청입니다.`;
 
     await this.sendNotification({
-      type: 'shortage-request',
+      type: NotificationType.SHORTAGE_REQUEST,
       title: '부족분 신청',
       body: testContent,
       requestId: 'TEST-SHORTAGE-001',
@@ -622,7 +949,7 @@ export class UnifiedNotificationService {
       senderName: userName,
       senderUid: userUid,
       senderAvatar: userAvatar,
-      priority: 'normal'
+      priority: NotificationPriority.NORMAL
     }); // 테스트는 본인에게도 발송
   }
 
@@ -652,7 +979,7 @@ export class UnifiedNotificationService {
     const data = testData[requestType] || testData['긴급건'];
 
     await this.sendNotification({
-      type: 'production-request',
+      type: NotificationType.PRODUCTION_REQUEST,
       title: '생산관리부 요청사항',
       body: data.content,
       requestId: 'P-TEST-001',
@@ -661,7 +988,7 @@ export class UnifiedNotificationService {
       senderName: userName,
       senderUid: userUid,
       senderAvatar: userAvatar,
-      priority: 'normal'
+      priority: NotificationPriority.NORMAL
     }); // 테스트는 본인에게도 발송
   }
 
@@ -699,34 +1026,93 @@ export class UnifiedNotificationService {
   }
 
   /**
-   * 테스트용 생산일보 액션 알림
+   * 테스트용 샘플 상태 변경 알림
    */
-  static async sendTestDailyReportActionNotification(
-    action: 'created' | 'updated' | 'deleted',
+  static async sendTestSampleStatusNotification(
+    oldStatus: string,
+    newStatus: string,
     user: RequestUser
   ): Promise<void> {
     // 테스트용 더미 데이터
-    const testReport: PackagingReport = {
-      id: `TEST-REPORT-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      workDate: new Date().toISOString().split('T')[0],
-      author: {
-        uid: user.uid,
-        displayName: getUserDisplayName(null, user)
-      },
-      productionLine: '증착1',
-      orderNumbers: ['PO-TEST-001'],
-      supplier: '테스트공급사',
+    const testSample = {
+      id: `TEST-SAMPLE-${Date.now()}`,
       productName: '테스트제품',
-      partName: '테스트부속',
-      specification: '테스트사양',
-      lineRatio: '1:1',
-      startTime: '09:00',
-      endTime: '18:00',
-      packagedBoxes: []
+      clientName: '테스트고객사',
+      requestDate: new Date().toISOString().split('T')[0]
     };
 
-    await this.sendDailyReportActionNotification(action, testReport, user);
+    await this.sendSampleStatusChangeNotification(
+      oldStatus,
+      newStatus,
+      testSample.productName,
+      getUserDisplayName(null, user),
+      user.uid,
+      testSample.id
+    );
+  }
+
+  /**
+   * 테스트용 품질이슈 알림
+   */
+  static async sendTestQualityIssueNotification(
+    user: RequestUser
+  ): Promise<void> {
+    const testIssue = {
+      id: `TEST-QUALITY-${Date.now()}`,
+      title: '테스트 품질이슈',
+      description: '테스트용 품질이슈입니다.'
+    };
+
+    await this.sendQualityIssueNotification(
+      testIssue.title,
+      getUserDisplayName(null, user),
+      user.uid,
+      testIssue.id
+    );
+  }
+
+  /**
+   * 테스트용 품질이슈 상태 변경 알림
+   */
+  static async sendTestQualityIssueStatusNotification(
+    oldStatus: string,
+    newStatus: string,
+    user: RequestUser
+  ): Promise<void> {
+    const testIssue = {
+      id: `TEST-QUALITY-STATUS-${Date.now()}`,
+      title: '테스트 품질이슈 상태변경',
+      description: '테스트용 품질이슈 상태변경입니다.'
+    };
+
+    await this.sendQualityIssueStatusChangeNotification(
+      oldStatus,
+      newStatus,
+      testIssue.title,
+      getUserDisplayName(null, user),
+      user.uid,
+      testIssue.id
+    );
+  }
+
+  // ==================== 캐시 관리 유틸리티 ====================
+
+  /**
+   * 사용자 캐시 무효화
+   */
+  static clearUserCache(): void {
+    this.userCache.clear();
+    console.log('사용자 캐시가 무효화되었습니다.');
+  }
+
+  /**
+   * 캐시 상태 확인
+   */
+  static getCacheStatus(): { size: number; entries: string[] } {
+    return {
+      size: this.userCache.size,
+      entries: Array.from(this.userCache.keys())
+    };
   }
 }
 
@@ -744,10 +1130,25 @@ export const createTestProductionRequestNotification = UnifiedNotificationServic
 export const DailyReportNotificationService = {
   sendDailyReportStatusChangeNotification: UnifiedNotificationService.sendDailyReportStatusNotification,
   sendDailyReportActionNotification: UnifiedNotificationService.sendDailyReportActionNotification,
-  sendTestDailyReportNotification: UnifiedNotificationService.sendTestDailyReportActionNotification,
+  sendTestDailyReportNotification: UnifiedNotificationService.sendDailyReportActionNotification,
   sendTestDailyReportStatusNotification: UnifiedNotificationService.sendTestDailyReportStatusNotification
 };
 
 // 기존 productionScheduleNotificationService.ts와의 호환성
 export const sendProductionScheduleNotification = UnifiedNotificationService.sendScheduleNotification;
 export const sendBulkScheduleNotification = UnifiedNotificationService.sendBulkScheduleNotification;
+
+// 기존 qualityIssueNotificationService.ts와의 호환성
+export const QualityIssueNotificationService = {
+  sendQualityIssueNotification: UnifiedNotificationService.sendQualityIssueNotification,
+  sendQualityIssueStatusChangeNotification: UnifiedNotificationService.sendQualityIssueStatusChangeNotification,
+  sendTestQualityIssueNotification: UnifiedNotificationService.sendTestQualityIssueNotification,
+  sendTestQualityIssueStatusNotification: UnifiedNotificationService.sendTestQualityIssueStatusNotification,
+};
+
+// 기존 sampleStatusNotificationService.ts와의 호환성
+export const SampleStatusNotificationService = {
+  sendSampleStatusChangeNotification: UnifiedNotificationService.sendSampleStatusChangeNotification,
+  sendSampleRequestNotification: UnifiedNotificationService.sendSampleRequestNotification,
+  sendTestSampleStatusNotification: UnifiedNotificationService.sendTestSampleStatusNotification,
+};

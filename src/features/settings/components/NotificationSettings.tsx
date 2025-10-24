@@ -30,6 +30,7 @@ import {
   TestTube,
   CalendarDays,
   FileText,
+  Megaphone,
 } from 'lucide-react';
 import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
 import { toast } from 'sonner';
@@ -44,6 +45,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   FileText,
   MessageSquare,
   TestTube,
+  Megaphone,
 };
 
 export const NotificationSettings: React.FC = () => {

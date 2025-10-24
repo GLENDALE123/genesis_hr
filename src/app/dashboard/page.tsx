@@ -430,8 +430,8 @@ export default function DashboardPage() {
         } else if (selectedRequestType === '품질이슈사항 추가') {
           payload = {
             targetUsers: [user.uid],
-            type: 'quality-issue-item-added',
-            title: '품질이슈사항 추가',
+            type: 'quality-issue-status',
+            title: '품질이슈 상태 변경',
             body: `${userProfile.displayName}님이 품질이슈사항을 추가했습니다.`,
             requestId: `TEST-QUALITY-ITEM-${Date.now()}`,
             subtitle: '테스트제품 / 테스트부속',
@@ -505,7 +505,7 @@ export default function DashboardPage() {
         );
       } else if (selectedRequestType === '샘플 요청 상태 변경') {
         // 샘플 요청 상태 변경 알림 테스트 - 실제 비즈니스 로직 호출
-        const { SampleStatusNotificationService } = await import('@/features/sample/services/sampleStatusNotificationService');
+        const { SampleStatusNotificationService } = await import('@/shared/services/notificationService');
         const { SampleStatus } = await import('@/features/sample/types/sample.types');
         await SampleStatusNotificationService.sendTestSampleStatusNotification(
           SampleStatus.Received,
@@ -562,7 +562,7 @@ export default function DashboardPage() {
         );
       } else if (selectedRequestType === '품질이슈 등록') {
         // 품질이슈 등록 알림 테스트 - 실제 비즈니스 로직 호출
-        const { QualityIssueNotificationService } = await import('@/features/quality/services/qualityIssueNotificationService');
+        const { QualityIssueNotificationService } = await import('@/shared/services/notificationService');
         await QualityIssueNotificationService.sendTestQualityIssueCreatedNotification({
           uid: user.uid,
           displayName: userProfile.displayName,
@@ -570,7 +570,7 @@ export default function DashboardPage() {
         });
       } else if (selectedRequestType === '품질이슈사항 추가') {
         // 품질이슈사항 추가 알림 테스트 - 실제 비즈니스 로직 호출
-        const { QualityIssueNotificationService } = await import('@/features/quality/services/qualityIssueNotificationService');
+        const { QualityIssueNotificationService } = await import('@/shared/services/notificationService');
         await QualityIssueNotificationService.sendTestQualityIssueItemAddedNotification({
           uid: user.uid,
           displayName: userProfile.displayName,

@@ -27,7 +27,7 @@ import {
   SampleHistoryItem
 } from '../types';
 import { SAMPLE_REQUESTS_COLLECTION } from '../constants';
-import { SampleStatusNotificationService } from './sampleStatusNotificationService';
+import { SampleStatusNotificationService } from '@/shared/services/notificationService';
 
 interface RequestUser {
   uid: string;

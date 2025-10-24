@@ -118,9 +118,10 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
           >
             {onEdit && (
               <Button
+                variant="secondary"
                 size="sm"
                 onClick={onEdit}
-                className="h-8 px-2 bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                className="h-8 px-2"
               >
                 <Edit className="h-3 w-3 mr-1" />
                 수정
@@ -128,9 +129,10 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
             )}
             {onDelete && (
               <Button
+                variant="destructive"
                 size="sm"
                 onClick={onDelete}
-                className="h-8 px-2 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                className="h-8 px-2"
               >
                 <Trash2 className="h-3 w-3 mr-1" />
                 삭제
