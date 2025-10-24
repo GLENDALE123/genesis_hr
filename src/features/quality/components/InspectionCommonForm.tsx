@@ -38,12 +38,14 @@ export interface UseImageUploadReturn {
   uploadProgress: number;
   handleFileSelect: (files: File[]) => Promise<void>;
   removeImage: (index: number) => void;
-  uploadImages: (folder: string) => Promise<string[]>;
+  uploadImages: (folder: string, onProgress?: (progress: number) => void) => Promise<string[]>;
   clearImages: () => void;
   setExistingImages: (urls: string[]) => void;
   deletedImageUrls: string[]; // 삭제된 이미지 URL 추적
   clearDeletedUrls: () => void; // 삭제된 URL 목록 초기화
   cancelUpload: () => void; // 업로드 중단
+  clearUploadingImages: () => void; // 업로드 중인 이미지들 완전 초기화
+  abortController: AbortController | null; // 업로드 취소를 위한 AbortController
 }
 
 // 이미지 업로드 훅
@@ -52,6 +54,7 @@ export const useImageUpload = (): UseImageUploadReturn => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [deletedImageUrls, setDeletedImageUrls] = useState<string[]>([]); // 삭제된 이미지 URL 추적
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
 
 
   const handleFileSelect = useCallback(async (files: File[]) => {
@@ -149,9 +152,12 @@ export const useImageUpload = (): UseImageUploadReturn => {
     });
   }, []);
 
-  const uploadImages = useCallback(async (folder: string): Promise<string[]> => {
+  const uploadImages = useCallback(async (folder: string, onProgress?: (progress: number) => void): Promise<string[]> => {
     if (uploadingImages.length === 0) return [];
 
+    // 새로운 AbortController 생성
+    const controller = new AbortController();
+    setAbortController(controller);
     setIsUploading(true);
     setUploadProgress(0);
 
@@ -173,20 +179,34 @@ export const useImageUpload = (): UseImageUploadReturn => {
       if (newFiles.length > 0) {
         console.log(`📤 ${newFiles.length}개 새 이미지 병렬 업로드 시작`);
         
-        // 병렬처리로 업로드
-        const newUrls = await uploadImageFilesParallel(newFiles, folder);
-        uploadedUrls.push(...newUrls);
+        // 진행률 콜백이 있는 경우 사용
+        if (onProgress) {
+          // 병렬처리로 업로드 (진행률 포함, AbortController 전달)
+          const newUrls = await uploadImageFilesParallel(newFiles, folder, onProgress, controller.signal);
+          uploadedUrls.push(...newUrls);
+        } else {
+          // 기존 방식 (진행률 없음, AbortController 전달)
+          const newUrls = await uploadImageFilesParallel(newFiles, folder, undefined, controller.signal);
+          uploadedUrls.push(...newUrls);
+        }
         
-        console.log(`🎉 병렬 업로드 완료: ${newUrls.length}개 파일`);
+        console.log(`🎉 병렬 업로드 완료: ${uploadedUrls.length}개 파일`);
       }
 
       return uploadedUrls;
     } catch (error) {
+      // AbortError인 경우 취소된 것으로 처리
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('🛑 이미지 업로드가 사용자에 의해 취소되었습니다.');
+        throw new Error('사용자에 의해 취소되었습니다.');
+      }
+      
       console.error('이미지 업로드 실패:', error);
       throw error;
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
+      setAbortController(null);
     }
   }, [uploadingImages]);
 
@@ -203,11 +223,40 @@ export const useImageUpload = (): UseImageUploadReturn => {
   }, [uploadingImages]);
 
   const cancelUpload = useCallback(() => {
-    // 업로드 진행 상태 강제 중단
+    // AbortController가 있으면 실제 업로드 중단
+    if (abortController) {
+      abortController.abort();
+      console.log('🛑 이미지 업로드 중단됨 (AbortController)');
+    }
+    
+    // 상태 초기화
     setIsUploading(false);
     setUploadProgress(0);
-    console.log('🛑 이미지 업로드 중단됨');
-  }, []);
+    setAbortController(null);
+  }, [abortController]);
+
+  const clearUploadingImages = useCallback(() => {
+    // blob URL 정리
+    uploadingImages.forEach(item => {
+      if (item.preview && item.preview.startsWith('blob:')) {
+        URL.revokeObjectURL(item.preview);
+      }
+    });
+    
+    // 상태 완전 초기화
+    setUploadingImages([]);
+    setIsUploading(false);
+    setUploadProgress(0);
+    setDeletedImageUrls([]);
+    
+    // 진행 중인 업로드가 있으면 중단
+    if (abortController) {
+      abortController.abort();
+      setAbortController(null);
+    }
+    
+    console.log('🧹 업로드 중인 이미지들 완전 초기화 완료');
+  }, [uploadingImages, abortController]);
 
   const setExistingImages = useCallback((urls: string[]) => {
     // 기존 이미지 URL들을 uploadingImages 형태로 변환
@@ -241,7 +290,9 @@ export const useImageUpload = (): UseImageUploadReturn => {
     setExistingImages,
     deletedImageUrls,
     clearDeletedUrls,
-    cancelUpload
+    cancelUpload,
+    clearUploadingImages,
+    abortController
   };
 };
 

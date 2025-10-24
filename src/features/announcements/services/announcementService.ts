@@ -14,7 +14,7 @@ import {
   Timestamp 
 } from 'firebase/firestore';
 import { db } from '@/shared/services/firebase/config';
-import { uploadImages } from '@/shared/utils/imageUpload';
+import { uploadImageFilesParallel } from '@/shared/services/firebase/storage';
 import { Announcement, CreateAnnouncementData, UpdateAnnouncementData } from '../types/announcement.types';
 
 const COLLECTION_NAME = 'announcements';
@@ -189,13 +189,17 @@ export class AnnouncementService {
   }
 
   /**
-   * 이미지 업로드
+   * 이미지 업로드 (진행률 콜백 및 취소 기능 지원)
    */
-  static async uploadAnnouncementImages(files: File[]): Promise<string[]> {
+  static async uploadAnnouncementImages(
+    files: File[], 
+    onProgress?: (progress: number) => void,
+    abortSignal?: AbortSignal
+  ): Promise<string[]> {
     try {
       if (files.length === 0) return [];
       
-      return await uploadImages(files, 'announcements');
+      return await uploadImageFilesParallel(files, 'announcements', onProgress, abortSignal);
     } catch (error) {
       console.error('이미지 업로드 실패:', error);
       throw new Error('이미지 업로드에 실패했습니다.');

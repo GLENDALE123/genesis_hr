@@ -18,6 +18,12 @@ import { useAuthStore } from '@/features/auth/store/authStore';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
 import '../utils/migrationTool'; // 마이그레이션 도구 로드
 import { cn } from '@/shared/lib/utils';
+import { toast } from 'sonner';
+import { 
+  updateProgressToast, 
+  createTimeoutPromise, 
+  createRetryableUploadPromise 
+} from '@/shared/components/common/ProgressToast';
 
 interface QualityInspectionFormProps {
   isOpen: boolean;
@@ -95,6 +101,20 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     injectionCompanies: [],
     lastUpdated: ''
   });
+  
+  // initialTab이 변경될 때 activeTab 업데이트
+  useEffect(() => {
+    if (initialTab && initialTab !== activeTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab, activeTab]);
+
+  // 수정 모드에서 inspectionData가 변경될 때 activeTab 업데이트
+  useEffect(() => {
+    if (isEditMode && inspectionData?.inspectionType && inspectionData.inspectionType !== activeTab) {
+      setActiveTab(inspectionData.inspectionType);
+    }
+  }, [isEditMode, inspectionData?.inspectionType, activeTab]);
   
   // 이미지 업로드 훅 사용
   const imageUploadHook = useImageUpload();
@@ -430,13 +450,54 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       let imageUrls: string[] = formData.imageUrls || [];
       if (imageUploadHook.uploadingImages.length > 0) {
         const folder = createUnifiedImagePath(inspectionData.id);
-        const newImageUrls = await imageUploadHook.uploadImages(folder);
-        imageUrls = [...imageUrls, ...newImageUrls];
+        
+        try {
+          // 타임아웃과 재시도 로직을 포함한 업로드 Promise 생성
+          const uploadFunction = () => imageUploadHook.uploadImages(folder, (progress) => {
+            // 진행률 업데이트 (취소 기능 포함)
+            updateProgressToast(toast, progress, imageUploadHook.uploadingImages.length, () => {
+              // 취소 시 이미지 업로드 중단 및 완전 초기화
+              imageUploadHook.cancelUpload();
+              imageUploadHook.clearUploadingImages();
+            });
+          });
+          
+          // 재시도 가능한 업로드 Promise
+          const retryableUploadPromise = createRetryableUploadPromise(uploadFunction, 3, 1000);
+          
+          // 타임아웃 Promise와 경쟁
+          const timeoutPromise = createTimeoutPromise(30000); // 30초 타임아웃
+          
+          const newImageUrls = await Promise.race([
+            retryableUploadPromise,
+            timeoutPromise
+          ]);
+          
+          imageUrls = [...imageUrls, ...newImageUrls];
+          // 이미지 업로드 성공 토스트는 제거 (수정 완료 토스트로 대체)
+          
+        } catch (error: any) {
+          console.error('이미지 업로드 실패:', error);
+          
+          // 에러 타입에 따른 처리
+          if (error.message?.includes('취소')) {
+            toast.error('이미지 업로드가 취소되었습니다.');
+          } else if (error.message?.includes('시간이 초과')) {
+            toast.error('업로드 시간이 초과되었습니다. 네트워크 연결을 확인해주세요.');
+          } else {
+            toast.error(`이미지 업로드에 실패했습니다: ${error.message || '알 수 없는 오류'}`);
+          }
+          
+          // 업로드 실패 시 폼 제출 중단
+          setIsSaving(false);
+          return;
+        }
       }
 
       // 삭제된 이미지 URL 처리 (썸네일 포함)
       if (imageUploadHook.deletedImageUrls.length > 0) {
         try {
+          // 이미지 삭제 진행 토스트는 제거
           const deleteResult = await deleteImagesWithThumbnails(imageUploadHook.deletedImageUrls);
           
           // 삭제 성공한 이미지들을 imageUrls에서 제거
@@ -445,8 +506,10 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
           
           // 삭제된 URL 목록 초기화
           imageUploadHook.clearDeletedUrls();
+          // 이미지 삭제 성공 토스트는 제거 (수정 완료 토스트로 대체)
         } catch (error) {
           console.error('❌ 이미지 삭제 실패:', error);
+          toast.error('이미지 삭제에 실패했습니다.');
         }
       }
 
@@ -468,9 +531,11 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       };
 
       await onUpdate(inspectionData.id, updateData);
+      toast.success('수정 완료');
       onClose();
     } catch (error) {
       console.error('수정 실패:', error);
+      toast.error('품질검사 수정에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setIsSaving(false);
     }
@@ -487,9 +552,11 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     
     try {
       await onDelete(inspectionData.id);
+      toast.success('삭제 완료');
       onClose();
     } catch (error) {
       console.error('삭제 실패:', error);
+      toast.error('품질검사 삭제에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setIsSaving(false);
     }
@@ -574,10 +641,49 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       // 2단계: 이미지가 있으면 업로드 후 문서 업데이트
       if (imageUploadHook.uploadingImages.length > 0) {
         const folder = createUnifiedImagePath(docId, '');
-        const imageUrls = await imageUploadHook.uploadImages(folder);
         
-        // 이미지 URL로 문서 업데이트
-        await updateQualityInspection(docId, { imageUrls });
+        try {
+          // 타임아웃과 재시도 로직을 포함한 업로드 Promise 생성
+          const uploadFunction = () => imageUploadHook.uploadImages(folder, (progress) => {
+            // 진행률 업데이트 (취소 기능 포함)
+            updateProgressToast(toast, progress, imageUploadHook.uploadingImages.length, () => {
+              // 취소 시 이미지 업로드 중단 및 완전 초기화
+              imageUploadHook.cancelUpload();
+              imageUploadHook.clearUploadingImages();
+            });
+          });
+          
+          // 재시도 가능한 업로드 Promise
+          const retryableUploadPromise = createRetryableUploadPromise(uploadFunction, 3, 1000);
+          
+          // 타임아웃 Promise와 경쟁
+          const timeoutPromise = createTimeoutPromise(30000); // 30초 타임아웃
+          
+          const imageUrls = await Promise.race([
+            retryableUploadPromise,
+            timeoutPromise
+          ]);
+          
+          // 이미지 URL로 문서 업데이트
+          await updateQualityInspection(docId, { imageUrls });
+          // 이미지 업로드 성공 토스트는 제거 (등록 완료 토스트로 대체)
+          
+        } catch (error: any) {
+          console.error('이미지 업로드 실패:', error);
+          
+          // 에러 타입에 따른 처리
+          if (error.message?.includes('취소')) {
+            toast.error('이미지 업로드가 취소되었습니다.');
+          } else if (error.message?.includes('시간이 초과')) {
+            toast.error('업로드 시간이 초과되었습니다. 네트워크 연결을 확인해주세요.');
+          } else {
+            toast.error(`이미지 업로드에 실패했습니다: ${error.message || '알 수 없는 오류'}`);
+          }
+          
+          // 업로드 실패 시 폼 제출 중단
+          setIsSaving(false);
+          return;
+        }
       }
       
       // 삭제된 이미지가 있다면 처리 (새로 생성하는 경우에는 없어야 함)
@@ -598,6 +704,8 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       
       clearTempData();
       
+      toast.success('등록 완료');
+      
       // onComplete가 있으면 호출 (모달 닫기 등)
       if (onComplete) {
         onComplete();
@@ -607,6 +715,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       }
     } catch (error) {
       console.error('저장 실패:', error);
+      toast.error('품질검사 등록에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setIsSaving(false);
     }
@@ -721,7 +830,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
+    <Dialog open={isOpen} onOpenChange={(open: boolean) => {
       if (!open) {
         handleClose();
       }
@@ -753,7 +862,6 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
                   "text-sm font-medium",
                   INSPECTION_RESULT_COLORS[formData.result || '합격']
                 )}
-                variant="secondary"
               >
                 {formData.result}
               </Badge>
@@ -761,7 +869,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
           </DialogHeader>
 
           <div className="flex-1 overflow-hidden">
-            <Tabs value={activeTab} onValueChange={(value) => {
+            <Tabs value={activeTab} onValueChange={(value: InspectionType) => {
               // 수정 모드에서는 탭 변경을 허용하지 않음 (해당 검사 타입만 수정 가능)
               if (mode === 'edit') {
                 return;
@@ -798,7 +906,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
               
               {/* 버튼 영역 */}
               <div className="flex justify-end gap-2 px-4 pt-4 pb-0 border-t">
-                <Button type="button" variant="outline" onClick={handleClose} disabled={isSaving}>
+                <Button type="button" onClick={handleClose} disabled={isSaving}>
                   취소
                 </Button>
                 
@@ -806,9 +914,9 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
                 {canDelete() && (
                   <Button 
                     type="button" 
-                    variant="destructive" 
                     onClick={handleDelete}
                     disabled={isSaving}
+                    className="bg-red-500 text-white hover:bg-red-600"
                   >
                     {isSaving ? '삭제 중...' : '삭제'}
                   </Button>

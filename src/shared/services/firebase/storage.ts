@@ -400,20 +400,29 @@ export const getFileMetadata = async (path: string): Promise<Record<string, unkn
 
 
 /**
- * 여러 이미지 파일 업로드 (병렬 압축 + 업로드)
+ * 여러 이미지 파일 업로드 (병렬 압축 + 업로드, 진행률 콜백 지원)
  * @param files - 업로드할 파일 배열
  * @param folderPath - 업로드할 폴더 경로
+ * @param onProgress - 진행률 콜백 함수 (선택사항)
+ * @param abortSignal - 업로드 취소를 위한 AbortSignal (선택사항)
  * @returns 업로드된 이미지들의 다운로드 URL 배열
  */
 export const uploadImageFilesParallel = async (
   files: File[],
-  folderPath: string
+  folderPath: string,
+  onProgress?: (progress: number) => void,
+  abortSignal?: AbortSignal
 ): Promise<string[]> => {
   if (!storage) {
     throw new Error('Firebase Storage가 초기화되지 않았습니다.');
   }
 
   try {
+    // AbortSignal이 중단되었는지 확인
+    if (abortSignal?.aborted) {
+      throw new Error('사용자에 의해 취소되었습니다.');
+    }
+    
     // imageUpload.ts의 병렬처리 함수 사용
     const { uploadImagesParallel } = await import('@/shared/utils/imageUpload');
     
@@ -421,14 +430,29 @@ export const uploadImageFilesParallel = async (
       files,
       folderPath,
       (current, total) => {
-        // 진행률 콜백 (필요시 활성화)
-        // console.log(`📊 업로드 진행률: ${current}/${total} (${Math.round((current/total)*100)}%)`);
+        // AbortSignal이 중단되었는지 확인
+        if (abortSignal?.aborted) {
+          throw new Error('사용자에 의해 취소되었습니다.');
+        }
+        
+        // 진행률 콜백 호출
+        const progress = Math.round((current / total) * 100);
+        if (onProgress) {
+          onProgress(progress);
+        }
+        console.log(`📊 업로드 진행률: ${current}/${total} (${progress}%)`);
       },
       true // 병렬 압축 사용
     );
     
     return downloadURLs;
   } catch (error) {
+    // AbortError인 경우 취소된 것으로 처리
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.log('🛑 이미지 업로드가 사용자에 의해 취소되었습니다.');
+      throw new Error('사용자에 의해 취소되었습니다.');
+    }
+    
     console.error('❌ 병렬 이미지 업로드 실패:', error);
     throw error;
   }
