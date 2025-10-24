@@ -109,7 +109,7 @@ export const JigRequestForm: React.FC<JigRequestFormProps> = ({
         console.log('🔄 모달 열림 시 진행 중인 업로드 강제 중단');
       }
     }
-  }, [isOpen, imageUploadHook]);
+  }, [isOpen]);
 
   // 파일 선택 핸들러
   const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {

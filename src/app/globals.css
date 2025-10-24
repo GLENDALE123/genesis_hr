@@ -153,6 +153,13 @@
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
     
+    /* Table Colors */
+    --table-header-bg: 0 0% 98%;           /* 테이블 헤더 배경 */
+    --table-header-text: 0 0% 20%;         /* 테이블 헤더 텍스트 */
+    --table-border: 0 0% 90%;              /* 테이블 보더 */
+    --table-hover: 0 0% 97%;               /* 테이블 호버 배경 */
+    --table-stripe: 0 0% 99%;              /* 테이블 스트라이프 배경 */
+    
     /* Production Request Status Colors */
     --status-requested: 214.3 94.6% 92.7%;        /* blue-100 */
     --status-requested-foreground: 213.1 93.9% 27.8%;  /* blue-800 */
@@ -215,6 +222,13 @@
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    
+    /* Table Colors (Dark Mode) */
+    --table-header-bg: 240 3.7% 15.9%;     /* 테이블 헤더 배경 */
+    --table-header-text: 0 0% 98%;          /* 테이블 헤더 텍스트 */
+    --table-border: 240 3.7% 15.9%;        /* 테이블 보더 */
+    --table-hover: 240 3.7% 18%;           /* 테이블 호버 배경 */
+    --table-stripe: 240 3.7% 12%;          /* 테이블 스트라이프 배경 */
     
     /* Production Request Status Colors (Dark Mode) */
     --status-requested: 215.4 91.7% 16.9%;        /* blue-900/50 */
@@ -449,7 +463,7 @@ button[data-state="unchecked"]:not([role="checkbox"]) {
   background-color: hsl(var(--popover)) !important;
   border: 1px solid hsl(var(--border)) !important;
   border-radius: 0.5rem !important;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -1px rgb(0 0 0 / 0.06) !important;
+  box-shadow: var(--shadow-lg) !important;
   max-height: 12rem !important;
   overflow-y: auto !important;
 }

@@ -75,7 +75,7 @@ const RequestTableRow: React.FC<{
 
   return (
     <TableRow
-      className="cursor-pointer"
+      className="hover:bg-muted/50"
       onClick={() => onSelectRequest(request)}
     >
       {/* 댓글 컬럼 */}
@@ -143,23 +143,23 @@ export const SampleRequestTable: React.FC<SampleRequestTableProps> = ({
     <div className="bg-card rounded-lg shadow-md overflow-hidden h-full flex flex-col">
       <div className="overflow-auto flex-1">
         <Table className="min-w-max">
-          <TableHeader className="sticky top-0 z-10 bg-primary">
-            <TableRow className="hover:bg-primary">
-              <TableHead className="whitespace-nowrap text-primary-foreground"></TableHead>
-              <TableHead className="whitespace-nowrap text-primary-foreground">요청일</TableHead>
-              <TableHead className="whitespace-nowrap text-primary-foreground">납기요청일</TableHead>
-              <TableHead className="whitespace-nowrap text-primary-foreground">상태</TableHead>
-              <TableHead className="whitespace-nowrap text-primary-foreground">요청담당자</TableHead>
-              <TableHead className="whitespace-nowrap text-primary-foreground">연락처</TableHead>
-              <TableHead className="whitespace-nowrap text-primary-foreground">고객사명</TableHead>
-              <TableHead className="whitespace-nowrap text-primary-foreground">제품명</TableHead>
-              <TableHead className="whitespace-nowrap text-primary-foreground">부속명</TableHead>
-              <TableHead className="whitespace-nowrap text-primary-foreground">이미지</TableHead>
-              <TableHead className="whitespace-nowrap text-primary-foreground">코팅/증착방식</TableHead>
-              <TableHead className="whitespace-nowrap text-primary-foreground">색상(사양)</TableHead>
-              <TableHead className="whitespace-nowrap text-primary-foreground">요청수량</TableHead>
-              <TableHead className="whitespace-nowrap text-primary-foreground">후가공</TableHead>
-              <TableHead className="whitespace-nowrap text-primary-foreground">비고</TableHead>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="whitespace-nowrap"></TableHead>
+              <TableHead className="whitespace-nowrap">요청일</TableHead>
+              <TableHead className="whitespace-nowrap">납기요청일</TableHead>
+              <TableHead className="whitespace-nowrap">상태</TableHead>
+              <TableHead className="whitespace-nowrap">요청담당자</TableHead>
+              <TableHead className="whitespace-nowrap">연락처</TableHead>
+              <TableHead className="whitespace-nowrap">고객사명</TableHead>
+              <TableHead className="whitespace-nowrap">제품명</TableHead>
+              <TableHead className="whitespace-nowrap">부속명</TableHead>
+              <TableHead className="whitespace-nowrap">이미지</TableHead>
+              <TableHead className="whitespace-nowrap">코팅/증착방식</TableHead>
+              <TableHead className="whitespace-nowrap">색상(사양)</TableHead>
+              <TableHead className="whitespace-nowrap">요청수량</TableHead>
+              <TableHead className="whitespace-nowrap">후가공</TableHead>
+              <TableHead className="whitespace-nowrap">비고</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

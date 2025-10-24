@@ -69,7 +69,13 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const [unreadCount, setUnreadCount] = React.useState(0);
   const [isNotificationOpen, setIsNotificationOpen] = React.useState(false);
   const [isMarkingAllRead, setIsMarkingAllRead] = React.useState(false);
+  const [mounted, setMounted] = React.useState(false);
   const prevNotificationsRef = React.useRef<string>('');
+
+  // 모바일 환경에서 마운트 상태 관리
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
   
   // 현재 페이지 제목 및 아이콘 가져오기
   const pageTitle = getRouteTitle(pathname);
@@ -146,6 +152,37 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       console.error('로그아웃 실패:', error);
     }
   };
+
+  // 마운트되지 않은 상태에서는 기본 헤더만 렌더링
+  if (!mounted) {
+    return (
+      <header 
+        className={cn(
+          "sticky top-0 z-50 w-full border-b",
+          className
+        )}
+        style={{
+          backgroundColor: 'hsl(var(--header-background))',
+          color: 'hsl(var(--header-foreground))',
+        }}
+      >
+        <div className="container max-w-none flex h-12 items-center justify-between px-3">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onMenuClick}
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />
+          </div>
+        </div>
+      </header>
+    );
+  }
 
   return (
     <header 

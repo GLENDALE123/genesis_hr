@@ -36,7 +36,8 @@ const DynamicCommentsSection = dynamic(() => import('@/shared/components/common/
 import { ImageGalleryGrid } from '@/shared/components/common/ImageGalleryGrid';
 import { useComments } from '@/shared/hooks/useComments';
 import { CommentsService } from '@/shared/services/comments/commentsService';
-import { Edit, Trash2, Save, Upload, ChevronDown, ChevronUp } from 'lucide-react';
+import { useImageUpload } from '@/shared/hooks';
+import { Edit, Trash2, Save, Upload, ChevronDown, ChevronUp, Camera, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { SampleRequest, SampleStatus } from '../types';
 import { SAMPLE_STATUS_COLORS, SAMPLE_REQUESTS_COLLECTION } from '../constants';
@@ -73,6 +74,9 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
   currentUserUid = '',
   isAdmin = false,
 }) => {
+  // 이미지 업로드 훅 사용
+  const imageUploadHook = useImageUpload();
+  
   const [workData, setWorkData] = useState<NonNullable<SampleRequest['workData']>>(
     (request && request.workData) || {}
   );
@@ -81,6 +85,7 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
   const [changingStatus, setChangingStatus] = useState<SampleStatus | null>(null);
   const [uploadingWorkImage, setUploadingWorkImage] = useState(false);
   const workImageInputRef = React.useRef<HTMLInputElement>(null);
+  const cameraInputRef = React.useRef<HTMLInputElement>(null);
 
   // 댓글 훅
   const comments = useComments(SAMPLE_REQUESTS_COLLECTION);
@@ -229,7 +234,25 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
     });
   };
 
-  // 작업 이미지 업로드
+  // 파일 선택 핸들러
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    
+    if (files.length > 0) {
+      try {
+        await imageUploadHook.handleFileSelect(files);
+      } catch (error) {
+        console.error('파일 선택 처리 실패:', error);
+      }
+    }
+    
+    // input 초기화 (같은 파일을 다시 선택할 수 있도록)
+    if (e.target) {
+      e.target.value = '';
+    }
+  };
+
+  // 작업 이미지 업로드 (기존 함수 유지 - 단일 파일 업로드용)
   const handleWorkImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     
@@ -479,22 +502,79 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
                       작업 이미지 {request.workImageUrls ? `(${request.workImageUrls.length})` : ''}
                     </Label>
                     {canManage && request.status === SampleStatus.InProgress && (
-                      <Button 
-                        onClick={() => workImageInputRef.current && workImageInputRef.current.click()} 
-                        size="sm" 
-                        variant="outline"
-                        disabled={uploadingWorkImage}
-                      >
-                        <Upload className="h-4 w-4 mr-1" />
-                        {uploadingWorkImage ? '업로드 중...' : '이미지 추가'}
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button 
+                          onClick={() => workImageInputRef.current && workImageInputRef.current.click()} 
+                          size="sm" 
+                          variant="outline"
+                          disabled={uploadingWorkImage}
+                          className="gap-2"
+                        >
+                          <Upload className="h-4 w-4" />
+                          파일 선택
+                        </Button>
+                        <Button 
+                          onClick={() => cameraInputRef.current && cameraInputRef.current.click()} 
+                          size="sm" 
+                          variant="outline"
+                          disabled={uploadingWorkImage}
+                          className="gap-2"
+                        >
+                          <Camera className="h-4 w-4" />
+                          사진 촬영
+                        </Button>
+                      </div>
                     )}
                   </div>
+                  
+                  {/* 숨겨진 파일 입력 */}
+                  <input
+                    ref={workImageInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleWorkImageUpload}
+                    className="hidden"
+                  />
+                  <input
+                    ref={cameraInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleWorkImageUpload}
+                    className="hidden"
+                  />
+                  
+                  {/* 기존 작업 이미지 */}
                   {request.workImageUrls && request.workImageUrls.length > 0 ? (
                     <ImageGalleryGrid images={request.workImageUrls} />
                   ) : (
                     <div className="text-sm text-muted-foreground text-center py-8 border border-dashed rounded-md">
                       작업 이미지가 없습니다.
+                    </div>
+                  )}
+                  
+                  {/* 새로 추가된 이미지 미리보기 */}
+                  {imageUploadHook.uploadingImages.length > 0 && (
+                    <div className="mt-4">
+                      <h4 className="text-sm font-medium mb-2">새로 추가된 이미지</h4>
+                      <div className="grid grid-cols-4 gap-2">
+                        {imageUploadHook.uploadingImages.map((item, index) => (
+                          <div key={index} className="relative">
+                            <img
+                              src={item.preview || URL.createObjectURL(item.file!)}
+                              alt={`새 이미지 ${index + 1}`}
+                              className="w-full h-20 object-cover rounded border"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => imageUploadHook.removeImage(index)}
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -549,16 +629,6 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
             isAdmin={isAdmin}
           />
         </div>
-
-        {/* Hidden file input for work images */}
-        <input
-          ref={workImageInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleWorkImageUpload}
-          className="hidden"
-        />
-
 
         {/* 삭제 확인 다이얼로그 */}
         <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>

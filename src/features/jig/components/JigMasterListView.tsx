@@ -42,28 +42,28 @@ const JigMasterTableRow = memo<{
 
   return (
     <TableRow 
-      className="border-b cursor-pointer hover:bg-muted/50"
+      className="hover:bg-muted/50"
       onClick={handleRowClick}
     >
-      <TableCell className="px-2 py-3 whitespace-nowrap">{item.requestType}</TableCell>
-      <TableCell className="px-2 py-3 whitespace-nowrap font-semibold">{item.itemName}</TableCell>
-      <TableCell className="px-2 py-3 whitespace-nowrap">{item.partName}</TableCell>
-      <TableCell className="px-2 py-3 whitespace-nowrap font-mono">{item.itemNumber}</TableCell>
-      <TableCell className="px-2 py-3 whitespace-nowrap">
+      <TableCell className="whitespace-nowrap">{item.requestType}</TableCell>
+      <TableCell className="whitespace-nowrap font-semibold">{item.itemName}</TableCell>
+      <TableCell className="whitespace-nowrap">{item.partName}</TableCell>
+      <TableCell className="whitespace-nowrap font-mono">{item.itemNumber}</TableCell>
+      <TableCell className="whitespace-nowrap">
         {imageCount > 0 ? (
-          <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
+          <div className="flex items-center gap-1 text-primary">
             <Image className="w-4 h-4" />
             <span className="text-xs">{imageCount}</span>
           </div>
         ) : (
-          <span className="text-gray-400 dark:text-slate-500 text-xs">없음</span>
+          <span className="text-muted-foreground text-xs">없음</span>
         )}
       </TableCell>
-      <TableCell className="px-2 py-3 whitespace-nowrap truncate max-w-sm" title={item.remarks}>
+      <TableCell className="whitespace-nowrap truncate max-w-sm" title={item.remarks}>
         {item.remarks || '-'}
       </TableCell>
-      <TableCell className="px-2 py-3 whitespace-nowrap">{formattedDate}</TableCell>
-      <TableCell className="px-2 py-3 whitespace-nowrap">
+      <TableCell className="whitespace-nowrap">{formattedDate}</TableCell>
+      <TableCell className="whitespace-nowrap">
         {creatorName}
       </TableCell>
     </TableRow>
@@ -165,23 +165,23 @@ export const JigMasterListView: React.FC<JigMasterListViewProps> = ({
       </CardHeader>
       <CardContent className="p-0 flex-1 min-h-0">
         <div className="h-full overflow-auto">
-          <Table className="w-full text-sm text-left text-gray-500 dark:text-slate-400 min-w-[1200px]">
-            <TableHeader className="sticky top-0 z-10 bg-background">
-              <TableRow className="border-b bg-background">
-                <TableHead className="px-2 py-3 whitespace-nowrap bg-background rounded-tl-lg">생산구분</TableHead>
-                <TableHead className="px-2 py-3 whitespace-nowrap bg-background">제품명</TableHead>
-                <TableHead className="px-2 py-3 whitespace-nowrap bg-background">부속명</TableHead>
-                <TableHead className="px-2 py-3 whitespace-nowrap bg-background">지그번호</TableHead>
-                <TableHead className="px-2 py-3 whitespace-nowrap bg-background">이미지</TableHead>
-                <TableHead className="px-2 py-3 whitespace-nowrap bg-background">특이사항</TableHead>
-                <TableHead className="px-2 py-3 whitespace-nowrap bg-background">입력일자</TableHead>
-                <TableHead className="px-2 py-3 whitespace-nowrap bg-background rounded-tr-lg">입력자</TableHead>
+          <Table className="w-full min-w-[1200px]">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="whitespace-nowrap">생산구분</TableHead>
+                <TableHead className="whitespace-nowrap">제품명</TableHead>
+                <TableHead className="whitespace-nowrap">부속명</TableHead>
+                <TableHead className="whitespace-nowrap">지그번호</TableHead>
+                <TableHead className="whitespace-nowrap">이미지</TableHead>
+                <TableHead className="whitespace-nowrap">특이사항</TableHead>
+                <TableHead className="whitespace-nowrap">입력일자</TableHead>
+                <TableHead className="whitespace-nowrap">입력자</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {masterItems.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="px-2 py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
                     {searchTerm !== debouncedSearchTerm ? '검색 중...' : 
                      debouncedSearchTerm ? '검색된 지그가 없습니다.' : '등록된 지그가 없습니다.'}
                   </TableCell>

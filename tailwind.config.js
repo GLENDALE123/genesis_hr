@@ -83,6 +83,13 @@ module.exports = {
   				'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
   				border: 'hsl(var(--sidebar-border))',
   				ring: 'hsl(var(--sidebar-ring))'
+  			},
+  			table: {
+  				'header-bg': 'hsl(var(--table-header-bg))',
+  				'header-text': 'hsl(var(--table-header-text))',
+  				border: 'hsl(var(--table-border))',
+  				hover: 'hsl(var(--table-hover))',
+  				stripe: 'hsl(var(--table-stripe))'
   			}
   		},
 		fontFamily: {

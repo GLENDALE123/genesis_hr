@@ -17,9 +17,10 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import { Textarea } from '@/shared/components/ui/textarea';
-import { Plus, Minus } from 'lucide-react';
+import { Plus, Minus, Upload, Camera } from 'lucide-react';
 import { UploadingImageGrid } from '@/shared/components/common/UploadingImageGrid';
 import { useSampleForm } from '../hooks';
+import { useImageUpload } from '@/shared/hooks';
 import { COATING_METHODS, POST_PROCESSING_OPTIONS } from '../constants';
 import { SampleRequest, SampleFormData } from '../types';
 
@@ -41,7 +42,11 @@ export const SampleRequestForm: React.FC<SampleRequestFormProps> = ({
   existingRequest,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [isSaving, setIsSaving] = React.useState(false);
+
+  // 이미지 업로드 훅 사용
+  const imageUploadHook = useImageUpload();
 
   const {
     formData,
@@ -68,6 +73,24 @@ export const SampleRequestForm: React.FC<SampleRequestFormProps> = ({
     remarks: existingRequest.remarks,
   } : undefined);
 
+  // 파일 선택 핸들러
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    
+    if (files.length > 0) {
+      try {
+        await imageUploadHook.handleFileSelect(files);
+      } catch (error) {
+        console.error('파일 선택 처리 실패:', error);
+      }
+    }
+    
+    // input 초기화 (같은 파일을 다시 선택할 수 있도록)
+    if (e.target) {
+      e.target.value = '';
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -80,20 +103,20 @@ export const SampleRequestForm: React.FC<SampleRequestFormProps> = ({
     setIsSaving(true);
     try {
       const { data, images } = getFormData();
-      await onSubmit(data, images);
+      
+      // 새로 업로드할 파일들만 추출
+      const newFiles = imageUploadHook.uploadingImages
+        .filter(item => item.file !== null)
+        .map(item => item.file!);
+      
+      await onSubmit(data, [...images, ...newFiles]);
       resetForm();
+      imageUploadHook.clearImages();
       onClose();
     } catch (error) {
       console.error('폼 제출 실패:', error);
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const files = Array.from(e.target.files);
-      handleImageSelect(files);
     }
   };
 
@@ -230,24 +253,46 @@ export const SampleRequestForm: React.FC<SampleRequestFormProps> = ({
                   <input
                     type="file"
                     ref={fileInputRef}
-                    onChange={handleFileChange}
+                    onChange={handleFileInputChange}
                     multiple
                     accept="image/*"
+                    className="hidden"
+                  />
+                  <input
+                    type="file"
+                    ref={cameraInputRef}
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleFileInputChange}
                     className="hidden"
                   />
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                    className="gap-2"
                   >
+                    <Upload className="h-4 w-4" />
                     파일 선택
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => cameraInputRef.current && cameraInputRef.current.click()}
+                    className="gap-2"
+                  >
+                    <Camera className="h-4 w-4" />
+                    사진 촬영
                   </Button>
                 </div>
                 
-                <UploadingImageGrid
-                  items={imagePreviewItems}
-                  onRemove={removeImage}
-                />
+                {/* 이미지 미리보기 */}
+                {imageUploadHook.uploadingImages.length > 0 && (
+                  <UploadingImageGrid
+                    items={imageUploadHook.uploadingImages}
+                    onRemove={imageUploadHook.removeImage}
+                  />
+                )}
               </div>
             )}
           </div>

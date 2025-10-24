@@ -13,12 +13,13 @@ import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { InputSelect } from '@/shared/components/common/InputSelect';
-import { UploadingImageGrid, type UploadingImageItem } from '@/shared/components/common/UploadingImageGrid';
+import { UploadingImageGrid } from '@/shared/components/common/UploadingImageGrid';
 import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
-import { createImagePreview } from '@/shared/utils/imageUpload';
 import { CreateJigMasterItemData } from '../types';
 import { PRODUCTION_TYPES } from '../constants';
 import { useAuthStore } from '@/features/auth/store/authStore';
+import { useImageUpload } from '@/shared/hooks';
+import { Upload, Camera } from 'lucide-react';
 
 interface JigListFormProps {
   isOpen: boolean;
@@ -41,6 +42,13 @@ export const JigListForm: React.FC<JigListFormProps> = ({
 }) => {
   const { user } = useAuthStore();
   
+  // 이미지 업로드 훅 사용
+  const imageUploadHook = useImageUpload();
+  
+  // 파일 입력 ref
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const cameraInputRef = React.useRef<HTMLInputElement>(null);
+  
   // 폼 상태
   const [formData, setFormData] = useState<CreateJigMasterItemData>({
     requestType: '',
@@ -49,10 +57,6 @@ export const JigListForm: React.FC<JigListFormProps> = ({
     itemNumber: '',
     remarks: '',
   });
-
-  // 이미지 업로드 상태
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [imageItems, setImageItems] = useState<UploadingImageItem[]>([]);
 
   // 폼 초기화
   useEffect(() => {
@@ -64,8 +68,15 @@ export const JigListForm: React.FC<JigListFormProps> = ({
         itemNumber: '',
         remarks: '',
       });
-      setImageFiles([]);
-      setImageItems([]);
+      
+      // 이미지 상태 완전 초기화
+      imageUploadHook.clearImages();
+      imageUploadHook.clearDeletedUrls();
+      
+      // 진행 중인 업로드가 있으면 중단
+      if (imageUploadHook.isUploading) {
+        imageUploadHook.cancelUpload();
+      }
     }
   }, [isOpen]);
 
@@ -74,35 +85,22 @@ export const JigListForm: React.FC<JigListFormProps> = ({
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  // 이미지 파일 선택
-  const handleImageSelect = async (files: FileList | null) => {
-    if (!files) return;
-
-    const fileArray = Array.from(files);
-    const newItems = fileArray.map(file => ({ file, preview: null }));
+  // 파일 선택 핸들러
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
     
-    setImageFiles(prev => [...prev, ...fileArray]);
-    setImageItems(prev => [...prev, ...newItems]);
-    
-    // 썸네일 생성
-    for (let i = 0; i < fileArray.length; i++) {
-      const file = fileArray[i];
-      const previewState = await createImagePreview(file);
-      setImageItems(prev => {
-        const updated = [...prev];
-        const itemIndex = updated.findIndex(item => item.file === file);
-        if (itemIndex !== -1) {
-          updated[itemIndex] = { file, preview: previewState.previewUrl };
-        }
-        return updated;
-      });
+    if (files.length > 0) {
+      try {
+        await imageUploadHook.handleFileSelect(files);
+      } catch (error) {
+        console.error('파일 선택 처리 실패:', error);
+      }
     }
-  };
-
-  // 이미지 제거
-  const handleImageRemove = (index: number) => {
-    setImageFiles(prev => prev.filter((_, i) => i !== index));
-    setImageItems(prev => prev.filter((_, i) => i !== index));
+    
+    // input 초기화 (같은 파일을 다시 선택할 수 있도록)
+    if (e.target) {
+      e.target.value = '';
+    }
   };
 
   // 폼 제출
@@ -125,7 +123,12 @@ export const JigListForm: React.FC<JigListFormProps> = ({
     }
 
     try {
-      await onSave(formData, imageFiles);
+      // 새로 업로드할 파일들만 추출
+      const newFiles = imageUploadHook.uploadingImages
+        .filter(item => item.file !== null)
+        .map(item => item.file!);
+
+      await onSave(formData, newFiles);
       onClose();
     } catch (error) {
       console.error('지그 등록 실패:', error);
@@ -141,8 +144,15 @@ export const JigListForm: React.FC<JigListFormProps> = ({
       itemNumber: '',
       remarks: '',
     });
-    setImageFiles([]);
-    setImageItems([]);
+    
+    // 이미지 상태 완전 정리
+    imageUploadHook.clearImages();
+    imageUploadHook.clearDeletedUrls();
+    
+    // 업로드 진행 상태 강제 초기화
+    if (imageUploadHook.isUploading) {
+      imageUploadHook.cancelUpload();
+    }
   };
 
   return (
@@ -216,33 +226,50 @@ export const JigListForm: React.FC<JigListFormProps> = ({
               {/* 이미지 업로드 */}
               <div className="space-y-2">
                 <Label>이미지 첨부</Label>
-                <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4">
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={(e) => handleImageSelect(e.target.files)}
-                    className="hidden"
-                    id="image-upload"
-                  />
-                  <label
-                    htmlFor="image-upload"
-                    className="cursor-pointer flex flex-col items-center justify-center py-4"
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                    className="gap-2"
                   >
-                    <div className="text-muted-foreground text-sm">
-                      이미지를 선택하거나 드래그하여 업로드하세요
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      JPG, PNG, GIF 파일만 지원됩니다
-                    </div>
-                  </label>
+                    <Upload className="h-4 w-4" />
+                    파일 선택
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => cameraInputRef.current && cameraInputRef.current.click()}
+                    className="gap-2"
+                  >
+                    <Camera className="h-4 w-4" />
+                    사진 촬영
+                  </Button>
                 </div>
+                
+                {/* 숨겨진 파일 입력 */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleFileInputChange}
+                  className="hidden"
+                />
+                <input
+                  ref={cameraInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleFileInputChange}
+                  className="hidden"
+                />
 
                 {/* 이미지 미리보기 */}
-                {imageItems.length > 0 && (
+                {imageUploadHook.uploadingImages.length > 0 && (
                   <UploadingImageGrid
-                    items={imageItems}
-                    onRemove={handleImageRemove}
+                    items={imageUploadHook.uploadingImages}
+                    onRemove={imageUploadHook.removeImage}
                   />
                 )}
               </div>

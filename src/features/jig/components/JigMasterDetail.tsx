@@ -25,6 +25,7 @@ import {
 } from '@/shared/components/ui/dialog';
 import { ImageLightbox } from '@/shared/components/common/ImageLightbox';
 import { toast } from 'sonner';
+import { useImageUpload } from '@/shared/hooks';
 import { 
   Edit, 
   Trash2, 
@@ -54,6 +55,9 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
   isOpen, 
   onClose 
 }) => {
+  // 이미지 업로드 훅 사용
+  const imageUploadHook = useImageUpload();
+  
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     requestType: '',
@@ -64,8 +68,6 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
   });
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [deletedImages, setDeletedImages] = useState<string[]>([]);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -89,8 +91,10 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
       });
       setExistingImages(jig.imageUrls || []);
       setIsEditing(false);
-      setImageFiles([]);
-      setImagePreviews([]);
+      
+      // 이미지 상태 초기화
+      imageUploadHook.clearImages();
+      imageUploadHook.clearDeletedUrls();
       setDeletedImages([]);
     }
   }, [jig]);
@@ -100,12 +104,21 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const files = Array.from(e.target.files) as File[];
-      const newPreviews = files.map(file => URL.createObjectURL(file));
-      setImageFiles(prev => [...prev, ...files]);
-      setImagePreviews(prev => [...prev, ...newPreviews]);
+  // 파일 선택 핸들러
+  const handleFileInputChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    
+    if (files.length > 0) {
+      try {
+        await imageUploadHook.handleFileSelect(files);
+      } catch (error) {
+        console.error('파일 선택 처리 실패:', error);
+      }
+    }
+    
+    // input 초기화 (같은 파일을 다시 선택할 수 있도록)
+    if (e.target) {
+      e.target.value = '';
     }
   };
 
@@ -117,11 +130,7 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
       setDeletedImages(prev => [...prev, imageToDelete]);
     } else {
       // 새로 추가한 이미지 삭제
-      setImageFiles(prev => prev.filter((_, i) => i !== index));
-      setImagePreviews(prev => {
-        URL.revokeObjectURL(prev[index]);
-        return prev.filter((_, i) => i !== index);
-      });
+      imageUploadHook.removeImage(index);
     }
   };
 
@@ -134,11 +143,13 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
       let updatedImageUrls = [...existingImages];
       
       // 새 이미지 업로드 (실제 구현에서는 Firebase Storage 사용)
-      if (imageFiles.length > 0) {
+      if (imageUploadHook.uploadingImages.length > 0) {
         toast.info('이미지 업로드 중...');
         
         // 임시로 URL.createObjectURL 사용 (실제로는 Firebase Storage에 업로드)
-        const uploadedUrls = imageFiles.map(file => URL.createObjectURL(file));
+        const uploadedUrls = imageUploadHook.uploadingImages
+          .filter(item => item.file !== null)
+          .map(item => URL.createObjectURL(item.file!));
         updatedImageUrls = [...updatedImageUrls, ...uploadedUrls];
       }
       
@@ -149,8 +160,7 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
       });
       
       // 상태 초기화
-      setImageFiles([]);
-      setImagePreviews([]);
+      imageUploadHook.clearImages();
       setExistingImages(updatedImageUrls);
       setDeletedImages([]);
       
@@ -423,7 +433,7 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
                           <input 
                             type="file" 
                             ref={fileInputRef} 
-                            onChange={handleImageChange} 
+                            onChange={handleFileInputChange} 
                             multiple 
                             accept="image/*,image/heic,image/heif" 
                             className="hidden" 
@@ -431,7 +441,7 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
                           <input 
                             type="file" 
                             ref={cameraInputRef} 
-                            onChange={handleImageChange} 
+                            onChange={handleFileInputChange} 
                             accept="image/*,image/heic,image/heif" 
                             className="hidden" 
                           />
@@ -452,6 +462,31 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
                             사진 촬영
                           </Button>
                         </div>
+                        
+                        {/* 이미지 미리보기 */}
+                        {imageUploadHook.uploadingImages.length > 0 && (
+                          <div className="mt-4">
+                            <h4 className="text-sm font-medium mb-2">새로 추가된 이미지</h4>
+                            <div className="grid grid-cols-4 gap-2">
+                              {imageUploadHook.uploadingImages.map((item, index) => (
+                                <div key={index} className="relative">
+                                  <img
+                                    src={item.preview || URL.createObjectURL(item.file!)}
+                                    alt={`새 이미지 ${index + 1}`}
+                                    className="w-full h-20 object-cover rounded border"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => removeImage(index, false)}
+                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

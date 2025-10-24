@@ -26,8 +26,14 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   
   const isMobile = useIsMobile();
   const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState(false);
+  const [mounted, setMounted] = React.useState(false);
 
   const sidebarCollapsed = preferences.sidebarCollapsed;
+  
+  // 모바일 환경에서 마운트 상태 관리
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
   
   const handleMenuClick = () => {
     if (isMobile) {
@@ -36,6 +42,34 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
       toggleSidebarCollapsed();
     }
   };
+
+  // 마운트되지 않은 상태에서는 기본 레이아웃만 렌더링
+  if (!mounted) {
+    return (
+      <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: 'hsl(var(--background))' }}>
+        <TitleBar />
+        <div className="flex flex-1 overflow-hidden">
+          <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+            <AppHeader onMenuClick={handleMenuClick} />
+            <main 
+              className={cn(
+                "flex-1 transition-all duration-300 overflow-y-auto overflow-x-hidden p-4",
+                className
+              )}
+              style={{
+                backgroundColor: 'hsl(var(--main-background))',
+                color: 'hsl(var(--main-foreground))',
+              }}
+            >
+              <div className="h-full w-full">
+                {children}
+              </div>
+            </main>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: 'hsl(var(--background))' }}>

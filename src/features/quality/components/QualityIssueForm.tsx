@@ -9,6 +9,7 @@ import { Plus, Minus, Camera, Upload } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { useOrderNumberFormatter } from '@/shared/hooks/useOrderNumberFormatter';
 import { UploadingImageGrid, type UploadingImageItem, InputSelect } from '@/shared/components/common';
+import { useImageUpload } from '@/shared/hooks';
 import {
   QualityIssueFormData
 } from '../types';
@@ -26,6 +27,9 @@ interface QualityIssueFormProps {
 export const QualityIssueForm: React.FC<QualityIssueFormProps> = ({
   onSave
 }) => {
+  // 이미지 업로드 훅 사용
+  const imageUploadHook = useImageUpload();
+  
   const [formData, setFormData] = useState<QualityIssueFormData>({
     department: '',
     registrationKeyword: '',
@@ -40,7 +44,6 @@ export const QualityIssueForm: React.FC<QualityIssueFormProps> = ({
     assignedTo: ''
   });
 
-  const [imagePreviewItems, setImagePreviewItems] = useState<UploadingImageItem[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -103,44 +106,22 @@ export const QualityIssueForm: React.FC<QualityIssueFormProps> = ({
     }
   };
 
-  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const files = Array.from(e.target.files);
-      
-      // 1단계: 즉시 로딩 상태로 추가 (preview: null)
-      const newItems: UploadingImageItem[] = files.map(file => ({
-        file,
-        preview: null, // null = 로딩 중
-      }));
-      setImagePreviewItems(prev => [...prev, ...newItems]);
-      
-      // 2단계: 썸네일 생성 (200x200px, 60% quality)
-      const { createQuickThumbnail } = await import('@/shared/utils/imageUpload');
-      const startIndex = imagePreviewItems.length;
-      
-      // 각 이미지를 순차적으로 처리
-      for (let i = 0; i < files.length; i++) {
-        try {
-          const thumbnail = await createQuickThumbnail(files[i]);
-          setImagePreviewItems(prev => {
-            const updated = [...prev];
-            updated[startIndex + i] = { file: files[i], preview: thumbnail };
-            return updated;
-          });
-        } catch {
-          // 실패 시 원본 Blob URL 사용
-          setImagePreviewItems(prev => {
-            const updated = [...prev];
-            updated[startIndex + i] = { file: files[i], preview: URL.createObjectURL(files[i]) };
-            return updated;
-          });
-        }
+  // 파일 선택 핸들러
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    
+    if (files.length > 0) {
+      try {
+        await imageUploadHook.handleFileSelect(files);
+      } catch (error) {
+        console.error('파일 선택 처리 실패:', error);
       }
     }
-  };
-
-  const removeImage = (index: number) => {
-    setImagePreviewItems(prev => prev.filter((_, i) => i !== index));
+    
+    // input 초기화 (같은 파일을 다시 선택할 수 있도록)
+    if (e.target) {
+      e.target.value = '';
+    }
   };
 
   const validateForm = (): boolean => {
@@ -178,9 +159,12 @@ export const QualityIssueForm: React.FC<QualityIssueFormProps> = ({
       keywordPairs: finalKeywordPairs
     };
 
-    // UploadingImageItem에서 File 배열 추출
-    const imageFiles = imagePreviewItems.map(item => item.file).filter((file): file is File => file !== null);
-    onSave(submitData, imageFiles);
+    // 새로 업로드할 파일들만 추출
+    const newFiles = imageUploadHook.uploadingImages
+      .filter(item => item.file !== null)
+      .map(item => item.file!);
+    
+    onSave(submitData, newFiles);
   };
 
   return (
@@ -345,21 +329,6 @@ export const QualityIssueForm: React.FC<QualityIssueFormProps> = ({
           <div className="space-y-4">
             <h3 className="text-lg font-medium text-foreground">이미지 첨부</h3>
             <div className="flex items-center gap-2">
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleImageChange}
-                multiple
-                accept="image/*,image/heic,image/heif"
-                className="hidden"
-              />
-              <input
-                type="file"
-                ref={cameraInputRef}
-                onChange={handleImageChange}
-                accept="image/*,image/heic,image/heif"
-                className="hidden"
-              />
               <Button
                 type="button"
                 variant="outline"
@@ -380,10 +349,29 @@ export const QualityIssueForm: React.FC<QualityIssueFormProps> = ({
               </Button>
             </div>
             
-            {imagePreviewItems.length > 0 && (
+            {/* 숨겨진 파일 입력 */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={handleFileInputChange}
+              className="hidden"
+            />
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleFileInputChange}
+              className="hidden"
+            />
+
+            {/* 이미지 미리보기 */}
+            {imageUploadHook.uploadingImages.length > 0 && (
               <UploadingImageGrid
-                items={imagePreviewItems}
-                onRemove={removeImage}
+                items={imageUploadHook.uploadingImages}
+                onRemove={imageUploadHook.removeImage}
               />
             )}
           </div>

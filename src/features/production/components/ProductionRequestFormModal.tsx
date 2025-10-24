@@ -22,6 +22,7 @@ import {
 } from '@/shared/components/ui/dialog';
 import { ProductionRequestType } from '../services/productionRequestService';
 import { useImageUpload } from '@/shared/hooks';
+import { useOrderNumberFormatter } from '@/shared/hooks/useOrderNumberFormatter';
 import { toast } from 'sonner';
 
 interface ProductionRequestFormModalProps {

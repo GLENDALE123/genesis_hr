@@ -15,7 +15,7 @@ export const ConditionalLayout: React.FC<ConditionalLayoutProps> = ({
 }) => {
   // 모든 훅을 항상 호출하여 훅의 개수를 일관되게 유지
   const pathname = usePathname();
-  const { user } = useAuthStore();
+  const { user, isLoading } = useAuthStore();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -31,9 +31,21 @@ export const ConditionalLayout: React.FC<ConditionalLayoutProps> = ({
     return <>{children}</>;
   }
 
-  // 클라이언트 사이드에서는 인증 상태에 따라 레이아웃 결정
-  // 인증 페이지이거나 사용자가 로그인되지 않은 경우 TitleBar만 표시
-  if (isAuthPage || !user) {
+  // 인증 페이지는 항상 TitleBar만 표시
+  if (isAuthPage) {
+    return (
+      <div className="h-screen flex flex-col">
+        {/* Electron 커스텀 타이틀바 (frame: false 환경) */}
+        <TitleBar />
+        <div className="flex-1 overflow-hidden">
+          {children}
+        </div>
+      </div>
+    );
+  }
+
+  // 로딩 중이거나 사용자가 로그인되지 않은 경우에도 TitleBar만 표시
+  if (isLoading || !user) {
     return (
       <div className="h-screen flex flex-col">
         {/* Electron 커스텀 타이틀바 (frame: false 환경) */}

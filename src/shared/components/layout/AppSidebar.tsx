@@ -134,13 +134,15 @@ const AppSidebarComponent = ({
 
   // 터치 시작 위치와 이동 거리를 추적하는 상태
   const [touchStart, setTouchStart] = React.useState<{ x: number; y: number } | null>(null);
-  const [touchMoved, setTouchMoved] = React.useState(false);
+  const touchMovedRef = React.useRef(false);
+  const touchEndedRef = React.useRef(false);
 
   // 터치 시작 핸들러
   const handleTouchStart = React.useCallback((event: React.TouchEvent) => {
     const touch = event.touches[0];
     setTouchStart({ x: touch.clientX, y: touch.clientY });
-    setTouchMoved(false);
+    touchMovedRef.current = false;
+    touchEndedRef.current = false;
   }, []);
 
   // 터치 이동 핸들러
@@ -151,27 +153,45 @@ const AppSidebarComponent = ({
     const deltaX = Math.abs(touch.clientX - touchStart.x);
     const deltaY = Math.abs(touch.clientY - touchStart.y);
     
-    // 10px 이상 이동하면 드래그로 간주
-    if (deltaX > 10 || deltaY > 10) {
-      setTouchMoved(true);
+    // 5px 이상 이동하면 드래그로 간주 (더 민감하게 설정)
+    if (deltaX > 5 || deltaY > 5) {
+      touchMovedRef.current = true;
     }
   }, [touchStart]);
 
-  // 즉시 페이지 이동 핸들러
-  const handleNavigate = React.useCallback((href: string, event?: React.MouseEvent | React.TouchEvent) => {
-    // 터치 이벤트인 경우 드래그 여부 확인
-    if (event && 'touches' in event && touchMoved) {
+  // 터치 종료 핸들러
+  const handleTouchEnd = React.useCallback((event: React.TouchEvent) => {
+    touchEndedRef.current = true;
+    
+    // 드래그가 감지된 경우 네비게이션 방지
+    if (touchMovedRef.current) {
       console.log('Touch drag detected, preventing navigation');
       return;
     }
     
-    // 이벤트 전파 중지 (모바일에서 중요)
+    // 짧은 탭인 경우에만 네비게이션 허용
+    const touch = event.changedTouches[0];
+    if (touchStart) {
+      const deltaX = Math.abs(touch.clientX - touchStart.x);
+      const deltaY = Math.abs(touch.clientY - touchStart.y);
+      
+      // 5px 이내의 움직임만 탭으로 간주
+      if (deltaX <= 5 && deltaY <= 5) {
+        // 실제 네비게이션은 별도 함수에서 처리
+        return;
+      }
+    }
+  }, [touchStart]);
+
+  // 클릭/탭 네비게이션 핸들러
+  const handleClick = React.useCallback((href: string, event?: React.MouseEvent) => {
+    // 이벤트 전파 중지
     if (event) {
       event.preventDefault();
       event.stopPropagation();
     }
     
-    console.log('Navigation attempt:', { href, pathname, isMobile }); // 디버깅용 로그
+    console.log('Click navigation:', { href, pathname, isMobile });
     
     if (pathname === href) {
       console.log('Already on the same page, skipping navigation');
@@ -186,12 +206,42 @@ const AppSidebarComponent = ({
       setTimeout(() => {
         console.log('Mobile navigation: navigating to', href);
         router.push(href);
-      }, 200); // 지연 시간을 200ms로 증가
+      }, 200);
     } else {
       console.log('Desktop navigation: navigating to', href);
       router.push(href);
     }
-  }, [pathname, router, isMobile, onMobileClose, touchMoved]);
+  }, [pathname, router, isMobile, onMobileClose]);
+
+  // 터치 탭 네비게이션 핸들러
+  const handleTouchTap = React.useCallback((href: string) => {
+    console.log('Touch tap navigation:', { href, pathname, isMobile, touchMoved: touchMovedRef.current });
+    
+    // 드래그가 감지된 경우 네비게이션 방지
+    if (touchMovedRef.current) {
+      console.log('Touch drag detected, preventing navigation');
+      return;
+    }
+    
+    if (pathname === href) {
+      console.log('Already on the same page, skipping navigation');
+      return;
+    }
+    
+    // 모바일에서는 메뉴 클릭 후 사이드바 닫기 (페이지 이동 전에)
+    if (isMobile && onMobileClose) {
+      console.log('Mobile navigation: closing sidebar first');
+      onMobileClose();
+      // 모바일에서는 사이드바가 닫힌 후 페이지 이동
+      setTimeout(() => {
+        console.log('Mobile navigation: navigating to', href);
+        router.push(href);
+      }, 200);
+    } else {
+      console.log('Desktop navigation: navigating to', href);
+      router.push(href);
+    }
+  }, [pathname, router, isMobile, onMobileClose]);
 
   const renderNavItem = React.useCallback((item: NavItem, level = 0) => {
     const hasChildren = item.children && item.children.length > 0;
@@ -216,10 +266,18 @@ const AppSidebarComponent = ({
 
     const navItemContent = (
       <button
-        onClick={(event) => handleNavigate(item.href, event)}
+        onClick={(event) => handleClick(item.href, event)}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
-        onTouchEnd={(event) => handleNavigate(item.href, event)}
+        onTouchEnd={(event) => {
+          handleTouchEnd(event);
+          // 터치가 끝난 후 드래그가 아닌 경우에만 네비게이션
+          setTimeout(() => {
+            if (!touchMovedRef.current && touchEndedRef.current) {
+              handleTouchTap(item.href);
+            }
+          }, 50); // 약간의 지연을 두어 상태 업데이트 완료 후 실행
+        }}
         className={cn(
           "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors text-left",
           // 태블릿 최적화: 터치 영역 최소 44px 보장
@@ -280,7 +338,7 @@ const AppSidebarComponent = ({
         )}
       </div>
     );
-  }, [isActive, handleNavigate, isExpanded, pathname]);
+  }, [isActive, handleClick, handleTouchStart, handleTouchMove, handleTouchEnd, handleTouchTap, isExpanded, pathname]);
 
   // 모바일에서는 Sheet 내에서 확장된 상태로 표시
 
@@ -343,10 +401,17 @@ const AppSidebarComponent = ({
           {isExpanded && (
             <>
               <button
-                onClick={(event) => handleNavigate('/settings', event)}
+                onClick={(event) => handleClick('/settings', event)}
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
-                onTouchEnd={(event) => handleNavigate('/settings', event)}
+                onTouchEnd={(event) => {
+                  handleTouchEnd(event);
+                  setTimeout(() => {
+                    if (!touchMovedRef.current && touchEndedRef.current) {
+                      handleTouchTap('/settings');
+                    }
+                  }, 50);
+                }}
                 className={cn(
                   "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors text-left",
                   "min-h-[44px] px-2 py-2 md:px-2 md:py-2 w-full",
@@ -359,10 +424,17 @@ const AppSidebarComponent = ({
                 설정
               </button>
               <button
-                onClick={(event) => handleNavigate('/help', event)}
+                onClick={(event) => handleClick('/help', event)}
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
-                onTouchEnd={(event) => handleNavigate('/help', event)}
+                onTouchEnd={(event) => {
+                  handleTouchEnd(event);
+                  setTimeout(() => {
+                    if (!touchMovedRef.current && touchEndedRef.current) {
+                      handleTouchTap('/help');
+                    }
+                  }, 50);
+                }}
                 className={cn(
                   "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors text-left",
                   "min-h-[44px] px-2 py-2 md:px-2 md:py-2 w-full",
@@ -382,10 +454,17 @@ const AppSidebarComponent = ({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
-                      onClick={(event) => handleNavigate('/settings', event)}
+                      onClick={(event) => handleClick('/settings', event)}
                       onTouchStart={handleTouchStart}
                       onTouchMove={handleTouchMove}
-                      onTouchEnd={(event) => handleNavigate('/settings', event)}
+                      onTouchEnd={(event) => {
+                        handleTouchEnd(event);
+                        setTimeout(() => {
+                          if (!touchMovedRef.current && touchEndedRef.current) {
+                            handleTouchTap('/settings');
+                          }
+                        }, 50);
+                      }}
                       className={cn(
                         "flex items-center justify-center cursor-pointer rounded-md text-sm font-medium transition-colors",
                         "min-h-[44px] min-w-[44px] md:min-h-[40px] md:min-w-[40px]",
@@ -406,10 +485,17 @@ const AppSidebarComponent = ({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
-                      onClick={(event) => handleNavigate('/help', event)}
+                      onClick={(event) => handleClick('/help', event)}
                       onTouchStart={handleTouchStart}
                       onTouchMove={handleTouchMove}
-                      onTouchEnd={(event) => handleNavigate('/help', event)}
+                      onTouchEnd={(event) => {
+                        handleTouchEnd(event);
+                        setTimeout(() => {
+                          if (!touchMovedRef.current && touchEndedRef.current) {
+                            handleTouchTap('/help');
+                          }
+                        }, 50);
+                      }}
                       className={cn(
                         "flex items-center justify-center cursor-pointer rounded-md text-sm font-medium transition-colors",
                         "min-h-[44px] min-w-[44px] md:min-h-[40px] md:min-w-[40px]",

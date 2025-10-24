@@ -6,11 +6,15 @@ import { useState, useCallback } from 'react';
 import { SampleFormData, SampleFormItem } from '../types';
 import { createQuickThumbnail } from '@/shared/utils/imageUpload';
 import { UploadingImageItem } from '@/shared/components/common/UploadingImageGrid';
+import { useImageUpload } from '@/shared/hooks';
 
 /**
  * 샘플 요청 폼 관리 훅
  */
 export const useSampleForm = (initialData?: SampleFormData) => {
+  // 이미지 업로드 훅 사용
+  const imageUploadHook = useImageUpload();
+  
   const getLocalDate = () => {
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
@@ -37,9 +41,6 @@ export const useSampleForm = (initialData?: SampleFormData) => {
         }))
       : [{ partName: '', colorSpec: '', quantity: '', postProcessing: [], coatingMethod: '' }]
   );
-
-  // 이미지 미리보기 상태
-  const [imagePreviewItems, setImagePreviewItems] = useState<UploadingImageItem[]>([]);
 
   /**
    * 폼 데이터 변경
@@ -105,44 +106,19 @@ export const useSampleForm = (initialData?: SampleFormData) => {
    * 이미지 파일 선택
    */
   const handleImageSelect = useCallback(async (files: File[]) => {
-    // 1단계: 즉시 로딩 상태로 추가
-    const newItems = files.map(file => ({ file, preview: null }));
-    setImagePreviewItems(prev => [...prev, ...newItems]);
-
-    // 2단계: 썸네일 생성
-    const startIndex = imagePreviewItems.length;
-    for (let i = 0; i < files.length; i++) {
-      try {
-        const thumbnail = await createQuickThumbnail(files[i]);
-        setImagePreviewItems(prev => {
-          const updated = [...prev];
-          updated[startIndex + i] = { file: files[i], preview: thumbnail };
-          return updated;
-        });
-      } catch (error) {
-        console.error('썸네일 생성 실패:', error);
-        // 실패 시 원본 Blob URL 사용
-        setImagePreviewItems(prev => {
-          const updated = [...prev];
-          updated[startIndex + i] = { file: files[i], preview: URL.createObjectURL(files[i]) };
-          return updated;
-        });
-      }
+    try {
+      await imageUploadHook.handleFileSelect(files);
+    } catch (error) {
+      console.error('이미지 선택 처리 실패:', error);
     }
-  }, [imagePreviewItems.length]);
+  }, [imageUploadHook]);
 
   /**
    * 이미지 삭제
    */
   const removeImage = useCallback((index: number) => {
-    setImagePreviewItems(prev => {
-      const item = prev[index];
-      if (item.preview && item.preview.startsWith('blob:')) {
-        URL.revokeObjectURL(item.preview);
-      }
-      return prev.filter((_, i) => i !== index);
-    });
-  }, []);
+    imageUploadHook.removeImage(index);
+  }, [imageUploadHook]);
 
   /**
    * 폼 검증
@@ -185,9 +161,11 @@ export const useSampleForm = (initialData?: SampleFormData) => {
         ...formData,
         items: validItems
       },
-      images: imagePreviewItems.map(item => item.file).filter((file): file is File => file !== null)
+      images: imageUploadHook.uploadingImages
+        .filter(item => item.file !== null)
+        .map(item => item.file!)
     };
-  }, [formData, items, imagePreviewItems]);
+  }, [formData, items, imageUploadHook]);
 
   /**
    * 폼 초기화
@@ -205,13 +183,15 @@ export const useSampleForm = (initialData?: SampleFormData) => {
     setItems([
       { partName: '', colorSpec: '', quantity: '', postProcessing: [], coatingMethod: '' }
     ]);
-    setImagePreviewItems([]);
-  }, []);
+    
+    // 이미지 상태 초기화
+    imageUploadHook.clearImages();
+  }, [imageUploadHook]);
 
   return {
     formData,
     items,
-    imagePreviewItems,
+    imagePreviewItems: imageUploadHook.uploadingImages,
     handleFormChange,
     handleItemChange,
     handlePostProcessingChange,
