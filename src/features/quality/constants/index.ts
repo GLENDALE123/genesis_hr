@@ -140,9 +140,9 @@ export const INSPECTION_TYPE_COLORS = {
 export const INSPECTION_RESULT_COLORS = {
   '합격': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200',
   '불합격': 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200',
-  '한도대기': 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200',
+  '한도대기': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200',
   '한도승인': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200',
-  '반출': 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200',
+  '반출': 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200',
   '등록': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200',
   '미등록': 'bg-gray-100 text-gray-600 dark:bg-gray-900/30 dark:text-gray-400'
 } as const;

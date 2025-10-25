@@ -26,7 +26,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/shared/components/ui/alert-dialog';
-import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
+import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/shared/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { PRODUCTION_LINE_OPTIONS } from '@/features/production/constants';
 import { toast } from 'sonner';
@@ -405,13 +407,20 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
       {/* 테이블 */}
       <Card className="flex-1 overflow-hidden flex flex-col">
         <CardContent className="p-0 flex-1 overflow-auto">
-          {loading ? (
-            <LoadingSpinner 
-              size="lg" 
-              label="생산 일정 데이터 로딩 중..." 
-              variant="default"
-              className="h-full"
-            />
+          {loading && schedules.length === 0 ? (
+            <div className="space-y-2 p-4">
+              <Skeleton className="h-12 w-full" />
+              {[...Array(10)].map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
+            </div>
+          ) : error && schedules.length === 0 ? (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                데이터를 불러오는 중 오류가 발생했습니다: {error.message || '알 수 없는 오류'}
+              </AlertDescription>
+            </Alert>
           ) : filteredSchedules.length === 0 ? (
             <p className="text-center p-8 text-muted-foreground">표시할 일정이 없습니다.</p>
           ) : (

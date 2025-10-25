@@ -17,10 +17,11 @@ import { useAuthStore, usePagePermissions, PermissionSettingsButton } from '@/fe
 import { toast } from 'sonner';
 import { getFirebaseErrorMessage } from '@/shared/utils/firebaseErrorHandler';
 import {
-  getAllShortageRequests,
   updateShortageStatus,
   deleteShortageRequest
 } from '@/features/production/services/shortageService';
+import { useShortageRequests } from '@/features/production/hooks/useShortageRequests';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 
 const ShortageManagementContainerComponent: React.FC = () => {
   const { user, userProfile } = useAuthStore();
@@ -32,8 +33,15 @@ const ShortageManagementContainerComponent: React.FC = () => {
     canDelete 
   } = usePagePermissions('production-shortage-management');
 
-  const [requests, setRequests] = useState<ShortageRequest[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    requests,
+    isLoading: loading,
+    error,
+    updateCachedRequest,
+    deleteCachedRequest,
+    fetchRequests
+  } = useShortageRequests();
+
   const [selectedRequest, setSelectedRequest] = useState<ShortageRequest | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'requested' | 'completed'>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -47,24 +55,14 @@ const ShortageManagementContainerComponent: React.FC = () => {
 
   // 부족분 신청 목록 조회
   useEffect(() => {
-    const fetchRequests = async () => {
-      setLoading(true);
-      try {
-        const data = await getAllShortageRequests();
-        setRequests(data);
-      } catch (error) {
-        console.error('❌ [부족분관리] 데이터 조회 실패:', error);
-        const errorInfo = getFirebaseErrorMessage(error);
-        toast.error(errorInfo.message);
-      } finally {
-        setLoading(false);
-      }
+    const fetchData = async () => {
+      await fetchRequests();
     };
 
     if (canRead) {
-      fetchRequests();
+      fetchData();
     }
-  }, [canRead]);
+  }, [canRead, fetchRequests]);
 
   // 필터링된 요청 목록
   const filteredRequests = useMemo(() => {
@@ -95,9 +93,8 @@ const ShortageManagementContainerComponent: React.FC = () => {
         { uid: user.uid, displayName: userProfile.displayName }
       );
       
-      // 목록 다시 조회
-      const data = await getAllShortageRequests();
-      setRequests(data);
+      // 스토어 캐시도 업데이트 (실시간 구독이 자동으로 반영하지만 즉시 UI 업데이트)
+      updateCachedRequest(requestId, { status: newStatus });
       
       toast.success(newStatus === 'completed' 
         ? '부족분 요청이 완료 처리되었습니다.' 
@@ -108,7 +105,7 @@ const ShortageManagementContainerComponent: React.FC = () => {
       const errorInfo = getFirebaseErrorMessage(error);
       toast.error(errorInfo.message);
     }
-  }, [canUpdate, user, userProfile]);
+  }, [canUpdate, user, userProfile, updateCachedRequest]);
 
   // 삭제 확인 핸들러
   const handleDeleteClick = useCallback((request: ShortageRequest) => {
@@ -126,9 +123,8 @@ const ShortageManagementContainerComponent: React.FC = () => {
     try {
       await deleteShortageRequest(deleteConfirmState.request.id);
       
-      // 목록 다시 조회
-      const data = await getAllShortageRequests();
-      setRequests(data);
+      // 스토어 캐시도 업데이트
+      deleteCachedRequest(deleteConfirmState.request.id);
       
       // 상세 정보가 열려있던 항목이면 닫기
       if ((selectedRequest && selectedRequest.id) === deleteConfirmState.request.id) {
@@ -143,7 +139,7 @@ const ShortageManagementContainerComponent: React.FC = () => {
       toast.error(errorInfo.message);
       setDeleteConfirmState({ isOpen: false, request: null });
     }
-  }, [deleteConfirmState.request, selectedRequest]);
+  }, [deleteConfirmState.request, selectedRequest, deleteCachedRequest]);
 
   const cancelDelete = useCallback(() => {
     setDeleteConfirmState({ isOpen: false, request: null });
@@ -162,6 +158,25 @@ const ShortageManagementContainerComponent: React.FC = () => {
             관리자에게 권한을 요청하세요.
           </p>
         </div>
+      </div>
+    );
+  }
+
+  // 로딩 상태 - 초기 로딩 시에만 스켈레톤 표시
+  if (loading && requests.length === 0) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-96" />
+      </div>
+    );
+  }
+
+  // 에러 상태
+  if (error && requests.length === 0) {
+    return (
+      <div className="space-y-4">
+        <p className="text-destructive">데이터를 불러오는 중 오류가 발생했습니다: {error.message || '알 수 없는 오류'}</p>
       </div>
     );
   }

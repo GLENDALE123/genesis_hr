@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { ProductionSchedule } from '@/features/production/types';
 import * as ProductionScheduleService from '@/features/production/services/productionScheduleService';
 import { waitForFirebaseInit } from '@/shared/services/firebase/config';
+import { useProductionSchedulesStore } from '@/features/production/store/productionSchedulesStore';
 
 // 생산라인 정렬 순서 (HS-Jig과 동일)
 const productionLineSortOrder = [
@@ -30,13 +31,25 @@ const productionLineSortOrder = [
  */
 export const useProductionSchedules = () => {
   const [mounted, setMounted] = useState(false);
-  const [schedules, setSchedules] = useState<ProductionSchedule[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
   
   // 현재 구독 중인 날짜 범위
   const [currentDateRange, setCurrentDateRange] = useState<{ startDate: string; endDate: string } | null>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
+
+  // Zustand 스토어 사용
+  const {
+    schedules,
+    isLoading: loading,
+    isFetching,
+    error,
+    getCachedSchedules,
+    setSchedules,
+    setLoading,
+    setFetching,
+    setError,
+    deleteSchedule: deleteCachedSchedule,
+    deleteSchedulesByDate: deleteCachedSchedulesByDate
+  } = useProductionSchedulesStore();
 
   // 클라이언트 사이드에서만 실행
   useEffect(() => {
@@ -50,6 +63,21 @@ export const useProductionSchedules = () => {
     const today = new Date().toISOString().split('T')[0];
     setCurrentDateRange({ startDate: today, endDate: today });
   }, [mounted]);
+
+  // 캐시 확인 및 즉시 표시 + 백그라운드 동기화
+  useEffect(() => {
+    if (!mounted || !currentDateRange) return;
+    
+    const { startDate: rangeStartDate, endDate: rangeEndDate } = currentDateRange;
+    
+    // 캐시된 데이터 확인
+    const cachedSchedules = getCachedSchedules(rangeStartDate, rangeEndDate);
+    if (cachedSchedules) {
+      console.log('📦 캐시된 생산일정 데이터 먼저 표시');
+      // 백그라운드에서 최신 데이터 가져오기
+      setFetching(true);
+    }
+  }, [mounted, currentDateRange, getCachedSchedules, setFetching]);
 
   // 날짜 범위가 변경될 때마다 실시간 구독 재시작
   useEffect(() => {
@@ -92,8 +120,7 @@ export const useProductionSchedules = () => {
         (newSchedules) => {
           if (!isCancelled) {
             console.log(`✅ 생산일정 데이터 수신 성공: ${newSchedules.length}건`);
-            setSchedules(newSchedules);
-            setLoading(false);
+            setSchedules(newSchedules, startDate, endDate);
           }
         },
         (err) => {
@@ -101,6 +128,7 @@ export const useProductionSchedules = () => {
             console.error('❌ 생산일정 데이터 로드 실패:', err);
             setError(err);
             setLoading(false);
+            setFetching(false);
           }
         }
       );
@@ -116,7 +144,7 @@ export const useProductionSchedules = () => {
         unsubscribeRef.current = null;
       }
     };
-  }, [mounted, currentDateRange]);
+  }, [mounted, currentDateRange, setSchedules, setLoading, setFetching, setError]);
 
   // 수동 새로고침
   const refetch = useCallback(() => {
@@ -138,25 +166,25 @@ export const useProductionSchedules = () => {
   const deleteSchedule = useCallback(async (scheduleId: string) => {
     try {
       await ProductionScheduleService.deleteSchedule(scheduleId);
-      // 실시간 구독이 자동으로 업데이트하지만 즉시 반영을 위해 로컬 상태도 업데이트
-      setSchedules(prev => prev.filter(s => s.id !== scheduleId));
+      // 스토어 캐시도 업데이트
+      deleteCachedSchedule(scheduleId);
     } catch (err) {
       setError(err as Error);
       throw err;
     }
-  }, []);
+  }, [setError, deleteCachedSchedule]);
 
   // 날짜별 전체 삭제
   const deleteSchedulesByDate = useCallback(async (date: string) => {
     try {
       await ProductionScheduleService.deleteSchedulesByDate(date);
-      // 실시간 구독이 자동으로 업데이트하지만 즉시 반영을 위해 로컬 상태도 업데이트
-      setSchedules(prev => prev.filter(s => s.planDate !== date));
+      // 스토어 캐시도 업데이트
+      deleteCachedSchedulesByDate(date);
     } catch (err) {
       setError(err as Error);
       throw err;
     }
-  }, []);
+  }, [setError, deleteCachedSchedulesByDate]);
 
   // 일정 생성
   const createSchedules = useCallback(async (

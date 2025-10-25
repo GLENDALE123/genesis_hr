@@ -13,7 +13,11 @@ interface InspectionStatusBadgeProps {
 /**
  * 검사 상태 뱃지 컴포넌트
  * - 미등록: 검사 데이터가 없는 경우
- * - 등록: 검사 데이터가 있는 경우 (결과에 관계없이)
+ * - 수입검사: 검사 결과에 따라 상태 표시
+ *   - 합격/한도승인: 등록 (초록색)
+ *   - 반출/불합격: 해당 상태명 (빨간색)
+ *   - 한도대기: 한도대기 (노란색)
+ * - 공정검사/출하검사: 기존 로직 유지 (등록/미등록)
  */
 export const InspectionStatusBadge: React.FC<InspectionStatusBadgeProps> = ({
   inspections,
@@ -39,7 +43,49 @@ export const InspectionStatusBadge: React.FC<InspectionStatusBadgeProps> = ({
     );
   }
 
-  // 검사 데이터가 있으면 등록 표시 (클릭 가능)
+  // 수입검사 특별 처리
+  if (inspectionType === 'incoming') {
+    // 날짜순으로 정렬하여 가장 최근 검사 결과 가져오기
+    const sortedInspections = [...inspections].sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    const latestInspection = sortedInspections[0]; // 가장 최근 검사 결과
+    const result = latestInspection.result;
+    
+    if (result === '합격' || result === '한도승인') {
+      return (
+        <Badge 
+          className={`${INSPECTION_RESULT_COLORS['등록']} ${className || ''} cursor-pointer hover:opacity-80 transition-opacity`}
+          onClick={handleClick}
+          title="클릭하여 해당 검사 탭으로 이동"
+        >
+          등록
+        </Badge>
+      );
+    } else if (result === '반출' || result === '불합격') {
+      return (
+        <Badge 
+          className={`${INSPECTION_RESULT_COLORS[result]} ${className || ''} cursor-pointer hover:opacity-80 transition-opacity`}
+          onClick={handleClick}
+          title="클릭하여 해당 검사 탭으로 이동"
+        >
+          {result}
+        </Badge>
+      );
+    } else if (result === '한도대기') {
+      return (
+        <Badge 
+          className={`${INSPECTION_RESULT_COLORS[result]} ${className || ''} cursor-pointer hover:opacity-80 transition-opacity`}
+          onClick={handleClick}
+          title="클릭하여 해당 검사 탭으로 이동"
+        >
+          {result}
+        </Badge>
+      );
+    }
+  }
+
+  // 공정검사, 출하검사는 기존 로직 유지 (등록 표시)
   return (
     <Badge 
       className={`${INSPECTION_RESULT_COLORS['등록']} ${className || ''} cursor-pointer hover:opacity-80 transition-opacity`}

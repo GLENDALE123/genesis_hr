@@ -24,7 +24,8 @@ import {
   Download, 
   Upload,
   Save,
-  X
+  X,
+  AlertCircle
 } from 'lucide-react';
 import { PackagingReportListView } from '@/features/production/components/PackagingReportListView';
 import { PackagingReportForm } from '@/features/production/components/PackagingReportForm';
@@ -47,6 +48,8 @@ import {
   getShortageRequestByReportId,
   getAllShortageRequests
 } from '@/features/production/services/shortageService';
+import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/shared/components/ui/alert';
 
 const PackagingDailyReportContainerComponent: React.FC = () => {
   const { user, userProfile } = useAuthStore();
@@ -485,6 +488,31 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
           </p>
         </div>
       </div>
+    );
+  }
+
+  // 로딩 상태 - 초기 로딩 시에만 스켈레톤 표시
+  if (loading && reports.length === 0) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-10 w-64" />
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <Skeleton className="h-96" />
+      </div>
+    );
+  }
+
+  // 에러 상태
+  if (error && reports.length === 0) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          데이터를 불러오는 중 오류가 발생했습니다: {error.message || '알 수 없는 오류'}
+        </AlertDescription>
+      </Alert>
     );
   }
 

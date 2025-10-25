@@ -36,7 +36,7 @@ export const useQualityIssues = () => {
 
     let isCancelled = false;
 
-    const initSubscription = async () => {
+    const initSubscription = async (): Promise<(() => void) | undefined> => {
       console.log('🔄 품질 이슈 실시간 구독 시작');
       
       // 로딩 시작
@@ -96,23 +96,22 @@ export const useQualityIssues = () => {
           setLoading(false);
           setFetching(false);
         }
+        return undefined;
       }
     };
 
-    const unsubscribe = initSubscription();
+    const unsubscribePromise = initSubscription();
 
     // 클린업: 구독 해제
     return () => {
       isCancelled = true;
-      if (typeof unsubscribe === 'function') {
-        unsubscribe();
-      } else if (unsubscribe instanceof Promise) {
-        unsubscribe.then(cleanup => {
-          if (typeof cleanup === 'function') {
-            cleanup();
-          }
-        });
-      }
+      unsubscribePromise.then(unsubscribe => {
+        if (unsubscribe && typeof unsubscribe === 'function') {
+          unsubscribe();
+        }
+      }).catch(error => {
+        console.error('구독 해제 중 오류:', error);
+      });
       console.log('🔌 품질 이슈 실시간 구독 해제');
     };
   }, [mounted, user, getCachedIssues, setIssues, setError, setFetching, setLoading]);

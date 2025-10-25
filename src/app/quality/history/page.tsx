@@ -15,6 +15,9 @@ import {
   deleteQualityInspection
 } from '@/features/quality';
 import { ProtectedRoute } from '@/shared/components/auth';
+import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/shared/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 
 export default function QualityHistoryPage() {
   const {
@@ -28,7 +31,7 @@ export default function QualityHistoryPage() {
     isSearching
   } = useInspectionFilters();
 
-  const { filteredGroupedInspections, isLoading, isFetching, getInspectionsByDateRange } = useQualityInspections({
+  const { filteredGroupedInspections, isLoading, isFetching, error, getInspectionsByDateRange } = useQualityInspections({
     searchTerm: filters.searchTerm
   });
 
@@ -80,6 +83,32 @@ export default function QualityHistoryPage() {
       console.error('품질이력 삭제 중 오류가 발생했습니다:', error);
     }
   };
+
+  // 로딩 상태 - 초기 로딩 시에만 스켈레톤 표시
+  if (isLoading && filteredGroupedInspections.length === 0) {
+    return (
+      <ProtectedRoute>
+        <div className="space-y-4">
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-96" />
+        </div>
+      </ProtectedRoute>
+    );
+  }
+
+  // 에러 상태
+  if (error) {
+    return (
+      <ProtectedRoute>
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            데이터를 불러오는 중 오류가 발생했습니다: {error.message}
+          </AlertDescription>
+        </Alert>
+      </ProtectedRoute>
+    );
+  }
 
   return (
     <ProtectedRoute>

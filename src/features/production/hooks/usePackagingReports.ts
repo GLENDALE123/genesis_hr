@@ -33,6 +33,8 @@ export const usePackagingReports = () => {
     isLoading: loading,
     isFetching,
     error,
+    getCachedReports,
+    setReports,
     setLoading,
     setFetching,
     setError,
@@ -52,6 +54,21 @@ export const usePackagingReports = () => {
     const today = new Date().toISOString().split('T')[0];
     setCurrentDateRange({ startDate: today, endDate: today });
   }, [mounted]);
+
+  // ✅ 캐시 확인 및 즉시 표시 + 백그라운드 동기화
+  useEffect(() => {
+    if (!mounted || !currentDateRange) return;
+    
+    const { startDate: rangeStartDate, endDate: rangeEndDate } = currentDateRange;
+    
+    // 캐시된 데이터 확인
+    const cachedReports = getCachedReports(rangeStartDate, rangeEndDate);
+    if (cachedReports) {
+      console.log('📦 캐시된 생산일보 데이터 먼저 표시');
+      // 백그라운드에서 최신 데이터 가져오기
+      setFetching(true);
+    }
+  }, [mounted, currentDateRange, getCachedReports, setFetching]);
 
   // ✅ 날짜 범위가 변경될 때마다 실시간 구독 재시작
   useEffect(() => {

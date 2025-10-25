@@ -14,6 +14,8 @@ import {
 } from '@/shared/services/firebase/firestore';
 import { ShortageRequest, PackagingReport } from '@/features/production/types';
 import { createShortageNotification } from '@/shared/services/notificationService';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { db } from '@/shared/services/firebase/config';
 
 const SHORTAGE_REQUESTS_COLLECTION = 'shortage-requests';
 
@@ -214,6 +216,56 @@ export const getAllShortageRequests = async (): Promise<ShortageRequest[]> => {
   } catch (error) {
     console.error('❌ [ShortageService] 부족분 신청 목록 조회 실패:', error);
     throw error;
+  }
+};
+
+/**
+ * 부족분 신청 실시간 구독
+ */
+export const subscribeToShortageRequests = (
+  onUpdate: (requests: ShortageRequest[]) => void,
+  onError?: (error: Error) => void
+): (() => void) => {
+  if (!db) {
+    const error = new Error('Firebase not initialized');
+    console.error('Firebase not initialized');
+    if (onError) {
+      onError(error);
+    }
+    onUpdate([]);
+    return () => {};
+  }
+
+  try {
+    const q = query(
+      collection(db, SHORTAGE_REQUESTS_COLLECTION),
+      orderBy('createdAt', 'desc')
+    );
+
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        const requests = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        } as ShortageRequest));
+        
+        onUpdate(requests);
+      },
+      (error) => {
+        console.error('Error in shortage requests subscription:', error);
+        if (onError) {
+          onError(error as Error);
+        }
+      }
+    );
+  } catch (error) {
+    console.error('Error setting up shortage requests subscription:', error);
+    if (onError) {
+      onError(error as Error);
+    }
+    onUpdate([]);
+    return () => {};
   }
 };
 
