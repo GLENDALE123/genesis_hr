@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, ChangeEvent } from 'react';
+import React, { useState, useRef, ChangeEvent, useCallback } from 'react';
 import { JigMasterItem, UserProfile } from '../types';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -24,8 +24,10 @@ import {
   DialogTitle 
 } from '@/shared/components/ui/dialog';
 import { ImageLightbox } from '@/shared/components/common/ImageLightbox';
+import { UploadingImageGrid, ImageGalleryGrid } from '@/shared/components/common';
 import { toast } from 'sonner';
 import { useImageUpload } from '@/shared/hooks';
+import { createUnifiedImagePath, deleteImagesWithThumbnails } from '@/shared/utils/imagePathMigration';
 import { 
   Edit, 
   Trash2, 
@@ -59,6 +61,7 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
   const imageUploadHook = useImageUpload();
   
   const [isEditing, setIsEditing] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     requestType: '',
     orderNumber: '',
@@ -70,8 +73,8 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
   });
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [existingImages, setExistingImages] = useState<string[]>([]);
-  const [deletedImages, setDeletedImages] = useState<string[]>([]);
+  // 삭제된 이미지 URL 추적을 위한 로컬 상태
+  const [deletedImageUrls, setDeletedImageUrls] = useState<string[]>([]);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   
@@ -81,7 +84,7 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
 
   const canManage = currentUserProfile?.role !== 'Member';
 
-  // jig가 변경될 때마다 폼 데이터 초기화
+  // jig가 변경될 때마다 폼 데이터 초기화 (품질검사 작성폼과 동일한 로직)
   React.useEffect(() => {
     if (jig) {
       setFormData({
@@ -93,15 +96,23 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
         jigNumber: jig.jigNumber || jig.itemNumber || '', // 기존 데이터 호환
         remarks: jig.remarks || '',
       });
-      setExistingImages(jig.imageUrls || []);
       setIsEditing(false);
       
-      // 이미지 상태 초기화
+      // 이미지 상태 완전 초기화 (품질검사 작성폼과 동일)
       imageUploadHook.clearImages();
       imageUploadHook.clearDeletedUrls();
-      setDeletedImages([]);
+      
+      // 기존 이미지 설정은 수정 모드에서만 (품질검사 작성폼과 동일)
+      // 모달이 열릴 때는 기존 이미지를 설정하지 않음
     }
   }, [jig]);
+
+  // 수정 모드로 전환할 때마다 기존 이미지 설정 (Fast Refresh 대응)
+  React.useEffect(() => {
+    if (isEditing && jig?.imageUrls && jig.imageUrls.length > 0) {
+      imageUploadHook.setExistingImages(jig.imageUrls);
+    }
+  }, [isEditing, jig?.imageUrls]); // imageUploadHook 제거
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -126,63 +137,126 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
     }
   };
 
-  const removeImage = (index: number, isExisting: boolean = false) => {
-    if (isExisting) {
-      // 기존 이미지 삭제
-      const imageToDelete = existingImages[index];
-      setExistingImages(prev => prev.filter((_, i) => i !== index));
-      setDeletedImages(prev => [...prev, imageToDelete]);
-    } else {
-      // 새로 추가한 이미지 삭제
-      imageUploadHook.removeImage(index);
-    }
-  };
+  const removeImage = useCallback((index: number) => {
+    // imageUploadHook의 removeImage 사용 (품질검사 작성폼과 동일)
+    imageUploadHook.removeImage(index);
+  }, [imageUploadHook]);
 
 
   const handleSave = async () => {
     if (!jig) return;
-    
+
     setIsSaving(true);
     try {
-      let updatedImageUrls = [...existingImages];
+      // 이미지 업로드 처리 (품질검사 작성폼과 동일한 로직)
+      let imageUrls: string[] = [];
       
-      // 새 이미지 업로드 (실제 구현에서는 Firebase Storage 사용)
       if (imageUploadHook.uploadingImages.length > 0) {
-        toast.info('이미지 업로드 중...');
+        // 업로드 시작 토스트 표시
+        toast.info('이미지 업로드 중...', { id: 'image-upload-progress' });
         
-        // 임시로 URL.createObjectURL 사용 (실제로는 Firebase Storage에 업로드)
-        const uploadedUrls = imageUploadHook.uploadingImages
-          .filter(item => item.file !== null)
-          .map(item => URL.createObjectURL(item.file!));
-        updatedImageUrls = [...updatedImageUrls, ...uploadedUrls];
+        const folder = createUnifiedImagePath(jig.id);
+        
+        try {
+          // 진행률 콜백과 함께 업로드
+          const uploadFunction = () => imageUploadHook.uploadImages(folder, (progress) => {
+            toast.info(`이미지 업로드 중... ${Math.round(progress)}%`, { 
+              id: 'image-upload-progress' 
+            });
+          });
+          const newImageUrls = await uploadFunction();
+          
+          // 수정 모드에서는 기존 이미지와 새 이미지를 합쳐서 저장
+          const existingImageUrls = imageUploadHook.uploadingImages
+            .filter(item => item.file === null && item.preview) // 기존 이미지들
+            .map(item => item.preview!)
+            .filter(url => !imageUploadHook.deletedImageUrls.includes(url)); // 삭제된 이미지 제외
+          
+          
+          imageUrls = [...existingImageUrls, ...(newImageUrls as string[])];
+          toast.dismiss('image-upload-progress');
+          
+        } catch (error: any) {
+          console.error('이미지 업로드 실패:', error);
+          
+          if (error.message?.includes('취소')) {
+            toast.error('이미지 업로드가 취소되었습니다.');
+          } else if (error.message?.includes('시간이 초과')) {
+            toast.error('업로드 시간이 초과되었습니다. 네트워크 연결을 확인해주세요.');
+          } else {
+            toast.error(`이미지 업로드에 실패했습니다: ${error.message || '알 수 없는 오류'}`);
+          }
+          
+          setIsSaving(false);
+          toast.dismiss('image-upload-progress');
+          return;
+        }
+      } else {
+        // 이미지가 없는 경우 기존 이미지 URL만 사용
+        imageUrls = jig.imageUrls || [];
+      }
+
+      // 삭제된 이미지 URL 처리 (썸네일 포함) - 품질검사 작성폼과 동일
+      if (imageUploadHook.deletedImageUrls.length > 0) {
+        try {
+          const deleteResult = await deleteImagesWithThumbnails(imageUploadHook.deletedImageUrls);
+          
+          // 삭제 성공한 이미지들을 imageUrls에서 제거
+          imageUrls = imageUrls.filter(url => !deleteResult.success.includes(url));
+          
+          // 삭제된 URL 목록 초기화
+          imageUploadHook.clearDeletedUrls();
+        } catch (error) {
+          console.error('❌ 이미지 삭제 실패:', error);
+          toast.error('이미지 삭제에 실패했습니다.');
+        }
       }
       
       // 업데이트된 데이터로 저장
+      // jig.id는 이미 실제 데이터베이스의 ID이므로 그대로 사용
       await onSave(jig.id, { 
         ...formData, 
-        imageUrls: updatedImageUrls 
+        imageUrls: imageUrls 
       });
       
-      // 상태 초기화
+      // 상태 초기화 (품질검사 작성폼과 동일)
       imageUploadHook.clearImages();
-      setExistingImages(updatedImageUrls);
-      setDeletedImages([]);
+      imageUploadHook.clearDeletedUrls();
       
       toast.success('지그 정보가 성공적으로 저장되었습니다.');
+      
+      // 수정 모드에서 읽기 모드로 즉시 전환
       setIsEditing(false);
+      
     } catch (error) {
       console.error("Save failed", error);
-      toast.error('저장에 실패했습니다.');
+      
+      // 구체적인 오류 메시지 표시
+      if (error instanceof Error) {
+        if (error.message.includes('이미지 업로드')) {
+          toast.error('이미지 업로드에 실패했습니다. 다시 시도해주세요.');
+        } else {
+          toast.error(`저장에 실패했습니다: ${error.message}`);
+        }
+      } else {
+        toast.error('저장에 실패했습니다.');
+      }
     } finally {
       setIsSaving(false);
     }
   };
   
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!jig) return;
-    onDelete(jig.id);
-    setIsDeleteModalOpen(false);
-    onClose();
+    
+    try {
+      await onDelete(jig.id);
+      setIsDeleteDialogOpen(false);
+      onClose();
+    } catch (error) {
+      console.error('지그 삭제 실패:', error);
+      toast.error('지그 삭제에 실패했습니다.');
+    }
   };
   
   const handleCancelEdit = () => {
@@ -197,11 +271,11 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
       jigNumber: jig.jigNumber || jig.itemNumber || '', // 기존 데이터 호환
       remarks: jig.remarks || '',
     });
-    // 이미지 상태 초기화
-    setExistingImages(jig.imageUrls || []);
-    setDeletedImages([]);
+    
+    // 이미지 상태 완전 초기화 (품질검사 작성폼과 동일)
     imageUploadHook.clearImages();
     imageUploadHook.clearDeletedUrls();
+    
     setIsEditing(false);
   };
 
@@ -241,24 +315,30 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
                 </>
               ) : (
                 <>
-                  {currentUserProfile?.role === 'Admin' && (
-                    <Button 
-                      type="button" 
-                      variant="destructive"
-                      onClick={() => setIsDeleteModalOpen(true)}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      삭제
-                    </Button>
-                  )}
                   {canManage && (
-                    <Button 
-                      type="button" 
-                      onClick={() => setIsEditing(true)}
-                    >
-                      <Edit className="h-4 w-4 mr-2" />
-                      수정
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button 
+                        type="button" 
+                        onClick={() => {
+                          setIsEditing(true);
+                          // 기존 이미지 설정은 useEffect에서 자동으로 처리됨
+                        }}
+                      >
+                        <Edit className="h-4 w-4 mr-2" />
+                        수정
+                      </Button>
+                      
+                      <Button 
+                        type="button" 
+                        variant="destructive"
+                        onClick={() => {
+                          setIsDeleteDialogOpen(true);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        삭제
+                      </Button>
+                    </div>
                   )}
                 </>
               )}
@@ -385,145 +465,70 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
                 
                 {/* 첨부 이미지 섹션 */}
                 <div className="mt-6">
-                    <Label>첨부 이미지</Label>
-                    
-                    {/* 기존 이미지들 */}
-                    {existingImages.length > 0 && (
-                      <div className="mt-2 mb-4">
-                        <div className="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-2">
-                          {existingImages.map((url, index) => (
-                            <div key={`existing-${index}`} className="group relative">
-                              <img
-                                src={url}
-                                alt=""
-                                aria-label={`첨부 이미지 ${index + 1}`}
-                                width={160}
-                                height={96}
-                                loading="lazy"
-                                decoding="async"
-                                className="w-full h-24 object-cover rounded-md cursor-pointer transition-transform hover:scale-105"
-                                onClick={() => {
-                                  if (!isEditing) {
-                                    setLightboxIndex(index);
-                                    setLightboxOpen(true);
-                                  }
-                                }}
-                              />
-                              {isEditing && (
-                                <Button
-                                  type="button"
-                                  variant="destructive"
-                                  size="sm"
-                                  className="absolute top-1 right-1 w-6 h-6 p-0"
-                                  onClick={() => removeImage(index, true)}
-                                >
-                                  <X className="h-3 w-3" />
-                                </Button>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                  <h3 className="text-sm font-medium mb-2">이미지 첨부</h3>
+                  <div className="space-y-4">
+                    {/* 기존 이미지들 - 상세보기에서는 ImageGalleryGrid 사용 */}
+                    {!isEditing && jig.imageUrls && jig.imageUrls.length > 0 && (
+                      <ImageGalleryGrid 
+                        images={jig.imageUrls}
+                        gridClassName="grid-cols-[repeat(auto-fill,minmax(100px,1fr))]"
+                        imageClassName="h-24"
+                        useThumbnails={true}
+                        enableLazyLoading={true}
+                      />
                     )}
                     
-                    {/* 새로 추가된 이미지들 */}
-                    {imageUploadHook.uploadingImages.length > 0 && (
-                      <div className="mt-2 mb-4">
-                        <div className="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-2">
-                          {imageUploadHook.uploadingImages.map((item, index) => (
-                            <div key={`new-${index}`} className="group relative">
-                              <img
-                                src={item.preview || ''}
-                                alt=""
-                                aria-label={`첨부 이미지 ${index + 1}`}
-                                width={160}
-                                height={96}
-                                loading="lazy"
-                                decoding="async"
-                                className="w-full h-24 object-cover rounded-md cursor-pointer transition-transform hover:scale-105"
-                                onClick={() => {
-                                  setLightboxIndex(index);
-                                  setLightboxOpen(true);
-                                }}
-                              />
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="sm"
-                                className="absolute top-1 right-1 w-6 h-6 p-0"
-                                onClick={() => imageUploadHook.removeImage(index)}
-                              >
-                                <X className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                     
-                    {/* 이미지 업로드 버튼 (수정 모드에서만) */}
+                    {/* 수정 모드 - 파일 선택 버튼들 (품질검사와 동일) */}
                     {isEditing && (
-                      <div className="mt-4">
-                        <div className="flex items-center gap-2">
-                          <input 
-                            type="file" 
-                            ref={fileInputRef} 
-                            onChange={handleFileInputChange} 
-                            multiple 
-                            accept="image/*,image/heic,image/heif" 
-                            className="hidden" 
-                          />
-                          <input 
-                            type="file" 
-                            ref={cameraInputRef} 
-                            onChange={handleFileInputChange} 
-                            accept="image/*,image/heic,image/heif" 
-                            className="hidden" 
-                          />
-                          <Button 
-                            type="button" 
+                      <>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
                             variant="outline"
                             onClick={() => fileInputRef.current?.click()}
                           >
-                            <Upload className="h-4 w-4 mr-2" />
                             파일 선택
                           </Button>
-                          <Button 
-                            type="button" 
+                          <Button
+                            type="button"
                             variant="outline"
                             onClick={() => cameraInputRef.current?.click()}
                           >
-                            <Camera className="h-4 w-4 mr-2" />
                             사진 촬영
                           </Button>
                         </div>
                         
-                        {/* 이미지 미리보기 */}
-                        {imageUploadHook.uploadingImages.length > 0 && (
-                          <div className="mt-4">
-                            <h4 className="text-sm font-medium mb-2">새로 추가된 이미지</h4>
-                            <div className="grid grid-cols-4 gap-2">
-                              {imageUploadHook.uploadingImages.map((item, index) => (
-                                <div key={index} className="relative">
-                                  <img
-                                    src={item.preview || URL.createObjectURL(item.file!)}
-                                    alt={`새 이미지 ${index + 1}`}
-                                    className="w-full h-20 object-cover rounded border"
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => removeImage(index, false)}
-                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                        {/* 파일 입력 */}
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*,image/heic,image/heif"
+                          multiple
+                          onChange={handleFileInputChange}
+                          className="hidden"
+                        />
+                        <input
+                          ref={cameraInputRef}
+                          type="file"
+                          accept="image/*,image/heic,image/heif"
+                          capture="environment"
+                          onChange={handleFileInputChange}
+                          className="hidden"
+                        />
+                      </>
                     )}
+                    
+                    {/* 이미지 그리드 - 수정 모드에서 모든 이미지 표시 (품질검사와 동일) */}
+                    {isEditing && (
+                      <UploadingImageGrid
+                        items={imageUploadHook.uploadingImages}
+                        onRemove={imageUploadHook.removeImage}
+                        gridClassName="grid-cols-[repeat(auto-fill,minmax(100px,1fr))]"
+                        imageClassName="h-24"
+                      />
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -532,7 +537,7 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
       </Dialog>
 
       {/* 삭제 확인 모달 */}
-      <AlertDialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>지그 삭제 확인</AlertDialogTitle>
@@ -553,9 +558,13 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* 이미지 라이트박스 */}
+      {/* 이미지 라이트박스 - 품질검사와 동일한 로직 */}
       <ImageLightbox 
-        images={[...existingImages, ...imageUploadHook.uploadingImages.map(item => item.preview || '').filter(Boolean)]} 
+        images={
+          isEditing 
+            ? imageUploadHook.uploadingImages.map(item => item.preview || '').filter(Boolean)
+            : (jig.imageUrls || [])
+        } 
         initialIndex={lightboxIndex} 
         open={lightboxOpen}
         onClose={() => setLightboxOpen(false)} 

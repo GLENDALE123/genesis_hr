@@ -10,7 +10,7 @@ import { JigMasterItem, CreateJigMasterItemData, UpdateJigMasterItemData } from 
 import { useAuthStore } from '@/features/auth/store/authStore';
 
 export const useJigMaster = () => {
-  const { user } = useAuthStore();
+  const { user, userProfile } = useAuthStore();
   const {
     masterItems,
     isLoading,
@@ -37,15 +37,13 @@ export const useJigMaster = () => {
 
   const handleCreateMasterItem = async (data: CreateJigMasterItemData, imageFiles: File[]) => {
     if (!user) throw new Error('User not authenticated');
-    await createMasterItem(data, imageFiles, user.uid);
-  };
-
-  const handleUpdateMasterItem = async (id: string, updates: UpdateJigMasterItemData) => {
-    await updateMasterItem(id, updates);
-  };
-
-  const handleDeleteMasterItem = async (id: string) => {
-    await deleteMasterItem(id);
+    
+    const displayName = userProfile?.displayName || user.displayName || 'Unknown User';
+    
+    await createMasterItem(data, imageFiles, {
+      uid: user.uid,
+      displayName
+    });
   };
 
   return {
@@ -56,7 +54,7 @@ export const useJigMaster = () => {
     autocompleteData,
     setSelectedItem,
     createMasterItem: handleCreateMasterItem,
-    updateMasterItem: handleUpdateMasterItem,
-    deleteMasterItem: handleDeleteMasterItem,
+    updateMasterItem,
+    deleteMasterItem,
   };
 };

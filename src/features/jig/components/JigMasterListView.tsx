@@ -136,23 +136,26 @@ export const JigMasterListView: React.FC<JigMasterListViewProps> = ({
     // 검색어가 너무 짧으면 필터링하지 않음 (성능 최적화)
     if (search.length < 2) return jigs;
     
+    // 검색어를 미리 정규화하여 캐시
+    const normalizedSearch = search.replace(/\s+/g, '');
+    
     return jigs.filter(jig => {
-      // 각 필드를 미리 소문자로 변환하여 캐시
-      const productName = (jig.productName || jig.itemName || '').toLowerCase();
-      const partName = jig.partName.toLowerCase();
-      const jigNumber = (jig.jigNumber || jig.itemNumber || '').toLowerCase();
-      const orderNumber = (jig.orderNumber || '').toLowerCase();
-      const supplier = (jig.supplier || '').toLowerCase();
-      const requestType = jig.requestType.toLowerCase();
-      const remarks = jig.remarks?.toLowerCase() || '';
+      // 각 필드를 미리 정규화하여 캐시 (공백 제거)
+      const productName = (jig.productName || jig.itemName || '').toLowerCase().replace(/\s+/g, '');
+      const partName = jig.partName.toLowerCase().replace(/\s+/g, '');
+      const jigNumber = (jig.jigNumber || jig.itemNumber || '').toLowerCase().replace(/\s+/g, '');
+      const orderNumber = (jig.orderNumber || '').toLowerCase().replace(/\s+/g, '');
+      const supplier = (jig.supplier || '').toLowerCase().replace(/\s+/g, '');
+      const requestType = jig.requestType.toLowerCase().replace(/\s+/g, '');
+      const remarks = (jig.remarks || '').toLowerCase().replace(/\s+/g, '');
       
-      return productName.includes(search) ||
-             partName.includes(search) ||
-             jigNumber.includes(search) ||
-             orderNumber.includes(search) ||
-             supplier.includes(search) ||
-             requestType.includes(search) ||
-             remarks.includes(search);
+      return productName.includes(normalizedSearch) ||
+             partName.includes(normalizedSearch) ||
+             jigNumber.includes(normalizedSearch) ||
+             orderNumber.includes(normalizedSearch) ||
+             supplier.includes(normalizedSearch) ||
+             requestType.includes(normalizedSearch) ||
+             remarks.includes(normalizedSearch);
     });
   }, [jigs, debouncedSearchTerm]);
 

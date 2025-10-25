@@ -5,6 +5,9 @@ import { Button } from '@/shared/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/shared/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
+import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/shared/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 // import { Plus } from 'lucide-react';
 import { 
   QualityIssueForm,
@@ -23,7 +26,7 @@ import { getUserDisplayName } from '@/shared/utils/userUtils';
 import { ProtectedRoute } from '@/shared/components/auth';
 
 export default function QualityIssuesPage() {
-  const { issues, isLoading, searchTerm, setSearchTerm, setStatusFilter, stats } = useQualityIssues();
+  const { issues, isLoading, error, searchTerm, setSearchTerm, setStatusFilter, stats } = useQualityIssues();
   const { isFormModalOpen, isSaving, handleSaveIssue, handleCancelForm, openFormModal } = useQualityIssueForm();
   const { user, userProfile } = useAuthStore();
   
@@ -176,6 +179,36 @@ export default function QualityIssuesPage() {
   const handleFilterByStatus = (status: string) => {
     setStatusFilter(status);
   };
+
+  // 로딩 상태 - 초기 로딩 시에만 스켈레톤 표시
+  if (isLoading && issues.length === 0) {
+    return (
+      <ProtectedRoute>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <Skeleton key={i} className="h-24" />
+            ))}
+          </div>
+          <Skeleton className="h-96" />
+        </div>
+      </ProtectedRoute>
+    );
+  }
+
+  // 에러 상태
+  if (error) {
+    return (
+      <ProtectedRoute>
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            데이터를 불러오는 중 오류가 발생했습니다: {error.message}
+          </AlertDescription>
+        </Alert>
+      </ProtectedRoute>
+    );
+  }
 
   return (
     <ProtectedRoute>

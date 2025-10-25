@@ -21,6 +21,7 @@ export interface UseImageUploadReturn {
   clearImages: () => void;
   setExistingImages: (urls: string[]) => void;
   deletedImageUrls: string[]; // 삭제된 이미지 URL 추적
+  setDeletedImageUrls: (urls: string[] | ((prev: string[]) => string[])) => void; // 삭제된 URL 설정
   clearDeletedUrls: () => void; // 삭제된 URL 목록 초기화
   cancelUpload: () => void; // 업로드 중단
   clearUploadingImages: () => void; // 업로드 중인 이미지들 완전 초기화
@@ -245,26 +246,20 @@ export const useImageUpload = (): UseImageUploadReturn => {
       setAbortController(null);
     }
     
-    console.log('🧹 업로드 중인 이미지들 완전 초기화 완료');
   }, [abortController]); // uploadingImages 제거
 
   const setExistingImages = useCallback((urls: string[]) => {
-    console.log('🖼️ setExistingImages 호출됨:', urls);
-    
     // 기존 이미지 URL들을 uploadingImages 형태로 변환
     const existingItems: UploadingImageItem[] = urls.map(url => ({
       file: null, // 기존 이미지는 파일이 없음
       preview: url
     }));
     
-    console.log('🖼️ 변환된 기존 이미지 아이템들:', existingItems);
-    
     // 기존 이미지만 추가하고, 새로 추가된 이미지들은 유지
     setUploadingImages(prev => {
       // 기존 이미지들 중에서 새로 추가된 이미지가 아닌 것들만 필터링
       const newImages = prev.filter(item => item.file !== null);
       const result = [...existingItems, ...newImages];
-      console.log('🖼️ 최종 이미지 목록:', result);
       return result;
     });
     
@@ -285,6 +280,7 @@ export const useImageUpload = (): UseImageUploadReturn => {
     clearImages,
     setExistingImages,
     deletedImageUrls,
+    setDeletedImageUrls,
     clearDeletedUrls,
     cancelUpload,
     clearUploadingImages,
@@ -299,6 +295,7 @@ export const useImageUpload = (): UseImageUploadReturn => {
     clearImages,
     setExistingImages,
     deletedImageUrls,
+    setDeletedImageUrls,
     clearDeletedUrls,
     cancelUpload,
     clearUploadingImages,

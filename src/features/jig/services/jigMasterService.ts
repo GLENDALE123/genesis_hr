@@ -5,7 +5,7 @@
 import {
   getDocuments,
   getDocument,
-  addDocument,
+  setDocument,
   updateDocument,
   deleteDocument,
   getDocumentsWithQuery,
@@ -25,16 +25,28 @@ export const getJigMasterItems = async (): Promise<JigMasterItem[]> => {
   );
   
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  } as JigMasterItem));
+  return snapshot.docs.map(doc => {
+    const data = doc.data();
+    // 문서 내부의 id 필드 제거 (실제 Firestore ID만 사용)
+    const { id: _, ...cleanData } = data as any;
+    return {
+      id: doc.id, // 실제 Firestore 문서 ID만 사용
+      ...cleanData
+    } as JigMasterItem;
+  });
 };
 
 // 지그 마스터 단일 조회
 export const getJigMasterItem = async (id: string): Promise<JigMasterItem | null> => {
   const doc = await getDocument(JIG_COLLECTIONS.MASTER, id);
-  return doc ? (doc as JigMasterItem) : null;
+  if (!doc) return null;
+  
+  // 문서 내부의 id 필드 제거 (실제 Firestore ID만 사용)
+  const { id: _, ...cleanData } = doc as any;
+  return {
+    id: doc.id, // 실제 Firestore 문서 ID만 사용
+    ...cleanData
+  } as JigMasterItem;
 };
 
 // 지그 마스터 생성
@@ -58,8 +70,7 @@ export const createJigMasterItem = async (
     }
   }
 
-  const jigMasterItem: JigMasterItem = {
-    id,
+  const jigMasterItem: Omit<JigMasterItem, 'id'> = {
     createdAt: now,
     ...data,
     imageUrls,
@@ -69,8 +80,8 @@ export const createJigMasterItem = async (
     },
   };
 
-  await addDocument(JIG_COLLECTIONS.MASTER, jigMasterItem);
-  return jigMasterItem;
+  await setDocument(JIG_COLLECTIONS.MASTER, id, jigMasterItem);
+  return { id, ...jigMasterItem };
 };
 
 // 지그 마스터 수정
@@ -78,27 +89,54 @@ export const updateJigMasterItem = async (
   id: string,
   updates: UpdateJigMasterItemData
 ): Promise<void> => {
-  await updateDocument(JIG_COLLECTIONS.MASTER, id, updates);
+  try {
+    // 문서 존재 여부 확인
+    const existingDoc = await getDocument(JIG_COLLECTIONS.MASTER, id);
+    if (!existingDoc) {
+      throw new Error('지그 정보를 찾을 수 없습니다.');
+    }
+    
+    // id 필드가 포함되어 있다면 제거 (문서 내부에 id 필드 저장하지 않음)
+    const { id: _, ...updateData } = updates as any;
+    await updateDocument(JIG_COLLECTIONS.MASTER, id, updateData);
+    
+  } catch (error: any) {
+    if (error.code === 'not-found' || error.message?.includes('No document to update')) {
+      throw new Error('지그 정보를 찾을 수 없습니다.');
+    }
+    throw error;
+  }
 };
 
 // 지그 마스터 삭제
 export const deleteJigMasterItem = async (id: string): Promise<void> => {
-  // 이미지 파일들도 함께 삭제
-  const item = await getJigMasterItem(id);
-  if (item?.imageUrls) {
-    for (const imageUrl of item.imageUrls) {
-      try {
-        await deleteFile(imageUrl);
-      } catch (error) {
-        console.warn('이미지 삭제 실패:', imageUrl, error);
+  try {
+    // 문서 존재 여부 확인
+    const item = await getJigMasterItem(id);
+    if (!item) {
+      throw new Error('삭제할 지그 정보가 존재하지 않습니다.');
+    }
+    
+    // 이미지 파일들도 함께 삭제
+    if (item.imageUrls && item.imageUrls.length > 0) {
+      for (const imageUrl of item.imageUrls) {
+        try {
+          await deleteFile(imageUrl);
+        } catch (error) {
+          console.warn('이미지 삭제 실패:', imageUrl, error);
+        }
       }
     }
+    
+    // 문서 삭제
+    await deleteDocument(JIG_COLLECTIONS.MASTER, id);
+    
+  } catch (error) {
+    throw error;
   }
-  
-  await deleteDocument(JIG_COLLECTIONS.MASTER, id);
 };
 
-// 지그 마스터 실시간 구독 (디바운싱 적용)
+// 지그 마스터 실시간 구독 (성능 최적화)
 export const subscribeToJigMasters = (
   onUpdate: (masters: JigMasterItem[]) => void,
   onError: (error: Error) => void
@@ -109,40 +147,63 @@ export const subscribeToJigMasters = (
   );
   
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-  let lastUpdateTime = 0;
-  const DEBOUNCE_DELAY = 500; // 500ms 디바운싱
-  const MIN_UPDATE_INTERVAL = 1000; // 최소 1초 간격으로 업데이트
+  let lastData: JigMasterItem[] | null = null; // 마지막 데이터 저장
+  const DEBOUNCE_DELAY = 300; // 300ms로 증가
   
   return onSnapshot(q, (snapshot) => {
-    const now = Date.now();
-    
     // 디바운싱 적용
     if (debounceTimer) {
       clearTimeout(debounceTimer);
     }
     
     debounceTimer = setTimeout(() => {
-      // 최소 업데이트 간격 체크
-      if (now - lastUpdateTime < MIN_UPDATE_INTERVAL) {
-        return;
+      const masters = snapshot.docs.map(doc => {
+        const data = doc.data();
+        // 문서 내부의 id 필드 제거 (실제 Firestore ID만 사용)
+        const { id: _, ...cleanData } = data as any;
+        return {
+          id: doc.id, // 실제 Firestore 문서 ID만 사용
+          ...cleanData
+        } as JigMasterItem;
+      });
+      
+      // 데이터가 실제로 변경되었는지 확인
+      if (lastData && lastData.length === masters.length) {
+        const hasChanges = masters.some((newItem, index) => {
+          const lastItem = lastData![index];
+          return !lastItem || lastItem.id !== newItem.id;
+        });
+        
+        if (!hasChanges) {
+          return; // 변경사항이 없으면 콜백 호출하지 않음
+        }
       }
       
-      const masters = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as JigMasterItem));
-      
+      lastData = masters; // 현재 데이터 저장
       onUpdate(masters);
-      lastUpdateTime = now;
     }, DEBOUNCE_DELAY);
   }, onError);
 };
 
-// 자동완성 데이터 조회
+
+// 자동완성 데이터 조회 (캐시 최적화)
+let autocompleteCache: {
+  data: any;
+  timestamp: number;
+} | null = null;
+
+const CACHE_DURATION = 5 * 60 * 1000; // 5분 캐시
+
 export const getAutocompleteData = async () => {
+  // 캐시된 데이터가 유효한지 확인
+  if (autocompleteCache && 
+      Date.now() - autocompleteCache.timestamp < CACHE_DURATION) {
+    return autocompleteCache.data;
+  }
+  
   const items = await getJigMasterItems();
   
-  // 기존 필드와 새 필드 모두에서 데이터 수집
+  // 기존 필드와 새 필드 모두에서 데이터 수집 (성능 최적화)
   const productNames = [...new Set([
     ...items.map(item => item.productName).filter(Boolean),
     ...items.map(item => item.itemName).filter(Boolean)
@@ -159,7 +220,7 @@ export const getAutocompleteData = async () => {
   
   const orderNumbers = [...new Set(items.map(item => item.orderNumber).filter(Boolean))].sort();
   
-  return {
+  const result = {
     // 기존 호환성 유지
     itemNames: productNames,
     partNames,
@@ -171,4 +232,12 @@ export const getAutocompleteData = async () => {
     suppliers,
     orderNumbers,
   };
+  
+  // 캐시 저장
+  autocompleteCache = {
+    data: result,
+    timestamp: Date.now()
+  };
+  
+  return result;
 };
