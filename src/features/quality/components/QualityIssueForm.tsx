@@ -13,11 +13,12 @@ import { useImageUpload } from '@/shared/hooks';
 import {
   QualityIssueFormData
 } from '../types';
-import { 
+import {
   DEPARTMENT_OPTIONS,
   REGISTRATION_KEYWORD_OPTIONS,
   PROCESS_KEYWORD_OPTIONS,
-  DEFECT_KEYWORD_OPTIONS
+  DEFECT_KEYWORD_OPTIONS,
+  SHIPPING_WAIT_TYPE_OPTIONS
 } from '../constants';
 
 interface QualityIssueFormProps {
@@ -41,7 +42,9 @@ export const QualityIssueForm: React.FC<QualityIssueFormProps> = ({
     keywordPairs: [{ process: '', defect: '' }],
     category: '',
     priority: 'normal',
-    assignedTo: ''
+    assignedTo: '',
+    shippingWaitType: '',
+    shippingWaitQuantity: undefined
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -50,7 +53,7 @@ export const QualityIssueForm: React.FC<QualityIssueFormProps> = ({
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
 
-  const handleInputChange = useCallback((field: keyof QualityIssueFormData, value: string) => {
+  const handleInputChange = useCallback((field: keyof QualityIssueFormData, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     // 에러 메시지 제거
     if (errors[field]) {
@@ -134,6 +137,14 @@ export const QualityIssueForm: React.FC<QualityIssueFormProps> = ({
     if (!formData.productName) newErrors.productName = '제품명을 입력해주세요';
     if (!formData.partName) newErrors.partName = '부속명을 입력해주세요';
 
+    // 출하대기 선택 시 세부 타입과 수량 필수
+    if (formData.registrationKeyword === '출하대기') {
+      if (!formData.shippingWaitType) newErrors.shippingWaitType = '출하대기 세부 타입을 선택해주세요';
+      if (!formData.shippingWaitQuantity || formData.shippingWaitQuantity <= 0) {
+        newErrors.shippingWaitQuantity = '출하대기 수량을 입력해주세요';
+      }
+    }
+
     const validIssues = formData.issues.filter(issue => issue.trim() !== '');
     if (validIssues.length === 0) {
       newErrors.issues = '최소 하나 이상의 이슈사항을 입력해주세요';
@@ -169,28 +180,30 @@ export const QualityIssueForm: React.FC<QualityIssueFormProps> = ({
 
   return (
     <form id="quality-issue-form" onSubmit={handleSubmit} className="space-y-6 max-w-4xl mx-auto p-6">
-          {/* 부서와 등록키워드 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                부서 <span className="text-red-500">*</span>
-              </label>
-              <Select value={formData.department} onValueChange={(value) => handleInputChange('department', value)}>
-                <SelectTrigger className={cn(errors.department && 'border-red-500')}>
-                  <SelectValue placeholder="부서를 선택하세요" />
-                </SelectTrigger>
-                <SelectContent>
-                  {DEPARTMENT_OPTIONS.map(dept => (
-                    <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.department && (
-                <p className="text-sm text-red-500 mt-1">{errors.department}</p>
-              )}
-            </div>
-            
-            <div>
+          {/* 부서 */}
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              부서 <span className="text-red-500">*</span>
+            </label>
+            <Select value={formData.department} onValueChange={(value) => handleInputChange('department', value)}>
+              <SelectTrigger className={cn(errors.department && 'border-red-500')}>
+                <SelectValue placeholder="부서를 선택하세요" />
+              </SelectTrigger>
+              <SelectContent>
+                {DEPARTMENT_OPTIONS.map(dept => (
+                  <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.department && (
+              <p className="text-sm text-red-500 mt-1">{errors.department}</p>
+            )}
+          </div>
+
+          {/* 등록키워드와 출하대기 관련 필드 - 4그리드 */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* 등록키워드 (2칸) */}
+            <div className="md:col-span-2">
               <label className="block text-sm font-medium text-foreground mb-2">
                 등록키워드 <span className="text-red-500">*</span>
               </label>
@@ -204,6 +217,44 @@ export const QualityIssueForm: React.FC<QualityIssueFormProps> = ({
                 <p className="text-sm text-red-500 mt-1">{errors.registrationKeyword}</p>
               )}
             </div>
+            
+            {/* 출하대기 세부 타입 (1칸) - 등록키워드가 '출하대기'일 때만 표시 */}
+            {formData.registrationKeyword === '출하대기' && (
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  출하대기 세부 타입 <span className="text-red-500">*</span>
+                </label>
+                <InputSelect
+                  value={formData.shippingWaitType || ''}
+                  onChange={(value) => handleInputChange('shippingWaitType', value)}
+                  options={[...SHIPPING_WAIT_TYPE_OPTIONS]}
+                  placeholder="출하대기 세부 타입을 입력하거나 선택하세요"
+                />
+                {errors.shippingWaitType && (
+                  <p className="text-sm text-red-500 mt-1">{errors.shippingWaitType}</p>
+                )}
+              </div>
+            )}
+            
+            {/* 제품 수량 (1칸) - 등록키워드가 '출하대기'일 때만 표시 */}
+            {formData.registrationKeyword === '출하대기' && (
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  제품 수량 <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  type="number"
+                  value={formData.shippingWaitQuantity || ''}
+                  onChange={(e) => handleInputChange('shippingWaitQuantity', parseInt(e.target.value) || 0)}
+                  placeholder="제품 수량을 입력하세요"
+                  min="1"
+                  className={cn(errors.shippingWaitQuantity && 'border-red-500')}
+                />
+                {errors.shippingWaitQuantity && (
+                  <p className="text-sm text-red-500 mt-1">{errors.shippingWaitQuantity}</p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* 발주번호, 발주처, 제품명, 부속명 */}
@@ -268,6 +319,7 @@ export const QualityIssueForm: React.FC<QualityIssueFormProps> = ({
               )}
             </div>
           </div>
+
 
           {/* 공정/불량 키워드 */}
           <div className="space-y-3">

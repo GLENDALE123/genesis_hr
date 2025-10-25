@@ -18,6 +18,7 @@ export interface AutocompleteData {
   injectionColors: string[];
   specifications: string[];
   injectionCompanies: string[];
+  shippingWaitTypes: string[];
   lastUpdated: string;
 }
 
@@ -76,6 +77,7 @@ export const updateAutocompleteData = async (inspectionData: {
   injectionColor?: string;
   specification?: string;
   injectionCompany?: string;
+  shippingWaitType?: string;
 }) => {
   try {
     const docRef = getAutocompleteDocRef();
@@ -101,6 +103,9 @@ export const updateAutocompleteData = async (inspectionData: {
     }
     if (inspectionData.injectionCompany?.trim()) {
       updates.injectionCompanies = arrayUnion(inspectionData.injectionCompany.trim());
+    }
+    if (inspectionData.shippingWaitType?.trim()) {
+      updates.shippingWaitTypes = arrayUnion(inspectionData.shippingWaitType.trim());
     }
 
     // 업데이트할 필드가 있는 경우에만 업데이트 실행
@@ -135,6 +140,7 @@ export const collectAutocompleteDataFromInspections = async () => {
       injectionColors: new Set<string>(),
       specifications: new Set<string>(),
       injectionCompanies: new Set<string>(),
+      shippingWaitTypes: new Set<string>(),
       lastUpdated: new Date().toISOString()
     };
     
@@ -147,6 +153,7 @@ export const collectAutocompleteDataFromInspections = async () => {
       if (data.injectionColor?.trim()) autocompleteData.injectionColors.add(data.injectionColor.trim());
       if (data.specification?.trim()) autocompleteData.specifications.add(data.specification.trim());
       if (data.injectionCompany?.trim()) autocompleteData.injectionCompanies.add(data.injectionCompany.trim());
+      if (data.shippingWaitType?.trim()) autocompleteData.shippingWaitTypes.add(data.shippingWaitType.trim());
     });
     
     // Set을 배열로 변환하고 정렬
@@ -157,6 +164,7 @@ export const collectAutocompleteDataFromInspections = async () => {
       injectionColors: [...autocompleteData.injectionColors].sort((a, b) => a.localeCompare(b, 'ko')),
       specifications: [...autocompleteData.specifications].sort((a, b) => a.localeCompare(b, 'ko')),
       injectionCompanies: [...autocompleteData.injectionCompanies].sort((a, b) => a.localeCompare(b, 'ko')),
+      shippingWaitTypes: [...autocompleteData.shippingWaitTypes].sort((a, b) => a.localeCompare(b, 'ko')),
       lastUpdated: new Date().toISOString()
     };
     

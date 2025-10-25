@@ -130,6 +130,26 @@ export const updateQualityInspection = async (
     
     await updateDoc(docRef, cleanedData);
     
+    // Zustand 스토어에서도 즉시 업데이트 (실시간 반영)
+    const { useQualityInspectionStore } = await import('../store/qualityInspectionStore');
+    const store = useQualityInspectionStore.getState();
+    
+    // 현재 스토어의 inspections에서 해당 항목 찾아서 업데이트
+    const currentInspections = store.inspections;
+    const updatedInspections = currentInspections.map(inspection => {
+      if (inspection.id === docId) {
+        return {
+          ...inspection,
+          ...cleanedData,
+          updatedAt: cleanedData.updatedAt || new Date().toISOString()
+        };
+      }
+      return inspection;
+    });
+    
+    // 스토어 업데이트
+    store.setInspections(updatedInspections, '', '');
+    
     console.log('✅ [QualityInspectionService] 업데이트 완료:', docId);
   } catch (error) {
     console.error('❌ [QualityInspectionService] 업데이트 실패:', error);

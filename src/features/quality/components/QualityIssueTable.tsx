@@ -17,6 +17,7 @@ interface QualityIssueTableProps {
   onSelectIssue?: (issue: QualityIssue) => void;
   onSearchChange?: (term: string) => void;
   onOpenFormModal?: () => void;
+  showShippingWaitColumns?: boolean;
 }
 
 // 헬퍼 함수들 - 컴포넌트 외부로 이동하여 재생성 방지
@@ -59,7 +60,12 @@ const getStatusBadge = (status: QualityIssue['status']) => {
 const QualityIssueRow = React.memo<{
   issue: QualityIssue;
   onSelectIssue?: (issue: QualityIssue) => void;
-}>(({ issue, onSelectIssue }: { issue: QualityIssue; onSelectIssue?: (issue: QualityIssue) => void }) => {
+  showShippingWaitColumns?: boolean;
+}>(({ issue, onSelectIssue, showShippingWaitColumns = false }: { 
+  issue: QualityIssue; 
+  onSelectIssue?: (issue: QualityIssue) => void;
+  showShippingWaitColumns?: boolean;
+}) => {
   const handleClick = useCallback(() => {
     onSelectIssue?.(issue);
   }, [issue, onSelectIssue]);
@@ -128,6 +134,52 @@ const QualityIssueRow = React.memo<{
       <TableCell className="whitespace-nowrap font-semibold">{issue.productName}</TableCell>
       {/* 부속명 */}
       <TableCell className="whitespace-nowrap">{issue.partName}</TableCell>
+      {/* 출하대기 관련 컬럼들 */}
+      {showShippingWaitColumns && (
+        <>
+          {/* 출하대기 타입 */}
+          <TableCell className="whitespace-nowrap">
+            {issue.shippingWaitType ? (
+              <Badge variant="outline" className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200">
+                {issue.shippingWaitType}
+              </Badge>
+            ) : (
+              <span className="text-muted-foreground text-xs">-</span>
+            )}
+          </TableCell>
+          {/* 수량 */}
+          <TableCell className="whitespace-nowrap">
+            {issue.shippingWaitQuantity ? (
+              <span className="font-mono">{issue.shippingWaitQuantity.toLocaleString()}</span>
+            ) : (
+              <span className="text-muted-foreground text-xs">-</span>
+            )}
+          </TableCell>
+          {/* 처리 진행률 */}
+          <TableCell className="whitespace-nowrap">
+            {issue.shippingWaitQuantity && issue.processedQuantity !== undefined ? (
+              <div className="flex items-center gap-2">
+                <div className="text-xs">
+                  {issue.processedQuantity.toLocaleString()} / {issue.shippingWaitQuantity.toLocaleString()}
+                </div>
+                <div className="w-16 bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                    style={{ 
+                      width: `${Math.min((issue.processedQuantity / issue.shippingWaitQuantity) * 100, 100)}%` 
+                    }}
+                  />
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {Math.round((issue.processedQuantity / issue.shippingWaitQuantity) * 100)}%
+                </span>
+              </div>
+            ) : (
+              <span className="text-muted-foreground text-xs">-</span>
+            )}
+          </TableCell>
+        </>
+      )}
       {/* 이미지 */}
       <TableCell className="whitespace-nowrap">
         {imageCount > 0 ? (
@@ -162,12 +214,43 @@ export const QualityIssueTable: React.FC<QualityIssueTableProps> = ({
   onSelectIssue,
   onSearchChange,
   onOpenFormModal,
+  showShippingWaitColumns = false
 }) => {
   return (
     <Card className="h-full flex flex-col">
       <CardHeader className="flex-shrink-0 py-3 px-6">
-        <div className="flex items-center justify-between">
-          <CardTitle>품질이슈 목록</CardTitle>
+        {/* 모바일 레이아웃 */}
+        <div className="flex flex-col gap-3 md:hidden">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm">품질이슈목록</CardTitle>
+            {onOpenFormModal && (
+              <Button 
+                className="flex items-center gap-2"
+                onClick={onOpenFormModal}
+              >
+                <Plus className="h-4 w-4" />
+                새 이슈 등록
+              </Button>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            {onSearchChange && (
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input
+                  placeholder="검색..."
+                  value={searchTerm}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => onSearchChange(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {/* 데스크톱 레이아웃 */}
+        <div className="hidden md:flex items-center justify-between">
+          <CardTitle className="text-lg">품질이슈 목록</CardTitle>
           <div className="flex items-center gap-3">
             {onSearchChange && (
               <div className="relative w-64">
@@ -205,6 +288,13 @@ export const QualityIssueTable: React.FC<QualityIssueTableProps> = ({
                 <TableHead className="whitespace-nowrap">발주처</TableHead>
                 <TableHead className="whitespace-nowrap">제품명</TableHead>
                 <TableHead className="whitespace-nowrap">부속명</TableHead>
+                {showShippingWaitColumns && (
+                  <>
+                    <TableHead className="whitespace-nowrap">출하대기 타입</TableHead>
+                    <TableHead className="whitespace-nowrap">수량</TableHead>
+                    <TableHead className="whitespace-nowrap">처리 진행률</TableHead>
+                  </>
+                )}
                 <TableHead className="whitespace-nowrap">이미지</TableHead>
                 <TableHead className="whitespace-nowrap">이슈사항</TableHead>
                 <TableHead className="whitespace-nowrap">작성자</TableHead>
@@ -213,7 +303,7 @@ export const QualityIssueTable: React.FC<QualityIssueTableProps> = ({
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={11} className="py-12 text-center">
+                  <TableCell colSpan={showShippingWaitColumns ? 14 : 11} className="py-12 text-center">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <Spinner className="size-6" />
                       <span className="text-sm text-muted-foreground">품질이슈 데이터 로딩 중...</span>
@@ -222,7 +312,7 @@ export const QualityIssueTable: React.FC<QualityIssueTableProps> = ({
                 </TableRow>
               ) : issues.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={11} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={showShippingWaitColumns ? 14 : 11} className="py-8 text-center text-muted-foreground">
                     {searchTerm ? '검색된 품질이슈가 없습니다.' : '등록된 품질이슈가 없습니다.'}
                   </TableCell>
                 </TableRow>
@@ -232,6 +322,7 @@ export const QualityIssueTable: React.FC<QualityIssueTableProps> = ({
                     key={issue.id}
                     issue={issue}
                     onSelectIssue={onSelectIssue}
+                    showShippingWaitColumns={showShippingWaitColumns}
                   />
                 ))
               )}

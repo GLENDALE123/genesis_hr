@@ -45,6 +45,10 @@ export interface QualityIssue {
   resolution?: string;
   resolvedAt?: Date;
   resolvedBy?: string;
+  // 출하대기 관련 필드
+  shippingWaitType?: string; // 출하대기 세부 타입 (선별대기, 한도대기, 세척대기 등)
+  shippingWaitQuantity?: number; // 출하대기 제품 수량
+  processedQuantity?: number; // 처리 완료된 수량
 }
 
 export interface KeywordPair {
@@ -64,6 +68,9 @@ export interface QualityIssueFormData {
   category: string;
   priority: 'low' | 'normal' | 'high' | 'urgent';
   assignedTo?: string;
+  // 출하대기 관련 필드
+  shippingWaitType?: string;
+  shippingWaitQuantity?: number;
 }
 
 export interface QualityIssueCreateData extends Omit<QualityIssueFormData, 'issues' | 'keywordPairs'> {

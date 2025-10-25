@@ -14,6 +14,7 @@ import {
   updateQualityInspection,
   deleteQualityInspection
 } from '@/features/quality';
+import { ProtectedRoute } from '@/shared/components/auth';
 
 export default function QualityHistoryPage() {
   const {
@@ -81,7 +82,8 @@ export default function QualityHistoryPage() {
   };
 
   return (
-    <div className="h-full flex flex-col space-y-4 p-0">
+    <ProtectedRoute>
+      <div className="h-full flex flex-col space-y-4 p-0">
       {/* 필터 패널 */}
       <InspectionFilterPanel
         startDate={filters.startDate}
@@ -156,7 +158,8 @@ export default function QualityHistoryPage() {
           setRefreshKey(prev => prev + 1);
         }}
       />
-    </div>
+      </div>
+    </ProtectedRoute>
   );
 }
 

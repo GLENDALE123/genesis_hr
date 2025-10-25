@@ -4,13 +4,16 @@ import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import { Textarea } from '@/shared/components/ui/textarea';
+import { Input } from '@/shared/components/ui/input';
+import { Progress } from '@/shared/components/ui/progress';
 import { ImageGalleryGrid } from '@/shared/components/common/ImageGalleryGrid';
 import { 
   AlertCircle, 
   Copy,
   Edit,
   Trash2,
-  Plus
+  Plus,
+  CheckCircle
 } from 'lucide-react';
 import { QualityIssue } from '../types';
 import { STATUS_COLORS, DEPARTMENT_COLORS } from '../constants';
@@ -23,6 +26,7 @@ interface QualityIssueDetailProps {
   onEdit?: (issue: QualityIssue) => void;
   onDelete?: (issue: QualityIssue) => void;
   onAddIssueItem?: (issueId: string, newIssue: string, newStatus?: string) => void;
+  onUpdateProcessedQuantity?: (issueId: string, additionalQuantity: number) => void;
   canEdit?: boolean;
   canDelete?: boolean;
   canManage?: boolean;
@@ -36,6 +40,7 @@ export const QualityIssueDetail: React.FC<QualityIssueDetailProps> = ({
   onEdit,
   onDelete,
   onAddIssueItem,
+  onUpdateProcessedQuantity,
   canEdit = false,
   canDelete = false,
   canManage = false,
@@ -43,6 +48,10 @@ export const QualityIssueDetail: React.FC<QualityIssueDetailProps> = ({
   const [isAddingIssue, setIsAddingIssue] = useState(false);
   const [newIssue, setNewIssue] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('해결완료');
+  
+  // 출하대기 처리 관련 상태
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingQuantity, setProcessingQuantity] = useState('');
 
   if (!issue) return null;
 
@@ -53,6 +62,30 @@ export const QualityIssueDetail: React.FC<QualityIssueDetailProps> = ({
       setSelectedStatus('해결완료');
       setIsAddingIssue(false);
     }
+  };
+
+  // 출하대기 처리 관련 핸들러
+  const handleConfirmProcessing = () => {
+    const quantity = parseInt(processingQuantity, 10);
+    
+    if (isNaN(quantity) || quantity <= 0) {
+      return;
+    }
+
+    if (issue.shippingWaitQuantity && quantity > (issue.shippingWaitQuantity - (issue.processedQuantity || 0))) {
+      return;
+    }
+
+    if (onUpdateProcessedQuantity) {
+      onUpdateProcessedQuantity(issue.id, quantity);
+    }
+
+    handleCancelProcessing();
+  };
+
+  const handleCancelProcessing = () => {
+    setIsProcessing(false);
+    setProcessingQuantity('');
   };
 
 
@@ -128,35 +161,75 @@ ${issue.keywordPairs.map((pair, index) => `${index + 1}. ${pair.process} - ${pai
           </div>
         }
         stickyFooter={
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={handleCopy}
-              className="flex items-center gap-2"
-            >
-              <Copy className="h-4 w-4" />
-              복사
-            </Button>
-            {canDelete && onDelete && (
-              <Button
-                variant="destructive"
-                onClick={() => onDelete(issue)}
-                className="flex items-center gap-2"
-              >
-                <Trash2 className="h-4 w-4" />
-                삭제
-              </Button>
+          <div className="flex justify-between items-center">
+            {/* 출하대기 처리 완료 버튼 */}
+            {issue.registrationKeyword === '출하대기' && canManage && onUpdateProcessedQuantity && (
+              <div className="flex items-center gap-2">
+                {isProcessing ? (
+                  <div className="flex items-center gap-2 p-2 border rounded-lg bg-muted animate-in slide-in-from-top-2 duration-300">
+                    <Input 
+                      type="number" 
+                      value={processingQuantity}
+                      onChange={e => setProcessingQuantity(e.target.value)}
+                      placeholder="처리 완료 수량"
+                      min="1"
+                      max={issue.shippingWaitQuantity ? issue.shippingWaitQuantity - (issue.processedQuantity || 0) : undefined}
+                      className="w-28"
+                      autoFocus
+                    />
+                    <Button onClick={handleConfirmProcessing} size="sm" className="bg-green-500 hover:bg-green-600">
+                      확인
+                    </Button>
+                    <Button onClick={handleCancelProcessing} variant="outline" size="sm">
+                      취소
+                    </Button>
+                  </div>
+                ) : (
+                  <Button 
+                    onClick={() => setIsProcessing(true)} 
+                    className="bg-blue-500 hover:bg-blue-600"
+                    disabled={
+                      issue.status === '해결완료' || 
+                      (issue.shippingWaitQuantity && (issue.processedQuantity || 0) >= issue.shippingWaitQuantity)
+                    }
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    처리수량입력
+                  </Button>
+                )}
+              </div>
             )}
-            {canEdit && onEdit && (
+            
+            <div className="flex gap-2">
               <Button
                 variant="outline"
-                onClick={() => onEdit(issue)}
+                onClick={handleCopy}
                 className="flex items-center gap-2"
               >
-                <Edit className="h-4 w-4" />
-                수정
+                <Copy className="h-4 w-4" />
+                복사
               </Button>
-            )}
+              {canDelete && onDelete && (
+                <Button
+                  variant="destructive"
+                  onClick={() => onDelete(issue)}
+                  className="flex items-center gap-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  삭제
+                </Button>
+              )}
+              {canEdit && onEdit && (
+                <Button
+                  variant="outline"
+                  onClick={() => onEdit(issue)}
+                  className="flex items-center gap-2"
+                >
+                  <Edit className="h-4 w-4" />
+                  수정
+                </Button>
+              )}
+            </div>
           </div>
         }
       >
@@ -171,6 +244,58 @@ ${issue.keywordPairs.map((pair, index) => `${index + 1}. ${pair.process} - ${pai
                     <span className="font-semibold">{pair.process}:</span> {pair.defect}
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* 출하대기 정보 */}
+          {issue.registrationKeyword === '출하대기' && (
+            <div>
+              <h4 className="font-semibold text-md text-gray-800 dark:text-slate-200 mb-2">출하대기 정보:</h4>
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-md space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">출하대기 타입:</span>
+                    <div className="mt-1">
+                      {issue.shippingWaitType ? (
+                        <Badge variant="outline" className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200">
+                          {issue.shippingWaitType}
+                        </Badge>
+                      ) : (
+                        <span className="text-sm text-gray-500">미지정</span>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">전체 수량:</span>
+                    <div className="mt-1">
+                      <span className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                        {issue.shippingWaitQuantity ? issue.shippingWaitQuantity.toLocaleString() : 0}개
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* 처리 진행률 */}
+                {issue.shippingWaitQuantity && issue.processedQuantity !== undefined && (
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-gray-600 dark:text-gray-400">처리 진행률:</span>
+                      <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                        {issue.processedQuantity.toLocaleString()} / {issue.shippingWaitQuantity.toLocaleString()}개
+                      </span>
+                    </div>
+                    <Progress 
+                      value={(issue.processedQuantity / issue.shippingWaitQuantity) * 100} 
+                      className="h-3"
+                    />
+                    <div className="text-right mt-1">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {Math.round((issue.processedQuantity / issue.shippingWaitQuantity) * 100)}% 완료
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

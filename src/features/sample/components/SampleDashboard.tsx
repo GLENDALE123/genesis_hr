@@ -97,26 +97,26 @@ export const SampleDashboard: React.FC<SampleDashboardProps> = ({
   return (
     <div className="space-y-4">
       {/* KPI 카드 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-4 gap-2 md:gap-4">
         <SampleKpiCard
           title="총 요청"
           value={kpiData.total}
-          icon={<Archive className="h-8 w-8 text-blue-500" />}
+          icon={<Archive className="h-4 w-4 md:h-8 md:w-8 text-blue-500" />}
         />
         <SampleKpiCard
           title="신규 접수"
           value={kpiData.received}
-          icon={<Clock className="h-8 w-8 text-yellow-500" />}
+          icon={<Clock className="h-4 w-4 md:h-8 md:w-8 text-yellow-500" />}
         />
         <SampleKpiCard
           title="진행중"
           value={kpiData.inProgress}
-          icon={<TrendingUp className="h-8 w-8 text-cyan-500" />}
+          icon={<TrendingUp className="h-4 w-4 md:h-8 md:w-8 text-cyan-500" />}
         />
         <SampleKpiCard
           title="이달 완료"
           value={kpiData.completedThisMonth}
-          icon={<CheckCircle className="h-8 w-8 text-green-500" />}
+          icon={<CheckCircle className="h-4 w-4 md:h-8 md:w-8 text-green-500" />}
         />
       </div>
 

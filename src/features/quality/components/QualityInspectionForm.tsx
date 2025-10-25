@@ -128,6 +128,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     injectionColors: [],
     specifications: [],
     injectionCompanies: [],
+    shippingWaitTypes: [],
     lastUpdated: ''
   });
   
@@ -370,6 +371,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
           injectionColors: data.injectionColors || [],
           specifications: data.specifications || [],
           injectionCompanies: data.injectionCompanies || [],
+          shippingWaitTypes: data.shippingWaitTypes || [],
           lastUpdated: data.lastUpdated || ''
         });
       } else {
@@ -381,6 +383,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
           injectionColors: [...INJECTION_COLOR_OPTIONS], // 기본 색상 옵션 사용
           specifications: [],
           injectionCompanies: [],
+          shippingWaitTypes: [],
           lastUpdated: ''
         });
       }
@@ -494,6 +497,9 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       // 이미지 업로드 처리
       let imageUrls: string[] = formData.imageUrls || [];
       if (imageUploadHook.uploadingImages.length > 0) {
+        // 업로드 시작 토스트 표시
+        toast.info('이미지 업로드 중...', { id: 'image-upload-progress' });
+        
         // 업로드 시작 시 현재 파일 수 초기화
         setCurrentUploadCount(0);
         
@@ -601,7 +607,11 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
 
       await onUpdate(inspectionData.id, updateData);
       toast.success('수정 완료');
-      onClose();
+      
+      // 상태 업데이트가 완료되도록 약간의 지연
+      setTimeout(() => {
+        onClose();
+      }, 100);
     } catch (error) {
       console.error('수정 실패:', error);
       toast.error('품질검사 수정에 실패했습니다. 다시 시도해주세요.');

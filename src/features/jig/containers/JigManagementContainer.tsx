@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { JigRequestTable, JigRequestCard, JigRequestKanban, JigRequestDetail, JigRequestForm, JigRequestFilterSection } from '../components';
 import { JigStatus, JigRequest, CreateJigRequestData } from '../types';
 import { useJigRequests } from '../hooks/useJigRequests';
@@ -16,7 +16,7 @@ import { ViewMode } from '../types';
 import { Plus } from 'lucide-react';
 
 export const JigManagementContainer: React.FC = () => {
-  const { requests, isLoading, error, updateRequestStatus, createRequest } = useJigRequests();
+  const { requests, isLoading, error, updateRequestStatus, createRequest, updateRequestQuantity, deleteRequest } = useJigRequests();
   const userRole = useUserRole() || 'Member';
   const { user, userProfile } = useAuthStore();
   const currentUserProfile = useMemo(() => {
@@ -38,6 +38,18 @@ export const JigManagementContainer: React.FC = () => {
   const [selectedRequest, setSelectedRequest] = useState<JigRequest | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingRequest, setEditingRequest] = useState<JigRequest | null>(null);
+
+  // requests 배열이 업데이트될 때마다 selectedRequest도 업데이트
+  useEffect(() => {
+    if (selectedRequest) {
+      const updatedRequest = requests.find(req => req.id === selectedRequest.id);
+      if (updatedRequest) {
+        setSelectedRequest(updatedRequest);
+      }
+    }
+  }, [requests, selectedRequest]);
 
   const {
     searchTerm,
@@ -114,12 +126,34 @@ export const JigManagementContainer: React.FC = () => {
     setSelectedRequest(null);
   }, []);
 
+  const handleDeleteRequest = useCallback(async (requestId: string) => {
+    try {
+      await deleteRequest(requestId);
+      // 삭제 후 모달 닫기
+      setIsDetailModalOpen(false);
+      setSelectedRequest(null);
+    } catch (error) {
+      console.error('요청 삭제 실패:', error);
+    }
+  }, [deleteRequest]);
+
   const handleNewRequest = useCallback(() => {
     setIsFormModalOpen(true);
   }, []);
 
   const handleCloseFormModal = useCallback(() => {
     setIsFormModalOpen(false);
+  }, []);
+
+  const handleEditRequest = useCallback((request: JigRequest) => {
+    setEditingRequest(request);
+    setIsEditModalOpen(true);
+    setIsDetailModalOpen(false); // 상세 모달 닫기
+  }, []);
+
+  const handleCloseEditModal = useCallback(() => {
+    setIsEditModalOpen(false);
+    setEditingRequest(null);
   }, []);
 
   const handleSaveNewRequest = async (data: CreateJigRequestData, imageFiles: File[]) => {
@@ -137,11 +171,35 @@ export const JigManagementContainer: React.FC = () => {
     }
   };
 
+  const handleSaveEditRequest = async (data: CreateJigRequestData, imageFiles: File[]) => {
+    if (!user || !editingRequest) {
+      console.error('사용자 정보 또는 편집 중인 요청이 없습니다.');
+      return;
+    }
+    
+    try {
+      // TODO: 수정 API 호출 구현 필요
+      console.log('수정 요청 저장:', { requestId: editingRequest.id, data, imageFiles });
+      setIsEditModalOpen(false);
+      setEditingRequest(null);
+    } catch (error) {
+      console.error('요청 수정 실패:', error);
+    }
+  };
+
   const handleUpdateStatus = async (id: string, status: JigStatus, reason?: string) => {
     try {
         await updateRequestStatus(id, status, (user && user.uid) || '', getUserDisplayName(userProfile, user, 'Unknown User'), reason);
     } catch (error) {
       console.error('상태 업데이트 실패:', error);
+    }
+  };
+
+  const handleReceiveItems = async (id: string, quantityChange: number) => {
+    try {
+      await updateRequestQuantity(id, quantityChange, (user && user.uid) || '', getUserDisplayName(userProfile, user, 'Unknown User'));
+    } catch (error) {
+      console.error('입고 처리 실패:', error);
     }
   };
 
@@ -252,12 +310,9 @@ export const JigManagementContainer: React.FC = () => {
         request={selectedRequest}
         currentUserProfile={currentUserProfile}
         onStatusUpdate={handleUpdateStatus}
-        onEdit={(request) => {
-        }}
-        onDelete={(id) => {
-        }}
-        onReceiveItems={(id, quantity) => {
-        }}
+        onEdit={handleEditRequest}
+        onDelete={handleDeleteRequest}
+        onReceiveItems={handleReceiveItems}
         onAddComment={handleAddComment}
         onDeleteComment={handleDeleteComment}
         onEditComment={handleEditComment}
@@ -269,6 +324,22 @@ export const JigManagementContainer: React.FC = () => {
         onClose={handleCloseFormModal}
         onSave={handleSaveNewRequest}
         isLoading={isLoading}
+        autocompleteData={{
+          requesters: [...new Set(requests.map(r => r.requester))],
+          destinations: [...new Set(requests.map(r => r.destination))],
+          itemNames: [...new Set(requests.map(r => r.itemName))],
+          partNames: [...new Set(requests.map(r => r.partName))],
+          itemNumbers: [...new Set(requests.map(r => r.itemNumber))],
+        }}
+      />
+
+      {/* 수정 폼 모달 */}
+      <JigRequestForm
+        isOpen={isEditModalOpen}
+        onClose={handleCloseEditModal}
+        onSave={handleSaveEditRequest}
+        isLoading={isLoading}
+        editingRequest={editingRequest}
         autocompleteData={{
           requesters: [...new Set(requests.map(r => r.requester))],
           destinations: [...new Set(requests.map(r => r.destination))],

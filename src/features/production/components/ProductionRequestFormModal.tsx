@@ -102,14 +102,14 @@ const ProductionRequestFormModalComponent: React.FC<ProductionRequestFormModalPr
       imageUploadHook.clearImages();
       setIsSaving(false); // 저장 상태 초기화
     }
-  }, [isOpen, currentUserName, imageUploadHook]);
+  }, [isOpen, currentUserName]); // 의존성 배열에서 imageUploadHook 제거
 
   // 이미지 미리보기 정리 (컴포넌트 언마운트 시)
   useEffect(() => {
     return () => {
       imageUploadHook.clearImages();
     };
-  }, [imageUploadHook]);
+  }, []); // 의존성 배열에서 imageUploadHook 제거
 
   // 파일 선택 핸들러
   const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {

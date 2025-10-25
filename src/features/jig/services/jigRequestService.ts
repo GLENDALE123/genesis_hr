@@ -6,6 +6,7 @@ import {
   getDocuments,
   getDocument,
   addDocument,
+  setDocument,
   updateDocument,
   deleteDocument,
   getDocumentsWithQuery,
@@ -15,6 +16,31 @@ import { uploadImageFilesParallel, deleteFile } from '@/shared/services/firebase
 import { JigRequest, CreateJigRequestData, UpdateJigRequestData, HistoryEntry, JigComment, JigStatus } from '../types';
 import { JIG_COLLECTIONS, JIG_STORAGE_PATHS } from '../constants';
 import { generateJigRequestId } from '../utils';
+
+// undefined 값을 null로 변환하는 유틸리티 함수
+const cleanUndefinedValues = (obj: any): any => {
+  if (obj === null || obj === undefined) {
+    return null;
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(cleanUndefinedValues);
+  }
+  
+  if (typeof obj === 'object') {
+    const cleaned: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (value === undefined) {
+        cleaned[key] = null;
+      } else {
+        cleaned[key] = cleanUndefinedValues(value);
+      }
+    }
+    return cleaned;
+  }
+  
+  return obj;
+};
 
 // 지그 요청 실시간 구독
 export const subscribeToJigRequests = (
@@ -52,6 +78,7 @@ export const createJigRequest = async (
   currentUser: { uid: string; displayName: string }
 ): Promise<JigRequest> => {
   const id = await generateJigRequestId();
+  console.log('🔍 생성된 지그 요청 ID:', id);
   const now = new Date().toISOString();
   
   // 이미지 업로드 (병렬 압축 + 업로드)
@@ -83,7 +110,12 @@ export const createJigRequest = async (
     comments: [],
   };
 
-  await addDocument(JIG_COLLECTIONS.REQUESTS, newRequest);
+  // undefined 값을 null로 변환하여 Firestore 호환성 보장
+  const cleanedRequest = cleanUndefinedValues(newRequest);
+
+  console.log('💾 지그 요청 저장 중:', { id, collection: JIG_COLLECTIONS.REQUESTS });
+  await setDocument(JIG_COLLECTIONS.REQUESTS, id, cleanedRequest);
+  console.log('✅ 지그 요청 저장 완료:', id);
   return newRequest;
 };
 
@@ -103,9 +135,10 @@ export const updateJigRequest = async (
     reason: '요청이 수정되었습니다.'
   };
 
-  await updateDocument(JIG_COLLECTIONS.REQUESTS, id, {
-    ...data,
-  });
+  // undefined 값을 null로 변환하여 Firestore 호환성 보장
+  const cleanedData = cleanUndefinedValues(data);
+
+  await updateDocument(JIG_COLLECTIONS.REQUESTS, id, cleanedData);
 };
 
 // 지그 요청 삭제
@@ -154,6 +187,103 @@ export const addJigRequestComment = async (
   });
 };
 
+// 지그 요청 입고 처리
+export const updateJigRequestQuantity = async (
+  requestId: string,
+  quantityChange: number,
+  currentUser: { uid: string; displayName: string }
+): Promise<void> => {
+  const now = new Date().toISOString();
+  
+  const existingRequest = await getJigRequest(requestId);
+  if (!existingRequest) {
+    throw new Error('요청을 찾을 수 없습니다.');
+  }
+
+  const newReceivedQuantity = Math.max(0, existingRequest.receivedQuantity + quantityChange);
+  
+  // 초과 입고 허용 (제한 제거)
+  const finalReceivedQuantity = newReceivedQuantity;
+  
+  const actionType = quantityChange > 0 ? '입고' : '반출';
+  const actionText = quantityChange > 0 ? 
+    `${Math.abs(quantityChange)}개 입고 처리` : 
+    `${Math.abs(quantityChange)}개 반출 처리`;
+
+  const historyEntry: HistoryEntry = {
+    status: existingRequest.status,
+    date: now,
+    user: currentUser.displayName,
+    action: 'quantity_changed',
+    reason: `${actionText} (입고 수량: ${finalReceivedQuantity}/${existingRequest.quantity})`,
+  };
+
+  const updatedHistory = [...(existingRequest.history || []), historyEntry];
+  
+  // 입고 수량에 따른 상태 변경 로직
+  let newStatus = existingRequest.status;
+  
+  if (finalReceivedQuantity === 0) {
+    // 입고 수량이 0이면 진행중 상태
+    if (existingRequest.status !== JigStatus.InProgress) {
+      newStatus = JigStatus.InProgress;
+      
+      const progressHistoryEntry: HistoryEntry = {
+        status: JigStatus.InProgress,
+        date: now,
+        user: currentUser.displayName,
+        action: 'status_changed',
+        reason: '입고 수량이 0개로 진행중 상태로 변경되었습니다.',
+      };
+      
+      updatedHistory.push(progressHistoryEntry);
+    }
+  } else if (finalReceivedQuantity > 0 && finalReceivedQuantity < existingRequest.quantity) {
+    // 입고 수량이 0보다 크고 총 수량보다 작으면 입고중 상태
+    if (existingRequest.status !== JigStatus.Receiving) {
+      newStatus = JigStatus.Receiving;
+      
+      const receivingHistoryEntry: HistoryEntry = {
+        status: JigStatus.Receiving,
+        date: now,
+        user: currentUser.displayName,
+        action: 'status_changed',
+        reason: `입고 수량이 ${finalReceivedQuantity}개로 입고중 상태로 변경되었습니다.`,
+      };
+      
+      updatedHistory.push(receivingHistoryEntry);
+    }
+  } else if (finalReceivedQuantity >= existingRequest.quantity) {
+    // 입고 수량이 총 수량 이상이면 완료 상태 (초과 입고도 완료로 처리)
+    if (existingRequest.status !== JigStatus.Completed) {
+      newStatus = JigStatus.Completed;
+      
+      const completionHistoryEntry: HistoryEntry = {
+        status: JigStatus.Completed,
+        date: now,
+        user: currentUser.displayName,
+        action: 'status_changed',
+        reason: finalReceivedQuantity === existingRequest.quantity 
+          ? '모든 수량이 입고되어 완료 상태로 변경되었습니다.'
+          : `입고 수량이 총 수량을 초과하여 완료 상태로 변경되었습니다. (${finalReceivedQuantity}/${existingRequest.quantity})`,
+      };
+      
+      updatedHistory.push(completionHistoryEntry);
+    }
+  }
+  
+  const updateData = {
+    receivedQuantity: finalReceivedQuantity,
+    status: newStatus,
+    history: updatedHistory,
+  };
+
+  // undefined 값을 null로 변환하여 Firestore 호환성 보장
+  const cleanedUpdateData = cleanUndefinedValues(updateData);
+
+  await updateDocument(JIG_COLLECTIONS.REQUESTS, requestId, cleanedUpdateData);
+};
+
 // 지그 요청 상태 업데이트
 export const updateJigRequestStatus = async (
   requestId: string,
@@ -163,23 +293,31 @@ export const updateJigRequestStatus = async (
 ): Promise<void> => {
   const now = new Date().toISOString();
   
+  console.log('🔍 상태 업데이트 시도:', { requestId, newStatus, collection: JIG_COLLECTIONS.REQUESTS });
   const existingRequest = await getJigRequest(requestId);
   if (!existingRequest) {
+    console.error('❌ 요청을 찾을 수 없음:', requestId);
     throw new Error('요청을 찾을 수 없습니다.');
   }
+  console.log('✅ 요청 찾음:', existingRequest.id);
 
   const historyEntry: HistoryEntry = {
     status: newStatus,
     date: now,
     user: currentUser.displayName,
     action: 'status_changed',
-    reason: `상태가 ${existingRequest.status}에서 ${newStatus}로 변경되었습니다.`,
+    reason: reason || `상태가 ${existingRequest.status}에서 ${newStatus}로 변경되었습니다.`,
   };
 
   const updatedHistory = [...(existingRequest.history || []), historyEntry];
   
-  await updateDocument(JIG_COLLECTIONS.REQUESTS, requestId, {
+  const updateData = {
     status: newStatus,
     history: updatedHistory,
-  });
+  };
+
+  // undefined 값을 null로 변환하여 Firestore 호환성 보장
+  const cleanedUpdateData = cleanUndefinedValues(updateData);
+
+  await updateDocument(JIG_COLLECTIONS.REQUESTS, requestId, cleanedUpdateData);
 };

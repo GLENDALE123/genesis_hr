@@ -11,6 +11,7 @@ import {
   deleteJigRequest,
   addJigRequestComment,
   updateJigRequestStatus,
+  updateJigRequestQuantity,
   getMasterData,
   subscribeToJigRequests,
 } from '../services';
@@ -34,6 +35,7 @@ interface JigRequestActions {
   setSelectedRequest: (request: JigRequest | null) => void;
   addCommentToRequest: (requestId: string, commentText: string, userUid: string, userName: string, mentionedUserIds?: string[]) => Promise<void>;
   updateRequestStatus: (requestId: string, newStatus: JigStatus, currentUserUid: string, currentUserName: string, reason?: string) => Promise<void>;
+  updateRequestQuantity: (requestId: string, quantityChange: number, currentUserUid: string, currentUserName: string) => Promise<void>;
   fetchMasterData: () => Promise<void>;
 }
 
@@ -70,9 +72,10 @@ export const useJigRequestStore = create<JigRequestState & JigRequestActions>()(
         set({ isLoading: true, error: null });
         
         const unsubscribe = subscribeToJigRequests(
-          (requests) => {
+          (newRequests) => {
+            // Quality 테이블 방식: 단순하게 업데이트
             set({ 
-              requests,
+              requests: newRequests,
               lastFetchTimestamp: Date.now(),
               isLoading: false 
             });
@@ -152,6 +155,18 @@ export const useJigRequestStore = create<JigRequestState & JigRequestActions>()(
         } catch (error) {
           set({ 
             error: error instanceof Error ? error.message : '상태 업데이트 중 오류가 발생했습니다.',
+          });
+        }
+      },
+
+      updateRequestQuantity: async (requestId, quantityChange, currentUserUid, currentUserName) => {
+        try {
+          await updateJigRequestQuantity(requestId, quantityChange, { uid: currentUserUid, displayName: currentUserName });
+          // 입고 처리 후 목록 새로고침
+          await get().fetchRequests();
+        } catch (error) {
+          set({ 
+            error: error instanceof Error ? error.message : '입고 처리 중 오류가 발생했습니다.',
           });
         }
       },

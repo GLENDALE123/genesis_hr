@@ -21,7 +21,7 @@ export const useQualityIssueForm = () => {
 
       await createQualityIssue(formData, imageFiles, {
         uid: user.uid,
-        displayName: userProfile?.name || userProfile?.displayName || user.displayName || user.email?.split('@')[0] || '사용자',
+        displayName: userProfile?.displayName || userProfile?.name || user.displayName || user.email?.split('@')[0] || '사용자',
         email: user.email || '',
       });
       

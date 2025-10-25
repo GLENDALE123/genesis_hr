@@ -11,6 +11,9 @@ export enum JigStatus {
   Completed = '완료',
 }
 
+// HS-Jig-main 호환성을 위한 별칭
+export const Status = JigStatus;
+
 export interface HistoryEntry {
   status: JigStatus | string;
   date: string | { seconds: number; nanoseconds?: number }; // Firestore timestamp 지원
@@ -31,6 +34,9 @@ export interface JigComment {
   readBy?: string[];
   mentionedUserIds?: string[];
 }
+
+// HS-Jig-main 호환성을 위한 별칭
+export interface Comment extends JigComment {}
 
 export interface JigRequest {
   id: string;
@@ -59,9 +65,19 @@ export interface JigMasterItem {
   id: string;
   createdAt: string;
   requestType: string;
-  itemName: string;
+  
+  // 기존 필드 (호환성 유지)
+  itemName?: string;
+  itemNumber?: string;
+  
+  // 새 필드
+  orderNumber?: string;
+  supplier?: string;
+  productName?: string;
+  jigNumber?: string;
+  
+  // 공통 필드
   partName: string;
-  itemNumber: string;
   remarks: string;
   imageUrls?: string[];
   createdBy?: {
@@ -130,18 +146,22 @@ export interface UpdateJigRequestData {
 
 export interface CreateJigMasterItemData {
   requestType: string;
-  itemName: string;
+  orderNumber: string;
+  supplier: string;
+  productName: string;
   partName: string;
-  itemNumber: string;
+  jigNumber: string;
   remarks: string;
   imageUrls?: string[];
 }
 
 export interface UpdateJigMasterItemData {
   requestType?: string;
-  itemName?: string;
+  orderNumber?: string;
+  supplier?: string;
+  productName?: string;
   partName?: string;
-  itemNumber?: string;
+  jigNumber?: string;
   remarks?: string;
   imageUrls?: string[];
 }

@@ -22,16 +22,18 @@ import {
   createTimeoutPromise,
   createRetryableUploadPromise
 } from '@/shared/components/common/ProgressToast';
-import { JigStatus, CreateJigRequestData } from '../types';
+import { JigStatus, CreateJigRequestData, JigRequest } from '../types';
 import { PRODUCTION_TYPES } from '../constants';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useImageUpload } from '@/shared/hooks';
+import { getUserDisplayName } from '@/shared/utils/userUtils';
 
 interface JigRequestFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (data: CreateJigRequestData, imageFiles: File[]) => void;
   isLoading?: boolean;
+  editingRequest?: JigRequest | null; // 수정 모드용
   autocompleteData?: {
     requesters: string[];
     destinations: string[];
@@ -46,9 +48,10 @@ export const JigRequestForm: React.FC<JigRequestFormProps> = ({
   onClose,
   onSave,
   isLoading = false,
+  editingRequest = null,
   autocompleteData,
 }) => {
-  const { user } = useAuthStore();
+  const { user, userProfile } = useAuthStore();
   
   // 이미지 업로드 훅 사용
   const imageUploadHook = useImageUpload();
@@ -79,27 +82,60 @@ export const JigRequestForm: React.FC<JigRequestFormProps> = ({
   // 폼 초기화
   useEffect(() => {
     if (isOpen) {
-      setFormData({
-        requestDate: new Date().toISOString().split('T')[0],
-        requestType: '증착용',
-        requester: '',
-        destination: '',
-        deliveryDate: '',
-        itemName: '',
-        partName: '',
-        itemNumber: '',
-        jigHandleLength: undefined,
-        specification: '',
-        quantity: 1,
-        receivedQuantity: 0,
-        coreCost: undefined,
-        unitPrice: undefined,
-        remarks: '',
-        status: 'pending' as JigStatus,
-      });
+      if (editingRequest) {
+        // 수정 모드: 기존 데이터 로드
+        setFormData({
+          requestDate: editingRequest.requestDate.split('T')[0],
+          requestType: editingRequest.requestType,
+          requester: editingRequest.requester,
+          destination: editingRequest.destination,
+          deliveryDate: editingRequest.deliveryDate,
+          itemName: editingRequest.itemName,
+          partName: editingRequest.partName,
+          itemNumber: editingRequest.itemNumber || '',
+          jigHandleLength: editingRequest.jigHandleLength,
+          specification: editingRequest.specification || '',
+          quantity: editingRequest.quantity,
+          receivedQuantity: editingRequest.receivedQuantity,
+          coreCost: editingRequest.coreCost,
+          unitPrice: editingRequest.unitPrice,
+          remarks: editingRequest.remarks || '',
+          status: editingRequest.status,
+        });
+        
+        // 기존 이미지 로드
+        if (editingRequest.imageUrls && editingRequest.imageUrls.length > 0) {
+          imageUploadHook.setExistingImages(editingRequest.imageUrls);
+        } else {
+          imageUploadHook.clearImages();
+        }
+      } else {
+        // 신규 모드: 기본값으로 초기화
+        const currentUserDisplayName = getUserDisplayName(userProfile, user, '');
+        
+        setFormData({
+          requestDate: new Date().toISOString().split('T')[0],
+          requestType: '증착용',
+          requester: currentUserDisplayName,
+          destination: '',
+          deliveryDate: '',
+          itemName: '',
+          partName: '',
+          itemNumber: '',
+          jigHandleLength: undefined,
+          specification: '',
+          quantity: 1,
+          receivedQuantity: 0,
+          coreCost: undefined,
+          unitPrice: undefined,
+          remarks: '',
+          status: 'pending' as JigStatus,
+        });
+        
+        // 이미지 상태 완전 초기화
+        imageUploadHook.clearImages();
+      }
       
-      // 이미지 상태 완전 초기화
-      imageUploadHook.clearImages();
       imageUploadHook.clearDeletedUrls();
       setCurrentUploadCount(0);
       
@@ -109,7 +145,7 @@ export const JigRequestForm: React.FC<JigRequestFormProps> = ({
         console.log('🔄 모달 열림 시 진행 중인 업로드 강제 중단');
       }
     }
-  }, [isOpen]);
+  }, [isOpen, editingRequest, user, userProfile]);
 
   // 파일 선택 핸들러
   const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -252,7 +288,7 @@ export const JigRequestForm: React.FC<JigRequestFormProps> = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
-          <DialogTitle>지그 요청 등록</DialogTitle>
+          <DialogTitle>{editingRequest ? '지그 요청 수정' : '지그 요청 등록'}</DialogTitle>
         </DialogHeader>
         
         <ScrollArea className="max-h-[70vh] pr-4">
@@ -475,7 +511,7 @@ export const JigRequestForm: React.FC<JigRequestFormProps> = ({
                 {imageUploadHook.isUploading ? '업로드 중...' : '저장 중...'}
               </div>
             ) : (
-              '등록'
+              editingRequest ? '수정' : '등록'
             )}
           </Button>
         </DialogFooter>

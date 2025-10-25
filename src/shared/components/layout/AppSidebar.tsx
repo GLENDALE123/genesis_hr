@@ -132,56 +132,52 @@ const AppSidebarComponent = ({
     return pathname === href || pathname.startsWith(href + '/');
   }, [pathname]);
 
-  // 터치 시작 위치와 이동 거리를 추적하는 상태
-  const [touchStart, setTouchStart] = React.useState<{ x: number; y: number } | null>(null);
-  const touchMovedRef = React.useRef(false);
-  const touchEndedRef = React.useRef(false);
+  // 터치 이벤트 상태 관리
+  const touchStateRef = React.useRef({
+    startX: 0,
+    startY: 0,
+    hasMoved: false,
+    startTime: 0
+  });
 
   // 터치 시작 핸들러
   const handleTouchStart = React.useCallback((event: React.TouchEvent) => {
     const touch = event.touches[0];
-    setTouchStart({ x: touch.clientX, y: touch.clientY });
-    touchMovedRef.current = false;
-    touchEndedRef.current = false;
+    touchStateRef.current = {
+      startX: touch.clientX,
+      startY: touch.clientY,
+      hasMoved: false,
+      startTime: Date.now()
+    };
   }, []);
 
   // 터치 이동 핸들러
   const handleTouchMove = React.useCallback((event: React.TouchEvent) => {
-    if (!touchStart) return;
-    
+    const { startX, startY } = touchStateRef.current;
     const touch = event.touches[0];
-    const deltaX = Math.abs(touch.clientX - touchStart.x);
-    const deltaY = Math.abs(touch.clientY - touchStart.y);
+    const deltaX = Math.abs(touch.clientX - startX);
+    const deltaY = Math.abs(touch.clientY - startY);
     
-    // 5px 이상 이동하면 드래그로 간주 (더 민감하게 설정)
-    if (deltaX > 5 || deltaY > 5) {
-      touchMovedRef.current = true;
+    // 10px 이상 이동하면 드래그로 간주 (임계값 증가)
+    if (deltaX > 10 || deltaY > 10) {
+      touchStateRef.current.hasMoved = true;
     }
-  }, [touchStart]);
+  }, []);
 
   // 터치 종료 핸들러
   const handleTouchEnd = React.useCallback((event: React.TouchEvent) => {
-    touchEndedRef.current = true;
+    const { hasMoved, startTime } = touchStateRef.current;
+    const touchDuration = Date.now() - startTime;
     
-    // 드래그가 감지된 경우 네비게이션 방지
-    if (touchMovedRef.current) {
-      console.log('Touch drag detected, preventing navigation');
+    // 드래그가 감지되었거나 터치 시간이 너무 길면 네비게이션 방지
+    if (hasMoved || touchDuration > 500) {
+      console.log('Touch drag or long press detected, preventing navigation');
       return;
     }
     
     // 짧은 탭인 경우에만 네비게이션 허용
-    const touch = event.changedTouches[0];
-    if (touchStart) {
-      const deltaX = Math.abs(touch.clientX - touchStart.x);
-      const deltaY = Math.abs(touch.clientY - touchStart.y);
-      
-      // 5px 이내의 움직임만 탭으로 간주
-      if (deltaX <= 5 && deltaY <= 5) {
-        // 실제 네비게이션은 별도 함수에서 처리
-        return;
-      }
-    }
-  }, [touchStart]);
+    return true;
+  }, []);
 
   // 클릭/탭 네비게이션 핸들러
   const handleClick = React.useCallback((href: string, event?: React.MouseEvent) => {
@@ -215,13 +211,7 @@ const AppSidebarComponent = ({
 
   // 터치 탭 네비게이션 핸들러
   const handleTouchTap = React.useCallback((href: string) => {
-    console.log('Touch tap navigation:', { href, pathname, isMobile, touchMoved: touchMovedRef.current });
-    
-    // 드래그가 감지된 경우 네비게이션 방지
-    if (touchMovedRef.current) {
-      console.log('Touch drag detected, preventing navigation');
-      return;
-    }
+    console.log('Touch tap navigation:', { href, pathname, isMobile });
     
     if (pathname === href) {
       console.log('Already on the same page, skipping navigation');
@@ -270,13 +260,10 @@ const AppSidebarComponent = ({
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={(event) => {
-          handleTouchEnd(event);
-          // 터치가 끝난 후 드래그가 아닌 경우에만 네비게이션
-          setTimeout(() => {
-            if (!touchMovedRef.current && touchEndedRef.current) {
-              handleTouchTap(item.href);
-            }
-          }, 50); // 약간의 지연을 두어 상태 업데이트 완료 후 실행
+          // 터치 종료 시 드래그가 아닌 경우에만 네비게이션
+          if (handleTouchEnd(event)) {
+            handleTouchTap(item.href);
+          }
         }}
         className={cn(
           "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors text-left",
@@ -405,12 +392,9 @@ const AppSidebarComponent = ({
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={(event) => {
-                  handleTouchEnd(event);
-                  setTimeout(() => {
-                    if (!touchMovedRef.current && touchEndedRef.current) {
-                      handleTouchTap('/settings');
-                    }
-                  }, 50);
+                  if (handleTouchEnd(event)) {
+                    handleTouchTap('/settings');
+                  }
                 }}
                 className={cn(
                   "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors text-left",
@@ -428,12 +412,9 @@ const AppSidebarComponent = ({
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={(event) => {
-                  handleTouchEnd(event);
-                  setTimeout(() => {
-                    if (!touchMovedRef.current && touchEndedRef.current) {
-                      handleTouchTap('/help');
-                    }
-                  }, 50);
+                  if (handleTouchEnd(event)) {
+                    handleTouchTap('/help');
+                  }
                 }}
                 className={cn(
                   "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors text-left",
@@ -458,12 +439,9 @@ const AppSidebarComponent = ({
                       onTouchStart={handleTouchStart}
                       onTouchMove={handleTouchMove}
                       onTouchEnd={(event) => {
-                        handleTouchEnd(event);
-                        setTimeout(() => {
-                          if (!touchMovedRef.current && touchEndedRef.current) {
-                            handleTouchTap('/settings');
-                          }
-                        }, 50);
+                        if (handleTouchEnd(event)) {
+                          handleTouchTap('/settings');
+                        }
                       }}
                       className={cn(
                         "flex items-center justify-center cursor-pointer rounded-md text-sm font-medium transition-colors",
@@ -489,12 +467,9 @@ const AppSidebarComponent = ({
                       onTouchStart={handleTouchStart}
                       onTouchMove={handleTouchMove}
                       onTouchEnd={(event) => {
-                        handleTouchEnd(event);
-                        setTimeout(() => {
-                          if (!touchMovedRef.current && touchEndedRef.current) {
-                            handleTouchTap('/help');
-                          }
-                        }, 50);
+                        if (handleTouchEnd(event)) {
+                          handleTouchTap('/help');
+                        }
                       }}
                       className={cn(
                         "flex items-center justify-center cursor-pointer rounded-md text-sm font-medium transition-colors",

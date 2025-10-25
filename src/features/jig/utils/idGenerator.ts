@@ -1,32 +1,34 @@
 /**
- * 지그 요청 ID 생성 유틸리티
+ * 지그 요청 ID 생성 유틸리티 (HS-Jig-main 호환)
  */
 
-import { getDocumentsWithQuery } from '@/shared/services/firebase/firestore';
-import { JIG_COLLECTIONS } from '../constants';
+import { getDocument, updateDocument, addDocument } from '@/shared/services/firebase/firestore';
 
 export const generateJigRequestId = async (): Promise<string> => {
-  const today = new Date();
-  const year = today.getFullYear().toString().slice(-2);
-  const month = (today.getMonth() + 1).toString().padStart(2, '0');
-  const day = today.getDate().toString().padStart(2, '0');
-  const prefix = `${year}${month}${day}`;
-
-  // 오늘 날짜로 시작하는 모든 요청을 가져와서 가장 큰 시퀀스 번호를 찾습니다.
-  const requests = await getDocumentsWithQuery(
-    JIG_COLLECTIONS.REQUESTS,
-    [{ field: 'id', operator: '>=', value: `${prefix}-000` }, { field: 'id', operator: '<=', value: `${prefix}-999` }],
-    'id',
-    'desc',
-    1
-  );
-
-  let nextSequence = 1;
-  if (requests.length > 0) {
-    const lastId = requests[0].id as string;
-    const lastSequence = parseInt(lastId.split('-')[1], 10);
-    nextSequence = lastSequence + 1;
+  // HS-Jig-main과 동일한 방식: T{숫자} 형식 사용
+  
+  try {
+    // 카운터 문서 가져오기
+    const counterDoc = await getDocument('counters', 'jig-requests-counter');
+    
+    if (!counterDoc) {
+      // 카운터 문서가 없으면 생성
+      await addDocument('counters', {
+        id: 'jig-requests-counter',
+        count: 0
+      });
+    }
+    
+    const currentCount = counterDoc?.count || 0;
+    const newCount = currentCount + 1;
+    
+    // 카운터 업데이트
+    await updateDocument('counters', 'jig-requests-counter', { count: newCount });
+    
+    return `T${newCount}`;
+  } catch (error) {
+    console.error('ID 생성 실패:', error);
+    // 폴백: 타임스탬프 기반 ID
+    return `T${Date.now()}`;
   }
-
-  return `${prefix}-${nextSequence.toString().padStart(3, '0')}`;
 };

@@ -142,13 +142,33 @@ export const subscribeToJigMasters = (
 export const getAutocompleteData = async () => {
   const items = await getJigMasterItems();
   
-  const itemNames = [...new Set(items.map(item => item.itemName))].sort();
-  const partNames = [...new Set(items.map(item => item.partName))].sort();
-  const itemNumbers = [...new Set(items.map(item => item.itemNumber))].sort();
+  // 기존 필드와 새 필드 모두에서 데이터 수집
+  const productNames = [...new Set([
+    ...items.map(item => item.productName).filter(Boolean),
+    ...items.map(item => item.itemName).filter(Boolean)
+  ])].sort();
+  
+  const partNames = [...new Set(items.map(item => item.partName).filter(Boolean))].sort();
+  
+  const jigNumbers = [...new Set([
+    ...items.map(item => item.jigNumber).filter(Boolean),
+    ...items.map(item => item.itemNumber).filter(Boolean)
+  ])].sort();
+  
+  const suppliers = [...new Set(items.map(item => item.supplier).filter(Boolean))].sort();
+  
+  const orderNumbers = [...new Set(items.map(item => item.orderNumber).filter(Boolean))].sort();
   
   return {
-    itemNames,
+    // 기존 호환성 유지
+    itemNames: productNames,
     partNames,
-    itemNumbers,
+    itemNumbers: jigNumbers,
+    
+    // 새 필드들
+    productNames,
+    jigNumbers,
+    suppliers,
+    orderNumbers,
   };
 };

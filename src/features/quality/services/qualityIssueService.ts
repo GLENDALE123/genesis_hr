@@ -15,6 +15,7 @@ import { db } from '@/shared/services/firebase/config';
 import { QualityIssue, QualityIssueFormData } from '../types';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
 import { QualityIssueNotificationService } from '@/shared/services/notificationService';
+import { updateAutocompleteData } from './autocompleteService';
 
 const COLLECTION_NAME = 'quality-issues';
 
@@ -89,10 +90,23 @@ export const createQualityIssue = async (
         email: user.email,
       },
       status: 'in-progress' as const,
+      // 출하대기 관련 필드 추가
+      processedQuantity: 0, // 초기 처리 수량은 0
     };
 
 
     const docRef = await addDoc(getCollectionRef(), qualityIssueData);
+
+    // 출하대기 타입이 있으면 autocomplete 데이터 업데이트
+    if (formData.shippingWaitType) {
+      try {
+        await updateAutocompleteData({
+          shippingWaitType: formData.shippingWaitType
+        });
+      } catch (error) {
+        console.error('Autocomplete 데이터 업데이트 실패:', error);
+      }
+    }
 
     // 알림 발송
     try {
@@ -337,6 +351,56 @@ export const updateIssueStatus = async (issueId: string, newStatus: string): Pro
       status: newStatus.trim(),
       updatedAt: new Date().toISOString()
     });
+
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * 출하대기 처리 수량 업데이트
+ */
+export const updateProcessedQuantity = async (
+  issueId: string, 
+  additionalQuantity: number
+): Promise<void> => {
+  try {
+    if (additionalQuantity <= 0) {
+      throw new Error('처리 수량은 0보다 커야 합니다.');
+    }
+
+    if (!db) throw new Error('Firestore is not initialized');
+    const issueRef = doc(db, COLLECTION_NAME, issueId);
+    
+    // 현재 문서 조회
+    const issueDoc = await getDoc(issueRef);
+    if (!issueDoc.exists()) {
+      throw new Error('품질이슈를 찾을 수 없습니다.');
+    }
+
+    const currentData = issueDoc.data() as QualityIssue;
+    const currentProcessed = currentData.processedQuantity || 0;
+    const totalQuantity = currentData.shippingWaitQuantity || 0;
+    
+    // 처리 수량이 전체 수량을 초과하지 않도록 검증
+    if (currentProcessed + additionalQuantity > totalQuantity) {
+      throw new Error(`처리 수량이 전체 수량(${totalQuantity})을 초과할 수 없습니다. 현재 처리: ${currentProcessed}`);
+    }
+
+    const newProcessedQuantity = currentProcessed + additionalQuantity;
+    
+    // 처리완료수량이 전체수량과 동일하거나 넘어가면 해결완료 상태로 변경
+    const shouldMarkAsCompleted = newProcessedQuantity >= totalQuantity;
+    
+    const updateData: Partial<QualityIssue> = {
+      processedQuantity: newProcessedQuantity
+    };
+    
+    if (shouldMarkAsCompleted) {
+      updateData.status = '해결완료';
+    }
+    
+    await updateDoc(issueRef, updateData);
 
   } catch (error) {
     throw error;

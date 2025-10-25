@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/shared/components/ui/card';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -47,8 +47,22 @@ export const InspectionFilterPanel: React.FC<InspectionFilterPanelProps> = ({
   isFetching = false,
   onCreateInspection
 }) => {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false); // 모바일에서 기본적으로 접힌 상태
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  // 데스크톱에서는 기본적으로 펼쳐진 상태로 설정
+  useEffect(() => {
+    const checkScreenSize = () => {
+      if (window.innerWidth >= 768) { // md 브레이크포인트
+        setIsExpanded(true);
+      }
+    };
+
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
 
   return (
     <Card className="flex-shrink-0">

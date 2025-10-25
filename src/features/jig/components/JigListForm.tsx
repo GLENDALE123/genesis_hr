@@ -19,6 +19,8 @@ import { CreateJigMasterItemData } from '../types';
 import { PRODUCTION_TYPES } from '../constants';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useImageUpload } from '@/shared/hooks';
+import { useOrderNumberFormatter } from '@/shared/hooks/useOrderNumberFormatter';
+import { subscribeToAutocompleteData, type AutocompleteData } from '@/features/quality/services/autocompleteService';
 import { Upload, Camera } from 'lucide-react';
 
 interface JigListFormProps {
@@ -26,11 +28,6 @@ interface JigListFormProps {
   onClose: () => void;
   onSave: (data: CreateJigMasterItemData, imageFiles: File[]) => void;
   isLoading?: boolean;
-  autocompleteData?: {
-    itemNames: string[];
-    partNames: string[];
-    itemNumbers: string[];
-  };
 }
 
 export const JigListForm: React.FC<JigListFormProps> = ({
@@ -38,12 +35,23 @@ export const JigListForm: React.FC<JigListFormProps> = ({
   onClose,
   onSave,
   isLoading = false,
-  autocompleteData,
 }) => {
   const { user } = useAuthStore();
   
   // 이미지 업로드 훅 사용
   const imageUploadHook = useImageUpload();
+  
+  // autocomplete 데이터 상태
+  const [autocompleteData, setAutocompleteData] = useState<AutocompleteData>({
+    suppliers: [],
+    productNames: [],
+    partNames: [],
+    injectionColors: [],
+    specifications: [],
+    injectionCompanies: [],
+    shippingWaitTypes: [],
+    lastUpdated: ''
+  });
   
   // 파일 입력 ref
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -52,20 +60,61 @@ export const JigListForm: React.FC<JigListFormProps> = ({
   // 폼 상태
   const [formData, setFormData] = useState<CreateJigMasterItemData>({
     requestType: '',
-    itemName: '',
+    orderNumber: 'T',
+    supplier: '',
+    productName: '',
     partName: '',
-    itemNumber: '',
+    jigNumber: '',
     remarks: '',
   });
+
+  // 발주번호 포맷터 훅 사용
+  const { handleOrderNumberChange } = useOrderNumberFormatter({
+    onAutoFill: (data) => {
+      setFormData(prev => ({
+        ...prev,
+        supplier: data.supplier || prev.supplier,
+        productName: data.productName || prev.productName,
+        partName: data.partName || prev.partName,
+      }));
+    },
+    onClear: () => {
+      // 발주번호가 비어있을 때는 다른 필드를 초기화하지 않음
+    }
+  });
+
+  // autocomplete 데이터 구독
+  useEffect(() => {
+    const unsubscribe = subscribeToAutocompleteData((data) => {
+      if (data) {
+        setAutocompleteData(data);
+      } else {
+        setAutocompleteData({
+          suppliers: [],
+          productNames: [],
+          partNames: [],
+          injectionColors: [],
+          specifications: [],
+          injectionCompanies: [],
+          shippingWaitTypes: [],
+          lastUpdated: ''
+        });
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   // 폼 초기화
   useEffect(() => {
     if (isOpen) {
       setFormData({
         requestType: '',
-        itemName: '',
+        orderNumber: 'T',
+        supplier: '',
+        productName: '',
         partName: '',
-        itemNumber: '',
+        jigNumber: '',
         remarks: '',
       });
       
@@ -83,6 +132,13 @@ export const JigListForm: React.FC<JigListFormProps> = ({
   // 폼 데이터 업데이트
   const handleInputChange = (field: keyof CreateJigMasterItemData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // 발주번호 입력 핸들러
+  const handleOrderNumberInputChange = (value: string) => {
+    handleOrderNumberChange(value, (formatted) => {
+      setFormData(prev => ({ ...prev, orderNumber: formatted }));
+    });
   };
 
   // 파일 선택 핸들러
@@ -107,18 +163,23 @@ export const JigListForm: React.FC<JigListFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.itemName.trim()) {
-      alert('품목명을 입력해주세요.');
+    if (!formData.orderNumber?.trim()) {
+      alert('발주번호를 입력해주세요.');
       return;
     }
 
-    if (!formData.partName.trim()) {
-      alert('부품명을 입력해주세요.');
+    if (!formData.supplier?.trim()) {
+      alert('발주처를 입력해주세요.');
       return;
     }
 
-    if (!formData.itemNumber.trim()) {
-      alert('품목번호를 입력해주세요.');
+    if (!formData.productName?.trim()) {
+      alert('제품명을 입력해주세요.');
+      return;
+    }
+
+    if (!formData.partName?.trim()) {
+      alert('부속명을 입력해주세요.');
       return;
     }
 
@@ -139,9 +200,11 @@ export const JigListForm: React.FC<JigListFormProps> = ({
   const handleReset = () => {
     setFormData({
       requestType: '',
-      itemName: '',
+      orderNumber: 'T',
+      supplier: '',
+      productName: '',
       partName: '',
-      itemNumber: '',
+      jigNumber: '',
       remarks: '',
     });
     
@@ -157,12 +220,49 @@ export const JigListForm: React.FC<JigListFormProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh]" onOpenAutoFocus={(e: Event) => e.preventDefault()}>
+      <DialogContent 
+        className="max-w-2xl max-h-[90vh]" 
+        onOpenAutoFocus={(e: Event) => e.preventDefault()}
+        stickyFooter={
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleReset}
+              disabled={isLoading}
+            >
+              초기화
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={isLoading}
+            >
+              취소
+            </Button>
+            <Button
+              type="submit"
+              form="jig-form"
+              disabled={isLoading || !formData.orderNumber?.trim() || !formData.supplier?.trim() || !formData.productName?.trim() || !formData.partName?.trim()}
+            >
+              {isLoading ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" label="" />
+                  저장 중...
+                </>
+              ) : (
+                '등록'
+              )}
+            </Button>
+          </div>
+        }
+      >
         <DialogHeader>
           <DialogTitle>새 지그 등록</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form id="jig-form" onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-6">
               {/* 생산 구분 */}
               <div className="space-y-2">
@@ -175,50 +275,72 @@ export const JigListForm: React.FC<JigListFormProps> = ({
                 />
               </div>
 
-              {/* 품목명 */}
+              {/* 발주번호 */}
               <div className="space-y-2">
-                <Label htmlFor="itemName">품목명 *</Label>
+                <Label htmlFor="orderNumber">발주번호 *</Label>
+                <Input
+                  id="orderNumber"
+                  value={formData.orderNumber}
+                  onChange={(e) => handleOrderNumberInputChange(e.target.value)}
+                  placeholder="T로 시작하는 발주번호"
+                />
+              </div>
+
+              {/* 발주처 */}
+              <div className="space-y-2">
+                <Label htmlFor="supplier">발주처 *</Label>
                 <InputSelect
-                  value={formData.itemName}
-                  onChange={(value: string) => handleInputChange('itemName', value)}
-                  options={autocompleteData?.itemNames || []}
-                  placeholder="품목명을 입력하세요"
+                  value={formData.supplier}
+                  onChange={(value: string) => handleInputChange('supplier', value)}
+                  options={autocompleteData.suppliers}
+                  placeholder="발주처를 입력하거나 선택하세요"
                   allowCustomInput
                 />
               </div>
 
-              {/* 부품명 */}
+              {/* 제품명 */}
               <div className="space-y-2">
-                <Label htmlFor="partName">부품명 *</Label>
+                <Label htmlFor="productName">제품명 *</Label>
+                <InputSelect
+                  value={formData.productName}
+                  onChange={(value: string) => handleInputChange('productName', value)}
+                  options={autocompleteData.productNames}
+                  placeholder="제품명을 입력하거나 선택하세요"
+                  allowCustomInput
+                />
+              </div>
+
+              {/* 부속명 */}
+              <div className="space-y-2">
+                <Label htmlFor="partName">부속명 *</Label>
                 <InputSelect
                   value={formData.partName}
                   onChange={(value: string) => handleInputChange('partName', value)}
-                  options={autocompleteData?.partNames || []}
-                  placeholder="부품명을 입력하세요"
+                  options={autocompleteData.partNames}
+                  placeholder="부속명을 입력하거나 선택하세요"
                   allowCustomInput
                 />
               </div>
 
-              {/* 품목번호 */}
+              {/* 지그번호 */}
               <div className="space-y-2">
-                <Label htmlFor="itemNumber">품목번호 *</Label>
-                <InputSelect
-                  value={formData.itemNumber}
-                  onChange={(value: string) => handleInputChange('itemNumber', value)}
-                  options={autocompleteData?.itemNumbers || []}
-                  placeholder="품목번호를 입력하세요"
-                  allowCustomInput
+                <Label htmlFor="jigNumber">지그번호</Label>
+                <Input
+                  id="jigNumber"
+                  value={formData.jigNumber}
+                  onChange={(e) => handleInputChange('jigNumber', e.target.value)}
+                  placeholder="지그번호를 입력하세요"
                 />
               </div>
 
-              {/* 비고 */}
+              {/* 특이사항 */}
               <div className="space-y-2">
-                <Label htmlFor="remarks">비고</Label>
+                <Label htmlFor="remarks">특이사항</Label>
                 <Textarea
                   id="remarks"
                   value={formData.remarks}
                   onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleInputChange('remarks', e.target.value)}
-                  placeholder="비고사항을 입력하세요"
+                  placeholder="특이사항을 입력하세요"
                   rows={3}
                 />
               </div>
@@ -274,38 +396,6 @@ export const JigListForm: React.FC<JigListFormProps> = ({
                 )}
               </div>
           </div>
-
-          <DialogFooter className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleReset}
-              disabled={isLoading}
-            >
-              초기화
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={isLoading}
-            >
-              취소
-            </Button>
-            <Button
-              type="submit"
-              disabled={isLoading || !formData.itemName.trim() || !formData.partName.trim() || !formData.itemNumber.trim()}
-            >
-              {isLoading ? (
-                <>
-                  <LoadingSpinner size="sm" className="mr-2" />
-                  등록 중...
-                </>
-              ) : (
-                '등록'
-              )}
-            </Button>
-          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

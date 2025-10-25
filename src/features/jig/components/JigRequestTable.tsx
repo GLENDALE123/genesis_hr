@@ -72,13 +72,13 @@ const RequestTableRow: React.FC<{
   request: JigRequest;
   onSelectRequest: (request: JigRequest) => void;
   currentUserUid?: string;
-}> = memo(({ request, onSelectRequest, currentUserUid }) => {
+}> = ({ request, onSelectRequest, currentUserUid }) => {
   const unread = hasUnreadComments(request.comments, currentUserUid);
   const commentCount = (request.comments && request.comments.length) || 0;
 
   const handleRowClick = useCallback(() => {
     onSelectRequest(request);
-  }, [request, onSelectRequest]);
+  }, [request.id, onSelectRequest]);
 
   return (
     <TableRow
@@ -86,7 +86,7 @@ const RequestTableRow: React.FC<{
       onClick={handleRowClick}
     >
       {/* 댓글 컬럼 */}
-      <TableCell>
+      <TableCell className="px-2">
         <div className="flex items-center gap-2">
           {unread ? (
             <span 
@@ -137,17 +137,7 @@ const RequestTableRow: React.FC<{
       <TableCell className="text-right whitespace-nowrap">{request.quantity.toLocaleString()}</TableCell>
     </TableRow>
   );
-}, (prevProps, nextProps) => {
-  // 메모이제이션 비교 함수
-  return (
-    prevProps.request.id === nextProps.request.id &&
-    prevProps.request.status === nextProps.request.status &&
-    prevProps.request.comments?.length === nextProps.request.comments?.length &&
-    prevProps.currentUserUid === nextProps.currentUserUid &&
-    JSON.stringify(prevProps.request.comments?.map(c => ({ uid: c.uid, readBy: c.readBy }))) === 
-    JSON.stringify(nextProps.request.comments?.map(c => ({ uid: c.uid, readBy: c.readBy })))
-  );
-});
+};
 
 RequestTableRow.displayName = 'RequestTableRow';
 
@@ -208,7 +198,7 @@ export const JigRequestTable: React.FC<JigRequestTableProps> = ({
         <Table className="min-w-max">
           <TableHeader className="sticky top-0 z-10 bg-primary">
             <TableRow className="hover:bg-primary">
-              <TableHead className="whitespace-nowrap text-primary-foreground"></TableHead>
+              <TableHead className="whitespace-nowrap text-primary-foreground px-2"></TableHead>
               <SortableHeader field="requestDate">요청일자</SortableHeader>
               <SortableHeader field="deliveryDate">납기일</SortableHeader>
               <SortableHeader field="status">상태</SortableHeader>

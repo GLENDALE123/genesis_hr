@@ -35,8 +35,14 @@ export const DEPARTMENT_OPTIONS = [
 
 export const REGISTRATION_KEYWORD_OPTIONS = [
   '견본요청',
-  '견본도착', 
-  '한도생산'
+  '한도생산',
+  '출하대기'
+] as const;
+
+export const SHIPPING_WAIT_TYPE_OPTIONS = [
+  '선별대기',
+  '한도대기',
+  '세척대기'
 ] as const;
 
 export const PROCESS_KEYWORD_OPTIONS = [

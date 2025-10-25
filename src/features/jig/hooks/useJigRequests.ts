@@ -19,6 +19,7 @@ export const useJigRequests = () => {
     deleteRequest,
     addCommentToRequest,
     updateRequestStatus,
+    updateRequestQuantity,
   } = useJigRequestStore();
 
   // 컴포넌트 마운트 시 실시간 구독 시작
@@ -41,5 +42,6 @@ export const useJigRequests = () => {
     deleteRequest,
     addCommentToRequest,
     updateRequestStatus,
+    updateRequestQuantity,
   };
 };

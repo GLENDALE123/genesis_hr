@@ -11,12 +11,14 @@ import { ProfileSettings } from '@/features/settings/components/ProfileSettings'
 import { AppearanceSettings } from '@/features/settings/components/AppearanceSettings';
 import { AboutSettings } from '@/features/settings/components/AboutSettings';
 import { User, Bell, Palette, Info } from 'lucide-react';
+import { ProtectedRoute } from '@/shared/components/auth';
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('profile');
 
   return (
-    <div className="container mx-auto py-6 px-4 md:px-6 max-w-5xl">
+    <ProtectedRoute>
+      <div className="container mx-auto py-6 px-4 md:px-6 max-w-5xl">
       <div className="mb-6">
         <h1 className="text-3xl font-bold">설정</h1>
         <p className="text-muted-foreground mt-2">
@@ -60,7 +62,8 @@ export default function SettingsPage() {
           <AboutSettings />
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </ProtectedRoute>
   );
 }
 

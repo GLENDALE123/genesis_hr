@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import { AnnouncementContainer } from '@/features/announcements';
+import { ProtectedRoute } from '@/shared/components/auth';
 
 export const metadata: Metadata = {
   title: '공지사항 | HS Next',
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function AnnouncementsPage() {
-  return <AnnouncementContainer />;
+  return (
+    <ProtectedRoute>
+      <AnnouncementContainer />
+    </ProtectedRoute>
+  );
 }

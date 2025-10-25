@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import { WorkScheduleContainer } from '@/features/work-schedule';
+import { ProtectedRoute } from '@/shared/components/auth';
 
 export const metadata: Metadata = {
   title: '근무계획 | HS Next',
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function WorkSchedulePage() {
-  return <WorkScheduleContainer />;
+  return (
+    <ProtectedRoute>
+      <WorkScheduleContainer />
+    </ProtectedRoute>
+  );
 }

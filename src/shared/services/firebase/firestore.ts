@@ -4,6 +4,7 @@ import {
   getDoc,
   getDocs,
   addDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   query,
@@ -107,6 +108,17 @@ export const addDocument = async (collectionName: string, data: DocumentData) =>
   try {
     const docRef = await addDoc(getCollectionRef(collectionName), data);
     return docRef.id;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// 문서 설정 (수동 ID 지정)
+export const setDocument = async (collectionName: string, docId: string, data: DocumentData) => {
+  try {
+    const docRef = getDocRef(collectionName, docId);
+    await setDoc(docRef, data);
+    return docId;
   } catch (error) {
     throw error;
   }

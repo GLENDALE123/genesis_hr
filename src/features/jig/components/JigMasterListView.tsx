@@ -40,15 +40,34 @@ const JigMasterTableRow = memo<{
     return (item.createdBy && item.createdBy.displayName) || 'N/A';
   }, [item.createdBy?.displayName]);
 
+  // 필드 매핑 헬퍼 함수들
+  const getProductName = useMemo(() => {
+    return item.productName || item.itemName || '-';
+  }, [item.productName, item.itemName]);
+
+  const getJigNumber = useMemo(() => {
+    return item.jigNumber || item.itemNumber || '-';
+  }, [item.jigNumber, item.itemNumber]);
+
+  const getSupplier = useMemo(() => {
+    return item.supplier || '-';
+  }, [item.supplier]);
+
+  const getOrderNumber = useMemo(() => {
+    return item.orderNumber || '-';
+  }, [item.orderNumber]);
+
   return (
     <TableRow 
       className="hover:bg-muted/50"
       onClick={handleRowClick}
     >
       <TableCell className="whitespace-nowrap">{item.requestType}</TableCell>
-      <TableCell className="whitespace-nowrap font-semibold">{item.itemName}</TableCell>
+      <TableCell className="whitespace-nowrap">{getOrderNumber}</TableCell>
+      <TableCell className="whitespace-nowrap">{getSupplier}</TableCell>
+      <TableCell className="whitespace-nowrap font-semibold">{getProductName}</TableCell>
       <TableCell className="whitespace-nowrap">{item.partName}</TableCell>
-      <TableCell className="whitespace-nowrap font-mono">{item.itemNumber}</TableCell>
+      <TableCell className="whitespace-nowrap font-mono">{getJigNumber}</TableCell>
       <TableCell className="whitespace-nowrap">
         {imageCount > 0 ? (
           <div className="flex items-center gap-1 text-primary">
@@ -72,9 +91,13 @@ const JigMasterTableRow = memo<{
   // 커스텀 비교 함수로 불필요한 리렌더링 방지
   return (
     prevProps.item.id === nextProps.item.id &&
+    prevProps.item.productName === nextProps.item.productName &&
     prevProps.item.itemName === nextProps.item.itemName &&
     prevProps.item.partName === nextProps.item.partName &&
+    prevProps.item.jigNumber === nextProps.item.jigNumber &&
     prevProps.item.itemNumber === nextProps.item.itemNumber &&
+    prevProps.item.orderNumber === nextProps.item.orderNumber &&
+    prevProps.item.supplier === nextProps.item.supplier &&
     prevProps.item.requestType === nextProps.item.requestType &&
     prevProps.item.remarks === nextProps.item.remarks &&
     prevProps.item.createdAt === nextProps.item.createdAt &&
@@ -115,15 +138,19 @@ export const JigMasterListView: React.FC<JigMasterListViewProps> = ({
     
     return jigs.filter(jig => {
       // 각 필드를 미리 소문자로 변환하여 캐시
-      const itemName = jig.itemName.toLowerCase();
+      const productName = (jig.productName || jig.itemName || '').toLowerCase();
       const partName = jig.partName.toLowerCase();
-      const itemNumber = jig.itemNumber.toLowerCase();
+      const jigNumber = (jig.jigNumber || jig.itemNumber || '').toLowerCase();
+      const orderNumber = (jig.orderNumber || '').toLowerCase();
+      const supplier = (jig.supplier || '').toLowerCase();
       const requestType = jig.requestType.toLowerCase();
       const remarks = jig.remarks?.toLowerCase() || '';
       
-      return itemName.includes(search) ||
+      return productName.includes(search) ||
              partName.includes(search) ||
-             itemNumber.includes(search) ||
+             jigNumber.includes(search) ||
+             orderNumber.includes(search) ||
+             supplier.includes(search) ||
              requestType.includes(search) ||
              remarks.includes(search);
     });
@@ -165,10 +192,12 @@ export const JigMasterListView: React.FC<JigMasterListViewProps> = ({
       </CardHeader>
       <CardContent className="p-0 flex-1 min-h-0">
         <div className="h-full overflow-auto">
-          <Table className="w-full min-w-[1200px]">
+          <Table className="w-full min-w-[1400px]">
             <TableHeader>
               <TableRow>
                 <TableHead className="whitespace-nowrap">생산구분</TableHead>
+                <TableHead className="whitespace-nowrap">발주번호</TableHead>
+                <TableHead className="whitespace-nowrap">발주처</TableHead>
                 <TableHead className="whitespace-nowrap">제품명</TableHead>
                 <TableHead className="whitespace-nowrap">부속명</TableHead>
                 <TableHead className="whitespace-nowrap">지그번호</TableHead>
@@ -181,7 +210,7 @@ export const JigMasterListView: React.FC<JigMasterListViewProps> = ({
             <TableBody>
               {masterItems.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={10} className="py-8 text-center text-muted-foreground">
                     {searchTerm !== debouncedSearchTerm ? '검색 중...' : 
                      debouncedSearchTerm ? '검색된 지그가 없습니다.' : '등록된 지그가 없습니다.'}
                   </TableCell>

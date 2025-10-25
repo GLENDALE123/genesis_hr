@@ -61,9 +61,11 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     requestType: '',
-    itemName: '',
+    orderNumber: '',
+    supplier: '',
+    productName: '',
     partName: '',
-    itemNumber: '',
+    jigNumber: '',
     remarks: '',
   });
   const [isSaving, setIsSaving] = useState(false);
@@ -83,11 +85,13 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
   React.useEffect(() => {
     if (jig) {
       setFormData({
-        requestType: jig.requestType,
-        itemName: jig.itemName,
-        partName: jig.partName,
-        itemNumber: jig.itemNumber,
-        remarks: jig.remarks,
+        requestType: jig.requestType || '',
+        orderNumber: jig.orderNumber || '',
+        supplier: jig.supplier || '',
+        productName: jig.productName || jig.itemName || '', // 기존 데이터 호환
+        partName: jig.partName || '',
+        jigNumber: jig.jigNumber || jig.itemNumber || '', // 기존 데이터 호환
+        remarks: jig.remarks || '',
       });
       setExistingImages(jig.imageUrls || []);
       setIsEditing(false);
@@ -185,17 +189,19 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
     if (!jig) return;
     
     setFormData({
-      requestType: jig.requestType,
-      itemName: jig.itemName,
-      partName: jig.partName,
-      itemNumber: jig.itemNumber,
-      remarks: jig.remarks,
+      requestType: jig.requestType || '',
+      orderNumber: jig.orderNumber || '',
+      supplier: jig.supplier || '',
+      productName: jig.productName || jig.itemName || '', // 기존 데이터 호환
+      partName: jig.partName || '',
+      jigNumber: jig.jigNumber || jig.itemNumber || '', // 기존 데이터 호환
+      remarks: jig.remarks || '',
     });
     // 이미지 상태 초기화
-    setImageFiles([]);
-    setImagePreviews([]);
     setExistingImages(jig.imageUrls || []);
     setDeletedImages([]);
+    imageUploadHook.clearImages();
+    imageUploadHook.clearDeletedUrls();
     setIsEditing(false);
   };
 
@@ -262,94 +268,123 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
           <div ref={detailRef} className="space-y-6">
             <Card>
               <CardContent className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4 md:col-span-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="requestType">생산구분</Label>
-                      {isEditing ? (
-                        <Input
-                          id="requestType"
-                          name="requestType"
-                          value={formData.requestType}
-                          onChange={handleChange}
-                          placeholder="생산구분을 입력하세요"
-                        />
-                      ) : (
-                        <p className="text-sm text-muted-foreground">{jig.requestType}</p>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="itemName">제품명</Label>
-                      {isEditing ? (
-                        <Input
-                          id="itemName"
-                          name="itemName"
-                          value={formData.itemName}
-                          onChange={handleChange}
-                          placeholder="제품명을 입력하세요"
-                          required
-                        />
-                      ) : (
-                        <p className="text-lg font-semibold">{jig.itemName}</p>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="partName">부속명</Label>
-                      {isEditing ? (
-                        <Input
-                          id="partName"
-                          name="partName"
-                          value={formData.partName}
-                          onChange={handleChange}
-                          placeholder="부속명을 입력하세요"
-                        />
-                      ) : (
-                        <p className="text-sm text-muted-foreground">{jig.partName}</p>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="itemNumber">지그번호</Label>
-                      {isEditing ? (
-                        <Input
-                          id="itemNumber"
-                          name="itemNumber"
-                          value={formData.itemNumber}
-                          onChange={handleChange}
-                          placeholder="지그번호를 입력하세요"
-                        />
-                      ) : (
-                        <p className="text-sm text-muted-foreground">{jig.itemNumber}</p>
-                      )}
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="requestType">생산구분</Label>
+                    {isEditing ? (
+                      <Input
+                        id="requestType"
+                        name="requestType"
+                        value={formData.requestType}
+                        onChange={handleChange}
+                        placeholder="생산구분을 입력하세요"
+                      />
+                    ) : (
+                      <p className="text-sm text-muted-foreground">{jig.requestType}</p>
+                    )}
                   </div>
-                  
-                  <div className="md:col-span-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="remarks">특이사항</Label>
-                      {isEditing ? (
-                        <Textarea
-                          id="remarks"
-                          name="remarks"
-                          value={formData.remarks}
-                          onChange={handleChange}
-                          placeholder="특이사항을 입력하세요"
-                          rows={5}
-                        />
-                      ) : (
-                        <div className="p-3 bg-muted rounded-md">
-                          <p className="text-sm whitespace-pre-wrap">
-                            {jig.remarks || '없음'}
-                          </p>
-                        </div>
-                      )}
-                    </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="orderNumber">발주번호</Label>
+                    {isEditing ? (
+                      <Input
+                        id="orderNumber"
+                        name="orderNumber"
+                        value={formData.orderNumber}
+                        onChange={handleChange}
+                        placeholder="발주번호를 입력하세요"
+                        required
+                      />
+                    ) : (
+                      <p className="text-lg font-semibold">{jig.orderNumber}</p>
+                    )}
                   </div>
-                  
-                  {/* 첨부 이미지 섹션 */}
-                  <div className="md:col-span-2">
+
+                  <div className="space-y-2">
+                    <Label htmlFor="supplier">발주처</Label>
+                    {isEditing ? (
+                      <Input
+                        id="supplier"
+                        name="supplier"
+                        value={formData.supplier}
+                        onChange={handleChange}
+                        placeholder="발주처를 입력하세요"
+                        required
+                      />
+                    ) : (
+                      <p className="text-lg font-semibold">{jig.supplier}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="productName">제품명</Label>
+                    {isEditing ? (
+                      <Input
+                        id="productName"
+                        name="productName"
+                        value={formData.productName}
+                        onChange={handleChange}
+                        placeholder="제품명을 입력하세요"
+                        required
+                      />
+                    ) : (
+                      <p className="text-lg font-semibold">{jig.productName || jig.itemName}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="partName">부속명</Label>
+                    {isEditing ? (
+                      <Input
+                        id="partName"
+                        name="partName"
+                        value={formData.partName}
+                        onChange={handleChange}
+                        placeholder="부속명을 입력하세요"
+                      />
+                    ) : (
+                      <p className="text-sm text-muted-foreground">{jig.partName}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="jigNumber">지그번호</Label>
+                    {isEditing ? (
+                      <Input
+                        id="jigNumber"
+                        name="jigNumber"
+                        value={formData.jigNumber}
+                        onChange={handleChange}
+                        placeholder="지그번호를 입력하세요"
+                      />
+                    ) : (
+                      <p className="text-sm text-muted-foreground">{jig.jigNumber || jig.itemNumber}</p>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="space-y-2 mt-6">
+                  <Label htmlFor="remarks">특이사항</Label>
+                  {isEditing ? (
+                    <Textarea
+                      id="remarks"
+                      name="remarks"
+                      value={formData.remarks}
+                      onChange={handleChange}
+                      placeholder="특이사항을 입력하세요"
+                      rows={5}
+                    />
+                  ) : (
+                    <div className="p-3 bg-muted rounded-md">
+                      <p className="text-sm whitespace-pre-wrap">
+                        {jig.remarks || '없음'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                
+                {/* 첨부 이미지 섹션 */}
+                <div className="mt-6">
                     <Label>첨부 이미지</Label>
                     
                     {/* 기존 이미지들 */}
@@ -392,13 +427,13 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
                     )}
                     
                     {/* 새로 추가된 이미지들 */}
-                    {imagePreviews.length > 0 && (
+                    {imageUploadHook.uploadingImages.length > 0 && (
                       <div className="mt-2 mb-4">
                         <div className="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-2">
-                          {imagePreviews.map((preview, index) => (
+                          {imageUploadHook.uploadingImages.map((item, index) => (
                             <div key={`new-${index}`} className="group relative">
                               <img
-                                src={preview}
+                                src={item.preview || ''}
                                 alt=""
                                 aria-label={`첨부 이미지 ${index + 1}`}
                                 width={160}
@@ -416,7 +451,7 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
                                 variant="destructive"
                                 size="sm"
                                 className="absolute top-1 right-1 w-6 h-6 p-0"
-                                onClick={() => removeImage(index, false)}
+                                onClick={() => imageUploadHook.removeImage(index)}
                               >
                                 <X className="h-3 w-3" />
                               </Button>
@@ -489,7 +524,6 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
                         )}
                       </div>
                     )}
-                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -503,7 +537,7 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
           <AlertDialogHeader>
             <AlertDialogTitle>지그 삭제 확인</AlertDialogTitle>
             <AlertDialogDescription>
-              정말로 '{jig.itemName}' 지그 정보를 삭제하시겠습니까? 
+              정말로 '{jig.productName || jig.itemName}' 지그 정보를 삭제하시겠습니까? 
               이 작업은 되돌릴 수 없습니다.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -521,7 +555,7 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
 
       {/* 이미지 라이트박스 */}
       <ImageLightbox 
-        images={[...existingImages, ...imagePreviews]} 
+        images={[...existingImages, ...imageUploadHook.uploadingImages.map(item => item.preview || '').filter(Boolean)]} 
         initialIndex={lightboxIndex} 
         open={lightboxOpen}
         onClose={() => setLightboxOpen(false)} 
