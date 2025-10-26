@@ -213,11 +213,27 @@ const ProductionRequestDetailModalComponent: React.FC<ProductionRequestDetailMod
                 </>
               )}
               {canManage && request.status === ProductionRequestStatus.InProgress && (
+                <>
+                  <Button
+                    onClick={() => setActionModalState({ open: true, status: ProductionRequestStatus.Hold, reason: '' })}
+                    className="bg-orange-500 hover:bg-orange-600"
+                  >
+                    보류
+                  </Button>
+                  <Button
+                    onClick={() => onStatusUpdate && onStatusUpdate(request.id, ProductionRequestStatus.Completed, '완료 처리됨')}
+                    className="bg-blue-500 hover:bg-blue-600"
+                  >
+                    완료 처리
+                  </Button>
+                </>
+              )}
+              {canManage && request.status === ProductionRequestStatus.Hold && (
                 <Button
-                  onClick={() => onStatusUpdate && onStatusUpdate(request.id, ProductionRequestStatus.Completed, '완료 처리됨')}
-                  className="bg-blue-500 hover:bg-blue-600"
+                  onClick={() => onStatusUpdate && onStatusUpdate(request.id, ProductionRequestStatus.InProgress, '보류에서 진행중으로 변경됨')}
+                  className="bg-green-500 hover:bg-green-600"
                 >
-                  완료 처리
+                  진행중으로 변경
                 </Button>
               )}
               {isAdmin && (

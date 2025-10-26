@@ -344,39 +344,27 @@ export default function DashboardPage() {
           payload = {
             targetUsers: [user.uid], // 본인에게만
             type: 'daily-report',
-            title: '생산일보 상태 변경',
-            body: `${userProfile.displayName}님이 생산일보 상태를 "작업중"으로 변경했습니다.
-
-제품: 테스트제품 / 테스트부속
-라인: 증착1
-작업일: ${new Date().toISOString().split('T')[0]}
-이전 상태: 대기
-현재 상태: 작업중`,
+            title: '생산일보',
+            body: `증착1에서 PO-TEST-001/테스트공급사/테스트제품 테스트부속을 대기에서 작업중으로 변경하였습니다`,
             requestId: `TEST-DAILY-REPORT-STATUS-${Date.now()}`,
-            subtitle: '테스트제품 / 증착1',
+            subtitle: '테스트공급사/테스트제품 테스트부속',
             senderName: userProfile.displayName,
             senderUid: user.uid,
             priority: 'normal',
-            centerInfo: '생산일보 상태 변경'
+            centerInfo: '작업중'
           };
         } else if (selectedRequestType === '샘플 요청 상태 변경') {
           payload = {
             targetUsers: [user.uid], // 본인에게만
             type: 'sample-status',
-            title: '샘플 요청 상태 변경',
-            body: `${userProfile.displayName}님이 샘플 요청 상태를 "진행중"으로 변경했습니다.
-
-제품: 테스트제품
-고객사: 테스트고객사
-요청일: ${new Date().toISOString().split('T')[0]}
-이전 상태: 접수
-현재 상태: 진행중`,
+            title: '샘플 요청',
+            body: `"테스트제품" 샘플 요청 상태가 접수에서 진행중으로 변경되었습니다.`,
             requestId: `TEST-SAMPLE-STATUS-${Date.now()}`,
-            subtitle: '테스트제품 / 테스트고객사',
+            subtitle: '테스트제품',
             senderName: userProfile.displayName,
             senderUid: user.uid,
             priority: 'normal',
-            centerInfo: '샘플 요청 상태 변경'
+            centerInfo: '진행중'
           };
         } else if (selectedRequestType === '샘플 요청') {
           payload = {

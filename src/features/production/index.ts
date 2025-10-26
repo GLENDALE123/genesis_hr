@@ -56,3 +56,4 @@ export {
 
 // Constants
 export { TABLE_CELL_STYLES, TABLE_HEAD_STYLES } from './constants/tableStyles';
+export { PRODUCTION_STATUS_COLORS } from './constants';

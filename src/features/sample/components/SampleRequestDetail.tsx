@@ -87,16 +87,57 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
   const workImageInputRef = React.useRef<HTMLInputElement>(null);
   const cameraInputRef = React.useRef<HTMLInputElement>(null);
 
+  // 실시간 업데이트된 request
+  const [currentRequest, setCurrentRequest] = useState<SampleRequest | null>(request);
+  const unsubscribeRef = React.useRef<(() => void) | null>(null);
+
   // 댓글 훅
   const comments = useComments(SAMPLE_REQUESTS_COLLECTION);
 
+  // 모달이 열릴 때 실시간 구독 시작
+  useEffect(() => {
+    if (!open || !request?.id) return;
+
+    const initRealtimeSubscription = async () => {
+      const { SampleService } = await import('../services');
+      
+      // 해당 request의 실시간 구독 시작
+      const unsubscribe = SampleService.subscribeToSampleRequests((requests) => {
+        const updated = requests.find(r => r.id === request.id);
+        if (updated) {
+          setCurrentRequest(updated);
+          // workData도 동기화
+          setWorkData(updated.workData || {});
+        }
+      });
+
+      unsubscribeRef.current = unsubscribe;
+    };
+
+    initRealtimeSubscription();
+
+    // 클린업
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+    };
+  }, [open, request?.id]);
+
+  // request prop이 변경되면 currentRequest도 업데이트
+  useEffect(() => {
+    setCurrentRequest(request);
+    setWorkData(request?.workData || {});
+  }, [request]);
+
   // 모달이 열릴 때 읽지 않은 댓글 자동 읽음 처리
   useEffect(() => {
-    if (open && request && currentUserUid && request.comments && request.comments.length > 0) {
+    if (open && currentRequest && currentUserUid && currentRequest.comments && currentRequest.comments.length > 0) {
       const markCommentsAsRead = async () => {
         try {
           // 읽지 않은 댓글들 찾기 (hasUnreadComments와 동일한 로직)
-          const unreadComments = (request.comments || []).filter(comment => {
+          const unreadComments = (currentRequest.comments || []).filter(comment => {
             // readBy 배열이 없으면 빈 배열로 간주
             const readBy = comment.readBy || [];
             
@@ -108,11 +149,11 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
           });
 
           console.log('📊 샘플 요청 댓글 통계:', {
-            requestId: request.id,
-            totalComments: request.comments.length,
+            requestId: currentRequest.id,
+            totalComments: currentRequest.comments.length,
             unreadCount: unreadComments.length,
             currentUserUid,
-            allComments: request.comments.map(c => ({
+            allComments: currentRequest.comments.map(c => ({
               id: c.id,
               uid: c.uid,
               readBy: c.readBy || [],
@@ -130,7 +171,7 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
             
             await CommentsService.markAsRead(
               SAMPLE_REQUESTS_COLLECTION,
-              request.id,
+              currentRequest.id,
               comment.id,
               currentUserUid
             );
@@ -148,13 +189,13 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
       markCommentsAsRead();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, (request && request.id), currentUserUid]);
+  }, [open, (currentRequest && currentRequest.id), currentUserUid]);
 
   const canManage = isAdmin;
 
   // 작업 정보가 비어있는지 확인하는 함수
   const isWorkDataEmpty = () => {
-    const workData = request?.workData;
+    const workData = currentRequest?.workData;
     if (!workData) return true;
     
     return !workData.undercoat?.conditions && 
@@ -166,7 +207,7 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
   };
 
   // 작업 이미지가 있는지 확인
-  const hasWorkImages = request?.workImageUrls && request.workImageUrls.length > 0;
+  const hasWorkImages = currentRequest?.workImageUrls && currentRequest.workImageUrls.length > 0;
 
   // 작업 정보가 비어있으면 자동으로 수정 모드 시작
   const [isEditingWorkData, setIsEditingWorkData] = useState(() => isWorkDataEmpty() && !hasWorkImages);
@@ -174,7 +215,7 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
   // 작업 데이터는 기본적으로 펼쳐진 상태
   const [isWorkDataOpen, setIsWorkDataOpen] = useState(true);
 
-  if (!request) return null;
+  if (!currentRequest) return null;
 
   // 작업 데이터 변경
   const handleWorkDataChange = (
@@ -193,41 +234,45 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
 
   // 작업 데이터 저장
   const handleSaveWorkData = async () => {
-    await onUpdateWorkData(request.id, workData);
+    if (!currentRequest) return;
+    await onUpdateWorkData(currentRequest.id, workData);
   };
 
   // 상태 변경
   const handleStatusChange = async (newStatus: SampleStatus) => {
+    if (!currentRequest) return;
     if (newStatus === SampleStatus.OnHold || newStatus === SampleStatus.Rejected) {
       setChangingStatus(newStatus);
       return;
     }
 
-    await onUpdateStatus(request.id, newStatus);
+    await onUpdateStatus(currentRequest.id, newStatus);
   };
 
   // 보류/반려 확인
   const handleConfirmStatusChange = async () => {
-    if (!changingStatus) return;
+    if (!changingStatus || !currentRequest) return;
     
-    await onUpdateStatus(request.id, changingStatus, statusChangeReason, workData);
+    await onUpdateStatus(currentRequest.id, changingStatus, statusChangeReason, workData);
     setChangingStatus(null);
     setStatusChangeReason('');
   };
 
   // 삭제 확인
   const handleConfirmDelete = async () => {
-    await onDelete(request.id);
+    if (!currentRequest) return;
+    await onDelete(currentRequest.id);
     setShowDeleteConfirm(false);
     onClose();
   };
 
   // 댓글 추가
   const handleAddComment = async (text: string) => {
+    if (!currentRequest) return;
     const { user: authUser } = useAuthStore.getState();
     const displayName = authUser?.displayName || authUser?.email || currentUserUid;
     
-    await comments.addComment(request.id, {
+    await comments.addComment(currentRequest.id, {
       text,
       user: displayName, // 실제 사용자 이름
       uid: currentUserUid,
@@ -254,12 +299,12 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
 
   // 작업 이미지 업로드 (기존 함수 유지 - 단일 파일 업로드용)
   const handleWorkImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return;
+    if (!e.target.files || e.target.files.length === 0 || !currentRequest) return;
     
     setUploadingWorkImage(true);
     try {
       const file = e.target.files[0];
-      await onUploadWorkImage(request.id, file);
+      await onUploadWorkImage(currentRequest.id, file);
     } catch (error) {
       console.error('작업 이미지 업로드 실패:', error);
     } finally {
@@ -274,7 +319,7 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
   const handleToggleEditMode = () => {
     if (isEditingWorkData) {
       // 수정 모드 종료 시 원본 데이터로 복원
-      setWorkData((request && request.workData) || {});
+      setWorkData((currentRequest && currentRequest.workData) || {});
     }
     setIsEditingWorkData(!isEditingWorkData);
   };
@@ -299,10 +344,10 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
         stickyHeader={
           <div className="flex justify-between items-start">
             <DialogTitle className="text-xl font-bold">
-              {request.productName} ({request.clientName})
+              {currentRequest.productName} ({currentRequest.clientName})
             </DialogTitle>
-            <Badge className={`px-4 py-2 text-base font-bold rounded-full ${SAMPLE_STATUS_COLORS[request.status]}`}>
-              {request.status}
+            <Badge className={`px-4 py-2 text-base font-bold rounded-full ${SAMPLE_STATUS_COLORS[currentRequest.status]}`}>
+              {currentRequest.status}
             </Badge>
           </div>
         }
@@ -311,7 +356,7 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
             <div className="flex gap-2">
               {canManage && (
                 <>
-                  <Button variant="outline" onClick={() => onEdit(request)}>
+                  <Button variant="outline" onClick={() => onEdit(currentRequest)}>
                     <Edit className="h-4 w-4 mr-1" />
                     수정
                   </Button>
@@ -327,12 +372,12 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
             </div>
 
             <div className="flex gap-2 ml-auto">
-              {request.status === SampleStatus.Received && (
+              {currentRequest.status === SampleStatus.Received && (
                 <Button onClick={() => handleStatusChange(SampleStatus.InProgress)}>
                   진행중으로 변경
                 </Button>
               )}
-              {request.status === SampleStatus.InProgress && (
+              {currentRequest.status === SampleStatus.InProgress && (
                 <>
                   <Button onClick={() => handleStatusChange(SampleStatus.Completed)}>
                     완료
@@ -345,13 +390,13 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
                   </Button>
                 </>
               )}
-              {request.status === SampleStatus.OnHold && (
+              {currentRequest.status === SampleStatus.OnHold && (
                 <Button onClick={() => handleStatusChange(SampleStatus.InProgress)}>
                   진행중으로 재개
                 </Button>
               )}
-              {(request.status === SampleStatus.Received ||
-                request.status === SampleStatus.InProgress) && (
+              {(currentRequest.status === SampleStatus.Received ||
+                currentRequest.status === SampleStatus.InProgress) && (
                 <Button
                   variant="destructive"
                   onClick={() => handleStatusChange(SampleStatus.Rejected)}
@@ -373,10 +418,10 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
             <CardContent className="space-y-6">
               {/* 기본 정보 */}
               <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-6">
-                <DetailItem label="요청일" value={request.requestDate} />
-                <DetailItem label="납기요청일" value={request.dueDate} />
-                <DetailItem label="요청담당자" value={request.requesterName} />
-                <DetailItem label="연락처" value={request.contact} />
+                <DetailItem label="요청일" value={currentRequest.requestDate} />
+                <DetailItem label="납기요청일" value={currentRequest.dueDate} />
+                <DetailItem label="요청담당자" value={currentRequest.requesterName} />
+                <DetailItem label="연락처" value={currentRequest.contact} />
               </dl>
 
               <Separator />
@@ -395,7 +440,7 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {request.items.map((item, index) => (
+                    {currentRequest?.items?.map((item, index) => (
                       <TableRow key={index}>
                         <TableCell className="font-medium">{item.partName}</TableCell>
                         <TableCell>{item.colorSpec}</TableCell>
@@ -414,24 +459,24 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
               <div className="space-y-1.5">
                 <Label className="text-base font-semibold">비고</Label>
                 <div className="p-3 bg-muted rounded-md whitespace-pre-wrap text-sm">
-                  {request.remarks || '-'}
+                  {currentRequest?.remarks || '-'}
                 </div>
               </div>
 
               {/* 참고 이미지 */}
-              {request.imageUrls && request.imageUrls.length > 0 && (
+              {currentRequest?.imageUrls && currentRequest.imageUrls.length > 0 && (
                 <div className="space-y-2">
-                  <Label className="text-base font-semibold">참고 이미지 ({request.imageUrls.length})</Label>
-                  <ImageGalleryGrid images={request.imageUrls} />
+                  <Label className="text-base font-semibold">참고 이미지 ({currentRequest.imageUrls.length})</Label>
+                  <ImageGalleryGrid images={currentRequest.imageUrls} />
                 </div>
               )}
             </CardContent>
           </Card>
 
           {/* Card 2: 작업 정보 (진행중/완료/보류 상태일 때만 표시) */}
-          {(request.status === SampleStatus.InProgress || 
-            request.status === SampleStatus.Completed ||
-            request.status === SampleStatus.OnHold) && (
+          {(currentRequest && (currentRequest.status === SampleStatus.InProgress || 
+            currentRequest.status === SampleStatus.Completed ||
+            currentRequest.status === SampleStatus.OnHold)) && (
             <Card>
               <CardHeader>
                 <CardTitle>작업 정보</CardTitle>
@@ -499,9 +544,9 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label className="text-base font-semibold">
-                      작업 이미지 {request.workImageUrls ? `(${request.workImageUrls.length})` : ''}
+                      작업 이미지 {currentRequest?.workImageUrls ? `(${currentRequest.workImageUrls.length})` : ''}
                     </Label>
-                    {canManage && request.status === SampleStatus.InProgress && (
+                    {canManage && currentRequest?.status === SampleStatus.InProgress && (
                       <div className="flex gap-2">
                         <Button 
                           onClick={() => workImageInputRef.current && workImageInputRef.current.click()} 
@@ -545,8 +590,8 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
                   />
                   
                   {/* 기존 작업 이미지 */}
-                  {request.workImageUrls && request.workImageUrls.length > 0 ? (
-                    <ImageGalleryGrid images={request.workImageUrls} />
+                  {currentRequest?.workImageUrls && currentRequest.workImageUrls.length > 0 ? (
+                    <ImageGalleryGrid images={currentRequest.workImageUrls} />
                   ) : (
                     <div className="text-sm text-muted-foreground text-center py-8 border border-dashed rounded-md">
                       작업 이미지가 없습니다.
@@ -611,7 +656,7 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
 
           {/* 처리 이력 (Card 밖에 별도 배치) */}
           <ProcessingHistory 
-            history={request.history} 
+            history={currentRequest?.history || []} 
             statusColorMap={SAMPLE_STATUS_COLORS}
             userField="by"
             className="space-y-2"
@@ -619,11 +664,11 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
 
           {/* 댓글 섹션 (Card 밖에 별도 배치) - 동적 로딩 */}
           <DynamicCommentsSection
-            comments={request.comments}
+            comments={currentRequest?.comments || []}
             onAddComment={handleAddComment}
-            onDeleteComment={(commentId) => comments.deleteComment(request.id, commentId)}
+            onDeleteComment={(commentId) => comments.deleteComment(currentRequest?.id || '', commentId)}
             onEditComment={(commentId, newText) =>
-              comments.updateComment(request.id, commentId, newText)
+              comments.updateComment(currentRequest?.id || '', commentId, newText)
             }
             currentUserUid={currentUserUid}
             isAdmin={isAdmin}

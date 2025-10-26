@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { InboxNotification } from '@/shared/hooks/useNotifications';
 import { cn } from '@/shared/lib/utils';
+import { PRODUCTION_STATUS_COLORS } from '@/features/production/constants';
 
 interface NotificationPanelProps {
   notifications: InboxNotification[];
@@ -118,6 +119,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             const requestType = notif.metadata?.centerInfo;
             const title = notif.title as string;
             const isDailyReport = title === '생산일보';
+            const isSampleRequest = title === '샘플 요청';
             const isLogisticsType = requestType || 
               title?.includes('생산관리부') || 
               title?.includes('부족분') || 
@@ -178,17 +180,29 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                         {title}
                       </span>
                       {requestType && (
-                        <span className={cn(
-                          "text-xs font-semibold",
-                          isUrgent ? "text-red-600 dark:text-red-400" : "text-primary"
-                        )}>
-                          {requestType as string}
-                        </span>
+                        isDailyReport ? (
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "text-xs font-semibold border",
+                              PRODUCTION_STATUS_COLORS[requestType as string] || "bg-gray-100 text-gray-800 border-gray-300"
+                            )}
+                          >
+                            {requestType as string}
+                          </Badge>
+                        ) : (
+                          <span className={cn(
+                            "text-xs font-semibold",
+                            isUrgent ? "text-red-600 dark:text-red-400" : "text-primary"
+                          )}>
+                            {requestType as string}
+                          </span>
+                        )
                       )}
                     </div>
                     <div className="flex items-start gap-2">
                       <Avatar className="h-8 w-8 flex-shrink-0">
-                        {senderName.toLowerCase() === '시스템' || isScheduleNotification || isDailyReport ? (
+                        {senderName.toLowerCase() === '시스템' || isScheduleNotification || isDailyReport || isSampleRequest ? (
                           <div className="h-full w-full rounded-full bg-primary flex items-center justify-center">
                             <span className="text-white font-bold text-xs">TMS</span>
                           </div>
@@ -203,14 +217,14 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                       </Avatar>
                       <div className="flex-1 min-w-0 w-full">
                         <div className="flex items-center gap-2 mb-1 w-full">
-                          {senderName.toLowerCase() !== '시스템' && !isScheduleNotification && !isDailyReport && (
+                          {senderName.toLowerCase() !== '시스템' && !isScheduleNotification && !isDailyReport && !isSampleRequest && (
                             <>
                               <span className="text-sm font-semibold text-foreground whitespace-nowrap">{senderName as string}</span>
                               <span className="text-xs text-muted-foreground">•</span>
                             </>
                           )}
                           <span className="text-sm font-medium text-foreground flex-1 min-w-0 pr-2">
-                            {supplier && !isScheduleNotification && !isDailyReport && `${supplier} `}
+                            {supplier && !isScheduleNotification && !isDailyReport && !isSampleRequest && `${supplier} `}
                             {subtitle || ''}
                           </span>
                           <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">

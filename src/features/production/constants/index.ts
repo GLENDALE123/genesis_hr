@@ -67,3 +67,10 @@ export const DEFECT_RATE_THRESHOLDS = {
   GOOD: 5,
   WARNING: 10
 };
+
+// 생산일보 상태별 뱃지 색상 (테이블과 동일한 CSS 변수 사용)
+export const PRODUCTION_STATUS_COLORS: Record<string, string> = {
+  '대기': 'bg-[hsl(var(--status-requested))] text-[hsl(var(--status-requested-foreground))] border-transparent',
+  '작업중': 'bg-[hsl(var(--status-inprogress))] text-[hsl(var(--status-inprogress-foreground))] border-transparent',
+  '생산완료': 'bg-[hsl(var(--status-completed))] text-[hsl(var(--status-completed-foreground))] border-transparent'
+};

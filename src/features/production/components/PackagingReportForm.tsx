@@ -117,7 +117,8 @@ export const PackagingReportForm: React.FC<PackagingReportFormProps> = ({
               생산라인 <span className="text-destructive ml-1">*</span>
             </label>
             <Select
-              value={formData.productionLine}
+              key={`productionLine-${formData.productionLine || 'empty'}`}
+              value={formData.productionLine || ''}
               onValueChange={(value) => handleInputChange('productionLine', value)}
             >
               <SelectTrigger className="w-full">
@@ -134,7 +135,8 @@ export const PackagingReportForm: React.FC<PackagingReportFormProps> = ({
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-foreground">라인비율</label>
             <Select
-              value={formData.lineRatio}
+              key={`lineRatio-${formData.lineRatio || 'empty'}`}
+              value={formData.lineRatio || ''}
               onValueChange={(value) => handleInputChange('lineRatio', value)}
             >
               <SelectTrigger className="w-full">

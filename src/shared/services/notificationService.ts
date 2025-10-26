@@ -259,8 +259,7 @@ export class UnifiedNotificationService {
 
       const fullPayload: NotificationPayload = {
         ...payload,
-        type: NotificationType.PRODUCTION_REQUEST,
-        priority: NotificationPriority.NORMAL,
+        priority: payload.priority || NotificationPriority.NORMAL,
         targetUsers: allowedUsers
       };
 
@@ -742,17 +741,21 @@ export class UnifiedNotificationService {
   static async sendSampleStatusChangeNotification(
     oldStatus: string | undefined,
     newStatus: string,
-    sampleTitle: string,
+    clientName: string,
+    productName: string,
     author: string,
     authorId: string,
-    sampleId?: string
+    sampleId?: string,
+    partName?: string
   ): Promise<{ success: boolean; targetCount: number; error?: string }> {
     try {
       // title: 샘플 요청
       const title = '샘플 요청';
       
-      // subtitle: 샘플 제품명
-      const subtitle = sampleTitle;
+      // subtitle: 발주처(고객사명)/제품명+부속명
+      const hasPart = typeof partName === 'string' && partName.length > 0;
+      const productAndPart = hasPart ? (productName + '+' + partName) : productName;
+      const subtitle = '발주처(' + clientName + ')/' + productAndPart;
       
       // centerInfo: 현재 상태만 표시
       const centerInfo = getStatusMessage('sample', newStatus);
@@ -763,11 +766,11 @@ export class UnifiedNotificationService {
       
       if (oldStatus === undefined) {
         // 등록 시
-        body = `"${sampleTitle}" 샘플 요청이 ${newStatusText}으로 등록되었습니다.`;
+        body = `"${productAndPart}" 샘플 요청이 ${newStatusText}으로 등록되었습니다.`;
       } else {
         // 상태 변경 시
         const oldStatusText = getStatusMessage('sample', oldStatus);
-        body = `"${sampleTitle}" 샘플 요청 상태가 ${oldStatusText}에서 ${newStatusText}로 변경되었습니다.`;
+        body = `"${productAndPart}" 샘플 요청 상태가 ${oldStatusText}에서 ${newStatusText}로 변경되었습니다.`;
       }
       
       const result = await this.sendNotification({
@@ -781,7 +784,9 @@ export class UnifiedNotificationService {
         priority: NotificationPriority.NORMAL,
         centerInfo,
         metadata: {
-          sampleTitle,
+          clientName,
+          productName,
+          partName,
           sampleId,
           oldStatus,
           newStatus

@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/shared/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/shared/components/ui/alert-dialog';
@@ -29,6 +30,7 @@ export default function QualityIssuesPage() {
   const { issues, isLoading, error, searchTerm, setSearchTerm, setStatusFilter, stats } = useQualityIssues();
   const { isFormModalOpen, isSaving, handleSaveIssue, handleCancelForm, openFormModal } = useQualityIssueForm();
   const { user, userProfile } = useAuthStore();
+  const searchParams = useSearchParams();
   
   // 상세 모달 상태
   const [selectedIssue, setSelectedIssue] = useState<QualityIssue | null>(null);
@@ -70,6 +72,18 @@ export default function QualityIssuesPage() {
     setIsDetailModalOpen(false);
     setSelectedIssue(null);
   };
+
+  // URL 쿼리(issueId)로 진입 시 상세 모달 자동 오픈
+  useEffect(() => {
+    const issueId = searchParams?.get('issueId');
+    if (!issueId) return;
+    if (!issues || issues.length === 0) return;
+    const target = issues.find(i => i.id === issueId);
+    if (target) {
+      setSelectedIssue(target);
+      setIsDetailModalOpen(true);
+    }
+  }, [searchParams, issues]);
 
   // 이슈사항 추가 핸들러
   const handleAddIssueItem = async (issueId: string, newIssue: string, newStatus?: string) => {

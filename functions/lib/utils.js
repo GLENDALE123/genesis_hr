@@ -136,6 +136,20 @@ function mapUrlByType(type, requestId) {
     case 'daily-report':
       return `/production/daily-report`;
     
+    case 'production-schedule':
+      return `/production/schedule`;
+
+    // ==================== 공지/근무 ====================
+    case 'announcement':
+      return `/announcements`;
+    case 'work-schedule':
+      return `/work-schedule`;
+
+    // ==================== 품질 이슈 ====================
+    case 'quality-issue':
+    case 'quality-issue-status':
+      return `/quality/issues?issueId=${id}`;
+    
     // ==================== 샘플센터 ====================
     case 'sample-status':
     case 'sample-request':
@@ -146,9 +160,6 @@ function mapUrlByType(type, requestId) {
       return `/production/management?requestId=${id}`;
     
     // ==================== 기타 ====================
-    case 'announcement':
-      return `/dashboard`;
-    
     default:
       return `/dashboard`;
   }
