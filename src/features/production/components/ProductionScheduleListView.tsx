@@ -418,7 +418,7 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                데이터를 불러오는 중 오류가 발생했습니다: {error.message || '알 수 없는 오류'}
+                데이터를 불러오는 중 오류가 발생했습니다
               </AlertDescription>
             </Alert>
           ) : filteredSchedules.length === 0 ? (

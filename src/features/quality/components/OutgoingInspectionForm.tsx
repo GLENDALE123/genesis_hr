@@ -10,7 +10,8 @@ import { Button } from '@/shared/components/ui/button';
 import { InputSelect } from '@/shared/components/common/InputSelect';
 import { QualityInspection, WorkerInspectionData, DefectResultPair, SimpleDefectResultPair } from '../types';
 import type { AutocompleteData } from '../services/autocompleteService';
-import { useCommonFields, UseImageUploadReturn } from './InspectionCommonForm';
+import { useCommonFields } from './InspectionCommonForm';
+import type { UseImageUploadReturn } from '@/shared/hooks';
 import { PRODUCTION_LINE_OPTIONS } from '@/features/production/constants';
 
 interface OutgoingInspectionFormProps {

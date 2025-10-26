@@ -102,14 +102,18 @@ export class PackagingReportsService {
 
       const docRef = await addDoc(collection(db, 'packaging-reports'), reportData);
       
-      // 생산일보 생성 알림 전송
+      // 생산일보 생성 시 알림 전송 (모든 상태에서 발송)
       try {
         const createdReport: PackagingReport = {
           id: docRef.id,
           ...reportData
         } as PackagingReport;
-        await DailyReportNotificationService.sendDailyReportActionNotification(
-          'created',
+        
+        const initialStatus = calculateStatus(formData.startTime || '', formData.endTime || '');
+        
+        await DailyReportNotificationService.sendDailyReportStatusChangeNotification(
+          undefined, // 이전 상태 없음
+          initialStatus,
           createdReport,
           {
             uid: user.uid,
@@ -408,24 +412,6 @@ export class PackagingReportsService {
       }
 
       await deleteDoc(doc(db, 'packaging-reports', reportId));
-      
-      // 생산일보 삭제 알림 전송 (user와 reportData 정보가 있을 때만)
-      if (user && reportData) {
-        try {
-          await DailyReportNotificationService.sendDailyReportActionNotification(
-            'deleted',
-            reportData,
-            {
-              uid: user.uid,
-              displayName: getUserDisplayName(user.userProfile, user, 'Unknown User'),
-              photoURL: undefined
-            }
-          );
-        } catch (notificationError) {
-          console.error('생산일보 삭제 알림 전송 실패:', notificationError);
-          // 알림 실패해도 삭제는 성공으로 처리
-        }
-      }
     } catch (error) {
       console.error('Error deleting packaging report:', error);
       throw error;
@@ -488,22 +474,6 @@ export class PackagingReportsService {
               await DailyReportNotificationService.sendDailyReportStatusChangeNotification(
                 oldStatus,
                 newStatus,
-                updatedReport,
-                {
-                  uid: user.uid,
-                  displayName: getUserDisplayName(user.userProfile, user, 'Unknown User'),
-                  photoURL: undefined
-                }
-              );
-            } else {
-              // 상태 변경이 없으면 일반 수정 알림 발송
-              const updatedReport: PackagingReport = {
-                id: reportId,
-                ...cleanedData
-              } as PackagingReport;
-              
-              await DailyReportNotificationService.sendDailyReportActionNotification(
-                'updated',
                 updatedReport,
                 {
                   uid: user.uid,

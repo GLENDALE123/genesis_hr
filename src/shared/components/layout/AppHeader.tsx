@@ -205,7 +205,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                 )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-80 p-0" align="end">
+            <PopoverContent className="w-96 p-0" align="end">
               <NotificationPanel
                 notifications={notifications}
                 unreadCount={unreadCount}

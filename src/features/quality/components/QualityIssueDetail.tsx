@@ -190,7 +190,7 @@ ${issue.keywordPairs.map((pair, index) => `${index + 1}. ${pair.process} - ${pai
                     className="bg-blue-500 hover:bg-blue-600"
                     disabled={
                       issue.status === '해결완료' || 
-                      (issue.shippingWaitQuantity && (issue.processedQuantity || 0) >= issue.shippingWaitQuantity)
+                      (issue.shippingWaitQuantity != null && issue.processedQuantity != null && issue.processedQuantity >= issue.shippingWaitQuantity)
                     }
                   >
                     <CheckCircle className="h-4 w-4 mr-2" />

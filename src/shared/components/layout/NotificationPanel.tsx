@@ -92,8 +92,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
   };
 
   return (
-    <div className="w-80 p-0">
-      <div className="flex items-center justify-between px-3 py-2 border-b">
+    <div className="w-full p-0">
+      <div className="flex items-center justify-between px-4 py-2 border-b">
         <h3 className="text-sm font-semibold">알림</h3>
         {unreadCount > 0 && (
           <Button
@@ -117,6 +117,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             // 알림 타입 감지 (실제 표시되는 필드)
             const requestType = notif.metadata?.centerInfo;
             const title = notif.title as string;
+            const isDailyReport = title === '생산일보';
             const isLogisticsType = requestType || 
               title?.includes('생산관리부') || 
               title?.includes('부족분') || 
@@ -158,7 +159,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                 key={notif.id}
                 href={notif.link || '#'}
                 className={cn(
-                  "block px-3 py-3 border-b cursor-pointer transition-colors",
+                  "block px-5 py-4 border-b cursor-pointer transition-colors",
                   notificationBgClass
                 )}
                 onClick={async (e) => {
@@ -187,7 +188,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                     </div>
                     <div className="flex items-start gap-2">
                       <Avatar className="h-8 w-8 flex-shrink-0">
-                        {senderName.toLowerCase() === '시스템' || isScheduleNotification ? (
+                        {senderName.toLowerCase() === '시스템' || isScheduleNotification || isDailyReport ? (
                           <div className="h-full w-full rounded-full bg-primary flex items-center justify-center">
                             <span className="text-white font-bold text-xs">TMS</span>
                           </div>
@@ -200,19 +201,19 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                           </>
                         )}
                       </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          {senderName.toLowerCase() !== '시스템' && !isScheduleNotification && (
+                      <div className="flex-1 min-w-0 w-full">
+                        <div className="flex items-center gap-2 mb-1 w-full">
+                          {senderName.toLowerCase() !== '시스템' && !isScheduleNotification && !isDailyReport && (
                             <>
                               <span className="text-sm font-semibold text-foreground whitespace-nowrap">{senderName as string}</span>
                               <span className="text-xs text-muted-foreground">•</span>
                             </>
                           )}
-                          <span className="text-sm font-medium text-foreground truncate">
-                            {supplier && !isScheduleNotification && `${supplier} `}
+                          <span className="text-sm font-medium text-foreground flex-1 min-w-0 pr-2">
+                            {supplier && !isScheduleNotification && !isDailyReport && `${supplier} `}
                             {subtitle || ''}
                           </span>
-                          <span className="text-xs text-muted-foreground ml-auto whitespace-nowrap">
+                          <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
                             {timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
@@ -244,18 +245,18 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                         </>
                       )}
                     </Avatar>
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 w-full">
                       {senderName.toLowerCase() !== '시스템' && (
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1 w-full">
                           {notif.type === 'mention' ? (
                             <MessageSquare className="h-4 w-4 text-blue-600 flex-shrink-0" />
                           ) : (
                             <User className="h-4 w-4 text-green-600 flex-shrink-0" />
                           )}
-                          <span className="text-sm font-semibold text-foreground whitespace-nowrap truncate">
+                          <span className="text-sm font-semibold text-foreground flex-1 min-w-0 pr-2">
                             {senderName as string}
                           </span>
-                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
                             {timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>

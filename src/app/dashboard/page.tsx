@@ -761,6 +761,7 @@ export default function DashboardPage() {
                                 <li><strong>제품명:</strong> 테스트제품 / 테스트부속</li>
                                 <li><strong>라인:</strong> 증착1</li>
                                 <li><strong>상태변경:</strong> 대기 → 작업중</li>
+                                <li><strong>현재상태:</strong> 작업중 (centerInfo)</li>
                                 <li><strong>변경일시:</strong> {new Date().toLocaleString()}</li>
                               </>
                             )}

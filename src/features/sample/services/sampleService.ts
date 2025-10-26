@@ -89,13 +89,15 @@ export class SampleService {
 
       console.log('✅ 샘플 요청 생성 완료:', docRef.id);
       
-      // 상태변경 알림 전송 (Admin/Manager에게)
+      // 상태변경 알림 전송 (Admin/Manager에게) - 등록 시 "대기중" 상태로 알림
       try {
         const createdRequest: SampleRequest = {
           id: docRef.id,
           ...requestData
         };
-        await SampleStatusNotificationService.sendSampleRequestNotification(
+        await SampleStatusNotificationService.sendSampleStatusChangeNotification(
+          undefined, // 이전 상태 없음
+          'pending', // 기본 상태는 대기중
           createdRequest.productName,
           getUserDisplayName(null, user, '알 수 없음'),
           user.uid,

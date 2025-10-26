@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/shared/components/ui/button';
 import { InputSelect } from '@/shared/components/common/InputSelect';
 import type { AutocompleteData } from '../services/autocompleteService';
-import { useCommonFields, UseImageUploadReturn } from './InspectionCommonForm';
+import { useCommonFields } from './InspectionCommonForm';
+import type { UseImageUploadReturn } from '@/shared/hooks';
 import { QualityInspection, KeywordPair, ProcessLineData, TestResultDetail } from '../types';
 
 interface ProcessInspectionFormProps {

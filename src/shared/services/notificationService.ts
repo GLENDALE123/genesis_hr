@@ -385,52 +385,64 @@ export class UnifiedNotificationService {
       // 알림 내용 구성
       const productInfo = `${report.productName}${report.partName ? ' ' + report.partName : ''}`;
       const lineInfo = report.productionLine;
-      const dateInfo = report.workDate;
+      const supplier = report.supplier || '미입력';
+      const orderNumbers = report.orderNumbers?.join(', ') || '미입력';
       
-      let title: string;
-      let body: string;
-      let subtitle: string;
+      // title: 생산일보
+      const title = '생산일보';
       
-      // 상태별 알림 내용
+      // subtitle: 발주처/제품명+부속명
+      const subtitle = `${supplier}/${productInfo}`;
+      
+      // centerInfo: 현재 상태만 표시 (작업중, 대기, 생산완료)
+      let centerInfo: string;
       switch (newStatus) {
         case ProductionStatus.Pending:
-          title = '생산일보 상태 변경';
-          body = `${getUserDisplayName(null, user)}님이 생산일보 상태를 "대기"로 변경했습니다.
-
-제품: ${productInfo}
-라인: ${lineInfo}
-작업일: ${dateInfo}
-이전 상태: ${oldStatus || '미설정'}
-현재 상태: 대기`;
-          subtitle = `${productInfo} / ${lineInfo}`;
+          centerInfo = '대기';
           break;
-          
         case ProductionStatus.InProgress:
-          title = '생산일보 상태 변경';
-          body = `${getUserDisplayName(null, user)}님이 생산일보 상태를 "작업중"으로 변경했습니다.
-
-제품: ${productInfo}
-라인: ${lineInfo}
-작업일: ${dateInfo}
-이전 상태: ${oldStatus || '미설정'}
-현재 상태: 작업중`;
-          subtitle = `${productInfo} / ${lineInfo}`;
+          centerInfo = '작업중';
           break;
-          
         case ProductionStatus.Completed:
-          title = '생산일보 상태 변경';
-          body = `${getUserDisplayName(null, user)}님이 생산일보 상태를 "생산완료"로 변경했습니다.
-
-제품: ${productInfo}
-라인: ${lineInfo}
-작업일: ${dateInfo}
-이전 상태: ${oldStatus || '미설정'}
-현재 상태: 생산완료`;
-          subtitle = `${productInfo} / ${lineInfo}`;
+          centerInfo = '생산완료';
           break;
-          
         default:
-          throw new Error(`Unknown status: ${newStatus}`);
+          centerInfo = newStatus;
+      }
+      
+      // body: 상태 변경 메시지
+      let body: string;
+      
+      // oldStatus가 없으면 (생성 시) 다른 메시지 사용
+      if (oldStatus === undefined) {
+        switch (newStatus) {
+          case ProductionStatus.Pending:
+            body = `${lineInfo}에서 ${orderNumbers}/${supplier}/${productInfo}을 대기로 등록하였습니다`;
+            break;
+          case ProductionStatus.InProgress:
+            body = `${lineInfo}에서 ${orderNumbers}/${supplier}/${productInfo}을 작업중으로 등록하였습니다`;
+            break;
+          case ProductionStatus.Completed:
+            body = `${lineInfo}에서 ${orderNumbers}/${supplier}/${productInfo}을 생산완료로 등록하였습니다`;
+            break;
+          default:
+            throw new Error(`Unknown status: ${newStatus}`);
+        }
+      } else {
+        // 기존 상태 변경 메시지
+        switch (newStatus) {
+          case ProductionStatus.Pending:
+            body = `${lineInfo}에서 ${orderNumbers}/${supplier}/${productInfo}을 생산완료에서 대기로 변경하였습니다`;
+            break;
+          case ProductionStatus.InProgress:
+            body = `${lineInfo}에서 ${orderNumbers}/${supplier}/${productInfo}을 대기에서 작업중으로 변경하였습니다`;
+            break;
+          case ProductionStatus.Completed:
+            body = `${lineInfo}에서 ${orderNumbers}/${supplier}/${productInfo}을 작업중에서 생산완료로 변경하였습니다`;
+            break;
+          default:
+            throw new Error(`Unknown status: ${newStatus}`);
+        }
       }
 
       await this.sendNotification({
@@ -443,100 +455,19 @@ export class UnifiedNotificationService {
         senderUid: user.uid,
         senderAvatar: user.photoURL,
         priority: NotificationPriority.NORMAL,
-        centerInfo: '생산일보 상태 변경'
+        centerInfo
       }, user.uid, true); // httpsCallable 방식 사용
 
       console.log(`✅ [생산일보 상태 변경 알림] 전송 완료:`, {
         reportId: report.id,
         productInfo,
         lineInfo,
-        dateInfo,
+        supplier,
         oldStatus,
         newStatus
       });
     } catch (error) {
       console.error(`❌ [생산일보 상태 변경 알림] 전송 실패:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * 생산일보 생성/수정/삭제 알림 전송
-   */
-  static async sendDailyReportActionNotification(
-    action: 'created' | 'updated' | 'deleted',
-    report: PackagingReport,
-    user: RequestUser,
-    userProfile?: UserProfile | null
-  ): Promise<void> {
-    try {
-      // 알림 내용 구성
-      let title: string;
-      let body: string;
-      let subtitle: string;
-      
-      const productInfo = `${report.productName}${report.partName ? ' ' + report.partName : ''}`;
-      const lineInfo = report.productionLine;
-      const dateInfo = report.workDate;
-      
-      switch (action) {
-        case 'created':
-          title = '생산일보 등록';
-          body = `${getUserDisplayName(null, user)}님이 새로운 생산일보를 등록했습니다.
-
-제품: ${productInfo}
-라인: ${lineInfo}
-작업일: ${dateInfo}
-발주처: ${report.supplier || '미입력'}`;
-          subtitle = `${productInfo} / ${lineInfo}`;
-          break;
-          
-        case 'updated':
-          title = '생산일보 수정';
-          body = `${getUserDisplayName(null, user)}님이 생산일보를 수정했습니다.
-
-제품: ${productInfo}
-라인: ${lineInfo}
-작업일: ${dateInfo}
-발주처: ${report.supplier || '미입력'}`;
-          subtitle = `${productInfo} / ${lineInfo}`;
-          break;
-          
-        case 'deleted':
-          title = '생산일보 삭제';
-          body = `${getUserDisplayName(null, user)}님이 생산일보를 삭제했습니다.
-
-제품: ${productInfo}
-라인: ${lineInfo}
-작업일: ${dateInfo}`;
-          subtitle = `${productInfo} / ${lineInfo}`;
-          break;
-          
-        default:
-          throw new Error(`Unknown action: ${action}`);
-      }
-
-      await this.sendNotification({
-        type: NotificationType.DAILY_REPORT,
-        title,
-        body,
-        requestId: `DAILY-REPORT-${action.toUpperCase()}-${Date.now()}`,
-        subtitle,
-        senderName: getUserDisplayName(null, user),
-        senderUid: user.uid,
-        senderAvatar: user.photoURL,
-        priority: NotificationPriority.NORMAL,
-        centerInfo: '생산일보 상태 변경'
-      }, user.uid, true); // httpsCallable 방식 사용
-
-      console.log(`✅ [생산일보 알림] ${action} 알림 전송 완료:`, {
-        reportId: report.id,
-        productInfo,
-        lineInfo,
-        dateInfo
-      });
-    } catch (error) {
-      console.error(`❌ [생산일보 알림] ${action} 알림 전송 실패:`, error);
       throw error;
     }
   }
@@ -817,16 +748,38 @@ export class UnifiedNotificationService {
     sampleId?: string
   ): Promise<{ success: boolean; targetCount: number; error?: string }> {
     try {
+      // title: 샘플 요청
+      const title = '샘플 요청';
+      
+      // subtitle: 샘플 제품명
+      const subtitle = sampleTitle;
+      
+      // centerInfo: 현재 상태만 표시
+      const centerInfo = getStatusMessage('sample', newStatus);
+      
+      // body: 상태 변경 메시지
+      const newStatusText = getStatusMessage('sample', newStatus);
+      let body: string;
+      
+      if (oldStatus === undefined) {
+        // 등록 시
+        body = `"${sampleTitle}" 샘플 요청이 ${newStatusText}으로 등록되었습니다.`;
+      } else {
+        // 상태 변경 시
+        const oldStatusText = getStatusMessage('sample', oldStatus);
+        body = `"${sampleTitle}" 샘플 요청 상태가 ${oldStatusText}에서 ${newStatusText}로 변경되었습니다.`;
+      }
+      
       const result = await this.sendNotification({
         type: NotificationType.SAMPLE_STATUS,
-        title: '샘플 요청 상태 변경',
-        body: `"${sampleTitle}" 샘플 요청 상태가 "${getStatusMessage('sample', oldStatus || '')}"에서 "${getStatusMessage('sample', newStatus)}"로 변경되었습니다.`,
+        title,
+        body,
         requestId: sampleId || `SAMPLE-STATUS-${Date.now()}`,
-        subtitle: getStatusMessage('sample', newStatus),
+        subtitle,
         senderName: author,
         senderUid: authorId,
         priority: NotificationPriority.NORMAL,
-        centerInfo: '샘플 요청 상태 변경',
+        centerInfo,
         metadata: {
           sampleTitle,
           sampleId,
@@ -850,7 +803,8 @@ export class UnifiedNotificationService {
   }
 
   /**
-   * 샘플 요청 등록 알림 생성
+   * 샘플 요청 등록 알림 생성 (사용 중지 - sendSampleStatusChangeNotification 사용)
+   * @deprecated 등록 시에도 상태 변경 알림 사용
    */
   static async sendSampleRequestNotification(
     sampleTitle: string,
@@ -859,21 +813,15 @@ export class UnifiedNotificationService {
     sampleId?: string
   ): Promise<void> {
     try {
-      await this.sendNotification({
-        type: NotificationType.SAMPLE_REQUEST,
-        title: '새 샘플 요청이 등록되었습니다',
-        body: `"${sampleTitle}" 샘플 요청이 등록되었습니다.`,
-        requestId: sampleId || `SAMPLE-REQUEST-${Date.now()}`,
-        subtitle: sampleTitle,
-        senderName: author,
-        senderUid: authorId,
-        priority: NotificationPriority.NORMAL,
-        centerInfo: '샘플 요청 등록',
-        metadata: {
-          sampleTitle,
-          sampleId
-        }
-      }, authorId);
+      // 등록 시에도 상태 변경 알림 형식 사용
+      await this.sendSampleStatusChangeNotification(
+        undefined,
+        'pending',
+        sampleTitle,
+        author,
+        authorId,
+        sampleId
+      );
 
       console.log(`✅ 샘플 요청 등록 알림 전송 완료: ${sampleTitle}`);
     } catch (error) {
@@ -1130,8 +1078,6 @@ export const createTestProductionRequestNotification = UnifiedNotificationServic
 // 기존 dailyReportNotificationService.ts와의 호환성
 export const DailyReportNotificationService = {
   sendDailyReportStatusChangeNotification: UnifiedNotificationService.sendDailyReportStatusNotification,
-  sendDailyReportActionNotification: UnifiedNotificationService.sendDailyReportActionNotification,
-  sendTestDailyReportNotification: UnifiedNotificationService.sendDailyReportActionNotification,
   sendTestDailyReportStatusNotification: UnifiedNotificationService.sendTestDailyReportStatusNotification
 };
 

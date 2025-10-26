@@ -11,7 +11,8 @@ import { Separator } from '@/shared/components/ui/separator';
 import { InputSelect } from '@/shared/components/common/InputSelect';
 import { InspectionResult, QualityInspection } from '../types';
 import type { AutocompleteData } from '../services/autocompleteService';
-import { useCommonFields, UseImageUploadReturn } from './InspectionCommonForm';
+import { useCommonFields } from './InspectionCommonForm';
+import type { UseImageUploadReturn } from '@/shared/hooks';
 
 interface IncomingInspectionFormProps {
   formData: Partial<QualityInspection>;

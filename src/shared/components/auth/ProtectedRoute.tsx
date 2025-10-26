@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
@@ -20,6 +20,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 }) => {
   const router = useRouter();
   const { user, isLoading } = useAuthStore();
+  const [mounted, setMounted] = useState(false);
+
+  // 클라이언트에서만 마운트 상태 관리
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     // 로딩이 완료되고 사용자가 로그인되지 않은 경우 로그인 페이지로 리다이렉트
@@ -28,6 +34,20 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       router.push('/login');
     }
   }, [user, isLoading, router]);
+
+  // 서버에서는 아무것도 렌더링하지 않음 (hydration 불일치 방지)
+  if (!mounted) {
+    return fallback || (
+      <div className="flex items-center justify-center h-screen">
+        <LoadingSpinner 
+          size="lg" 
+          variant="default" 
+          label="인증 확인 중..." 
+          loadingVariant="card"
+        />
+      </div>
+    );
+  }
 
   // 로딩 중일 때는 로딩 스피너 표시
   if (isLoading) {
