@@ -143,14 +143,10 @@ const AppSidebarComponent = ({
       event.preventDefault();
       event.stopPropagation();
     }
-    
-    console.log('Click navigation:', { href, pathname, isMobile });
-    
     const isTablet = !isMobile && !isDesktop;
     
     // 같은 페이지여도 태블릿에서는 사이드바 접기만 실행
     if (pathname === href) {
-      console.log('Already on the same page, skipping navigation');
       if (isTablet && !onMobileClose) {
         // 태블릿에서 같은 메뉴를 다시 선택하면 사이드바 접기
         updatePreferences({ sidebarCollapsed: true });
@@ -160,15 +156,12 @@ const AppSidebarComponent = ({
     
     // 모바일 Sheet에서 메뉴 클릭 후 사이드바 닫기 (페이지 이동 전에)
     if (onMobileClose) {
-      console.log('Mobile navigation: closing sidebar first');
       onMobileClose();
       setTimeout(() => {
-        console.log('Mobile navigation: navigating to', href);
         router.push(href);
       }, 200);
     } else if (isTablet) {
       // 태블릿: 먼저 네비게이션 후 사이드바 접기
-      console.log('Tablet navigation: navigating to', href, 'then collapsing sidebar');
       router.push(href);
       // 네비게이션 후 약간의 딜레이 후 사이드바 접기 (애니메이션 고려)
       setTimeout(() => {
@@ -176,7 +169,6 @@ const AppSidebarComponent = ({
       }, 100);
     } else {
       // 데스크톱
-      console.log('Desktop navigation: navigating to', href);
       router.push(href);
     }
   }, [pathname, router, isMobile, isDesktop, onMobileClose, updatePreferences]);

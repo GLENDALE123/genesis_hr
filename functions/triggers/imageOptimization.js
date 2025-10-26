@@ -29,13 +29,11 @@ exports.generateImageThumbnail = onObjectFinalized({
   
   // 이미지 파일인지 확인
   if (!contentType || !contentType.startsWith('image/')) {
-    console.log('이미지 파일이 아님:', contentType);
     return null;
   }
   
   // 이미 썸네일인지 확인 (무한 루프 방지)
   if (filePath.includes('_thumb.webp')) {
-    console.log('이미 썸네일 파일:', filePath);
     return null;
   }
   
@@ -44,16 +42,12 @@ exports.generateImageThumbnail = onObjectFinalized({
   const isAllowedFolder = allowedFolders.some(folder => filePath.startsWith(folder));
   
   if (!isAllowedFolder) {
-    console.log('이미지 처리 대상 폴더 아님:', filePath);
     return null;
   }
   
   // HEIF/HEIC 파일인지 확인
   const isHeicFile = contentType.includes('heic') || contentType.includes('heif') || 
                     filePath.toLowerCase().includes('.heic') || filePath.toLowerCase().includes('.heif');
-  
-  console.log(`${isHeicFile ? 'HEIC 변환 + 썸네일 생성' : '썸네일 생성'} 시작:`, filePath);
-  
   try {
     const bucket = admin.storage().bucket(fileBucket);
     const fileName = path.basename(filePath);
@@ -66,14 +60,11 @@ exports.generateImageThumbnail = onObjectFinalized({
     
     // Storage에서 파일 다운로드
     await bucket.file(filePath).download({ destination: tempFilePath });
-    console.log('파일 다운로드 완료:', tempFilePath);
-    
     let processedImageBuffer;
     let finalFilePath = filePath;
     
     if (isHeicFile) {
       // HEIC → JPEG 변환
-      console.log('HEIC → JPEG 변환 시작...');
       processedImageBuffer = await sharp(tempFilePath)
         .jpeg({ quality: 85 })
         .resize(1920, 1920, {
@@ -81,9 +72,6 @@ exports.generateImageThumbnail = onObjectFinalized({
           withoutEnlargement: true
         })
         .toBuffer();
-      
-      console.log('HEIC → JPEG 변환 완료');
-      
       // 변환된 JPEG 파일을 원본 위치에 저장 (원본 HEIC 파일 덮어쓰기)
       const jpegFileName = fileName.replace(/\.(heic|heif)$/i, '.jpg');
       const jpegFilePath = path.join(fileDir, jpegFileName);
@@ -99,13 +87,8 @@ exports.generateImageThumbnail = onObjectFinalized({
           }
         }
       });
-      
-      console.log('변환된 JPEG 파일 저장 완료:', jpegFilePath);
-      
       // 원본 HEIC 파일 삭제
       await bucket.file(filePath).delete();
-      console.log('원본 HEIC 파일 삭제 완료:', filePath);
-      
       finalFilePath = jpegFilePath;
     } else {
       // 일반 이미지는 원본 사용
@@ -113,7 +96,6 @@ exports.generateImageThumbnail = onObjectFinalized({
     }
     
     // 썸네일 생성 (300px, WebP, 80% quality)
-    console.log('썸네일 생성 시작...');
     await sharp(processedImageBuffer)
       .resize(300, 300, {
         fit: 'inside',
@@ -121,9 +103,6 @@ exports.generateImageThumbnail = onObjectFinalized({
       })
       .webp({ quality: 80 })
       .toFile(tempThumbPath);
-    
-    console.log('썸네일 생성 완료:', tempThumbPath);
-    
     // 썸네일을 Storage에 업로드
     const thumbPath = path.join(fileDir, `${fileNameWithoutExt}_thumb.webp`);
     await bucket.upload(tempThumbPath, {
@@ -139,9 +118,6 @@ exports.generateImageThumbnail = onObjectFinalized({
         }
       }
     });
-    
-    console.log('썸네일 업로드 완료:', thumbPath);
-    
     // 임시 파일 삭제
     if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
     if (fs.existsSync(tempThumbPath)) fs.unlinkSync(tempThumbPath);

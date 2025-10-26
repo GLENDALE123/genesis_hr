@@ -122,13 +122,13 @@ export const ShortageManagementListView: React.FC<ShortageManagementListViewProp
         <CardContent className="p-0 flex flex-1 min-h-0">
           <div className="flex flex-1 min-h-0">
             {/* 테이블 */}
-            <div className="flex-1 overflow-auto">
+            <div className="flex-1 h-[60vh] overflow-x-auto overflow-y-auto md:h-[600px]">
               {requests.length === 0 ? (
                 <div className="flex items-center justify-center h-full">
                   <p className="text-muted-foreground">조건에 맞는 부족분 요청이 없습니다.</p>
                 </div>
               ) : (
-                <Table className="min-w-full">
+                <Table className="w-full min-w-[1200px]">
                   <TableHeader className="sticky top-0 z-10 bg-background">
                     <TableRow>
                       <TableHead className="whitespace-nowrap">요청일</TableHead>

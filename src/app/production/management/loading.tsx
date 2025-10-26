@@ -5,9 +5,7 @@ import { useEffect } from 'react';
 
 export default function ProductionManagementLoading() {
   useEffect(() => {
-    console.log('📄 [생산관리부] loading.tsx 렌더링 시작');
     return () => {
-      console.log('📄 [생산관리부] loading.tsx 언마운트');
     };
   }, []);
 

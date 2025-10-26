@@ -156,8 +156,6 @@ export const useImageUpload = (): UseImageUploadReturn => {
               .map(item => item.file!);
             
             if (newFiles.length > 0) {
-              console.log(`📤 ${newFiles.length}개 새 이미지 병렬 업로드 시작`);
-              
               // 진행률 콜백이 있는 경우 사용
               if (onProgress) {
                 // 병렬처리로 업로드 (진행률 포함, AbortController 전달)
@@ -168,15 +166,12 @@ export const useImageUpload = (): UseImageUploadReturn => {
                 const newUrls = await uploadImageFilesParallel(newFiles, folder, undefined, controller.signal);
                 uploadedUrls.push(...newUrls);
               }
-              
-              console.log(`🎉 병렬 업로드 완료: ${uploadedUrls.length}개 파일`);
             }
 
             resolve(uploadedUrls);
           } catch (error) {
             // AbortError인 경우 취소된 것으로 처리
             if (error instanceof Error && error.name === 'AbortError') {
-              console.log('🛑 이미지 업로드가 사용자에 의해 취소되었습니다.');
               reject(new Error('사용자에 의해 취소되었습니다.'));
             } else {
               console.error('이미지 업로드 실패:', error);
@@ -213,7 +208,6 @@ export const useImageUpload = (): UseImageUploadReturn => {
     // AbortController가 있으면 실제 업로드 중단
     if (abortController) {
       abortController.abort();
-      console.log('🛑 이미지 업로드 중단됨 (AbortController)');
     }
     
     // 상태 초기화

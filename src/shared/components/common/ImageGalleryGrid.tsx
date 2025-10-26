@@ -305,21 +305,8 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
                     // 이미지 로드 실패시 원본 URL 사용 (썸네일 → 원본 폴백)
                     const currentSrc = cachedImages[index] || url;
                     const thumbnailUrl = useThumbnails ? getThumbnailURL(url) : null;
-                    
-                    console.log(`❌ [ImageGallery] 이미지 로드 에러 (${index + 1}):`, {
-                      currentSrc,
-                      thumbnailUrl,
-                      originalUrl: url,
-                      isThumbnailError: currentSrc === thumbnailUrl
-                    });
-                    
                     if (currentSrc === thumbnailUrl) {
                       // 썸네일 로드 실패 - 원본을 직접 사용하거나 CORS 우회 시도
-                      console.log(`🔄 [ImageGallery] 썸네일 로드 실패, 원본으로 폴백 (${index + 1}):`, {
-                        from: currentSrc,
-                        to: url
-                      });
-                      
                       // 원본 URL을 직접 사용 (CORS 문제 우회)
                       setCachedImages(prev => {
                         const newImages = [...prev];
@@ -331,14 +318,12 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
                       setTimeout(() => {
                         const img = new Image();
                         img.onerror = () => {
-                          console.log(`❌ [ImageGallery] 원본 이미지도 로드 실패 (${index + 1}):`, url);
                         };
                         img.src = url;
                       }, 1000);
                       
                     } else {
                       // 원본도 실패한 경우 - 에러 상태로 표시
-                      console.log(`❌ [ImageGallery] 원본 이미지도 로드 실패 (${index + 1}):`, url);
                       setLoadedImages(prev => {
                         const newLoaded = [...prev];
                         newLoaded[index] = false;

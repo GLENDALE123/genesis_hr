@@ -19,9 +19,25 @@ const eslintConfig = [
       "build/**",
       "dist/**",
       "next-env.d.ts",
-      "electron/**", // Electron 파일 (CommonJS)
-      "functions/**", // Firebase Functions (CommonJS)
     ],
+  },
+  // 공통 규칙: warn/error만 허용
+  {
+    files: ["**/*.{js,ts,tsx}"],
+    rules: {
+      "no-console": ["error", { allow: ["warn", "error"] }],
+    },
+  },
+  // Electron/Functions는 CommonJS/스크립트 문맥이므로 별도 설정
+  {
+    files: ["electron/**/*.{js,ts}", "functions/**/*.{js,ts}"],
+    languageOptions: {
+      ecmaVersion: 2018,
+      sourceType: "script",
+    },
+    rules: {
+      "no-console": ["error", { allow: ["warn", "error"] }],
+    },
   },
 ];
 

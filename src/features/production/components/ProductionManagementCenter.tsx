@@ -48,9 +48,7 @@ const ProductionManagementCenterComponent: React.FC = () => {
 
   // 컴포넌트 마운트 로그
   useEffect(() => {
-    console.log('🏭 [생산관리부] ProductionManagementCenter 마운트');
     return () => {
-      console.log('🏭 [생산관리부] ProductionManagementCenter 언마운트');
     };
   }, []);
 
@@ -65,7 +63,6 @@ const ProductionManagementCenterComponent: React.FC = () => {
     if (requestId && !isLoading && requests.length > 0) {
       const request = requests.find(req => req.id === requestId);
       if (request) {
-        console.log('🔗 [ProductionManagement] 딥링크로 모달 열기:', requestId);
         setSelectedRequest(request);
         
         // URL 파라미터 제거 (모달 닫을 때를 위해)

@@ -45,7 +45,6 @@ export const useMobileBackHandler = ({
     const handlePopState = (event: PopStateEvent) => {
       // 모달이 열려있고, 히스토리 상태가 이 컴포넌트와 관련된 경우에만 닫기
       if (isOpen && event.state?.componentId === componentId.current) {
-        console.log(`🔍 [${componentType}] 모바일 뒤로가기로 인한 모달 닫기:`, componentId.current);
         onClose();
       }
     };
@@ -54,7 +53,6 @@ export const useMobileBackHandler = ({
     if (!historyStateAdded) {
       window.history.pushState({ componentId: componentId.current }, '');
       setHistoryStateAdded(true);
-      console.log(`📱 [${componentType}] 히스토리 상태 추가:`, componentId.current);
     }
     
     // popstate 이벤트 리스너 추가
@@ -67,7 +65,6 @@ export const useMobileBackHandler = ({
       // 모달이 닫힐 때 히스토리 상태 정리
       if (window.history.state?.componentId === componentId.current && historyStateAdded) {
         window.history.back();
-        console.log(`🧹 [${componentType}] 히스토리 상태 정리:`, componentId.current);
       }
     };
   }, [isOpen, onClose, historyStateAdded, isMobile, componentType]);

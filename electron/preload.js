@@ -1,14 +1,4 @@
 const { contextBridge, ipcRenderer } = require('electron');
-
-/**
- * Electron Preload 스크립트
- * 
- * contextBridge를 통해 안전하게 Electron API를 웹 페이지에 노출합니다.
- * 보안을 위해 필요한 API만 제한적으로 노출합니다.
- */
-
-console.log('🔐 [Preload] 스크립트 로드됨');
-
 // Electron API를 window.electron 객체로 노출
 contextBridge.exposeInMainWorld('electron', {
   /**
@@ -48,9 +38,7 @@ contextBridge.exposeInMainWorld('electron', {
    */
   showNotification: async (options) => {
     try {
-      console.log('🔔 [Preload] 알림 요청:', options);
       const result = await ipcRenderer.invoke('show-notification', options);
-      console.log('✅ [Preload] 알림 표시 완료:', result);
       return result;
     } catch (error) {
       console.error('❌ [Preload] 알림 표시 실패:', error);
@@ -81,7 +69,6 @@ contextBridge.exposeInMainWorld('electron', {
    */
   onNavigateTo: (callback) => {
     const listener = (event, link) => {
-      console.log('🔗 [Preload] navigate-to 이벤트 수신:', link);
       callback(link);
     };
     ipcRenderer.on('navigate-to', listener);
@@ -95,8 +82,3 @@ contextBridge.exposeInMainWorld('electron', {
 
 // Electron 환경임을 표시
 contextBridge.exposeInMainWorld('__ELECTRON__', true);
-
-console.log('✅ [Preload] Electron API 노출 완료');
-console.log('📱 [Preload] 플랫폼:', process.platform);
-console.log('🖥️ [Preload] Electron 버전:', process.versions.electron);
-

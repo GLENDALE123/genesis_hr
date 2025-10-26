@@ -249,7 +249,6 @@ export class UnifiedNotificationService {
       const targetUsers = await this.getAdminManagerUsers(excludeUid);
 
       if (targetUsers.length === 0) {
-        console.log('알림 대상이 없습니다.');
         return { success: true, targetCount: 0 };
       }
 
@@ -263,7 +262,6 @@ export class UnifiedNotificationService {
       }
 
       if (allowedUsers.length === 0) {
-        console.log('알림 설정에 의해 모든 사용자가 차단되었습니다.');
         return { success: true, targetCount: 0 };
       }
 
@@ -278,8 +276,6 @@ export class UnifiedNotificationService {
       } else {
         await this.sendNotificationViaFunctions(fullPayload);
       }
-
-      console.log(`✅ 알림이 발송되었습니다. (설정 확인 후 ${allowedUsers.length}명)`);
       return { success: true, targetCount: allowedUsers.length };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -466,15 +462,6 @@ export class UnifiedNotificationService {
         priority: NotificationPriority.NORMAL,
         centerInfo
       }, user.uid, true); // httpsCallable 방식 사용
-
-      console.log(`✅ [생산일보 상태 변경 알림] 전송 완료:`, {
-        reportId: report.id,
-        productInfo,
-        lineInfo,
-        supplier,
-        oldStatus,
-        newStatus
-      });
     } catch (error) {
       console.error(`❌ [생산일보 상태 변경 알림] 전송 실패:`, error);
       throw error;
@@ -524,8 +511,6 @@ export class UnifiedNotificationService {
           planQuantity: scheduleData.planQuantity
         }
       }, user.uid);
-
-      console.log('✅ 생산일정 알림 전송 완료');
     } catch (error) {
       console.error('생산일정 알림 전송 중 오류:', error);
     }
@@ -573,8 +558,6 @@ export class UnifiedNotificationService {
           }))
         }
       }, user.uid);
-
-      console.log('✅ 생산일정 일괄 알림 전송 완료');
     } catch (error) {
       console.error('생산일정 일괄 알림 전송 중 오류:', error);
     }
@@ -610,7 +593,6 @@ export class UnifiedNotificationService {
       });
 
       if (result.success) {
-        console.log(`✅ 공지사항 등록 알림 전송 완료: ${announcementTitle}`);
       } else {
         console.warn(`⚠️ 공지사항 등록 알림 전송 실패: ${result.error}`);
       }
@@ -653,7 +635,6 @@ export class UnifiedNotificationService {
       });
 
       if (result.success) {
-        console.log(`✅ 근무계획 변경 알림 전송 완료: ${dateRangeText} - ${action}`);
       } else {
         console.warn(`⚠️ 근무계획 변경 알림 전송 실패: ${result.error}`);
       }
@@ -701,8 +682,6 @@ export class UnifiedNotificationService {
           status
         }
       }, authorId);
-
-      console.log(`✅ 품질이슈 등록 알림 전송 완료: ${productName} ${partName}`);
     } catch (error) {
       console.error('품질이슈 등록 알림 전송 중 오류:', error);
     }
@@ -745,7 +724,6 @@ export class UnifiedNotificationService {
       }, authorId);
 
       if (result.success) {
-        console.log(`✅ 품질이슈 상태 변경 알림 전송 완료: ${productName} ${partName} - ${newStatus}`);
       } else {
         console.warn(`⚠️ 품질이슈 상태 변경 알림 전송 실패: ${result.error}`);
       }
@@ -921,7 +899,6 @@ export class UnifiedNotificationService {
       }, authorId);
 
       if (result.success) {
-        console.log(`✅ 샘플 상태 변경 알림 전송 완료: ${productName}${partName ? '+' + partName : ''} - ${newStatus}`);
       } else {
         console.warn(`⚠️ 샘플 상태 변경 알림 전송 실패: ${result.error}`);
       }
@@ -958,8 +935,6 @@ export class UnifiedNotificationService {
         sampleId,
         partName
       );
-
-      console.log(`✅ 샘플 요청 등록 알림 전송 완료: ${productName}${partName ? '+' + partName : ''}`);
     } catch (error) {
       console.error('샘플 요청 등록 알림 전송 중 오류:', error);
     }
@@ -1196,7 +1171,6 @@ export class UnifiedNotificationService {
    */
   static clearUserCache(): void {
     this.userCache.clear();
-    console.log('사용자 캐시가 무효화되었습니다.');
   }
 
   /**

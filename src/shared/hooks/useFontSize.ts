@@ -24,8 +24,6 @@ export const useFontSize = () => {
     const scale = FONT_SIZE_SCALE[settings.appearance.fontSize];
     
     root.style.setProperty('--font-size-scale', scale.toString());
-    
-    console.log(`📝 폰트 크기 변경: ${settings.appearance.fontSize} (배율: ${scale})`);
   }, [settings.appearance.fontSize]);
 
   return {

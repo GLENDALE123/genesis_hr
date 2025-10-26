@@ -76,20 +76,8 @@ export const JigRequestDetail: React.FC<JigRequestDetailProps> = ({
           // readBy 배열에 currentUserUid가 없으면 읽지 않은 댓글
           return !readBy.includes(currentUserUid);
         });
-
-        console.log('📊 댓글 통계:', {
-          totalComments: request.comments?.length || 0,
-          unreadCount: unreadComments.length,
-          currentUserUid
-        });
-
         // 각 읽지 않은 댓글을 읽음 처리
         for (const comment of unreadComments) {
-          console.log('📖 댓글 읽음 처리:', {
-            commentId: comment.id,
-            beforeReadBy: comment.readBy || []
-          });
-          
           try {
             // 실제 읽음 처리 API 호출
             await CommentsService.markAsRead('jig-requests', request.id, comment.id, currentUserUid);
@@ -97,8 +85,6 @@ export const JigRequestDetail: React.FC<JigRequestDetailProps> = ({
             console.error(`❌ [지그요청] 댓글 읽음 처리 실패:`, comment.id, error);
           }
         }
-
-        console.log('✅ 모든 읽지 않은 댓글 처리 완료');
       }
     };
 

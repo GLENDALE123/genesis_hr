@@ -23,8 +23,6 @@ exports.registerMobileToken = onRequest(async (req, res) => {
   }
 
   try {
-    console.log('📱 [registerMobileToken] 토큰 등록 요청:', req.body);
-
     const { uid, platform, token, deviceInfo } = req.body;
 
     // 필수 필드 검증
@@ -52,9 +50,6 @@ exports.registerMobileToken = onRequest(async (req, res) => {
     // Firestore에 토큰 저장
     const tokenRef = db.collection('mobileTokens').doc(`${uid}_${platform}`);
     await tokenRef.set(tokenData, { merge: true });
-
-    console.log('✅ [registerMobileToken] 토큰 등록 완료:', { uid, platform, token: token.substring(0, 20) + '...' });
-
     res.status(200).json({
       ok: true,
       message: 'Token registered successfully',

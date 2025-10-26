@@ -9,6 +9,3 @@ contextBridge.exposeInMainWorld('electronNotification', {
     ipcRenderer.send('notification-clicked');
   }
 });
-
-console.log('✅ 알림 윈도우 Preload 로드 완료');
-

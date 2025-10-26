@@ -9,9 +9,7 @@ import { useEffect } from 'react';
  */
 export default function ProductionDailyReportLoading() {
   useEffect(() => {
-    console.log('📄 [생산일보] loading.tsx 렌더링 시작');
     return () => {
-      console.log('📄 [생산일보] loading.tsx 언마운트');
     };
   }, []);
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/shared/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
@@ -26,7 +26,7 @@ import { useAuthStore } from '@/features/auth/store/authStore';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
 import { ProtectedRoute } from '@/shared/components/auth';
 
-export default function QualityIssuesPage() {
+function QualityIssuesPageContent() {
   const { issues, isLoading, error, searchTerm, setSearchTerm, setStatusFilter, stats } = useQualityIssues();
   const { isFormModalOpen, isSaving, handleSaveIssue, handleCancelForm, openFormModal } = useQualityIssueForm();
   const { user, userProfile } = useAuthStore();
@@ -335,5 +335,24 @@ export default function QualityIssuesPage() {
       </AlertDialog>
       </div>
     </ProtectedRoute>
+  );
+}
+
+export default function QualityIssuesPage() {
+  return (
+    <Suspense fallback={
+      <ProtectedRoute>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <Skeleton key={i} className="h-24" />
+            ))}
+          </div>
+          <Skeleton className="h-96" />
+        </div>
+      </ProtectedRoute>
+    }>
+      <QualityIssuesPageContent />
+    </Suspense>
   );
 }

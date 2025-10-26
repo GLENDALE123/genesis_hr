@@ -92,7 +92,6 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
     if (schedules.length === 0) return;
     
     const { min, max } = actualScheduleDateRange;
-    console.log(`📊 [생산일정] 생산일보 조회 범위: ${min} ~ ${max}`);
     getReportsByDateRange(min, max);
   }, [actualScheduleDateRange, getReportsByDateRange, schedules.length]);
   const [activeQuickFilter, setActiveQuickFilter] = useState<QuickFilterType>('today');
@@ -104,12 +103,6 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
   // 발주번호별 생산일보 상태 매핑
   const reportStatusMap = useMemo(() => {
     const map = new Map<string, '생산대기' | '작업중' | '생산완료'>();
-    
-    console.log('📊 [생산일정] 생산일보 매핑 시작:', {
-      schedulesCount: schedules.length,
-      packagingReportsCount: packagingReports.length
-    });
-    
     schedules.forEach(schedule => {
       const orderNumber = schedule.orderNumber;
       if (!orderNumber) {
@@ -134,12 +127,7 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
       }
       
       map.set(orderNumber, status);
-      
-      console.log(`  발주번호 ${orderNumber}: ${status}`, report ? { startTime: report.startTime, endTime: report.endTime } : '생산일보 없음');
     });
-    
-    console.log('✅ [생산일정] 상태 매핑 완료:', Object.fromEntries(map));
-    
     return map;
   }, [schedules, packagingReports]);
 

@@ -18,8 +18,6 @@ exports.cleanupReadNotifications = onSchedule({
   const timer = createPerformanceTimer('cleanupReadNotifications');
   
   try {
-    console.log('[Cleanup] 읽은 알림 정리 시작...');
-    
     const { db } = initializeFirebase();
     
     // 3일 전 날짜 계산
@@ -70,8 +68,6 @@ exports.cleanupReadNotifications = onSchedule({
         }
         
         processedUsers++;
-        console.log(`[Cleanup] User ${userId}: ${docs.length}개 알림 삭제`);
-        
       } catch (userError) {
         console.error(`[Cleanup] User ${userId} 처리 실패:`, userError);
         // 개별 사용자 실패는 무시하고 계속 진행
@@ -92,9 +88,6 @@ exports.cleanupReadNotifications = onSchedule({
       duration,
       cutoffDate: threeDaysAgo.toISOString()
     });
-    
-    console.log(`[Cleanup] 완료: ${totalDeleted}개 알림 삭제 (${processedUsers}/${usersSnapshot.docs.length} 사용자 처리, ${duration}ms)`);
-    
   } catch (error) {
     timer.end({ error: error?.message || String(error) });
     console.error('[Cleanup] 읽은 알림 정리 실패:', error);

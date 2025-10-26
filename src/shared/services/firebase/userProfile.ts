@@ -216,7 +216,6 @@ export const updateUserProfile = async (
       ...data,
       updatedAt: new Date(),
     });
-    console.log('✅ 사용자 프로필 업데이트 완료:', uid);
   } catch (error) {
     console.error('❌ 사용자 프로필 업데이트 실패:', error);
     throw error;

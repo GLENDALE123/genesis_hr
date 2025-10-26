@@ -52,13 +52,10 @@ export class MigrationService {
 
       // 5. 새 UID로 프로필 저장
       await setDoc(doc(db, 'users', newUid), updatedProfile);
-      console.log(`✅ 새 프로필 생성 완료: ${newUid} (새 UID)`);
-
       // 6. 새 프로필 생성 성공 후 기존 UID의 프로필 삭제
       if (oldUid !== newUid) {
         try {
           await deleteDoc(doc(db, 'users', oldUid));
-          console.log(`✅ 기존 프로필 삭제 완료: ${oldUid} (구 UID)`);
         } catch (error) {
           console.warn('⚠️ 기존 프로필 삭제 실패 (무시):', error);
         }
@@ -134,12 +131,9 @@ export class MigrationService {
         });
         
         await setDoc(doc(db, 'users', user.uid), newProfile);
-        console.log(`✅ 프로필 복사 완료: ${user.uid}`);
-        
         // 기존 프로필 삭제
         try {
           await deleteDoc(doc(db, 'users', existingProfile.uid));
-          console.log(`✅ 기존 프로필 삭제: ${existingProfile.uid}`);
         } catch (error) {
           console.warn('기존 프로필 삭제 실패:', error);
         }
@@ -160,8 +154,6 @@ export class MigrationService {
         };
         
         await setDoc(doc(db, 'users', user.uid), newProfile);
-        console.log(`✅ 새 프로필 생성 완료: ${user.uid}`);
-        
         return newProfile;
       }
       
@@ -190,7 +182,6 @@ export class MigrationService {
       const querySnapshot = await getDocs(q);
       
       if (querySnapshot.size <= 1) {
-        console.log('중복 문서 없음');
         return 0;
       }
 
@@ -214,14 +205,11 @@ export class MigrationService {
       for (const doc of docsToDelete) {
         try {
           await deleteDoc(doc.ref);
-          console.log(`✅ 중복 문서 삭제: ${doc.id}`);
           deletedCount++;
         } catch (error) {
           console.warn(`⚠️ 문서 삭제 실패: ${doc.id}`, error);
         }
       }
-
-      console.log(`총 ${deletedCount}개 중복 문서 삭제 완료`);
       return deletedCount;
     } catch (error) {
       console.error('중복 문서 정리 실패:', error);

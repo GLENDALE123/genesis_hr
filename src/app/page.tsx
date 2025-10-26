@@ -21,16 +21,13 @@ export default function Home() {
 
     // 로딩 중이면 대기
     if (loading) {
-      console.log('🔄 인증 상태 확인 중...');
       return;
     }
 
     // 로그인 상태에 따라 리다이렉트
     if (user) {
-      console.log('✅ 로그인됨 → 대시보드로 이동');
       router.replace('/dashboard');
     } else {
-      console.log('❌ 로그인 안 됨 → 로그인 페이지로 이동');
       router.replace('/login');
     }
   }, [user, loading, router, isClient]);

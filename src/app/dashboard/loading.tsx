@@ -5,9 +5,7 @@ import { useEffect } from 'react';
 
 export default function DashboardLoading() {
   useEffect(() => {
-    console.log('📄 [대시보드] loading.tsx 렌더링 시작');
     return () => {
-      console.log('📄 [대시보드] loading.tsx 언마운트');
     };
   }, []);
 

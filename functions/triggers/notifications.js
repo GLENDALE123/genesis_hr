@@ -25,7 +25,6 @@ exports.onNotificationCreated = onDocumentCreated({
   const { messaging } = initializeFirebase();
   const snap = event.data;
   const n = (snap && snap.data()) || {};
-  console.log('[onNotificationCreated] begin', { id: event.params.notificationId, type: n.type, hasTargetUsers: Array.isArray(n.targetUsers) && n.targetUsers.length > 0 });
   const title = n.title || '알림'; // 클라이언트 title 그대로 사용
   const body = typeof n.message === 'string' ? n.message : '';
   const targetUsers = Array.isArray(n.targetUsers) ? n.targetUsers : [];
@@ -91,7 +90,6 @@ exports.onNotificationCreated = onDocumentCreated({
   ]);
   
   if (iosDocs.length) {
-    console.log(`Skipping ${iosDocs.length} iOS tokens (APNs not configured).`);
   }
 
   // 사용자별 인박스/카운트 업데이트

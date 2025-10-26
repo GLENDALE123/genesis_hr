@@ -41,12 +41,10 @@ export const useDevStore = create<DevState & DevActions>()(
       // 더미 권한 설정
       setDummyRole: (role: UserRole | null) => {
         set({ dummyRole: role });
-        console.log(`🔧 [DevStore] 더미 권한 변경: ${role || '원래 권한'}`);
       },
       
       clearDummyRole: () => {
         set({ dummyRole: null });
-        console.log('🔧 [DevStore] 더미 권한 초기화');
       },
       
       // 개발 모드 토글
@@ -69,7 +67,6 @@ export const useDevStore = create<DevState & DevActions>()(
       // 전체 초기화
       resetDevState: () => {
         set(initialState);
-        console.log('🔧 [DevStore] 개발 상태 초기화');
       },
     }),
     { name: 'dev-store' }

@@ -85,10 +85,8 @@ export const useSampleRequestsStore = create<SampleRequestsState & SampleRequest
           const cacheAge = now - cache.timestamp;
           
           if (cacheAge < CACHE_DURATION) {
-            console.log('📦 캐시된 샘플 요청 데이터 사용');
             return cache.requests;
           } else {
-            console.log('⏰ 캐시 만료 - 새로운 데이터 필요');
           }
           
           return null;
@@ -105,7 +103,6 @@ export const useSampleRequestsStore = create<SampleRequestsState & SampleRequest
             lastUpdated: Date.now(),
             error: null
           });
-          console.log(`✅ 샘플 요청 ${requests.length}건 캐싱 완료`);
         },
 
         // 로딩 상태 설정
@@ -130,7 +127,6 @@ export const useSampleRequestsStore = create<SampleRequestsState & SampleRequest
             lastUpdated: null,
             error: null
           });
-          console.log('🗑️ 샘플 요청 캐시 초기화');
         },
 
         // 특정 요청 업데이트 (낙관적 업데이트)
@@ -152,7 +148,6 @@ export const useSampleRequestsStore = create<SampleRequestsState & SampleRequest
                 : null
             };
           });
-          console.log('🔄 샘플 요청 업데이트:', requestId);
         },
 
         // 특정 요청 삭제
@@ -172,7 +167,6 @@ export const useSampleRequestsStore = create<SampleRequestsState & SampleRequest
                 : null
             };
           });
-          console.log('🗑️ 샘플 요청 삭제:', requestId);
         },
 
         // 새 요청 추가
@@ -190,7 +184,6 @@ export const useSampleRequestsStore = create<SampleRequestsState & SampleRequest
                 : null
             };
           });
-          console.log('➕ 새 샘플 요청 추가:', request.id);
         },
       }),
       {

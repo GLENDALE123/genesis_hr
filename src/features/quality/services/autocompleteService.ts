@@ -60,7 +60,6 @@ export const initializeAutocompleteData = async (data: AutocompleteData) => {
       ...data,
       lastUpdated: new Date().toISOString()
     });
-    console.log('Autocomplete 데이터 초기화 완료');
   } catch (error) {
     console.error('Autocomplete 데이터 초기화 실패:', error);
     throw error;
@@ -111,7 +110,6 @@ export const updateAutocompleteData = async (inspectionData: {
     // 업데이트할 필드가 있는 경우에만 업데이트 실행
     if (Object.keys(updates).length > 1) { // lastUpdated 제외하고 다른 필드가 있는 경우
       await updateDoc(docRef, updates);
-      console.log('Autocomplete 데이터 업데이트 완료');
     }
   } catch (error) {
     console.error('Autocomplete 데이터 업데이트 실패:', error);
@@ -167,8 +165,6 @@ export const collectAutocompleteDataFromInspections = async () => {
       shippingWaitTypes: [...autocompleteData.shippingWaitTypes].sort((a, b) => a.localeCompare(b, 'ko')),
       lastUpdated: new Date().toISOString()
     };
-    
-    console.log('수집된 autocomplete 데이터:', finalData);
     return finalData;
   } catch (error) {
     console.error('Autocomplete 데이터 수집 실패:', error);
@@ -181,15 +177,11 @@ export const collectAutocompleteDataFromInspections = async () => {
  */
 export const runMigration = async () => {
   try {
-    console.log('Autocomplete 데이터 마이그레이션 시작...');
-    
     // 1. 기존 검사 데이터에서 autocomplete 데이터 수집
     const autocompleteData = await collectAutocompleteDataFromInspections();
     
     // 2. autocomplete-data 컬렉션에 저장
     await initializeAutocompleteData(autocompleteData);
-    
-    console.log('마이그레이션 완료!');
     return autocompleteData;
   } catch (error) {
     console.error('마이그레이션 실패:', error);

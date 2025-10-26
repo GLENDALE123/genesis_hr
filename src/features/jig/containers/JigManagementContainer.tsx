@@ -179,7 +179,6 @@ export const JigManagementContainer: React.FC = () => {
     
     try {
       // TODO: 수정 API 호출 구현 필요
-      console.log('수정 요청 저장:', { requestId: editingRequest.id, data, imageFiles });
       setIsEditModalOpen(false);
       setEditingRequest(null);
     } catch (error) {

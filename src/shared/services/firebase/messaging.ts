@@ -101,7 +101,6 @@ export const getFCMToken = async (): Promise<string | null> => {
     });
 
     if (token) {
-      console.log('✅ FCM 토큰 발급 완료:', token.substring(0, 20) + '...');
       return token;
     } else {
       console.warn('FCM 토큰을 가져올 수 없습니다.');
@@ -126,7 +125,6 @@ export const onForegroundMessage = (callback: (payload: MessagePayload) => void)
   getMessagingService().then((messagingService) => {
     if (messagingService) {
       onMessage(messagingService, (payload) => {
-        console.log('포그라운드 메시지 수신:', payload);
         callback(payload as MessagePayload);
       });
     }
@@ -194,8 +192,6 @@ export const registerServiceWorker = async (): Promise<ServiceWorkerRegistration
           }
         });
       }
-      
-      console.log('✅ 서비스 워커 등록 성공 (웹 환경):', registration);
       return registration;
     } else {
       console.warn('이 브라우저는 서비스 워커를 지원하지 않습니다.');
@@ -205,7 +201,6 @@ export const registerServiceWorker = async (): Promise<ServiceWorkerRegistration
     console.error('서비스 워커 등록 실패:', error);
     // Electron 환경에서 Service Worker 등록 실패 시 null 반환 (FCM 토큰은 여전히 시도)
     if (typeof window !== 'undefined' && window.__ELECTRON__) {
-      console.log('⚠️ Electron 환경에서 Service Worker 등록 실패, FCM 토큰은 계속 시도합니다.');
       return null;
     }
     return null;

@@ -46,8 +46,6 @@ exports.createNotification = onRequest({
     const { body: bodyText, requestId, type, subType, priority, targetUsers, actionRequired, relatedData, audience, ignoreRouting, senderName, senderUid, senderAvatar, subtitle, centerInfo, title } = body;
 
     // 디버깅을 위한 로그 추가
-    console.log('[createNotification] 받은 데이터:', { type, title, bodyText, requestId });
-
     if (!bodyText || !requestId || !type) {
       return res.status(400).json({ ok: false, error: 'body, requestId, type are required' });
     }
@@ -68,7 +66,6 @@ exports.createNotification = onRequest({
     const now = Date.now();
     const lastSent = global.notificationCache.get(duplicateCacheKey);
     if (lastSent && (now - lastSent) < 5000) {
-      console.log(`[createNotification] 중복 알림 방지: ${duplicateKey}`);
       return res.json({ ok: true, id: 'duplicate-prevented', sent: 'duplicate-prevented' });
     }
     
@@ -129,7 +126,6 @@ exports.createNotification = onRequest({
         
         // Check urgentOnly rule
         if (rule.format && rule.format.urgentOnly && String(priority || '').toLowerCase() !== 'urgent') {
-          console.log('[createNotification] skipped by urgentOnly rule');
           return res.json({ ok: true, id: notifId, sent: 'skipped-non-urgent' });
         }
       }
@@ -193,8 +189,6 @@ exports.createNotification = onRequest({
         // 배치 commit
         await batch.commit();
       })).then(() => {
-        console.log(`[createNotification] Notification saved to ${resolvedTargetUsers.length} user inboxes:`, notifId);
-        
         // 카운터 업데이트는 백그라운드로 처리 (비동기)
         setImmediate(() => {
           const counterBatch = db.batch();
@@ -278,7 +272,6 @@ exports.createNotification = onRequest({
         ]);
 
         if (iosDocs.length) {
-          console.log(`Skipping ${iosDocs.length} iOS tokens (APNs not configured).`);
         }
 
         const fcmDuration = fcmTimer.end({

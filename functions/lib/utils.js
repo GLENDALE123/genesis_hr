@@ -15,12 +15,6 @@ function initializeFirebase() {
     db = getFirestore();
     messaging = getMessaging();
     FieldValue = FirestoreFieldValue;
-    console.log('Firebase initialized:', { 
-      hasDb: !!db, 
-      hasMessaging: !!messaging, 
-      hasFieldValue: !!FieldValue,
-      fieldValueType: typeof FieldValue 
-    });
   }
   return { db, messaging, FieldValue };
 }

@@ -147,28 +147,8 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
             // readBy 배열에 currentUserUid가 없으면 읽지 않은 댓글
             return !readBy.includes(currentUserUid);
           });
-
-          console.log('📊 샘플 요청 댓글 통계:', {
-            requestId: currentRequest.id,
-            totalComments: currentRequest.comments.length,
-            unreadCount: unreadComments.length,
-            currentUserUid,
-            allComments: currentRequest.comments.map(c => ({
-              id: c.id,
-              uid: c.uid,
-              readBy: c.readBy || [],
-              hasReadBy: !!c.readBy,
-              isRead: (c.readBy && c.readBy.includes(currentUserUid)) || false
-            }))
-          });
-
           // 각 읽지 않은 댓글을 읽음 처리
           for (const comment of unreadComments) {
-            console.log('읽음 처리 중:', {
-              commentId: comment.id,
-              beforeReadBy: comment.readBy || []
-            });
-            
             await CommentsService.markAsRead(
               SAMPLE_REQUESTS_COLLECTION,
               currentRequest.id,

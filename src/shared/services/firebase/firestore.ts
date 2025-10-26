@@ -20,15 +20,12 @@ import { db } from './config';
 
 // 컬렉션 참조 가져오기
 export const getCollectionRef = (collectionName: string) => {
-  console.log('📁 [Firebase Firestore] 컬렉션 참조 요청:', collectionName);
-  
   if (!db) {
     console.error('❌ [Firebase Firestore] Firestore가 초기화되지 않음');
     throw new Error('Firestore is not initialized');
   }
   
   const collectionRef = collection(db, collectionName);
-  console.log('✅ [Firebase Firestore] 컬렉션 참조 생성 완료:', collectionName);
   return collectionRef;
 };
 

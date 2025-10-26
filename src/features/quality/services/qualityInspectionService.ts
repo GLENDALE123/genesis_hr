@@ -73,9 +73,6 @@ export const createQualityInspection = async (
 
     // undefined 값 제거
     const cleanedData = removeUndefinedValues(processedData);
-
-    console.log('💾 [QualityInspectionService] 저장할 데이터:', cleanedData);
-    
     const docRef = await addDoc(getCollectionRef(), cleanedData);
     return docRef.id;
   } catch (error) {
@@ -92,8 +89,6 @@ export const updateQualityInspection = async (
   updateData: Partial<QualityInspection>
 ): Promise<void> => {
   try {
-    console.log('🔄 [QualityInspectionService] 업데이트 시작:', { docId, updateData });
-    
     // undefined 값 제거 함수
     const removeUndefinedValues = (obj: any): any => {
       if (obj === null || obj === undefined) {
@@ -125,9 +120,6 @@ export const updateQualityInspection = async (
     
     // undefined 값 제거
     const cleanedData = removeUndefinedValues(finalUpdateData);
-    
-    console.log('💾 [QualityInspectionService] Firestore 업데이트 데이터:', cleanedData);
-    
     await updateDoc(docRef, cleanedData);
     
     // Zustand 스토어에서도 즉시 업데이트 (실시간 반영)
@@ -149,8 +141,6 @@ export const updateQualityInspection = async (
     
     // 스토어 업데이트
     store.setInspections(updatedInspections, '', '');
-    
-    console.log('✅ [QualityInspectionService] 업데이트 완료:', docId);
   } catch (error) {
     console.error('❌ [QualityInspectionService] 업데이트 실패:', error);
     throw error;
@@ -168,8 +158,6 @@ export const deleteQualityInspection = async (docId: string): Promise<void> => {
     // Zustand 스토어에서도 삭제 (실시간 반영)
     const { useQualityInspectionStore } = await import('../store/qualityInspectionStore');
     useQualityInspectionStore.getState().deleteInspection(docId);
-    
-    console.log('✅ 품질검사 삭제 완료:', docId);
   } catch (error) {
     console.error('❌ 품질검사 삭제 실패:', error);
     throw error;

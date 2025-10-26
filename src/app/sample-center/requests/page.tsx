@@ -210,7 +210,6 @@ export default function SampleRequestsPage() {
             onUpdateWorkData={updateWorkData}
             onUploadWorkImage={async (id: string, file: File) => {
               // 작업 이미지 업로드 로직 (필요시 구현)
-              console.log('작업 이미지 업로드', id, file);
               return 'uploaded-image-url'; // 임시 URL 반환
             }}
             currentUserUid={user?.uid}

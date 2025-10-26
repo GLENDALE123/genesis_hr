@@ -73,7 +73,6 @@ export const useProductionSchedules = () => {
     // 캐시된 데이터 확인
     const cachedSchedules = getCachedSchedules(rangeStartDate, rangeEndDate);
     if (cachedSchedules) {
-      console.log('📦 캐시된 생산일정 데이터 먼저 표시');
       // 백그라운드에서 최신 데이터 가져오기
       setFetching(true);
     }
@@ -87,8 +86,6 @@ export const useProductionSchedules = () => {
     const { startDate, endDate } = currentDateRange;
 
     const initSubscription = async () => {
-      console.log(`🔄 생산일정 실시간 구독 시작: ${startDate} ~ ${endDate}`);
-      
       setLoading(true);
       setError(null);
 
@@ -103,12 +100,8 @@ export const useProductionSchedules = () => {
         setLoading(false);
         return;
       }
-      
-      console.log('✅ Firebase 초기화 완료 - 생산일정 실시간 구독 시작');
-
       // 기존 구독 해제
       if (unsubscribeRef.current) {
-        console.log('🔄 기존 구독 해제');
         unsubscribeRef.current();
         unsubscribeRef.current = null;
       }
@@ -119,7 +112,6 @@ export const useProductionSchedules = () => {
         endDate,
         (newSchedules) => {
           if (!isCancelled) {
-            console.log(`✅ 생산일정 데이터 수신 성공: ${newSchedules.length}건`);
             setSchedules(newSchedules, startDate, endDate);
           }
         },
@@ -139,7 +131,6 @@ export const useProductionSchedules = () => {
     return () => {
       isCancelled = true;
       if (unsubscribeRef.current) {
-        console.log('🔄 구독 해제 (cleanup)');
         unsubscribeRef.current();
         unsubscribeRef.current = null;
       }
@@ -149,16 +140,12 @@ export const useProductionSchedules = () => {
   // 수동 새로고침
   const refetch = useCallback(() => {
     if (!mounted || !currentDateRange) return;
-    
-    console.log('🔄 수동 새로고침: 구독 재시작');
     setCurrentDateRange({ ...currentDateRange });
   }, [mounted, currentDateRange]);
 
   // 특정 날짜 범위로 실시간 구독 변경
   const getSchedulesByDateRange = useCallback((startDate: string, endDate: string) => {
     if (!mounted) return;
-    
-    console.log(`📅 날짜 범위 변경 요청: ${startDate} ~ ${endDate}`);
     setCurrentDateRange({ startDate, endDate });
   }, [mounted]);
 

@@ -37,8 +37,6 @@ export const useShortageRequests = () => {
     let isCancelled = false;
 
     const initSubscription = async (): Promise<(() => void) | undefined> => {
-      console.log('🔄 부족분 요청 실시간 구독 시작');
-      
       // 로딩 시작
       setLoading(true);
       setError(null);
@@ -46,7 +44,6 @@ export const useShortageRequests = () => {
       // 캐시된 데이터 먼저 표시
       const cachedData = getCachedRequests();
       if (cachedData) {
-        console.log('📦 캐시된 데이터 먼저 표시');
         setLoading(false);
         setFetching(true);
       }
@@ -63,15 +60,11 @@ export const useShortageRequests = () => {
         setFetching(false);
         return;
       }
-      
-      console.log('✅ Firebase 초기화 완료 - 실시간 구독 시작');
-
       try {
         // 실시간 구독 시작
         const unsubscribe = subscribeToShortageRequests(
           (newRequests) => {
             if (!isCancelled) {
-              console.log(`📥 부족분 요청 ${newRequests.length}건 실시간 업데이트`);
               setRequests(newRequests);
               setLoading(false);
               setFetching(false);
@@ -112,7 +105,6 @@ export const useShortageRequests = () => {
       }).catch(error => {
         console.error('구독 해제 중 오류:', error);
       });
-      console.log('🔌 부족분 요청 실시간 구독 해제');
     };
   }, [mounted, user, getCachedRequests, setRequests, setError, setFetching, setLoading]);
 

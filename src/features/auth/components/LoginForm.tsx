@@ -139,7 +139,6 @@ export function LoginForm() {
         });
         
         // 회원가입 성공 후 사용자 프로필 강제 새로고침
-        console.log('🔄 [LoginForm] 회원가입 성공 - 사용자 프로필 새로고침 시작...');
         await refreshUserProfile();
         
         toast.success('회원가입이 완료되었습니다!', {
@@ -169,7 +168,6 @@ export function LoginForm() {
           });
           
           // 로그인 성공 후 사용자 프로필 강제 새로고침
-          console.log('🔄 [LoginForm] 로그인 성공 - 사용자 프로필 새로고침 시작...');
           await refreshUserProfile();
           
           toast.success('로그인되었습니다!');
@@ -193,14 +191,12 @@ export function LoginForm() {
                 try {
                   const deletedCount = await MigrationService.cleanupDuplicateProfiles(email.trim());
                   if (deletedCount > 0) {
-                    console.log(`✅ ${deletedCount}개의 중복 프로필 정리 완료`);
                   }
                 } catch (cleanupError) {
                   console.warn('중복 문서 정리 중 에러 (무시):', cleanupError);
                 }
                 
                 // 마이그레이션 성공 후 사용자 프로필 강제 새로고침
-                console.log('🔄 [LoginForm] 마이그레이션 성공 - 사용자 프로필 새로고침 시작...');
                 await refreshUserProfile();
                 
                 toast.success('계정이 성공적으로 연결되었습니다!', {

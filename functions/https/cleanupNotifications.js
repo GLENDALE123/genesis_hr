@@ -13,8 +13,6 @@ exports.cleanupOldNotifications = onSchedule({
   memory: '1GiB',
   timeoutSeconds: 540 // 9분
 }, async (event) => {
-  console.log('[cleanupOldNotifications] Starting scheduled cleanup...');
-  
   try {
     const { db } = initializeFirebase();
     const now = new Date();
@@ -26,7 +24,6 @@ exports.cleanupOldNotifications = onSchedule({
     let hasMore = true;
     
     // 메인 알림 컬렉션 정리
-    console.log('[cleanupOldNotifications] Cleaning main notifications collection...');
     while (hasMore) {
       const snapshot = await db.collection('notifications')
         .where('createdAt', '<', thirtyDaysAgo)
@@ -46,9 +43,6 @@ exports.cleanupOldNotifications = onSchedule({
       
       await batch.commit();
       totalDeleted += snapshot.size;
-      
-      console.log(`[cleanupOldNotifications] Deleted ${snapshot.size} notifications from main collection`);
-      
       // 400개 미만이면 마지막 배치
       if (snapshot.size < 400) {
         hasMore = false;
@@ -61,7 +55,6 @@ exports.cleanupOldNotifications = onSchedule({
     }
     
     // 사용자 인박스 정리
-    console.log('[cleanupOldNotifications] Cleaning user inboxes...');
     const usersSnapshot = await db.collection('users').get();
     let inboxDeleted = 0;
     
@@ -101,9 +94,6 @@ exports.cleanupOldNotifications = onSchedule({
         }
       }
     }
-    
-    console.log(`[cleanupOldNotifications] Cleanup completed. Main: ${totalDeleted}, Inbox: ${inboxDeleted}`);
-    
     // 정리 통계를 로그로 기록
     await db.collection('system-logs').doc('notification-cleanup').set({
       lastCleanup: new Date(),
@@ -234,8 +224,6 @@ exports.cleanupNotificationsManual = onRequest({
       cutoffDate: cutoffDate.toISOString(),
       cleanupDays: days
     };
-    
-    console.log('[cleanupNotificationsManual] Manual cleanup completed:', result);
     return res.json(result);
     
   } catch (error) {

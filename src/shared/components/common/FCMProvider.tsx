@@ -62,36 +62,18 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
     const initialize = async () => {
       try {
         setState(prev => ({ ...prev, isLoading: true, error: null }));
-        
-        console.log('🔥 FCM 초기화 시작...');
-        
         // 환경 확인
         const isElectron = typeof window !== 'undefined' && window.__ELECTRON__;
-        console.log(`🌐 환경: ${isElectron ? 'Electron' : '웹 브라우저'}`);
-        
         // 서비스 워커 지원 확인
         if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-          console.log('✅ Service Worker 지원됨');
         } else {
           console.warn('⚠️ Service Worker 미지원');
         }
         
         // 알림 권한 확인
         const currentPermission = checkNotificationPermission();
-        console.log(`🔔 현재 알림 권한: ${currentPermission}`);
-        
         const result = await initializeFCM();
-        
-        console.log('📊 FCM 초기화 결과:', {
-          hasToken: !!result.token,
-          permission: result.permission,
-          hasRegistration: !!result.registration,
-          tokenPreview: result.token ? result.token.substring(0, 20) + '...' : null
-        });
-        
         if (result.token) {
-          console.log('✅ FCM 토큰 발급 완료:', result.token.substring(0, 20) + '...');
-          
           // Firestore에 FCM 토큰 저장은 useEffect에서 처리됨
         } else {
           console.warn('⚠️ FCM 토큰을 가져올 수 없습니다.');
@@ -104,8 +86,6 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
           isInitialized: true,
           isLoading: false,
         }));
-        
-        console.log(`✅ FCM 초기화 완료 (${isElectron ? 'Electron' : '웹'} 환경)`);
       } catch (error) {
         console.error('❌ FCM 초기화 실패:', error);
         setState(prev => ({
@@ -127,8 +107,6 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
 
     // 1. FCM 메시지 처리 (우선)
     onForegroundMessage(async (payload) => {
-      console.log('📨 [FCM] 메시지 수신:', payload);
-      
       // 설정 기반 필터링
       try {
         const settings = await settingsService.getSettings(user.uid);
@@ -157,7 +135,6 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
           body,
           data: payload.data || {},
         });
-        console.log('✅ [FCM] Electron 알림 표시:', title);
         return;
       }
       
@@ -181,13 +158,10 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
               window.location.href = payload.data.link;
             }
           };
-          
-          console.log('✅ [FCM] 브라우저 네이티브 알림 표시:', title);
         } catch (error) {
           console.warn('⚠️ [FCM] 브라우저 알림 실패:', error);
         }
       } else if (isSecure) {
-        console.log('⚠️ [FCM] 알림 권한이 허용되지 않아 브라우저 알림을 표시할 수 없습니다.');
       }
       
       // Toast도 표시
@@ -278,13 +252,10 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
                       window.location.href = notification.link;
                     }
                   };
-                  
-                  console.log('✅ [Firestore 폴백] 브라우저 알림 표시:', title);
                 } catch (error) {
                   console.warn('⚠️ [Firestore 폴백] 브라우저 알림 실패:', error);
                 }
               } else if (isSecure) {
-                console.log('⚠️ [Firestore 폴백] 알림 권한이 허용되지 않아 브라우저 알림을 표시할 수 없습니다.');
               }
               
               // Toast도 표시
@@ -344,8 +315,6 @@ const getRecentNotificationIds = () => {
           createdAt: new Date(),
           updatedAt: new Date(),
         }, { merge: true });
-        
-        console.log('✅ FCM 토큰 Firestore에 저장 완료:', state.token.substring(0, 20) + '...');
       } catch (error) {
         console.error('❌ FCM 토큰 저장 실패:', error);
       }
@@ -378,8 +347,6 @@ const getRecentNotificationIds = () => {
           ...prev,
           permission: currentPermission,
         }));
-        console.log('🔔 알림 권한 변경 감지:', currentPermission);
-        
         // 권한이 허용되면 토큰 새로고침
         if (currentPermission === 'granted' && !state.token) {
           try {
@@ -482,7 +449,6 @@ const getRecentNotificationIds = () => {
       ...prev,
       permission: currentPermission,
     }));
-    console.log('🔄 알림 권한 상태 새로고침:', currentPermission);
   };
 
   const value: FCMContextType = {

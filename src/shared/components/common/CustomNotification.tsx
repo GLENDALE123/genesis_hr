@@ -327,8 +327,6 @@ export class NotificationManager {
       if (!response.ok) {
         throw new Error(`읽음 처리 실패: ${response.status}`);
       }
-      
-      console.log('✅ [NotificationManager] 알림 읽음 처리 완료:', notificationId);
     } catch (error) {
       console.error('❌ [NotificationManager] 읽음 처리 실패:', error);
       throw error;
@@ -359,12 +357,8 @@ export class NotificationManager {
       const inboxIds = snapshot.docs.map(doc => doc.id);
       
       if (inboxIds.length === 0) {
-        console.log('✅ [NotificationManager] 읽을 알림이 없습니다.');
         return { marked: 0, duration: Date.now() - startTime };
       }
-      
-      console.log(`📤 [NotificationManager] ${inboxIds.length}개 알림 읽음 처리 시작...`);
-      
       // Functions 호출 - 읽음 처리만 (서버가 3일 후 자동 삭제)
       const response = await fetch(`${functionsUrl}/markNotificationsReadBulk`, {
         method: 'POST',
@@ -379,9 +373,6 @@ export class NotificationManager {
       
       const result = await response.json();
       const duration = Date.now() - startTime;
-      
-      console.log(`✅ [NotificationManager] ${result.marked}개 알림 읽음 처리 완료 (${duration}ms)`);
-      
       return {
         marked: result.marked,
         duration,

@@ -64,7 +64,6 @@ export const usePackagingReports = () => {
     // 캐시된 데이터 확인
     const cachedReports = getCachedReports(rangeStartDate, rangeEndDate);
     if (cachedReports) {
-      console.log('📦 캐시된 생산일보 데이터 먼저 표시');
       // 백그라운드에서 최신 데이터 가져오기
       setFetching(true);
     }
@@ -78,8 +77,6 @@ export const usePackagingReports = () => {
     const { startDate, endDate } = currentDateRange;
 
     const initSubscription = async () => {
-      console.log(`🔄 생산일보 실시간 구독 시작: ${startDate} ~ ${endDate}`);
-      
       // 로딩 시작
       setLoading(true);
       setError(null);
@@ -96,12 +93,8 @@ export const usePackagingReports = () => {
         setFetching(false);
         return;
       }
-      
-      console.log('✅ Firebase 초기화 완료 - 실시간 구독 시작');
-
       // 기존 구독 해제
       if (unsubscribeRef.current) {
-        console.log('🔄 기존 구독 해제');
         unsubscribeRef.current();
         unsubscribeRef.current = null;
       }
@@ -112,8 +105,6 @@ export const usePackagingReports = () => {
         endDate,
         (newReports) => {
           if (!isCancelled) {
-            console.log(`✅ 생산일보 데이터 수신 성공: ${newReports.length}건`);
-            
             // Zustand 스토어에 저장
             const store = usePackagingReportsStore.getState();
             store.setReports(newReports, startDate, endDate);
@@ -143,7 +134,6 @@ export const usePackagingReports = () => {
       isCancelled = true;
       // 컴포넌트 언마운트 또는 날짜 범위 변경 시 구독 해제
       if (unsubscribeRef.current) {
-        console.log('🔄 구독 해제 (cleanup)');
         unsubscribeRef.current();
         unsubscribeRef.current = null;
       }
@@ -153,9 +143,6 @@ export const usePackagingReports = () => {
   // 수동 새로고침 (현재 날짜 범위 유지하면서 재구독)
   const refetch = useCallback(() => {
     if (!mounted || !currentDateRange) return;
-    
-    console.log('🔄 수동 새로고침: 구독 재시작');
-    
     // 동일한 날짜 범위로 재설정 → useEffect가 구독 재시작
     setCurrentDateRange({ ...currentDateRange });
   }, [mounted, currentDateRange]);
@@ -163,9 +150,6 @@ export const usePackagingReports = () => {
   // ✅ 특정 날짜 범위로 실시간 구독 변경
   const getReportsByDateRange = useCallback((startDate: string, endDate: string) => {
     if (!mounted) return;
-    
-    console.log(`📅 날짜 범위 변경 요청: ${startDate} ~ ${endDate}`);
-    
     // 날짜 범위 상태 변경 → useEffect가 자동으로 구독 재시작
     setCurrentDateRange({ startDate, endDate });
   }, [mounted]);

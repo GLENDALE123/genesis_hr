@@ -25,9 +25,7 @@ export const NotificationProviderWrapper: React.FC<NotificationProviderWrapperPr
   
   React.useEffect(() => {
     if (isElectron) {
-      console.log('🖥️ Electron 환경 감지 → Firestore 실시간 리스너 알림 사용');
     } else {
-      console.log('🌐 웹 환경 감지 → FCM 푸시 알림 사용');
     }
   }, [isElectron]);
 

@@ -34,13 +34,11 @@ exports.processImage = onObjectFinalized({
   
   // 이미지 파일인지 확인
   if (!contentType || !contentType.startsWith('image/')) {
-    console.log('이미지 파일이 아닙니다:', contentType);
     return null;
   }
   
   // 원본 이미지가 아닌 처리된 이미지인지 확인 (무한 루프 방지)
   if (isProcessedImage(filePath)) {
-    console.log('이미 처리된 이미지입니다:', filePath);
     return null;
   }
 
@@ -49,12 +47,8 @@ exports.processImage = onObjectFinalized({
   const isAllowedCollection = allowedCollections.some(collection => filePath.includes(collection));
   
   if (!isAllowedCollection) {
-    console.log('허용되지 않은 컬렉션의 이미지입니다:', filePath);
     return null;
   }
-  
-  console.log('이미지 처리 시작:', filePath);
-  
   try {
     // Storage에서 파일 다운로드
     const bucket = admin.storage().bucket(fileBucket);
@@ -64,17 +58,8 @@ exports.processImage = onObjectFinalized({
     };
     
     await bucket.file(filePath).download({ destination: tempFilePath });
-    console.log('파일 다운로드 완료:', tempFilePath);
-    
     // 이미지 메타데이터 추출
     const imageInfo = await sharp(tempFilePath).metadata();
-    console.log('이미지 정보:', {
-      width: imageInfo.width,
-      height: imageInfo.height,
-      format: imageInfo.format,
-      size: imageInfo.size
-    });
-    
     // 다양한 크기와 포맷으로 변환
     const processedImages = [];
     
@@ -103,7 +88,6 @@ exports.processImage = onObjectFinalized({
     }
     
     // 모든 이미지 변환을 병렬로 실행
-    console.log(`이미지 변환 병렬 처리 시작: ${processingTasks.length}개 작업`);
     const results = await Promise.allSettled(processingTasks);
     
     // 성공한 결과만 수집
@@ -118,8 +102,6 @@ exports.processImage = onObjectFinalized({
     
     // 임시 파일 삭제
     fs.unlinkSync(tempFilePath);
-    
-    console.log('이미지 처리 완료:', processedImages.length, '개 파일 생성');
     return processedImages;
     
   } catch (error) {
@@ -215,7 +197,6 @@ async function saveImageMetadata(originalPath, imageInfo, processedImages) {
   };
   
   await db.collection('imageMetadata').doc(imageId).set(imageMetadata);
-  console.log('이미지 메타데이터 저장 완료:', imageId);
 }
 
 /**
@@ -298,10 +279,8 @@ async function deleteProcessedImages(originalPath) {
       
       try {
         await bucket.file(processedPath).delete();
-        console.log('처리된 이미지 삭제:', processedPath);
       } catch (error) {
         // 파일이 없으면 무시
-        console.log('삭제할 파일이 없음:', processedPath);
       }
     }
   }
@@ -333,16 +312,12 @@ exports.processImagesManually = onCall({
   }
 
   try {
-    console.log(`이미지 병렬 처리 시작: ${imageUrls.length}개 이미지`);
-    
     // 병렬로 이미지 처리 (최대 5개씩 배치 처리)
     const BATCH_SIZE = 5;
     const results = [];
     
     for (let i = 0; i < imageUrls.length; i += BATCH_SIZE) {
       const batch = imageUrls.slice(i, i + BATCH_SIZE);
-      console.log(`배치 ${Math.floor(i / BATCH_SIZE) + 1} 처리 중: ${batch.length}개 이미지`);
-      
       const batchPromises = batch.map(async (imageUrl) => {
         try {
           // Firebase Storage URL에서 파일 경로 추출
@@ -387,8 +362,6 @@ exports.processImagesManually = onCall({
           });
         }
       });
-      
-      console.log(`배치 ${Math.floor(i / BATCH_SIZE) + 1} 완료`);
     }
 
     return {
@@ -441,7 +414,6 @@ async function processSingleImage(filePath, collectionName) {
 
   // 이미 처리된 파일인지 확인
   if (isProcessedImage(filePath)) {
-    console.log('이미 처리된 이미지입니다:', filePath);
     return null;
   }
 

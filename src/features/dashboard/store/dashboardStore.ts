@@ -45,8 +45,6 @@ export const useDashboardStore = create<DashboardState & DashboardActions>()(
         try {
           // 실제 API 호출은 별도 서비스에서 처리
           // 여기서는 상태 관리만 담당
-          console.log('Fetching dashboard stats...');
-          
           // 임시 데이터 (실제로는 API에서 가져옴)
           const mockStats: DashboardStats = {
             totalEmployees: 150,

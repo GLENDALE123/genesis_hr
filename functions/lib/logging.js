@@ -9,8 +9,6 @@ function logNotificationEvent(event, data = {}) {
     event,
     ...data
   };
-  
-  console.log(`[NOTIFICATION_${event.toUpperCase()}]`, JSON.stringify(logData));
 }
 
 // 성능 메트릭 수집

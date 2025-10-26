@@ -119,9 +119,6 @@ export const createSchedules = async (
       const docId = await addDocument(PRODUCTION_SCHEDULES_COLLECTION, scheduleWithTimestamp);
       createdIds.push(docId);
     }
-    
-    console.log(`✅ [ProductionScheduleService] ${createdIds.length}개 일정 등록 완료`);
-    
     // 알림 전송 (사용자 정보가 제공된 경우에만)
     if (user) {
       try {
@@ -153,7 +150,6 @@ export const createSchedules = async (
 export const deleteSchedule = async (scheduleId: string): Promise<void> => {
   try {
     await deleteDocument(PRODUCTION_SCHEDULES_COLLECTION, scheduleId);
-    console.log(`✅ [ProductionScheduleService] 일정 삭제 완료: ${scheduleId}`);
   } catch (error) {
     console.error('❌ [ProductionScheduleService] 일정 삭제 실패:', error);
     throw error;
@@ -184,8 +180,6 @@ export const deleteSchedulesByDate = async (
     );
     
     await Promise.all(deletePromises);
-    console.log(`✅ [ProductionScheduleService] ${date} 날짜 전체 삭제 완료: ${schedules.length}개`);
-    
     // 알림 전송 (사용자 정보가 제공된 경우에만)
     if (user && schedules.length > 0) {
       try {

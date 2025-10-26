@@ -218,7 +218,7 @@ export const InspectionCard: React.FC<InspectionCardProps> = memo(({
             {/* 출하검사 전용 필드 */}
             {inspection.inspectionType === 'outgoing' && (
               <>
-                {console.log('출하검사 workerCount:', inspection.workerCount)}
+                {void 0}
                 {renderField('작업자 인원수', inspection.workerCount ? `${inspection.workerCount}명` : undefined)}
                 {renderField('사출포장', inspection.injectionPackaging)}
                 {renderField('후가공포장', inspection.postProcessPackaging)}
@@ -459,7 +459,7 @@ export const InspectionCard: React.FC<InspectionCardProps> = memo(({
               {/* 출하검사 전용 필드 */}
               {inspection.inspectionType === 'outgoing' && (
                 <>
-                  {console.log('출하검사 workerCount (모바일):', inspection.workerCount)}
+                  {void 0}
                   {renderField('작업자 인원수', inspection.workerCount ? `${inspection.workerCount}명` : undefined)}
                   {renderField('사출포장', inspection.injectionPackaging)}
                   {renderField('후가공포장', inspection.postProcessPackaging)}

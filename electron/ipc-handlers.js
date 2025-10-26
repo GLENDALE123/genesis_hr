@@ -48,7 +48,6 @@ module.exports = function registerIpcHandlers() {
       if (center) {
         window.center();
       }
-      console.log(`🔧 윈도우 크기 조정: ${width}x${height}`);
       return { success: true };
     }
     return { success: false };
@@ -63,7 +62,5 @@ module.exports = function registerIpcHandlers() {
     }
     return null;
   });
-
-  console.log('✅ IPC 핸들러 등록 완료');
 };
 

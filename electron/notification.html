@@ -326,18 +326,15 @@
   </div>
 
   <script>
-    console.log('🚀 [Notification HTML] 스크립트 시작');
     
     // 🔊 알림 소리는 Main 프로세스에서 재생되므로 여기서는 불필요
     function playNotificationSound(soundEnabled = true) {
       // Main 프로세스(main.js)에서 Windows 시스템 소리를 재생합니다
-      console.log('🔊 [Notification HTML] 알림 소리는 Main 프로세스에서 재생됨');
     }
     
     // URL에서 데이터 가져오기
     const urlParams = new URLSearchParams(window.location.search);
     const dataParam = urlParams.get('data');
-    console.log('🔗 [Notification HTML] URL 파라미터:', dataParam);
     
     // 소리 설정값 저장 (데이터에서 가져옴)
     let notificationSoundEnabled = true;
@@ -345,11 +342,9 @@
     if (dataParam) {
       try {
         const data = JSON.parse(decodeURIComponent(dataParam));
-        console.log('📦 [Notification HTML] 받은 데이터:', data);
         
         // 소리 설정값 저장
         notificationSoundEnabled = data.soundEnabled !== false;
-        console.log('🔊 [Notification HTML] 알림 소리 설정:', notificationSoundEnabled);
         
         // 페이지 로드 시 소리 재생 (설정값 확인)
         playNotificationSound(notificationSoundEnabled);
@@ -365,10 +360,10 @@
         
         // 발신자 이름 설정 (생산일정/생산일보/샘플 요청 알림이 아닐 때만)
         if (!isScheduleNotification && !isDailyReport && !isSampleRequest && !isAnnouncement && !isWorkSchedule && data.senderName) {
-          console.log('✅ [Notification HTML] senderName 설정:', data.senderName);
+          
           document.getElementById('senderName').textContent = data.senderName;
         } else if (isScheduleNotification || isDailyReport || isSampleRequest || isAnnouncement || isWorkSchedule) {
-          console.log('📅 [Notification HTML] 생산일정/생산일보/샘플 요청 알림 - senderName 숨김');
+          
           document.getElementById('senderName').textContent = '';
         } else {
           console.warn('⚠️ [Notification HTML] senderName 없음');
@@ -379,21 +374,19 @@
         if (isScheduleNotification || isDailyReport || isSampleRequest || isAnnouncement || isWorkSchedule) {
           // 생산일정/생산일보/샘플 요청/공지/근무계획 - TMS 로고 표시
           avatarElement.innerHTML = '<div style="width: 100%; height: 100%; border-radius: 50%; background: hsl(217 91% 59%); display: flex; align-items: center; justify-content: center;"><span style="color: white; font-weight: bold; font-size: 10px;">TMS</span></div>';
-          console.log('✅ [Notification HTML] 시스템성 알림 - TMS 로고 설정');
         } else if (data.senderAvatar) {
           if (typeof data.senderAvatar === 'string' && data.senderAvatar.startsWith('data:')) {
             // Base64 이미지
-            console.log('✅ [Notification HTML] Base64 아바타 이미지 설정');
+            
             avatarElement.innerHTML = `<img src="${data.senderAvatar}" alt="avatar" />`;
           } else if (typeof data.senderAvatar === 'string' && data.senderAvatar.startsWith('http')) {
             // HTTP URL 이미지
-            console.log('✅ [Notification HTML] HTTP 아바타 이미지 설정:', data.senderAvatar);
+            
             avatarElement.innerHTML = `<img src="${data.senderAvatar}" alt="avatar" onerror="this.style.display='none'; this.parentElement.innerHTML='👤';" />`;
           }
         } else if (data.senderName) {
           // 이름의 첫 글자를 아바타로 사용
           const initial = data.senderName.charAt(0).toUpperCase();
-          console.log('✅ [Notification HTML] 아바타 이니셜 설정:', initial);
           avatarElement.textContent = initial;
         }
         
@@ -478,7 +471,6 @@
           priorityBadgeElement.textContent = priorityText;
           priorityBadgeElement.className = `priority-badge priority-${data.priority}`;
           priorityBadgeElement.style.display = 'block';
-          console.log('✅ [Notification HTML] 우선순위 배지 설정:', priorityText);
         } else {
           priorityBadgeElement.style.display = 'none';
         }
@@ -494,18 +486,10 @@
                          centerInfoValue?.includes('생산관리부') ||
                          title?.includes('생산관리부');
         
-        console.log('🔍 [Notification HTML] centerInfo 디버깅:', {
-          data: data,
-          requestType: data.requestType,
-          category: data.category,
-          type: data.type,
-          centerInfo: data.centerInfo,
-          centerInfoValue: centerInfoValue,
-          isUrgent: isUrgent
-        });
+        
         
         if (centerInfoValue || isCommentNotification) {
-          console.log('✅ [Notification HTML] centerInfo 설정:', centerInfoValue);
+          
           centerInfoElement.style.display = 'block';
           
           // 댓글/멘션 알림: 회색 댓글 배지로 고정 표시
@@ -546,7 +530,6 @@
               centerInfoElement.style.border = 'none';
               centerInfoElement.style.borderRadius = '0.25rem';
             }
-            console.log('📊 [Notification HTML] 생산일보 상태 뱃지 적용:', centerInfoValue);
           } else if (isSampleRequest) {
             centerInfoElement.textContent = centerInfoValue;
             centerInfoElement.classList.remove('urgent');
@@ -587,7 +570,6 @@
               centerInfoElement.style.color = '';
               centerInfoElement.style.border = '';
             }
-            console.log('🧪 [Notification HTML] 샘플 상태 뱃지 적용:', centerInfoValue);
           } else if (title === '품질이슈' || title === '품질이슈 등록' || title === '품질이슈 상태 변경') {
             centerInfoElement.textContent = centerInfoValue;
             centerInfoElement.classList.remove('urgent');
@@ -607,7 +589,6 @@
             }
             centerInfoElement.style.border = 'none';
             centerInfoElement.style.borderRadius = '0.25rem';
-            console.log('🧪 [Notification HTML] 품질이슈 상태 뱃지 적용:', centerInfoValue);
           } else if (title === '지그 요청 등록' || title === '지그 입고 처리') {
             centerInfoElement.textContent = centerInfoValue;
             centerInfoElement.classList.remove('urgent');
@@ -636,14 +617,12 @@
             }
             centerInfoElement.style.border = 'none';
             centerInfoElement.style.borderRadius = '0.25rem';
-            console.log('🧪 [Notification HTML] 지그 상태 뱃지 적용:', centerInfoValue);
           } else if (isUrgent) {
             // 긴급건이면 빨간색 스타일 적용
             centerInfoElement.classList.add('urgent');
             centerInfoElement.style.background = '';
             centerInfoElement.style.color = '';
             centerInfoElement.style.border = '';
-            console.log('🚨 [Notification HTML] 긴급건으로 분류:', centerInfoValue);
           } else {
             centerInfoElement.classList.remove('urgent');
             centerInfoElement.textContent = centerInfoValue || '';
@@ -652,7 +631,6 @@
             centerInfoElement.style.border = '';
           }
         } else {
-          console.log('❌ [Notification HTML] centerInfo 값 없음');
           centerInfoElement.style.display = 'none';
         }
 
@@ -660,7 +638,6 @@
         const subtitleElement = document.getElementById('subtitle');
         if (data.subtitle || data.productName) {
           const subtitleText = data.subtitle || data.productName;
-          console.log('✅ [Notification HTML] subtitle 설정:', subtitleText);
           subtitleElement.textContent = subtitleText;
           subtitleElement.style.display = 'block';
         } else {

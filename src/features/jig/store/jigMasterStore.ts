@@ -85,10 +85,8 @@ export const useJigMasterStore = create<JigMasterState & JigMasterActions>()(
         const cacheAge = now - cache.timestamp;
         
         if (cacheAge < CACHE_DURATION) {
-          console.log('📦 캐시된 지그 마스터 데이터 사용');
           return cache.masterItems;
         } else {
-          console.log('⏰ 캐시 만료 - 새로운 데이터 필요');
         }
         
         return null;
@@ -105,7 +103,6 @@ export const useJigMasterStore = create<JigMasterState & JigMasterActions>()(
           lastFetchTimestamp: Date.now(),
           error: null
         });
-        console.log(`✅ 지그 마스터 ${items.length}건 캐싱 완료`);
       },
 
       fetchMasterItems: async () => {
@@ -134,7 +131,6 @@ export const useJigMasterStore = create<JigMasterState & JigMasterActions>()(
         const cachedMasters = get().getCachedMasters();
         
         if (cachedMasters) {
-          console.log('📦 캐시된 데이터 먼저 표시');
           set({ masterItems: cachedMasters, isLoading: false, isFetching: true });
         } else {
           set({ isLoading: true, isFetching: false });

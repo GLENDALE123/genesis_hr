@@ -107,8 +107,6 @@ export const useOrderNumberFormatter = ({ onAutoFill, onClear }: UseOrderNumberF
         onClear();
         return;
       }
-
-      console.log('발주번호 조회 시작:', orderNumbers);
       const startTime = performance.now();
 
       // 모든 발주번호를 병렬로 조회
@@ -116,14 +114,11 @@ export const useOrderNumberFormatter = ({ onAutoFill, onClear }: UseOrderNumberF
         const queryStart = performance.now();
         const data = await orderLookupService.getOrderData(num);
         const queryEnd = performance.now();
-        console.log(`발주번호 ${num} 조회 시간: ${(queryEnd - queryStart).toFixed(0)}ms`, data ? '성공' : '실패');
         return data;
       });
       
       const orderDataList = await Promise.all(orderDataPromises);
       const endTime = performance.now();
-      console.log(`전체 조회 시간: ${(endTime - startTime).toFixed(0)}ms`);
-
       // null이 아닌 데이터만 필터링
       const validData = orderDataList.filter((data): data is OrderData => data !== null);
 
@@ -136,7 +131,6 @@ export const useOrderNumberFormatter = ({ onAutoFill, onClear }: UseOrderNumberF
         const specifications = [...new Set(validData.map((d: OrderData) => d.specification).filter(Boolean))];
 
         // 상태 업데이트 전 로그
-        console.log('상태 업데이트 시작');
         const updateStart = performance.now();
         
         onAutoFill({
@@ -150,7 +144,6 @@ export const useOrderNumberFormatter = ({ onAutoFill, onClear }: UseOrderNumberF
         // 상태 업데이트 후 로그 (다음 틱에서)
         setTimeout(() => {
           const updateEnd = performance.now();
-          console.log(`상태 업데이트 및 렌더링 시간: ${(updateEnd - updateStart).toFixed(0)}ms`);
         }, 0);
 
         // 자동 입력 성공 토스트

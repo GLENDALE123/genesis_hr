@@ -92,10 +92,8 @@ export const useProductionSchedulesStore = create<ProductionSchedulesState & Pro
             const cacheAge = now - cache.timestamp;
             
             if (cacheAge < CACHE_DURATION) {
-              console.log('📦 캐시된 데이터 사용 (빠른 로딩)');
               return cache.schedules;
             } else {
-              console.log('⏰ 캐시 만료 - 새로운 데이터 필요');
             }
           }
           

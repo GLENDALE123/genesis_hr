@@ -61,7 +61,6 @@ export const deleteImageWithCompatibility = async (url: string): Promise<boolean
     
     if (path) {
       await deleteFile(path);
-      console.log('✅ 이미지 삭제 성공:', path);
       return true;
     }
     return false;
@@ -104,7 +103,6 @@ export const deleteImagesWithCompatibility = async (urls: string[]): Promise<{
  * @param toPath 대상 경로
  */
 export const logImagePathMigration = (fromPath: string, toPath: string): void => {
-  console.log(`🔄 [Image Path Migration] ${fromPath} -> ${toPath}`);
 };
 
 /**
@@ -163,12 +161,6 @@ export const deleteImageWithThumbnail = async (imageUrl: string): Promise<{
   thumbnailDeleted: boolean;
   errors: string[];
 }> => {
-  console.log('🔍 [deleteImageWithThumbnail] 함수 호출 시작:', {
-    imageUrl,
-    timestamp: new Date().toISOString(),
-    stackTrace: new Error().stack?.split('\n').slice(1, 4)
-  });
-  
   const errors: string[] = [];
   let imageDeleted = false;
   let thumbnailDeleted = false;
@@ -182,9 +174,7 @@ export const deleteImageWithThumbnail = async (imageUrl: string): Promise<{
       try {
         imageDeleted = await deleteFileIfExists(imagePath);
         if (imageDeleted) {
-          console.log('✅ 원본 이미지 삭제 성공:', imagePath);
         } else {
-          console.log('📝 원본 이미지가 이미 존재하지 않음 (삭제 건너뜀):', imagePath);
         }
       } catch (error) {
         errors.push(`원본 이미지 삭제 실패: ${error}`);
@@ -196,16 +186,13 @@ export const deleteImageWithThumbnail = async (imageUrl: string): Promise<{
         const thumbnailPath = getThumbnailPath(imagePath);
         thumbnailDeleted = await deleteFileIfExists(thumbnailPath);
         if (thumbnailDeleted) {
-          console.log('✅ 썸네일 삭제 성공:', thumbnailPath);
         } else {
-          console.log('📝 썸네일이 이미 존재하지 않음 (삭제 건너뜀):', thumbnailPath);
         }
       } catch (error) {
         errors.push(`썸네일 삭제 실패: ${error}`);
         console.error('❌ 썸네일 삭제 실패:', error);
       }
     } else {
-      console.log('📝 이미지 경로를 추출할 수 없음 (삭제 건너뜀):', imageUrl);
     }
   } catch (error) {
     errors.push(`이미지 삭제 처리 실패: ${error}`);
@@ -225,13 +212,6 @@ export const deleteImagesWithThumbnails = async (urls: string[]): Promise<{
   failed: string[];
   thumbnailResults: { imageUrl: string; thumbnailDeleted: boolean }[];
 }> => {
-  console.log('🔍 [deleteImagesWithThumbnails] 함수 호출 시작:', {
-    urls,
-    count: urls.length,
-    timestamp: new Date().toISOString(),
-    stackTrace: new Error().stack?.split('\n').slice(1, 4)
-  });
-  
   const results = await Promise.allSettled(
     urls.map(url => deleteImageWithThumbnail(url))
   );
@@ -313,8 +293,6 @@ export const listStorageFiles = async (folderPath: string): Promise<string[]> =>
     const result = await listAll(folderRef);
     
     const files = result.items.map(item => item.fullPath);
-    console.log(`📁 Storage 폴더 내용 (${folderPath}):`, files);
-    
     return files;
   } catch (error) {
     console.error(`❌ Storage 폴더 조회 실패 (${folderPath}):`, error);

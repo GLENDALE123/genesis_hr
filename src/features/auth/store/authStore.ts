@@ -125,7 +125,6 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                   
                   if (userProfile) {
                     set({ userProfile });
-                    console.log('✅ [AuthStore] 사용자 프로필 로드 성공');
                     break;
                   }
                   

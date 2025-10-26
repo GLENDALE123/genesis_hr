@@ -142,7 +142,6 @@ export const JigRequestForm: React.FC<JigRequestFormProps> = ({
       // 진행 중인 업로드가 있으면 중단
       if (imageUploadHook.isUploading) {
         imageUploadHook.cancelUpload();
-        console.log('🔄 모달 열림 시 진행 중인 업로드 강제 중단');
       }
     }
   }, [isOpen, editingRequest, user, userProfile]);
@@ -270,7 +269,6 @@ export const JigRequestForm: React.FC<JigRequestFormProps> = ({
     // 업로드 진행 상태 강제 초기화 (추가 안전장치)
     if (imageUploadHook.isUploading) {
       imageUploadHook.cancelUpload();
-      console.log('🔄 모달 닫힘 시 진행 중인 업로드 강제 중단');
     }
     
     onClose();

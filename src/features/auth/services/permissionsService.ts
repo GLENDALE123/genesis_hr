@@ -212,7 +212,6 @@ export class PermissionsService {
       userPermissions.pagePermissions[pageId] = permissions;
 
       await setDoc(docRef, userPermissions, { merge: true });
-      console.log(`Permissions set for user ${userId} on page ${pageId}`);
     } catch (error) {
       console.error(`Error setting permissions for user ${userId} on page ${pageId}:`, error);
       throw error;

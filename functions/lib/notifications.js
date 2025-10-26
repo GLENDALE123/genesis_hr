@@ -186,8 +186,6 @@ async function sendToTokenDocs(tokenDocs, notification, data, options = {}) {
 
   // 재시도 로직
   if (retryableTokens.length > 0 && maxRetries > 0) {
-    console.log(`[sendToTokenDocs] Retrying ${retryableTokens.length} tokens (attempt 1/${maxRetries})`);
-    
     // 재시도 전 대기
     await new Promise(resolve => setTimeout(resolve, retryDelay));
     
@@ -211,7 +209,6 @@ async function sendToTokenDocs(tokenDocs, notification, data, options = {}) {
 
   // 실패한 토큰 비활성화
   if (failedTokens.length) {
-    console.log(`[sendToTokenDocs] Disabling ${failedTokens.length} failed tokens`);
     await disableFailedTokens(failedTokens);
   }
   

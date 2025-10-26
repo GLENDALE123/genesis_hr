@@ -86,9 +86,6 @@ export class SampleService {
         collection(db, SAMPLE_REQUESTS_COLLECTION),
         requestData
       );
-
-      console.log('✅ 샘플 요청 생성 완료:', docRef.id);
-      
       // 상태변경 알림 전송 (Admin/Manager에게) - 등록 시 "대기중" 상태로 알림
       try {
         const createdRequest: SampleRequest = {
@@ -140,8 +137,6 @@ export class SampleService {
           displayName: getUserDisplayName(null, user, '알 수 없음')
         }
       });
-
-      console.log('✅ 샘플 요청 수정 완료:', id);
     } catch (error) {
       console.error('❌ 샘플 요청 수정 실패:', error);
       throw error;
@@ -192,9 +187,6 @@ export class SampleService {
       }
 
       await updateDoc(docRef, updateData);
-
-      console.log('✅ 샘플 요청 상태 변경 완료:', id, status);
-      
       // 상태변경 알림 전송
       try {
         const updatedRequest: SampleRequest = {
@@ -242,8 +234,6 @@ export class SampleService {
         workData,
         updatedAt: new Date().toISOString()
       });
-
-      console.log('✅ 작업 데이터 수정 완료:', id);
     } catch (error) {
       console.error('❌ 작업 데이터 수정 실패:', error);
       throw error;
@@ -275,9 +265,6 @@ export class SampleService {
 
       const docRef = doc(db, SAMPLE_REQUESTS_COLLECTION, id);
       await deleteDoc(docRef);
-
-      console.log('✅ 샘플 요청 삭제 완료:', id);
-      
       // 삭제 알림 전송
       if (requestData && user) {
         try {
@@ -322,7 +309,6 @@ export class SampleService {
         .map(doc => doc.id);
       
       if (targetUsers.length === 0) {
-        console.log('알림 대상이 없습니다.');
         return;
       }
       
@@ -350,7 +336,6 @@ export class SampleService {
       if (!response.ok) {
         console.error('샘플 요청 알림 전송 실패:', response.status);
       } else {
-        console.log('✅ 샘플 요청 알림 전송 완료:', targetUsers.length, '명');
       }
     } catch (error) {
       console.error('샘플 요청 알림 전송 중 오류:', error);
@@ -407,8 +392,6 @@ export class SampleService {
           ...doc.data()
         } as SampleRequest);
       });
-
-      console.log(`✅ 샘플 요청 ${requests.length}건 조회 완료`);
       return requests;
     } catch (error) {
       console.error('❌ 샘플 요청 목록 조회 실패:', error);
@@ -444,10 +427,6 @@ export class SampleService {
           
           // 댓글이 있는 요청 디버깅
           if (data.comments && data.comments.length > 0) {
-            console.log(`🔍 [실시간 구독] ${doc.id} 댓글 데이터:`, data.comments.map((c: Record<string, unknown>) => ({
-              id: c.id,
-              readBy: c.readBy || []
-            })));
           }
         });
         callback(requests);
@@ -478,8 +457,6 @@ export class SampleService {
       await updateDoc(docRef, {
         imageUrls: arrayUnion(imageUrl)
       });
-
-      console.log('✅ 참고 이미지 업로드 완료:', imageUrl);
       return imageUrl;
     } catch (error) {
       console.error('❌ 참고 이미지 업로드 실패:', error);
@@ -506,8 +483,6 @@ export class SampleService {
         workImageUrls: arrayUnion(imageUrl),
         updatedAt: new Date().toISOString()
       });
-
-      console.log('✅ 작업 이미지 업로드 완료:', imageUrl);
       return imageUrl;
     } catch (error) {
       console.error('❌ 작업 이미지 업로드 실패:', error);

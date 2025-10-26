@@ -31,9 +31,6 @@ exports.getUnreadNotifications = onRequest(async (req, res) => {
         error: 'Missing required parameter: uid'
       });
     }
-
-    console.log('📬 [getUnreadNotifications] 미읽은 알림 조회:', uid);
-
     // Firebase 초기화
     const { db } = initializeFirebase();
 
@@ -60,9 +57,6 @@ exports.getUnreadNotifications = onRequest(async (req, res) => {
         createdAt: data.createdAt
       });
     });
-
-    console.log(`✅ [getUnreadNotifications] ${notifications.length}개의 미읽은 알림 발견`);
-
     res.status(200).json({
       ok: true,
       notifications

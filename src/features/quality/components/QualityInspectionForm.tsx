@@ -300,11 +300,9 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       
       // 기존 이미지 설정
       if (inspectionData.imageUrls && inspectionData.imageUrls.length > 0) {
-        console.log('🖼️ 수정 모드: 기존 이미지 설정 중', inspectionData.imageUrls);
         imageUploadHook.setExistingImages(inspectionData.imageUrls);
         imagesInitializedRef.current = true;
       } else {
-        console.log('🖼️ 수정 모드: 기존 이미지 없음');
         imagesInitializedRef.current = false;
       }
     }
@@ -345,7 +343,6 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       const savedData = localStorage.getItem(tempSaveKeyRef.current);
       if (savedData) {
         const parsedData = JSON.parse(savedData);
-        console.log('📁 임시저장 데이터 로드:', parsedData);
         return parsedData;
       }
     } catch (error) {
@@ -444,7 +441,6 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       // 업로드 진행 상태 강제 초기화 (추가 안전장치)
       if (imageUploadHook.isUploading) {
         imageUploadHook.cancelUpload();
-        console.log('🔄 모달 열림 시 진행 중인 업로드 강제 중단');
       }
       
       // 수정 모드가 아닌 경우에만 탭 설정 및 임시저장 데이터 로드
@@ -459,7 +455,6 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
           const loadTimer = setTimeout(() => {
             const tempData = loadTempData();
             if (tempData) {
-              console.log('📁 임시저장 데이터 복원:', tempData);
               setFormData(prev => {
                 const restoredData = {
                   ...prev,
@@ -539,13 +534,6 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
             .filter(item => item.file === null && item.preview) // 기존 이미지들
             .map(item => item.preview!)
             .filter(url => !imageUploadHook.deletedImageUrls.includes(url)); // 삭제된 이미지 제외
-          
-          console.log('🖼️ 수정 모드 이미지 처리:', {
-            기존이미지: existingImageUrls,
-            새이미지: newImageUrls,
-            삭제된이미지: imageUploadHook.deletedImageUrls
-          });
-          
           imageUrls = [...existingImageUrls, ...(newImageUrls as string[])];
           // 이미지 업로드 성공 토스트는 제거 (수정 완료 토스트로 대체)
           toast.dismiss('image-upload-progress');
@@ -647,12 +635,6 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     
     try {
       // 디버깅: formData 확인
-      console.log('🔍 [QualityInspectionForm] handleSubmit - formData:', {
-        reliabilityTestResult: formData.reliabilityTestResult,
-        colorCheckResult: formData.colorCheckResult,
-        inspectionType: activeTab
-      });
-      
       // 1단계: 먼저 문서 생성 (이미지 없이)
       const inspectionData: Omit<QualityInspection, 'id' | 'createdAt' | 'updatedAt'> = {
         inspectionType: activeTab,
@@ -709,12 +691,6 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       };
 
       // 디버깅: inspectionData 확인
-      console.log('🔍 [QualityInspectionForm] handleSubmit - inspectionData:', {
-        reliabilityTestResult: inspectionData.reliabilityTestResult,
-        colorCheckResult: inspectionData.colorCheckResult,
-        inspectionType: inspectionData.inspectionType
-      });
-
       const docId = await onSubmit(inspectionData);
       
       // 2단계: 이미지가 있으면 업로드 후 문서 업데이트
@@ -867,7 +843,6 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     // 업로드 진행 상태 강제 초기화 (추가 안전장치)
     if (imageUploadHook.isUploading) {
       imageUploadHook.cancelUpload();
-      console.log('🔄 모달 닫힘 시 진행 중인 업로드 강제 중단');
     }
     
     // 임시저장 데이터 삭제

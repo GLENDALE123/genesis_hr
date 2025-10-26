@@ -76,8 +76,6 @@ export const usePackagingReportFilters = (
 
     // 검색어가 있는 경우: 전체 데이터에서 검색 (날짜 제한 없음)
     if (searchTerm && searchTerm.trim() !== '') {
-      console.log(`🔍 [통합검색] 검색어: "${searchTerm}" - 전체 데이터 조회 (날짜 제한 없음)`);
-      
       // 날짜 범위를 매우 넓게 설정 (사실상 전체 조회)
       const today = new Date();
       const tenYearsAgo = new Date();
@@ -90,7 +88,6 @@ export const usePackagingReportFilters = (
     } 
     // 검색어가 없는 경우: 날짜 필터 적용
     else if (filters.startDate && filters.endDate) {
-      console.log(`🔍 [필터] 날짜 범위: ${filters.startDate} ~ ${filters.endDate}`);
       onDateRangeChange(filters.startDate, filters.endDate);
     }
   }, [searchTerm, filters.startDate, filters.endDate, onDateRangeChange]);
@@ -132,9 +129,6 @@ export const usePackagingReportFilters = (
         
         // 실제 상태 계산 로직 (UI와 동일)
         const reportStatus = report.endTime ? '생산완료' : (report.startTime ? '작업중' : '대기');
-        
-        console.log(`🔍 [상태 필터] 리포트 ${report.id}: 계산된 상태="${reportStatus}", 필터 상태="${filterStatusKorean}", 매치=${reportStatus === filterStatusKorean}`);
-        
         if (reportStatus !== filterStatusKorean) return false;
       }
 
@@ -247,8 +241,6 @@ export const usePackagingReportFilters = (
   };
 
   const clearFilters = () => {
-    console.log('🔄 [필터] 필터 초기화 - 오늘로 설정');
-    
     // 검색어 먼저 초기화 (useEffect 트리거 순서 중요)
     setInputValue(''); 
     setSearchTerm('');

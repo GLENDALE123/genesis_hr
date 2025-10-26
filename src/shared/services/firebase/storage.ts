@@ -193,8 +193,6 @@ export const uploadFile = async (
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      console.log(`📤 파일 업로드 시도 ${attempt}/${maxRetries}: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
-      
       const storageRef = ref(storage, path);
       
       // 파일 크기에 따른 동적 타임아웃 설정
@@ -202,9 +200,6 @@ export const uploadFile = async (
       const baseTimeout = 60000; // 기본 60초
       const sizeTimeout = Math.max(fileSizeMB * 10000, 30000); // 파일 크기당 10초, 최소 30초
       const dynamicTimeout = Math.min(baseTimeout + sizeTimeout, 300000); // 최대 5분
-      
-      console.log(`⏱️ 타임아웃 설정: ${dynamicTimeout / 1000}초`);
-      
       // 업로드 실행
       const uploadPromise = uploadBytes(storageRef, file, {
         contentType: file.type,
@@ -219,9 +214,6 @@ export const uploadFile = async (
       
       // 업로드 실행 및 타임아웃 처리
       await Promise.race([uploadPromise, timeoutPromise]);
-      
-      console.log(`✅ 업로드 완료: ${file.name}`);
-      
       // 다운로드 URL 가져오기 (별도 타임아웃)
       const downloadURLPromise = getDownloadURL(storageRef);
       const downloadTimeoutPromise = new Promise<never>((_, reject) => {
@@ -229,8 +221,6 @@ export const uploadFile = async (
       });
       
       const downloadURL = await Promise.race([downloadURLPromise, downloadTimeoutPromise]);
-      
-      console.log(`🔗 다운로드 URL 생성 완료: ${file.name}`);
       return downloadURL;
       
     } catch (error) {
@@ -260,7 +250,6 @@ export const uploadFile = async (
       // 마지막 시도가 아니면 지수 백오프로 대기
       if (attempt < maxRetries) {
         const delay = Math.min(1000 * Math.pow(2, attempt - 1), 15000); // 최대 15초
-        console.log(`⏳ ${delay / 1000}초 후 재시도...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
@@ -440,7 +429,6 @@ export const uploadImageFilesParallel = async (
         if (onProgress) {
           onProgress(progress);
         }
-        console.log(`📊 업로드 진행률: ${current}/${total} (${progress}%)`);
       },
       true // 병렬 압축 사용
     );
@@ -449,7 +437,6 @@ export const uploadImageFilesParallel = async (
   } catch (error) {
     // AbortError인 경우 취소된 것으로 처리
     if (error instanceof Error && error.name === 'AbortError') {
-      console.log('🛑 이미지 업로드가 사용자에 의해 취소되었습니다.');
       throw new Error('사용자에 의해 취소되었습니다.');
     }
     
@@ -473,9 +460,6 @@ export const uploadImageFilesWithRetry = async (
   if (!storage) {
     throw new Error('Firebase Storage가 초기화되지 않았습니다.');
   }
-
-  console.log(`📤 ${files.length}개 이미지 파일 업로드 시작 (최대 ${maxRetries}회 재시도)`);
-  
   const results: string[] = [];
   const failedFiles: { file: File; error: Error; attempts: number }[] = [];
   
@@ -510,9 +494,6 @@ export const uploadImageFilesWithRetry = async (
         const baseTimeout = 60000; // 기본 60초
         const sizeTimeout = Math.max(fileSizeMB * 10000, 30000); // 파일 크기당 10초, 최소 30초
         const dynamicTimeout = Math.min(baseTimeout + sizeTimeout, 300000); // 최대 5분
-        
-        console.log(`📤 ${file.name} 업로드 시도 ${attempt}/${maxRetries} (${(file.size / 1024 / 1024).toFixed(2)}MB, 타임아웃: ${dynamicTimeout / 1000}초)`);
-
         // 업로드 실행
         const uploadPromise = uploadBytes(storageRef, file, {
           contentType: file.type,
@@ -527,9 +508,6 @@ export const uploadImageFilesWithRetry = async (
         
         // 업로드 실행 및 타임아웃 처리
         await Promise.race([uploadPromise, timeoutPromise]);
-        
-        console.log(`✅ ${file.name} 업로드 완료`);
-
         // 다운로드 URL 가져오기 (별도 타임아웃)
         const downloadURLPromise = getDownloadURL(storageRef);
         const downloadTimeoutPromise = new Promise<never>((_, reject) => {
@@ -537,8 +515,6 @@ export const uploadImageFilesWithRetry = async (
         });
         
         const downloadURL = await Promise.race([downloadURLPromise, downloadTimeoutPromise]);
-        
-        console.log(`🔗 ${file.name} 다운로드 URL 생성 완료`);
         results.push(downloadURL);
         success = true;
         break;
@@ -570,7 +546,6 @@ export const uploadImageFilesWithRetry = async (
         // 마지막 시도가 아니면 지수 백오프로 대기
         if (attempt < maxRetries) {
           const delay = Math.min(1000 * Math.pow(2, attempt - 1), 15000); // 최대 15초
-          console.log(`⏳ ${file.name} ${delay / 1000}초 후 재시도...`);
           await new Promise(resolve => setTimeout(resolve, delay));
         }
       }
@@ -582,7 +557,6 @@ export const uploadImageFilesWithRetry = async (
   }
   
   // 결과 로깅
-  console.log(`🎉 업로드 완료: ${results.length}/${files.length}개 성공`);
   if (failedFiles.length > 0) {
     console.error(`❌ 실패한 파일들:`, failedFiles.map(f => `${f.file.name}: ${f.error.message}`));
     throw new Error(`${failedFiles.length}개 파일 업로드 실패: ${failedFiles.map(f => f.file.name).join(', ')}`);

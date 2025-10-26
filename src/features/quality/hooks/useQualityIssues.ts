@@ -37,8 +37,6 @@ export const useQualityIssues = () => {
     let isCancelled = false;
 
     const initSubscription = async (): Promise<(() => void) | undefined> => {
-      console.log('🔄 품질 이슈 실시간 구독 시작');
-      
       // 로딩 시작
       setLoading(true);
       setError(null);
@@ -46,7 +44,6 @@ export const useQualityIssues = () => {
       // 캐시된 데이터 먼저 표시
       const cachedData = getCachedIssues();
       if (cachedData) {
-        console.log('📦 캐시된 데이터 먼저 표시');
         setLoading(false);
         setFetching(true);
       }
@@ -63,15 +60,11 @@ export const useQualityIssues = () => {
         setFetching(false);
         return;
       }
-      
-      console.log('✅ Firebase 초기화 완료 - 실시간 구독 시작');
-
       try {
         // 실시간 구독 시작
         const unsubscribe = subscribeToQualityIssues(
           (newIssues) => {
             if (!isCancelled) {
-              console.log(`📥 품질 이슈 ${newIssues.length}건 실시간 업데이트`);
               setIssues(newIssues);
               setLoading(false);
               setFetching(false);
@@ -112,7 +105,6 @@ export const useQualityIssues = () => {
       }).catch(error => {
         console.error('구독 해제 중 오류:', error);
       });
-      console.log('🔌 품질 이슈 실시간 구독 해제');
     };
   }, [mounted, user, getCachedIssues, setIssues, setError, setFetching, setLoading]);
 

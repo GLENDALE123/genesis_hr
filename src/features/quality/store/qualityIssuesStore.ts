@@ -85,10 +85,8 @@ export const useQualityIssuesStore = create<QualityIssuesState & QualityIssuesAc
           const cacheAge = now - cache.timestamp;
           
           if (cacheAge < CACHE_DURATION) {
-            console.log('📦 캐시된 품질 이슈 데이터 사용');
             return cache.issues;
           } else {
-            console.log('⏰ 캐시 만료 - 새로운 데이터 필요');
           }
           
           return null;
@@ -105,7 +103,6 @@ export const useQualityIssuesStore = create<QualityIssuesState & QualityIssuesAc
             lastUpdated: Date.now(),
             error: null
           });
-          console.log(`✅ 품질 이슈 ${issues.length}건 캐싱 완료`);
         },
 
         // 로딩 상태 설정
@@ -130,7 +127,6 @@ export const useQualityIssuesStore = create<QualityIssuesState & QualityIssuesAc
             lastUpdated: null,
             error: null
           });
-          console.log('🗑️ 품질 이슈 캐시 초기화');
         },
 
         // 특정 이슈 업데이트 (낙관적 업데이트)
@@ -152,7 +148,6 @@ export const useQualityIssuesStore = create<QualityIssuesState & QualityIssuesAc
                 : null
             };
           });
-          console.log('🔄 품질 이슈 업데이트:', issueId);
         },
 
         // 특정 이슈 삭제
@@ -172,7 +167,6 @@ export const useQualityIssuesStore = create<QualityIssuesState & QualityIssuesAc
                 : null
             };
           });
-          console.log('🗑️ 품질 이슈 삭제:', issueId);
         },
 
         // 새 이슈 추가
@@ -190,7 +184,6 @@ export const useQualityIssuesStore = create<QualityIssuesState & QualityIssuesAc
                 : null
             };
           });
-          console.log('➕ 새 품질 이슈 추가:', issue.id);
         },
       }),
       {

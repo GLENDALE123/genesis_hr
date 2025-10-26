@@ -8,9 +8,6 @@ const notificationWindow = require('./notification-window');
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
 // Electron 환경에서는 Firestore 리스너 방식 사용 (FCM 미사용)
-console.log('✅ [Electron] Firestore 실시간 알림 시스템 사용');
-console.log('🔧 [Electron] Firebase 디버그 모드 활성화');
-
 let mainWindow;
 let tray;
 let hasLoggedNotificationPermission = false; // 알림 권한 로그 1회만 출력
@@ -56,7 +53,6 @@ function createWindow() {
   // 개발 모드에서 캐시 클리어 후 로드
   if (isDev) {
     mainWindow.webContents.session.clearCache().then(() => {
-      console.log('🧹 [Electron] 개발 모드 캐시 클리어 완료');
       mainWindow.loadURL(startUrl);
     });
   } else {
@@ -70,7 +66,6 @@ function createWindow() {
     if (permission === 'notifications') {
       callback(true);
       if (isDev && !hasLoggedNotificationPermission) {
-        console.log('✅ [Electron] 알림 권한 허용됨');
         hasLoggedNotificationPermission = true;
       }
     } else {
@@ -85,21 +80,17 @@ function createWindow() {
       if (input.key === 'F5' || (input.control && input.key === 'r') || (input.meta && input.key === 'r')) {
         event.preventDefault();
         mainWindow.reload();
-        console.log('🔄 페이지 새로고침');
       }
       // F12 또는 Ctrl+Shift+I로 개발자 도구 토글
       if (input.key === 'F12' || (input.control && input.shift && input.key === 'i')) {
         event.preventDefault();
         mainWindow.webContents.toggleDevTools();
-        console.log('🔧 개발자 도구 토글');
       }
       // Ctrl+Shift+R로 캐시 클리어 후 새로고침
       if (input.control && input.shift && input.key === 'r') {
         event.preventDefault();
         mainWindow.webContents.session.clearCache().then(() => {
-          console.log('🧹 캐시 클리어 완료');
           mainWindow.reload();
-          console.log('🔄 캐시 클리어 후 새로고침');
         });
       }
     });
@@ -127,10 +118,6 @@ function createWindow() {
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
-
-  console.log('✅ Electron 메인 윈도우 생성 완료');
-  console.log(`📍 모드: ${isDev ? '개발 (Dev Server)' : '프로덕션 (Static Files)'}`);
-  console.log(`🔗 URL: ${startUrl}`);
 }
 
 /**
@@ -185,8 +172,6 @@ function createTray() {
       }
     }
   });
-
-  console.log('✅ 시스템 트레이 생성 완료');
 }
 
 /**
@@ -202,7 +187,6 @@ function playSystemNotificationSound() {
         if (error) {
           console.error('❌ [Electron Main] 시스템 소리 재생 실패:', error);
         } else {
-          console.log('🔊 [Electron Main] Windows 시스템 알림 소리 재생 완료');
         }
       });
     }
@@ -217,19 +201,13 @@ function playSystemNotificationSound() {
 ipcMain.handle('show-notification', async (event, options) => {
   try {
     const { title, subtitle, body, icon, senderName, senderAvatar, timestamp, centerInfo, link, useCustom = true, soundEnabled = true } = options;
-    
-    console.log('📥 [Electron Main] show-notification 수신:', { title, subtitle, body, senderName, centerInfo, link, useCustom });
-    
     // 🔔 작업 표시줄 깜빡임 (메인 윈도우가 포커스되지 않았을 때)
     if (mainWindow && !mainWindow.isFocused()) {
       mainWindow.flashFrame(true); // 깜빡임 시작
-      console.log('✨ [Electron Main] 작업 표시줄 깜빡임 시작');
-      
       // 윈도우가 포커스되면 깜빡임 중지
       mainWindow.once('focus', () => {
         if (mainWindow) {
           mainWindow.flashFrame(false);
-          console.log('⏹️ [Electron Main] 작업 표시줄 깜빡임 중지');
         }
       });
     }
@@ -238,15 +216,11 @@ ipcMain.handle('show-notification', async (event, options) => {
     if (soundEnabled) {
       playSystemNotificationSound();
     } else {
-      console.log('🔇 [Electron Main] 알림 소리 비활성화됨 (설정에서 꺼짐)');
     }
     
     // 커스텀 알림 사용
     if (useCustom) {
       try {
-        console.log('🎨 [Electron Main] 커스텀 알림 모드 선택');
-        console.log('📦 [Electron Main] notificationWindow:', notificationWindow);
-        
         notificationWindow.createNotification({
           title: title || 'HS 인사관리 시스템',
           subtitle: subtitle,  // ✅ 서브타이틀 추가
@@ -264,14 +238,11 @@ ipcMain.handle('show-notification', async (event, options) => {
               
               // ✅ 알림 클릭 시 링크로 이동
               if (link) {
-                console.log('🔗 [Electron Main] 알림 클릭 - 링크로 이동:', link);
                 mainWindow.webContents.send('navigate-to', link);
               }
             }
           }
         });
-        
-        console.log('✅ [Electron Main] 커스텀 알림 생성 완료:', { title, subtitle, body, senderName, link });
         return { success: true, type: 'custom' };
       } catch (customError) {
         console.error('❌ [Electron Main] 커스텀 알림 생성 실패, 네이티브 알림으로 폴백:', customError);
@@ -297,13 +268,10 @@ ipcMain.handle('show-notification', async (event, options) => {
         
         // ✅ 네이티브 알림도 링크 이동 지원
         if (link) {
-          console.log('🔗 [Electron Main] 네이티브 알림 클릭 - 링크로 이동:', link);
           mainWindow.webContents.send('navigate-to', link);
         }
       }
     });
-
-    console.log('🔔 [Electron] 네이티브 알림 표시:', { title, body, link });
     return { success: true, type: 'native' };
   } catch (error) {
     console.error('❌ [Electron] 알림 표시 실패:', error);
@@ -320,10 +288,6 @@ app.on('ready', () => {
   
   createWindow();
   createTray();
-
-  console.log('🚀 Electron 앱 준비 완료');
-  console.log(`📱 플랫폼: ${process.platform}`);
-  console.log(`🖥️ 윈도우7 호환 모드: Electron 22`);
 });
 
 /**
@@ -356,9 +320,3 @@ app.on('before-quit', () => {
 if (process.platform === 'win32') {
   app.setAppUserModelId('com.hs.hr');
 }
-
-console.log('🎯 Electron 메인 프로세스 시작');
-console.log(`📦 Electron 버전: ${process.versions.electron}`);
-console.log(`🌐 Chrome 버전: ${process.versions.chrome}`);
-console.log(`📟 Node 버전: ${process.versions.node}`);
-

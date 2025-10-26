@@ -79,7 +79,6 @@ export const createJigRequest = async (
   currentUser: { uid: string; displayName: string; photoURL?: string }
 ): Promise<JigRequest> => {
   const id = await generateJigRequestId();
-  console.log('🔍 생성된 지그 요청 ID:', id);
   const now = new Date().toISOString();
   
   // 이미지 업로드 (병렬 압축 + 업로드)
@@ -113,11 +112,7 @@ export const createJigRequest = async (
 
   // undefined 값을 null로 변환하여 Firestore 호환성 보장
   const cleanedRequest = cleanUndefinedValues(newRequest);
-
-  console.log('💾 지그 요청 저장 중:', { id, collection: JIG_COLLECTIONS.REQUESTS });
   await setDocument(JIG_COLLECTIONS.REQUESTS, id, cleanedRequest);
-  console.log('✅ 지그 요청 저장 완료:', id);
-
   // 알림 전송: 지그 요청 등록
   try {
     await UnifiedNotificationService.sendJigRequestCreatedNotification({
@@ -328,15 +323,11 @@ export const updateJigRequestStatus = async (
   reason?: string
 ): Promise<void> => {
   const now = new Date().toISOString();
-  
-  console.log('🔍 상태 업데이트 시도:', { requestId, newStatus, collection: JIG_COLLECTIONS.REQUESTS });
   const existingRequest = await getJigRequest(requestId);
   if (!existingRequest) {
     console.error('❌ 요청을 찾을 수 없음:', requestId);
     throw new Error('요청을 찾을 수 없습니다.');
   }
-  console.log('✅ 요청 찾음:', existingRequest.id);
-
   const historyEntry: HistoryEntry = {
     status: newStatus,
     date: now,

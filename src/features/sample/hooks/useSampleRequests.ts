@@ -47,8 +47,6 @@ export const useSampleRequests = () => {
     let isCancelled = false;
 
     const initSubscription = async () => {
-      console.log('🔄 샘플 요청 실시간 구독 시작');
-      
       // 로딩 시작
       setLoading(true);
       setError(null);
@@ -56,7 +54,6 @@ export const useSampleRequests = () => {
       // 캐시된 데이터 먼저 표시
       const cachedData = getCachedRequests();
       if (cachedData) {
-        console.log('📦 캐시된 데이터 먼저 표시');
         setLoading(false);
         setFetching(true);
       }
@@ -73,14 +70,10 @@ export const useSampleRequests = () => {
         setFetching(false);
         return;
       }
-      
-      console.log('✅ Firebase 초기화 완료 - 실시간 구독 시작');
-
       try {
         // 실시간 구독 시작
         const unsubscribe = SampleService.subscribeToSampleRequests((newRequests) => {
           if (!isCancelled) {
-            console.log(`📥 샘플 요청 ${newRequests.length}건 실시간 업데이트`);
             setCachedRequests(newRequests);
             setLoading(false);
             setFetching(false);
@@ -104,7 +97,6 @@ export const useSampleRequests = () => {
     return () => {
       isCancelled = true;
       if (unsubscribeRef.current) {
-        console.log('🔌 샘플 요청 실시간 구독 해제');
         unsubscribeRef.current();
         unsubscribeRef.current = null;
       }
