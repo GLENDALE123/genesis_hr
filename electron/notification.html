@@ -128,6 +128,19 @@
       border-radius: 0.25rem;
     }
 
+    .center-info.urgent {
+      color: hsl(0 84.2% 60.2%);  /* 빨간색 */
+      background: hsl(0 84.2% 60.2% / 0.1);
+      border: 1px solid hsl(0 84.2% 60.2% / 0.3);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .center-info.urgent {
+        color: hsl(0 62.8% 30.6%);  /* 다크 모드 빨간색 */
+        background: hsl(0 62.8% 30.6% / 0.15);
+      }
+    }
+
     .middle-section {
       display: flex;
       align-items: center;
@@ -341,26 +354,42 @@
         // 페이지 로드 시 소리 재생 (설정값 확인)
         playNotificationSound(notificationSoundEnabled);
         
-        // 발신자 이름 설정
-        if (data.senderName) {
+        // 생산일정 알림 여부 확인
+        const isScheduleNotification = data.title?.includes('생산일정') || 
+                                       data.centerInfo?.includes('생산일정');
+        
+        // 발신자 이름 설정 (생산일정 알림이 아닐 때만)
+        if (!isScheduleNotification && data.senderName) {
           console.log('✅ [Notification HTML] senderName 설정:', data.senderName);
           document.getElementById('senderName').textContent = data.senderName;
+        } else if (isScheduleNotification) {
+          console.log('📅 [Notification HTML] 생산일정 알림 - senderName 숨김');
+          document.getElementById('senderName').textContent = '';
         } else {
           console.warn('⚠️ [Notification HTML] senderName 없음');
         }
         
         // 아바타 설정
         const avatarElement = document.getElementById('avatar');
-        if (data.senderAvatar && data.senderAvatar.startsWith('http')) {
-          console.log('✅ [Notification HTML] 아바타 이미지 설정:', data.senderAvatar);
-          avatarElement.innerHTML = `<img src="${data.senderAvatar}" alt="avatar" />`;
+        if (isScheduleNotification) {
+          // 생산일정 알림 - TMS 로고 표시
+          avatarElement.innerHTML = '<div style="width: 100%; height: 100%; border-radius: 50%; background: hsl(217 91% 59%); display: flex; align-items: center; justify-content: center;"><span style="color: white; font-weight: bold; font-size: 10px;">TMS</span></div>';
+          console.log('✅ [Notification HTML] 생산일정 알림 - TMS 로고 설정');
+        } else if (data.senderAvatar) {
+          if (data.senderAvatar.startsWith('data:')) {
+            // Base64 이미지
+            console.log('✅ [Notification HTML] Base64 아바타 이미지 설정');
+            avatarElement.innerHTML = `<img src="${data.senderAvatar}" alt="avatar" />`;
+          } else if (data.senderAvatar.startsWith('http')) {
+            // HTTP URL 이미지
+            console.log('✅ [Notification HTML] HTTP 아바타 이미지 설정:', data.senderAvatar);
+            avatarElement.innerHTML = `<img src="${data.senderAvatar}" alt="avatar" onerror="this.style.display='none'; this.parentElement.innerHTML='👤';" />`;
+          }
         } else if (data.senderName) {
           // 이름의 첫 글자를 아바타로 사용
           const initial = data.senderName.charAt(0).toUpperCase();
           console.log('✅ [Notification HTML] 아바타 이니셜 설정:', initial);
           avatarElement.textContent = initial;
-        } else {
-          console.warn('⚠️ [Notification HTML] 아바타 정보 없음, 기본값 유지');
         }
         
         // 시간 설정
@@ -449,18 +478,36 @@
         // 중앙 정보 설정 (중앙 상단) - requestType, category, type 등 다양한 용도로 사용
         const centerInfoElement = document.getElementById('centerInfo');
         const centerInfoValue = data.requestType || data.category || data.type || data.centerInfo;
+        
+        // 긴급건 여부 확인
+        const isUrgent = centerInfoValue === '부족분 신청' || 
+                         centerInfoValue === '품질이슈 등록' || 
+                         centerInfoValue === '품질이슈 상태 변경' ||
+                         centerInfoValue?.includes('생산관리부') ||
+                         title?.includes('생산관리부');
+        
         console.log('🔍 [Notification HTML] centerInfo 디버깅:', {
           data: data,
           requestType: data.requestType,
           category: data.category,
           type: data.type,
           centerInfo: data.centerInfo,
-          centerInfoValue: centerInfoValue
+          centerInfoValue: centerInfoValue,
+          isUrgent: isUrgent
         });
+        
         if (centerInfoValue) {
           console.log('✅ [Notification HTML] centerInfo 설정:', centerInfoValue);
           centerInfoElement.textContent = centerInfoValue;
           centerInfoElement.style.display = 'block';
+          
+          // 긴급건이면 빨간색 스타일 적용
+          if (isUrgent) {
+            centerInfoElement.classList.add('urgent');
+            console.log('🚨 [Notification HTML] 긴급건으로 분류:', centerInfoValue);
+          } else {
+            centerInfoElement.classList.remove('urgent');
+          }
         } else {
           console.log('❌ [Notification HTML] centerInfo 값 없음');
           centerInfoElement.style.display = 'none';

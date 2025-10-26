@@ -6,6 +6,7 @@ import { functions } from '@/shared/services/firebase/config';
 import { PackagingReport, ProductionStatus } from '@/features/production/types';
 import { settingsService } from '@/shared/services/settings/settingsService';
 import { NotificationChannelType } from '@/shared/types/settings';
+import { formatDateRangeKorean } from '@/shared/utils/dateUtils';
 
 // 공통 타입 정의
 interface RequestUser {
@@ -607,8 +608,8 @@ export class UnifiedNotificationService {
       // 일괄 등록 메시지
       const uniqueDates = [...new Set(schedules.map(s => s.planDate))];
       const dateRange = uniqueDates.length === 1 
-        ? uniqueDates[0] 
-        : `${uniqueDates[0]} ~ ${uniqueDates[uniqueDates.length - 1]}`;
+        ? formatDateRangeKorean(uniqueDates[0], uniqueDates[0])
+        : formatDateRangeKorean(uniqueDates[0], uniqueDates[uniqueDates.length - 1]);
       
       await this.sendNotification({
         type: NotificationType.PRODUCTION_SCHEDULE,

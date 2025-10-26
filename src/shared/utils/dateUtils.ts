@@ -111,5 +111,40 @@ export const formatDateTime = (date: Date): string => {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 };
 
+/**
+ * 날짜를 한국어 형식으로 포맷팅 (예: "10월 26일(일요일)")
+ * 
+ * @param date - Date 객체
+ * @returns 포맷된 문자열 (예: "10월 26일(일요일)")
+ */
+export const formatDateKoreanWithDay = (date: Date): string => {
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const dayNames = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+  const dayName = dayNames[date.getDay()];
+  return `${month}월 ${day}일(${dayName})`;
+};
+
+/**
+ * 날짜 범위를 한국어 형식으로 포맷팅 (예: "10월 26일(일요일)~10월 28일(화요일)")
+ * 
+ * @param startDate - 시작 날짜 (Date 또는 string)
+ * @param endDate - 종료 날짜 (Date 또는 string)
+ * @returns 포맷된 문자열
+ */
+export const formatDateRangeKorean = (startDate: Date | string, endDate: Date | string): string => {
+  const start = typeof startDate === 'string' ? new Date(startDate) : startDate;
+  const end = typeof endDate === 'string' ? new Date(endDate) : endDate;
+  
+  const startFormatted = formatDateKoreanWithDay(start);
+  const endFormatted = formatDateKoreanWithDay(end);
+  
+  if (startFormatted === endFormatted) {
+    return startFormatted;
+  }
+  
+  return `${startFormatted}~${endFormatted}`;
+};
+
 
 

@@ -43,7 +43,7 @@ interface JigMasterActions {
   setMasters: (items: JigMasterItem[]) => void;
   fetchMasterItems: () => Promise<void>;
   subscribeToMasters: () => () => void;
-  createMasterItem: (data: CreateJigMasterItemData, imageFiles: File[], currentUserUid: string) => Promise<void>;
+  createMasterItem: (data: CreateJigMasterItemData, imageFiles: File[], currentUser: { uid: string; displayName: string }) => Promise<void>;
   updateMasterItem: (id: string, updates: Partial<JigMasterItem>) => Promise<void>;
   deleteMasterItem: (id: string) => Promise<void>;
   setSelectedItem: (item: JigMasterItem | null) => void;
@@ -183,10 +183,10 @@ export const useJigMasterStore = create<JigMasterState & JigMasterActions>()(
         return unsubscribe;
       },
 
-      createMasterItem: async (data, imageFiles, currentUserUid) => {
+      createMasterItem: async (data, imageFiles, currentUser) => {
         set({ isLoading: true, error: null });
         try {
-          await createJigMasterItem(data, imageFiles, { uid: currentUserUid, displayName: 'Unknown User' });
+          await createJigMasterItem(data, imageFiles, currentUser);
           // 실시간 구독으로 자동 업데이트됨
         } catch (error) {
           set({ 

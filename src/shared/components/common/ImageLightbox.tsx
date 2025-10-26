@@ -115,6 +115,67 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
     };
   }, [open, handlePrevious, handleNext]);
 
+  // 마우스 드래그 스와이프 핸들러
+  useEffect(() => {
+    if (!open) return;
+
+    let mouseStartX = 0;
+    let isDragging = false;
+
+    const handleMouseDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      
+      // 버튼이나 클릭 가능한 요소에서는 드래그 비활성화
+      if (
+        target.tagName === 'BUTTON' ||
+        target.closest('button') ||
+        target.onclick !== null
+      ) {
+        return;
+      }
+      
+      // 라이트박스 내부 영역에서만 드래그 활성화
+      mouseStartX = e.clientX;
+      isDragging = true;
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+      // 드래그 중 텍스트 선택 방지
+      e.preventDefault();
+    };
+
+    const handleMouseUp = (e: MouseEvent) => {
+      if (!isDragging) return;
+      
+      const mouseEndX = e.clientX;
+      const swipeThreshold = 50; // 최소 스와이프 거리
+      const diff = mouseStartX - mouseEndX;
+
+      if (Math.abs(diff) > swipeThreshold) {
+        if (diff > 0) {
+          // 왼쪽으로 드래그 -> 다음 이미지
+          handleNext();
+        } else {
+          // 오른쪽으로 드래그 -> 이전 이미지
+          handlePrevious();
+        }
+      }
+
+      isDragging = false;
+    };
+
+    window.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [open, handlePrevious, handleNext]);
+
   // 라이트박스 열림/닫힘 디버그
   useEffect(() => {
     if (open) {

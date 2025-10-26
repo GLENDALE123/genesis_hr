@@ -9,7 +9,7 @@ export const generateJigRequestId = async (): Promise<string> => {
   
   try {
     // 카운터 문서 가져오기
-    const counterDoc = await getDocument('counters', 'jig-requests-counter');
+    const counterDoc = await getDocument('counters', 'jig-requests-counter') as { id: string; count?: number } | null;
     
     if (!counterDoc) {
       // 카운터 문서가 없으면 생성

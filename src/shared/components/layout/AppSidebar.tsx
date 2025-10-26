@@ -266,19 +266,24 @@ const AppSidebarComponent = ({
           }
         }}
         className={cn(
-          "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors text-left",
+          "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors",
           // 태블릿 최적화: 터치 영역 최소 44px 보장
-          "min-h-[44px] px-2 py-2 md:px-2 md:py-2",
+          "min-h-[44px]",
+          // 접힌 상태와 확장 상태에 따른 스타일 분기
+          isExpanded 
+            ? "px-2 py-2 md:px-2 md:py-2 text-left" 
+            : "justify-center px-1 py-2 md:px-1 md:py-2 min-w-[44px] md:min-w-[40px]",
           // 서브메뉴는 버튼 너비를 줄임
-          level === 0 ? "w-full" : "w-[calc(100%-1.5rem)] ml-6",
+          level === 0 ? "w-full max-w-full" : "w-[calc(100%-1.5rem)] ml-6 max-w-full",
           active
             ? "bg-primary text-primary-foreground"
-            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-          // 접힌 상태에서는 정사각형 터치 영역
-          !isExpanded && "justify-center px-1 py-2 md:px-1 md:py-2 min-w-[44px] md:min-w-[40px]"
+            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
         )}
       >
-        <div className="flex items-center gap-3">
+        <div className={cn(
+          "flex items-center min-w-0 overflow-hidden",
+          isExpanded ? "gap-3 w-full" : ""
+        )}>
           <item.icon className={cn(
             // 태블릿에서 아이콘 크기 증가 (모바일: 5x5, 데스크톱: 4x4)
             "h-5 w-5 md:h-4 md:w-4 flex-shrink-0",
@@ -286,9 +291,9 @@ const AppSidebarComponent = ({
           )} />
           {isExpanded && (
             <>
-              <span className="truncate">{item.title}</span>
+              <span className="truncate min-w-0 flex-1 whitespace-nowrap">{item.title}</span>
               {item.badge && (
-                <Badge className="ml-auto bg-secondary text-secondary-foreground">
+                <Badge className="ml-auto bg-secondary text-secondary-foreground flex-shrink-0">
                   {item.badge}
                 </Badge>
               )}
@@ -332,7 +337,7 @@ const AppSidebarComponent = ({
   return (
     <div 
       className={cn(
-        "flex h-full flex-col border-r transition-all duration-300 flex-shrink-0",
+        "flex h-full flex-col border-r transition-all duration-300 flex-shrink-0 overflow-x-hidden overflow-y-hidden",
         // 태블릿에서 사이드바 너비 조정 (모바일: 숨김, 태블릿: 더 넓게, 데스크톱: 기존 유지)
         isExpanded ? "w-72 md:w-64" : "w-16 md:w-16",
         className
@@ -361,7 +366,7 @@ const AppSidebarComponent = ({
       </div>
 
       {/* Navigation */}
-      <div className="flex-1 py-4 overflow-y-auto">
+      <div className="flex-1 py-4 overflow-y-auto overflow-x-hidden">
         <div className="space-y-1">
           {/* 메인 메뉴 섹션 */}
           <div className="space-y-1 px-2">
@@ -398,14 +403,14 @@ const AppSidebarComponent = ({
                 }}
                 className={cn(
                   "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors text-left",
-                  "min-h-[44px] px-2 py-2 md:px-2 md:py-2 w-full",
+                  "min-h-[44px] px-2 py-2 md:px-2 md:py-2 w-full max-w-full overflow-hidden",
                   isActive('/settings')
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                 )}
               >
-                <Settings className="mr-2 h-5 w-5 md:h-4 md:w-4" />
-                설정
+                <Settings className="mr-2 h-5 w-5 md:h-4 md:w-4 flex-shrink-0" />
+                <span className="truncate whitespace-nowrap">설정</span>
               </button>
               <button
                 onClick={(event) => handleClick('/help', event)}
@@ -418,14 +423,14 @@ const AppSidebarComponent = ({
                 }}
                 className={cn(
                   "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors text-left",
-                  "min-h-[44px] px-2 py-2 md:px-2 md:py-2 w-full",
+                  "min-h-[44px] px-2 py-2 md:px-2 md:py-2 w-full max-w-full overflow-hidden",
                   isActive('/help')
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                 )}
               >
-                <HelpCircle className="mr-2 h-5 w-5 md:h-4 md:w-4" />
-                도움말
+                <HelpCircle className="mr-2 h-5 w-5 md:h-4 md:w-4 flex-shrink-0" />
+                <span className="truncate whitespace-nowrap">도움말</span>
               </button>
             </>
           )}

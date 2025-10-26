@@ -151,11 +151,6 @@ exports.createNotification = onRequest({
       metadata.centerInfo = String(centerInfo || subType);
     }
     
-    // productName - subtitle 정보
-    if (subtitle) {
-      metadata.productName = String(subtitle);
-    }
-    
     // supplier - 발주처 정보
     if (relatedData?.supplier) {
       metadata.supplier = String(relatedData.supplier);
@@ -169,6 +164,7 @@ exports.createNotification = onRequest({
       id: notifId,
       type: String(type || ''),
       title: String(title || ''),
+      subtitle: String(subtitle || ''),  // subtitle 최상위 레벨에 추가
       body: String(bodyText || ''),
       link: String(link || '/dashboard'),
       createdAt: createdAtTimestamp, // 클라이언트 타임스탬프 (RTT 제거)

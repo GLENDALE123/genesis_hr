@@ -42,7 +42,7 @@ export const useJigMaster = () => {
     
     await createMasterItem(data, imageFiles, {
       uid: user.uid,
-      displayName
+      displayName,
     });
   };
 

@@ -18,7 +18,10 @@ const {
 const { logNotificationEvent, logError, logNotificationStats } = require('../lib/logging');
 
 // 새 알림 문서 생성 시 FCM 발송
-exports.onNotificationCreated = onDocumentCreated('notifications/{notificationId}', async (event) => {
+exports.onNotificationCreated = onDocumentCreated({
+  document: 'notifications/{notificationId}',
+  region: 'asia-northeast3'
+}, async (event) => {
   const { messaging } = initializeFirebase();
   const snap = event.data;
   const n = (snap && snap.data()) || {};

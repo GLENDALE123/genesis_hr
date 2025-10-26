@@ -1,5 +1,9 @@
 const { BrowserWindow, screen } = require('electron');
 const path = require('path');
+const fs = require('fs');
+const https = require('https');
+const http = require('http');
+const { URL } = require('url');
 
 class NotificationWindow {
   constructor() {
@@ -8,6 +12,67 @@ class NotificationWindow {
     this.queue = []; // 대기 중인 알림 큐
     this.notificationHeight = 150; // 알림 높이 (120px → 150px로 증가)
     this.notificationWidth = 350; // 알림 너비 (400px → 350px로 감소)
+    this.avatarCache = new Map(); // 아바타 이미지 캐시
+    this.maxCacheSize = 50; // 최대 캐시 크기 (메모리 누수 방지)
+  }
+
+  /**
+   * 이미지를 다운로드하여 Base64로 변환 (캐시 사용)
+   */
+  async downloadImage(url) {
+    try {
+      if (this.avatarCache.has(url)) {
+        console.log('📦 [NotificationWindow] 캐시된 이미지 사용:', url);
+        return this.avatarCache.get(url);
+      }
+
+      console.log('⬇️ [NotificationWindow] 이미지 다운로드 시작:', url);
+
+      const urlObj = new URL(url);
+      const protocol = urlObj.protocol === 'https:' ? https : http;
+
+      return new Promise((resolve, reject) => {
+        const request = protocol.get(url, (response) => {
+          if (response.statusCode !== 200) {
+            reject(new Error(`HTTP ${response.statusCode}`));
+            return;
+          }
+
+          const chunks = [];
+          response.on('data', (chunk) => chunks.push(chunk));
+          response.on('end', () => {
+            const buffer = Buffer.concat(chunks);
+            const base64 = buffer.toString('base64');
+            const dataUrl = `data:${response.headers['content-type'] || 'image/jpeg'};base64,${base64}`;
+
+            // 캐시 크기 제한 (메모리 누수 방지)
+            if (this.avatarCache.size >= this.maxCacheSize) {
+              // 가장 오래된 항목 제거 (LRU 방식)
+              const firstKey = this.avatarCache.keys().next().value;
+              this.avatarCache.delete(firstKey);
+              console.log('🗑️ [NotificationWindow] 캐시 크기 제한, 오래된 항목 제거:', firstKey);
+            }
+
+            this.avatarCache.set(url, dataUrl);
+            console.log('✅ [NotificationWindow] 이미지 다운로드 완료:', url);
+            resolve(dataUrl);
+          });
+        });
+
+        request.on('error', (error) => {
+          console.error('❌ [NotificationWindow] 이미지 다운로드 실패:', error);
+          reject(error);
+        });
+
+        request.setTimeout(5000, () => {
+          request.destroy();
+          reject(new Error('다운로드 타임아웃'));
+        });
+      });
+    } catch (error) {
+      console.error('❌ [NotificationWindow] 이미지 다운로드 오류:', error);
+      return null;
+    }
   }
 
   /**
@@ -44,11 +109,22 @@ class NotificationWindow {
   /**
    * 알림 윈도우 표시
    */
-  showNotification(options) {
+  async showNotification(options) {
     try {
       const { title, subtitle, body, icon, onClick, soundEnabled = true } = options;
 
       console.log('🔔 [NotificationWindow] 알림 표시:', { title, subtitle, body });
+
+      // 아바타 이미지 다운로드 (HTTP URL인 경우)
+      let processedSenderAvatar = options.senderAvatar;
+      if (options.senderAvatar && options.senderAvatar.startsWith('http')) {
+        console.log('🔄 [NotificationWindow] 아바타 이미지 다운로드 중...');
+        processedSenderAvatar = await this.downloadImage(options.senderAvatar);
+        if (!processedSenderAvatar) {
+          console.warn('⚠️ [NotificationWindow] 아바타 다운로드 실패, 원본 URL 사용');
+          processedSenderAvatar = options.senderAvatar;
+        }
+      }
 
       // 작업 영역 가져오기 (작업 표시줄 제외)
       const workArea = screen.getPrimaryDisplay().workArea;
@@ -82,7 +158,10 @@ class NotificationWindow {
         webPreferences: {
           nodeIntegration: false,
           contextIsolation: true,
-          preload: path.join(__dirname, 'notification-preload.js')
+          preload: path.join(__dirname, 'notification-preload.js'),
+          webSecurity: false,  // 외부 이미지 로딩 허용
+          allowRunningInsecureContent: true,  // HTTPS가 아닌 콘텐츠 허용
+          experimentalFeatures: true  // 실험적 기능 활성화
         }
       });
 
@@ -99,9 +178,10 @@ class NotificationWindow {
         body,
         icon: icon || path.join(__dirname, '../public/favicon.ico'),
         senderName: options.senderName,
-        senderAvatar: options.senderAvatar,
+        senderAvatar: processedSenderAvatar,  // ✅ 처리된 아바타 사용
         timestamp: options.timestamp || new Date().toISOString(),
-        centerInfo: options.centerInfo  // ✅ 중앙 정보 추가
+        centerInfo: options.centerInfo,  // ✅ 중앙 정보 추가
+        metadata: options.metadata || {}  // ✅ metadata 추가
       };
       
       console.log('📤 [NotificationWindow] HTML로 전달할 데이터:', dataToSend);
