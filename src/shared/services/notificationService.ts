@@ -31,7 +31,9 @@ export enum NotificationType {
   QUALITY_ISSUE = 'quality-issue',
   QUALITY_ISSUE_STATUS = 'quality-issue-status',
   SAMPLE_REQUEST = 'sample-request',
-  SAMPLE_STATUS = 'sample-status'
+  SAMPLE_STATUS = 'sample-status',
+  JIG_REQUEST = 'jig-request',
+  JIG_RECEIVE = 'jig-receive'
 }
 
 // 우선순위 열거형
@@ -89,6 +91,14 @@ const STATUS_MESSAGES: Record<string, StatusMessages> = {
     'in-progress': '진행중',
     'completed': '완료됨',
     'cancelled': '취소됨'
+  },
+  jig: {
+    '요청': '요청',
+    '보류': '보류',
+    '진행중': '진행중',
+    '입고중': '입고중',
+    '반려': '반려',
+    '완료': '완료'
   },
   workSchedule: {
     'created': '근무계획을 등록했습니다.',
@@ -577,26 +587,27 @@ export class UnifiedNotificationService {
    */
   static async sendAnnouncementNotification(
     announcementTitle: string,
-    author: string,
-    authorId: string,
+    bodyText: string,
+    cooperationRequest?: string,
     announcementId?: string
   ): Promise<{ success: boolean; targetCount: number; error?: string }> {
     try {
       const result = await this.sendNotification({
         type: NotificationType.ANNOUNCEMENT,
-        title: '새 공지사항이 등록되었습니다',
-        body: `"${announcementTitle}" 공지사항이 등록되었습니다.`,
+        title: '공지사항',
+        body: bodyText,
         requestId: announcementId || `ANNOUNCEMENT-${Date.now()}`,
         subtitle: announcementTitle,
-        senderName: author,
-        senderUid: authorId,
+        senderName: '시스템',
+        senderUid: 'system',
         priority: NotificationPriority.NORMAL,
-        centerInfo: '공지사항 등록',
+        centerInfo: cooperationRequest ? ('협조요청: ' + cooperationRequest) : '',
         metadata: {
           announcementTitle,
-          announcementId
+          announcementId,
+          cooperationRequest: cooperationRequest || ''
         }
-      }, authorId);
+      });
 
       if (result.success) {
         console.log(`✅ 공지사항 등록 알림 전송 완료: ${announcementTitle}`);
@@ -618,7 +629,7 @@ export class UnifiedNotificationService {
    * 근무계획 변경 알림 생성
    */
   static async notifyWorkScheduleChange(
-    dateStr: string,
+    dateRangeText: string,
     scheduleId: string,
     action: 'created' | 'updated' | 'deleted',
     description: string
@@ -627,22 +638,22 @@ export class UnifiedNotificationService {
       const result = await this.sendNotification({
         type: NotificationType.WORK_SCHEDULE,
         title: '근무계획 변경',
-        body: `${dateStr} ${description}`,
+        body: `${dateRangeText} 근무계획이 변경되었습니다`,
         requestId: scheduleId,
-        subtitle: getStatusMessage('workSchedule', action),
+        subtitle: '',
         senderName: '시스템',
         senderUid: 'system',
         priority: NotificationPriority.NORMAL,
-        centerInfo: '근무계획 변경',
+        centerInfo: '',
         metadata: {
           action,
-          dateStr,
+          dateStr: dateRangeText,
           description
         }
       });
 
       if (result.success) {
-        console.log(`✅ 근무계획 변경 알림 전송 완료: ${dateStr} - ${action}`);
+        console.log(`✅ 근무계획 변경 알림 전송 완료: ${dateRangeText} - ${action}`);
       } else {
         console.warn(`⚠️ 근무계획 변경 알림 전송 실패: ${result.error}`);
       }
@@ -661,29 +672,37 @@ export class UnifiedNotificationService {
    * 품질이슈 등록 알림 생성
    */
   static async sendQualityIssueNotification(
-    issueTitle: string,
+    productName: string,
+    partName: string,
+    description: string,
+    status: string,
     author: string,
     authorId: string,
-    issueId?: string
+    issueId?: string,
+    senderAvatar?: string
   ): Promise<void> {
     try {
+      const subtitle = `${productName} ${partName}`;
       await this.sendNotification({
         type: NotificationType.QUALITY_ISSUE,
-        title: '새 품질이슈가 등록되었습니다',
-        body: `"${issueTitle}" 품질이슈가 등록되었습니다.`,
+        title: '품질이슈 등록',
+        body: description,
         requestId: issueId || `QUALITY-ISSUE-${Date.now()}`,
-        subtitle: issueTitle,
+        subtitle,
         senderName: author,
         senderUid: authorId,
+        senderAvatar: senderAvatar,
         priority: NotificationPriority.HIGH,
-        centerInfo: '품질이슈 등록',
+        centerInfo: getStatusMessage('quality', status),
         metadata: {
-          issueTitle,
-          issueId
+          productName,
+          partName,
+          issueId,
+          status
         }
       }, authorId);
 
-      console.log(`✅ 품질이슈 등록 알림 전송 완료: ${issueTitle}`);
+      console.log(`✅ 품질이슈 등록 알림 전송 완료: ${productName} ${partName}`);
     } catch (error) {
       console.error('품질이슈 등록 알림 전송 중 오류:', error);
     }
@@ -695,24 +714,30 @@ export class UnifiedNotificationService {
   static async sendQualityIssueStatusChangeNotification(
     oldStatus: string | undefined,
     newStatus: string,
-    issueTitle: string,
+    description: string,
+    productName: string,
+    partName: string,
     author: string,
     authorId: string,
-    issueId?: string
+    issueId?: string,
+    senderAvatar?: string
   ): Promise<{ success: boolean; targetCount: number; error?: string }> {
     try {
+      const subtitle = `${productName} ${partName}`;
       const result = await this.sendNotification({
         type: NotificationType.QUALITY_ISSUE_STATUS,
         title: '품질이슈 상태 변경',
-        body: `"${issueTitle}" 품질이슈 상태가 "${getStatusMessage('quality', oldStatus || '')}"에서 "${getStatusMessage('quality', newStatus)}"로 변경되었습니다.`,
+        body: description,
         requestId: issueId || `QUALITY-STATUS-${Date.now()}`,
-        subtitle: getStatusMessage('quality', newStatus),
+        subtitle: subtitle,
         senderName: author,
         senderUid: authorId,
+        senderAvatar: senderAvatar,
         priority: NotificationPriority.NORMAL,
-        centerInfo: '품질이슈 상태 변경',
+        centerInfo: getStatusMessage('quality', newStatus),
         metadata: {
-          issueTitle,
+          productName,
+          partName,
           issueId,
           oldStatus,
           newStatus
@@ -720,7 +745,7 @@ export class UnifiedNotificationService {
       }, authorId);
 
       if (result.success) {
-        console.log(`✅ 품질이슈 상태 변경 알림 전송 완료: ${issueTitle} - ${newStatus}`);
+        console.log(`✅ 품질이슈 상태 변경 알림 전송 완료: ${productName} ${partName} - ${newStatus}`);
       } else {
         console.warn(`⚠️ 품질이슈 상태 변경 알림 전송 실패: ${result.error}`);
       }
@@ -733,8 +758,110 @@ export class UnifiedNotificationService {
     }
   }
 
-  // ==================== 샘플 관리 알림 ====================
 
+  // ==================== 지그 관리 알림 ====================
+
+  /**
+   * 지그 요청 등록 알림
+   */
+  static async sendJigRequestCreatedNotification(params: {
+    requestId: string;
+    productName: string;
+    partName: string;
+    jigNumber: string;
+    requestType: string; // 생산구분
+    status: string;      // JigStatus 텍스트
+    senderName: string;
+    senderUid: string;
+    senderAvatar?: string;
+  }): Promise<void> {
+    const {
+      requestId,
+      productName,
+      partName,
+      jigNumber,
+      requestType,
+      status,
+      senderName,
+      senderUid,
+      senderAvatar
+    } = params;
+
+    const subtitle = `${productName} ${partName}`;
+    const body = `${senderName}님이 "${productName} ${partName}" (지그번호: ${jigNumber})의 ${requestType} 요청을 등록하였습니다.`;
+
+    await this.sendNotification({
+      type: NotificationType.JIG_REQUEST,
+      title: '지그 요청 등록',
+      body,
+      requestId,
+      subtitle,
+      senderName,
+      senderUid,
+      senderAvatar,
+      priority: NotificationPriority.NORMAL,
+      centerInfo: getStatusMessage('jig', status),
+      metadata: {
+        productName,
+        partName,
+        jigNumber,
+        requestType,
+        status
+      }
+    }, senderUid);
+  }
+
+  /**
+   * 지그 입고 처리 알림
+   */
+  static async sendJigReceiveNotification(params: {
+    requestId: string;
+    productName: string;
+    partName: string;
+    receivedQuantity: number;            // 이번 처리 수량
+    currentReceivedQuantity: number;     // 처리 후 누적 입고 수량
+    totalQuantity: number;               // 총 요청 수량
+    status: string;
+    senderName: string;
+    senderUid: string;
+    senderAvatar?: string;
+  }): Promise<void> {
+    const {
+      requestId,
+      productName,
+      partName,
+      receivedQuantity,
+      currentReceivedQuantity,
+      totalQuantity,
+      status,
+      senderName,
+      senderUid,
+      senderAvatar
+    } = params;
+
+    const subtitle = `${productName} ${partName}`;
+    const body = `${senderName}님이 ${productName} ${partName} ${receivedQuantity.toLocaleString()}개를 입고 처리하였습니다.\n입고현황: ${currentReceivedQuantity.toLocaleString()}/${totalQuantity.toLocaleString()}`;
+
+    await this.sendNotification({
+      type: NotificationType.JIG_RECEIVE,
+      title: '지그 입고 처리',
+      body,
+      requestId,
+      subtitle,
+      senderName,
+      senderUid,
+      senderAvatar,
+      priority: NotificationPriority.NORMAL,
+      centerInfo: getStatusMessage('jig', status),
+      metadata: {
+        productName,
+        partName,
+        receivedQuantity,
+        status
+      }
+    }, senderUid);
+  }
+  // ==================== 샘플 관리 알림 ====================
   /**
    * 샘플 요청 상태 변경 알림 생성
    */
@@ -794,7 +921,7 @@ export class UnifiedNotificationService {
       }, authorId);
 
       if (result.success) {
-        console.log(`✅ 샘플 상태 변경 알림 전송 완료: ${sampleTitle} - ${newStatus}`);
+        console.log(`✅ 샘플 상태 변경 알림 전송 완료: ${productName}${partName ? '+' + partName : ''} - ${newStatus}`);
       } else {
         console.warn(`⚠️ 샘플 상태 변경 알림 전송 실패: ${result.error}`);
       }
@@ -812,23 +939,27 @@ export class UnifiedNotificationService {
    * @deprecated 등록 시에도 상태 변경 알림 사용
    */
   static async sendSampleRequestNotification(
-    sampleTitle: string,
+    clientName: string,
+    productName: string,
     author: string,
     authorId: string,
-    sampleId?: string
+    sampleId?: string,
+    partName?: string
   ): Promise<void> {
     try {
       // 등록 시에도 상태 변경 알림 형식 사용
       await this.sendSampleStatusChangeNotification(
         undefined,
         'pending',
-        sampleTitle,
+        clientName,
+        productName,
         author,
         authorId,
-        sampleId
+        sampleId,
+        partName
       );
 
-      console.log(`✅ 샘플 요청 등록 알림 전송 완료: ${sampleTitle}`);
+      console.log(`✅ 샘플 요청 등록 알림 전송 완료: ${productName}${partName ? '+' + partName : ''}`);
     } catch (error) {
       console.error('샘플 요청 등록 알림 전송 중 오류:', error);
     }
@@ -998,6 +1129,7 @@ export class UnifiedNotificationService {
     await this.sendSampleStatusChangeNotification(
       oldStatus,
       newStatus,
+      testSample.clientName,
       testSample.productName,
       getUserDisplayName(null, user),
       user.uid,
@@ -1013,12 +1145,17 @@ export class UnifiedNotificationService {
   ): Promise<void> {
     const testIssue = {
       id: `TEST-QUALITY-${Date.now()}`,
-      title: '테스트 품질이슈',
-      description: '테스트용 품질이슈입니다.'
+      productName: '테스트제품',
+      partName: '테스트부속',
+      description: '테스트용 품질이슈입니다.',
+      status: 'in-progress'
     };
 
     await this.sendQualityIssueNotification(
-      testIssue.title,
+      testIssue.productName,
+      testIssue.partName,
+      testIssue.description,
+      testIssue.status,
       getUserDisplayName(null, user),
       user.uid,
       testIssue.id
@@ -1035,14 +1172,17 @@ export class UnifiedNotificationService {
   ): Promise<void> {
     const testIssue = {
       id: `TEST-QUALITY-STATUS-${Date.now()}`,
-      title: '테스트 품질이슈 상태변경',
+      productName: '테스트제품',
+      partName: '테스트부속',
       description: '테스트용 품질이슈 상태변경입니다.'
     };
 
     await this.sendQualityIssueStatusChangeNotification(
       oldStatus,
       newStatus,
-      testIssue.title,
+      testIssue.description,
+      testIssue.productName,
+      testIssue.partName,
       getUserDisplayName(null, user),
       user.uid,
       testIssue.id

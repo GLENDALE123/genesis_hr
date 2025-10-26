@@ -1,7 +1,6 @@
 import React from 'react';
 import { Button } from '@/shared/components/ui/button';
-import { cn } from '@/shared/lib/utils';
-import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface CalendarHeaderProps {
   year: number;
@@ -22,71 +21,64 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
   onMonthChange,
   onToday
 }) => {
+  const isMonthView = view === 'month';
+
+  const handlePrev = () => {
+    if (isMonthView && onMonthChange) {
+      onMonthChange(-1);
+      return;
+    }
+    onYearChange(-1);
+  };
+
+  const handleNext = () => {
+    if (isMonthView && onMonthChange) {
+      onMonthChange(1);
+      return;
+    }
+    onYearChange(1);
+  };
+
   return (
-    <div className="flex items-center justify-between p-4 border-b">
-      <div className="flex items-center gap-2">
-        {/* 년도 네비게이션 */}
+    <div className="p-3 sm:p-4 border-b flex flex-col gap-2 sm:gap-3">
+      {/* 상단: 제목을 중심으로 좌우 화살표 정렬 */}
+      <div className="flex items-center justify-between">
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => onYearChange(-1)}
+          onClick={handlePrev}
           className="h-8 w-8"
+          aria-label={isMonthView ? '이전 달' : '이전 년'}
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        
-        {/* 월 네비게이션 (월간 보기일 때만) */}
-        {view === 'month' && onMonthChange && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onMonthChange(-1)}
-            className="h-8 w-8"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-        )}
-        
-        {/* 현재 년/월 표시 */}
-        <h2 className="text-2xl font-bold w-48 text-center">
-          {year}년 {view === 'month' && month !== undefined && `${month + 1}월`}
+
+        <h2 className="text-xl sm:text-2xl font-bold text-center flex-1">
+          {year}년 {isMonthView && month !== undefined && `${month + 1}월`}
         </h2>
-        
-        {/* 월 네비게이션 (월간 보기일 때만) */}
-        {view === 'month' && onMonthChange && (
+
+        <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => onMonthChange(1)}
+            onClick={handleNext}
             className="h-8 w-8"
+            aria-label={isMonthView ? '다음 달' : '다음 년'}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
-        )}
-        
-        {/* 년도 네비게이션 */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => onYearChange(1)}
-          className="h-8 w-8"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-        
-        {/* Today 버튼 */}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onToday}
-          className="ml-2"
-        >
-          Today
-        </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onToday}
+          >
+            Today
+          </Button>
+        </div>
       </div>
-      
+
+      {/* 하단: 뷰 전환 */}
       <div className="flex items-center gap-2">
-        {/* 뷰 전환 버튼들 */}
         <Button
           variant={view === 'year' ? 'default' : 'outline'}
           size="sm"

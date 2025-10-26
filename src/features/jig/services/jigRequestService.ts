@@ -16,6 +16,7 @@ import { uploadImageFilesParallel, deleteFile } from '@/shared/services/firebase
 import { JigRequest, CreateJigRequestData, UpdateJigRequestData, HistoryEntry, JigComment, JigStatus } from '../types';
 import { JIG_COLLECTIONS, JIG_STORAGE_PATHS } from '../constants';
 import { generateJigRequestId } from '../utils';
+import { UnifiedNotificationService } from '@/shared/services/notificationService';
 
 // undefined 값을 null로 변환하는 유틸리티 함수
 const cleanUndefinedValues = (obj: any): any => {
@@ -75,7 +76,7 @@ export const getJigRequest = async (id: string): Promise<JigRequest | null> => {
 export const createJigRequest = async (
   data: CreateJigRequestData,
   imageFiles: File[],
-  currentUser: { uid: string; displayName: string }
+  currentUser: { uid: string; displayName: string; photoURL?: string }
 ): Promise<JigRequest> => {
   const id = await generateJigRequestId();
   console.log('🔍 생성된 지그 요청 ID:', id);
@@ -116,6 +117,23 @@ export const createJigRequest = async (
   console.log('💾 지그 요청 저장 중:', { id, collection: JIG_COLLECTIONS.REQUESTS });
   await setDocument(JIG_COLLECTIONS.REQUESTS, id, cleanedRequest);
   console.log('✅ 지그 요청 저장 완료:', id);
+
+  // 알림 전송: 지그 요청 등록
+  try {
+    await UnifiedNotificationService.sendJigRequestCreatedNotification({
+      requestId: id,
+      productName: (data as any).productName || data.itemName,
+      partName: data.partName,
+      jigNumber: (data as any).itemNumber || '',
+      requestType: data.requestType,
+      status: '요청',
+      senderName: currentUser.displayName,
+      senderUid: currentUser.uid,
+      senderAvatar: currentUser.photoURL || undefined
+    });
+  } catch (e) {
+    console.warn('지그 요청 등록 알림 실패:', e);
+  }
   return newRequest;
 };
 
@@ -191,7 +209,7 @@ export const addJigRequestComment = async (
 export const updateJigRequestQuantity = async (
   requestId: string,
   quantityChange: number,
-  currentUser: { uid: string; displayName: string }
+  currentUser: { uid: string; displayName: string; photoURL?: string }
 ): Promise<void> => {
   const now = new Date().toISOString();
   
@@ -282,6 +300,24 @@ export const updateJigRequestQuantity = async (
   const cleanedUpdateData = cleanUndefinedValues(updateData);
 
   await updateDocument(JIG_COLLECTIONS.REQUESTS, requestId, cleanedUpdateData);
+
+  // 알림 전송: 지그 입고 처리 (입고/반출 모두 공지하되 수량 기준으로 텍스트 통일)
+  try {
+    await UnifiedNotificationService.sendJigReceiveNotification({
+      requestId,
+      productName: (existingRequest as any).productName || existingRequest.itemName,
+      partName: existingRequest.partName,
+      receivedQuantity: Math.abs(quantityChange),
+      currentReceivedQuantity: finalReceivedQuantity,
+      totalQuantity: existingRequest.quantity,
+      status: newStatus,
+      senderName: currentUser.displayName,
+      senderUid: currentUser.uid,
+      senderAvatar: currentUser.photoURL || undefined
+    });
+  } catch (e) {
+    console.warn('지그 입고 처리 알림 실패:', e);
+  }
 };
 
 // 지그 요청 상태 업데이트

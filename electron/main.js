@@ -13,6 +13,7 @@ console.log('🔧 [Electron] Firebase 디버그 모드 활성화');
 
 let mainWindow;
 let tray;
+let hasLoggedNotificationPermission = false; // 알림 권한 로그 1회만 출력
 
 /**
  * 메인 윈도우 생성
@@ -68,7 +69,10 @@ function createWindow() {
     // 알림 권한 자동 허용 (Firestore 리스너 방식)
     if (permission === 'notifications') {
       callback(true);
-      console.log('✅ [Electron] 알림 권한 허용됨');
+      if (isDev && !hasLoggedNotificationPermission) {
+        console.log('✅ [Electron] 알림 권한 허용됨');
+        hasLoggedNotificationPermission = true;
+      }
     } else {
       callback(false);
     }

@@ -119,8 +119,9 @@ function getCategoryKey(type, priority, subType) {
  * @param {string} requestId - 요청 ID
  * @returns {string} 딥링크 URL
  */
-function mapUrlByType(type, requestId) {
+function mapUrlByType(type, requestId, subType) {
   const t = String(type || '').toLowerCase();
+  const s = String(subType || '').toLowerCase();
   const id = encodeURIComponent(String(requestId || ''));
   
   switch (t) {
@@ -157,6 +158,8 @@ function mapUrlByType(type, requestId) {
     
     // ==================== 댓글/멘션 ====================
     case 'comment-mention':
+      if (s === 'jig') return `/jig/management?requestId=${id}`;
+      if (s === 'sample') return `/sample?requestId=${id}`;
       return `/production/management?requestId=${id}`;
     
     // ==================== 기타 ====================

@@ -359,12 +359,15 @@
                                        data.centerInfo?.includes('생산일정');
         const isDailyReport = data.title === '생산일보';
         const isSampleRequest = data.title === '샘플 요청';
+        const isAnnouncement = data.title?.includes('공지사항');
+        const isWorkSchedule = data.title?.includes('근무계획');
+        const isCommentNotification = (data.title && (data.title.indexOf('댓글 :') !== -1 || data.title.indexOf('멘션 :') !== -1));
         
         // 발신자 이름 설정 (생산일정/생산일보/샘플 요청 알림이 아닐 때만)
-        if (!isScheduleNotification && !isDailyReport && !isSampleRequest && data.senderName) {
+        if (!isScheduleNotification && !isDailyReport && !isSampleRequest && !isAnnouncement && !isWorkSchedule && data.senderName) {
           console.log('✅ [Notification HTML] senderName 설정:', data.senderName);
           document.getElementById('senderName').textContent = data.senderName;
-        } else if (isScheduleNotification || isDailyReport || isSampleRequest) {
+        } else if (isScheduleNotification || isDailyReport || isSampleRequest || isAnnouncement || isWorkSchedule) {
           console.log('📅 [Notification HTML] 생산일정/생산일보/샘플 요청 알림 - senderName 숨김');
           document.getElementById('senderName').textContent = '';
         } else {
@@ -373,16 +376,16 @@
         
         // 아바타 설정
         const avatarElement = document.getElementById('avatar');
-        if (isScheduleNotification || isDailyReport || isSampleRequest) {
-          // 생산일정/생산일보/샘플 요청 알림 - TMS 로고 표시
+        if (isScheduleNotification || isDailyReport || isSampleRequest || isAnnouncement || isWorkSchedule) {
+          // 생산일정/생산일보/샘플 요청/공지/근무계획 - TMS 로고 표시
           avatarElement.innerHTML = '<div style="width: 100%; height: 100%; border-radius: 50%; background: hsl(217 91% 59%); display: flex; align-items: center; justify-content: center;"><span style="color: white; font-weight: bold; font-size: 10px;">TMS</span></div>';
-          console.log('✅ [Notification HTML] 생산일정/생산일보/샘플 요청 알림 - TMS 로고 설정');
+          console.log('✅ [Notification HTML] 시스템성 알림 - TMS 로고 설정');
         } else if (data.senderAvatar) {
-          if (data.senderAvatar.startsWith('data:')) {
+          if (typeof data.senderAvatar === 'string' && data.senderAvatar.startsWith('data:')) {
             // Base64 이미지
             console.log('✅ [Notification HTML] Base64 아바타 이미지 설정');
             avatarElement.innerHTML = `<img src="${data.senderAvatar}" alt="avatar" />`;
-          } else if (data.senderAvatar.startsWith('http')) {
+          } else if (typeof data.senderAvatar === 'string' && data.senderAvatar.startsWith('http')) {
             // HTTP URL 이미지
             console.log('✅ [Notification HTML] HTTP 아바타 이미지 설정:', data.senderAvatar);
             avatarElement.innerHTML = `<img src="${data.senderAvatar}" alt="avatar" onerror="this.style.display='none'; this.parentElement.innerHTML='👤';" />`;
@@ -444,6 +447,9 @@
         } else if (title.includes('샘플 요청')) {
           // 샘플 요청 - TestTube 아이콘 (보라색)
           iconSvg = `<svg class="title-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6l-2 2v8a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-8l-2-2V2"/><path d="M9 2h6"/><path d="M12 10v4"/></svg>`;
+        } else if (title.includes('지그')) {
+          // 지그 알림 - Wrench 아이콘 (인디고)
+          iconSvg = `<svg class="title-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.7 18.4l-4.1-4.1"/><path d="M16.7 13.4a5 5 0 1 0-7.1-7.1L3 12v4h4l6.6-6.6"/></svg>`;
         } else if (title.includes('품질이슈')) {
           // 품질이슈 - ShieldAlert 아이콘 (빨간색)
           iconSvg = `<svg class="title-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="1"/></svg>`;
@@ -498,13 +504,26 @@
           isUrgent: isUrgent
         });
         
-        if (centerInfoValue) {
+        if (centerInfoValue || isCommentNotification) {
           console.log('✅ [Notification HTML] centerInfo 설정:', centerInfoValue);
-          centerInfoElement.textContent = centerInfoValue;
           centerInfoElement.style.display = 'block';
           
-          // 생산일보 알림인 경우 뱃지 스타일 적용 (테이블과 동일한 색상)
-          if (isDailyReport) {
+          // 댓글/멘션 알림: 회색 댓글 배지로 고정 표시
+          if (isCommentNotification) {
+            centerInfoElement.classList.remove('urgent');
+            centerInfoElement.style.background = 'hsl(0 0% 96%)';   // gray-100 근사
+            centerInfoElement.style.color = 'hsl(0 0% 20%)';        // gray-800 근사
+            centerInfoElement.style.border = '1px solid hsl(0 0% 80%)';
+            centerInfoElement.style.borderRadius = '0.25rem';
+            centerInfoElement.innerHTML = `
+              <span style="display:inline-flex;align-items:center;gap:4px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                댓글
+              </span>
+            `;
+          // 생산일보/샘플 요청 알림인 경우 뱃지 스타일 적용 (테이블과 유사한 색상)
+          } else if (isDailyReport) {
+            centerInfoElement.textContent = centerInfoValue;
             centerInfoElement.classList.remove('urgent');
             
             // 상태별 색상 적용 (globals.css의 CSS 변수 값 사용)
@@ -528,6 +547,96 @@
               centerInfoElement.style.borderRadius = '0.25rem';
             }
             console.log('📊 [Notification HTML] 생산일보 상태 뱃지 적용:', centerInfoValue);
+          } else if (isSampleRequest) {
+            centerInfoElement.textContent = centerInfoValue;
+            centerInfoElement.classList.remove('urgent');
+            // 샘플 상태 색상 적용 (SAMPLE_STATUS_COLORS와 유사)
+            if (centerInfoValue === '대기중' || centerInfoValue === '접수') {
+              // blue-100 / blue-800
+              centerInfoElement.style.background = 'hsl(214.3 94.6% 92.7%)';
+              centerInfoElement.style.color = 'hsl(213.1 93.9% 27.8%)';
+              centerInfoElement.style.border = 'none';
+              centerInfoElement.style.borderRadius = '0.25rem';
+            } else if (centerInfoValue === '진행중') {
+              // yellow-100 / yellow-800
+              centerInfoElement.style.background = 'hsl(54.9 96.7% 88%)';
+              centerInfoElement.style.color = 'hsl(47.6 95.7% 26.1%)';
+              centerInfoElement.style.border = 'none';
+              centerInfoElement.style.borderRadius = '0.25rem';
+            } else if (centerInfoValue === '보류') {
+              // orange-100 / orange-800 (근사값)
+              centerInfoElement.style.background = 'hsl(33 100% 94%)';
+              centerInfoElement.style.color = 'hsl(24 94% 27%)';
+              centerInfoElement.style.border = 'none';
+              centerInfoElement.style.borderRadius = '0.25rem';
+            } else if (centerInfoValue === '완료') {
+              // green-100 / green-800
+              centerInfoElement.style.background = 'hsl(142.1 76.2% 92.2%)';
+              centerInfoElement.style.color = 'hsl(142.1 70.6% 25.3%)';
+              centerInfoElement.style.border = 'none';
+              centerInfoElement.style.borderRadius = '0.25rem';
+            } else if (centerInfoValue === '반려') {
+              // red-100 / red-800 (근사값)
+              centerInfoElement.style.background = 'hsl(0 93% 94%)';
+              centerInfoElement.style.color = 'hsl(0 74% 42%)';
+              centerInfoElement.style.border = 'none';
+              centerInfoElement.style.borderRadius = '0.25rem';
+            } else {
+              // 기본 스타일 초기화
+              centerInfoElement.style.background = '';
+              centerInfoElement.style.color = '';
+              centerInfoElement.style.border = '';
+            }
+            console.log('🧪 [Notification HTML] 샘플 상태 뱃지 적용:', centerInfoValue);
+          } else if (title === '품질이슈' || title === '품질이슈 등록' || title === '품질이슈 상태 변경') {
+            centerInfoElement.textContent = centerInfoValue;
+            centerInfoElement.classList.remove('urgent');
+            // 품질이슈 상태 색상 근사치 적용
+            if (centerInfoValue === '미해결' || centerInfoValue === 'open') {
+              centerInfoElement.style.background = 'hsl(0 93% 94%)';
+              centerInfoElement.style.color = 'hsl(0 74% 42%)';
+            } else if (centerInfoValue === '진행중' || centerInfoValue === 'in-progress') {
+              centerInfoElement.style.background = 'hsl(54.9 96.7% 88%)';
+              centerInfoElement.style.color = 'hsl(47.6 95.7% 26.1%)';
+            } else if (centerInfoValue === '해결완료' || centerInfoValue === 'resolved' || centerInfoValue === 'closed') {
+              centerInfoElement.style.background = 'hsl(142.1 76.2% 92.2%)';
+              centerInfoElement.style.color = 'hsl(142.1 70.6% 25.3%)';
+            } else {
+              centerInfoElement.style.background = '';
+              centerInfoElement.style.color = '';
+            }
+            centerInfoElement.style.border = 'none';
+            centerInfoElement.style.borderRadius = '0.25rem';
+            console.log('🧪 [Notification HTML] 품질이슈 상태 뱃지 적용:', centerInfoValue);
+          } else if (title === '지그 요청 등록' || title === '지그 입고 처리') {
+            centerInfoElement.textContent = centerInfoValue;
+            centerInfoElement.classList.remove('urgent');
+            // 지그 상태 색상 근사
+            if (centerInfoValue === '요청') {
+              centerInfoElement.style.background = 'hsl(214.3 94.6% 92.7%)';
+              centerInfoElement.style.color = 'hsl(213.1 93.9% 27.8%)';
+            } else if (centerInfoValue === '보류') {
+              centerInfoElement.style.background = 'hsl(33 100% 94%)';
+              centerInfoElement.style.color = 'hsl(24 94% 27%)';
+            } else if (centerInfoValue === '진행중') {
+              centerInfoElement.style.background = 'hsl(54.9 96.7% 88%)';
+              centerInfoElement.style.color = 'hsl(47.6 95.7% 26.1%)';
+            } else if (centerInfoValue === '입고중') {
+              centerInfoElement.style.background = 'hsl(187 92% 95%)';
+              centerInfoElement.style.color = 'hsl(187 82% 30%)';
+            } else if (centerInfoValue === '반려') {
+              centerInfoElement.style.background = 'hsl(0 93% 94%)';
+              centerInfoElement.style.color = 'hsl(0 74% 42%)';
+            } else if (centerInfoValue === '완료') {
+              centerInfoElement.style.background = 'hsl(142.1 76.2% 92.2%)';
+              centerInfoElement.style.color = 'hsl(142.1 70.6% 25.3%)';
+            } else {
+              centerInfoElement.style.background = '';
+              centerInfoElement.style.color = '';
+            }
+            centerInfoElement.style.border = 'none';
+            centerInfoElement.style.borderRadius = '0.25rem';
+            console.log('🧪 [Notification HTML] 지그 상태 뱃지 적용:', centerInfoValue);
           } else if (isUrgent) {
             // 긴급건이면 빨간색 스타일 적용
             centerInfoElement.classList.add('urgent');
@@ -537,6 +646,7 @@
             console.log('🚨 [Notification HTML] 긴급건으로 분류:', centerInfoValue);
           } else {
             centerInfoElement.classList.remove('urgent');
+            centerInfoElement.textContent = centerInfoValue || '';
             centerInfoElement.style.background = '';
             centerInfoElement.style.color = '';
             centerInfoElement.style.border = '';
@@ -546,10 +656,10 @@
           centerInfoElement.style.display = 'none';
         }
 
-        // 서브타이틀 설정 (제품명)
+        // 서브타이틀 설정 (발주처(고객사명)/제품명+부속명)
         const subtitleElement = document.getElementById('subtitle');
-        if (data.productName || data.subtitle) {
-          const subtitleText = data.productName || data.subtitle;
+        if (data.subtitle || data.productName) {
+          const subtitleText = data.subtitle || data.productName;
           console.log('✅ [Notification HTML] subtitle 설정:', subtitleText);
           subtitleElement.textContent = subtitleText;
           subtitleElement.style.display = 'block';

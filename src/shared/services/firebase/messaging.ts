@@ -5,12 +5,43 @@ import app from './config';
 // Firebase Console > Project Settings > Cloud Messaging > Web Push certificates에서 생성
 const VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || '';
 
-// VAPID 키 경고
-if (!VAPID_KEY && typeof window !== 'undefined') {
-  console.warn('⚠️ FIREBASE VAPID 키가 설정되지 않았습니다.');
-  console.warn('Firebase Console > Project Settings > Cloud Messaging > Web Push certificates에서 키를 생성하고');
-  console.warn('.env.local 파일에 NEXT_PUBLIC_FIREBASE_VAPID_KEY를 추가하세요.');
+// Electron 환경 감지
+const isElectronEnv = typeof window !== 'undefined' && (window as any).__ELECTRON__;
+
+// 중복 경고 방지 플래그
+let hasWarnedMissingVapid = false;
+let hasWarnedInsecureContext = false;
+
+const warnMissingVapidOnce = () => {
+  if (hasWarnedMissingVapid) return;
+  hasWarnedMissingVapid = true;
+  console.error('❌ VAPID 키가 설정되지 않았습니다. FCM 토큰을 가져올 수 없습니다.');
+  console.error('Firebase Console에서 Web Push 인증서를 생성하고 .env.local에 추가하세요.');
+};
+
+// 초기 경고 (웹 환경에서만, 1회)
+if (!VAPID_KEY && typeof window !== 'undefined' && !isElectronEnv) {
+  warnMissingVapidOnce();
 }
+
+// 보안 컨텍스트 여부 확인 (HTTPS 또는 localhost/127.0.0.1 허용)
+const isLocalhost = (host: string | undefined) => host === 'localhost' || host === '127.0.0.1';
+const isSecureWebContext = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  try {
+    if ((window as any).isSecureContext) return true;
+    var host = window.location && window.location.hostname;
+    return isLocalhost(host);
+  } catch (e) {
+    return false;
+  }
+};
+
+const warnInsecureOnce = () => {
+  if (hasWarnedInsecureContext) return;
+  hasWarnedInsecureContext = true;
+  console.warn('알림 권한은 보안 컨텍스트(HTTPS 또는 localhost)에서만 요청할 수 있습니다.');
+};
 
 interface MessagePayload {
   notification?: {
@@ -27,6 +58,8 @@ let messaging: Messaging | null = null;
 // 메시징 서비스 가져오기 (클라이언트 사이드에서만)
 export const getMessagingService = async () => {
   if (typeof window === 'undefined') return null;
+  // Electron에서는 FCM 사용 안 함 (Firestore + Electron 알림 사용)
+  if (isElectronEnv) return null;
   
   try {
     const supported = await isSupported();
@@ -54,17 +87,13 @@ export const getFCMToken = async (): Promise<string | null> => {
 
     // VAPID 키 확인
     if (!VAPID_KEY) {
-      console.error('❌ VAPID 키가 설정되지 않았습니다. FCM 토큰을 가져올 수 없습니다.');
-      console.error('Firebase Console에서 Web Push 인증서를 생성하고 .env.local에 추가하세요.');
+      warnMissingVapidOnce();
       return null;
     }
 
-    // 알림 권한 요청
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') {
-      console.warn('알림 권한이 거부되었습니다.');
-      return null;
-    }
+    // 알림 권한이 허용된 경우에만 토큰 요청 (자동 요청 금지)
+    if (typeof window === 'undefined' || !('Notification' in window)) return null;
+    if (Notification.permission !== 'granted') return null;
 
     // FCM 토큰 가져오기
     const token = await getToken(messagingService, {
@@ -92,6 +121,7 @@ export const getFCMToken = async (): Promise<string | null> => {
 // 포그라운드 메시지 리스너
 export const onForegroundMessage = (callback: (payload: MessagePayload) => void) => {
   if (typeof window === 'undefined') return;
+  if (isElectronEnv) return;
 
   getMessagingService().then((messagingService) => {
     if (messagingService) {
@@ -106,14 +136,29 @@ export const onForegroundMessage = (callback: (payload: MessagePayload) => void)
 // 알림 권한 확인
 export const checkNotificationPermission = (): NotificationPermission => {
   if (typeof window === 'undefined') return 'denied';
+  if (!('Notification' in window)) return 'denied';
+  // 비보안 컨텍스트에서는 요청이 불가하므로 허용된 경우만 유지, 그 외는 denied 처리
+  if (!isSecureWebContext()) {
+    return Notification.permission === 'granted' ? 'granted' : 'denied';
+  }
   return Notification.permission;
 };
 
 // 알림 권한 요청
 export const requestNotificationPermission = async (): Promise<boolean> => {
   if (typeof window === 'undefined') return false;
+  if (isElectronEnv) return false;
+  if (!('Notification' in window)) return false;
+  if (!isSecureWebContext()) {
+    warnInsecureOnce();
+    return false;
+  }
 
   try {
+    // 이미 결정된 상태면 재요청하지 않음
+    if (Notification.permission !== 'default') {
+      return Notification.permission === 'granted';
+    }
     const permission = await Notification.requestPermission();
     return permission === 'granted';
   } catch (error) {
@@ -125,6 +170,8 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
 // 서비스 워커 등록
 export const registerServiceWorker = async (): Promise<ServiceWorkerRegistration | null> => {
   if (typeof window === 'undefined') return null;
+  if (isElectronEnv) return null;
+  if (!isSecureWebContext()) return null;
 
   try {
     if ('serviceWorker' in navigator) {
@@ -148,8 +195,7 @@ export const registerServiceWorker = async (): Promise<ServiceWorkerRegistration
         });
       }
       
-      const isElectron = typeof window !== 'undefined' && window.__ELECTRON__;
-      console.log(`✅ 서비스 워커 등록 성공 (${isElectron ? 'Electron' : '웹'} 환경):`, registration);
+      console.log('✅ 서비스 워커 등록 성공 (웹 환경):', registration);
       return registration;
     } else {
       console.warn('이 브라우저는 서비스 워커를 지원하지 않습니다.');
@@ -173,6 +219,15 @@ export const initializeFCM = async (): Promise<{
   registration: ServiceWorkerRegistration | null;
 }> => {
   try {
+    if (isElectronEnv) {
+      // Electron에서는 FCM을 사용하지 않음
+      return {
+        token: null,
+        permission: 'denied',
+        registration: null,
+      };
+    }
+
     // 서비스 워커 등록
     const registration = await registerServiceWorker();
     

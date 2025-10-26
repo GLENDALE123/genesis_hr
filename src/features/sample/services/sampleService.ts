@@ -98,10 +98,12 @@ export class SampleService {
         await SampleStatusNotificationService.sendSampleStatusChangeNotification(
           undefined, // 이전 상태 없음
           'pending', // 기본 상태는 대기중
+          createdRequest.clientName,
           createdRequest.productName,
           getUserDisplayName(null, user, '알 수 없음'),
           user.uid,
-          createdRequest.id
+          createdRequest.id,
+          (createdRequest.items && createdRequest.items.length > 0) ? createdRequest.items[0].partName : undefined
         );
       } catch (error) {
         console.error('❌ 샘플 요청 알림 전송 실패:', error);
@@ -205,10 +207,12 @@ export class SampleService {
         await SampleStatusNotificationService.sendSampleStatusChangeNotification(
           oldStatus,
           status,
+          updatedRequest.clientName,
           updatedRequest.productName,
           getUserDisplayName(null, user, '알 수 없음'),
           user.uid,
-          updatedRequest.id
+          updatedRequest.id,
+          (updatedRequest.items && updatedRequest.items.length > 0) ? updatedRequest.items[0].partName : undefined
         );
       } catch (error) {
         console.error('❌ 샘플 상태변경 알림 전송 실패:', error);
@@ -281,10 +285,12 @@ export class SampleService {
           await SampleStatusNotificationService.sendSampleStatusChangeNotification(
             requestData.status,
             'deleted',
+            requestData.clientName,
             requestData.productName,
             getUserDisplayName(null, user, '알 수 없음'),
             user.uid,
-            requestData.id
+            requestData.id,
+            (requestData.items && requestData.items.length > 0) ? requestData.items[0].partName : undefined
           );
         } catch (error) {
           console.error('❌ 샘플 삭제 알림 전송 실패:', error);

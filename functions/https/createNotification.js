@@ -98,7 +98,7 @@ exports.createNotification = onRequest({
       requestId: String(requestId || ''),
       priority: String(priority || ''),
       actionRequired: String(Boolean(actionRequired)),
-      url: mapUrlByType(type, requestId),
+      url: mapUrlByType(type, requestId, subType),
       inboxId: String(notifId || ''),
       title: String(title || ''),  // 클라이언트에서 받은 title 그대로 사용
       body: String(bodyText || ''),  // 클라이언트에서 받은 body 그대로 사용
@@ -156,7 +156,7 @@ exports.createNotification = onRequest({
       metadata.supplier = String(relatedData.supplier);
     }
     
-    const link = mapUrlByType(type, requestId);
+    const link = mapUrlByType(type, requestId, subType);
     
     // 최소 필드만 저장하는 알림 문서 (클라이언트 타임스탬프 사용)
     const createdAtTimestamp = Date.now();

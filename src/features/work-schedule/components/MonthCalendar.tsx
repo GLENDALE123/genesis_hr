@@ -35,12 +35,12 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
   return (
     <div className="flex flex-col h-full rounded-lg overflow-hidden border bg-background">
       {/* 월 제목 */}
-      <div className="py-3 bg-muted/50 text-center border-b">
-        <h3 className="text-xl lg:text-2xl font-bold">{month + 1}월</h3>
+      <div className="py-2 sm:py-3 bg-muted/50 text-center border-b">
+        <h3 className="text-lg sm:text-xl lg:text-2xl font-bold">{month + 1}월</h3>
       </div>
 
       {/* 요일 헤더 */}
-      <div className="grid grid-cols-7 border-b bg-muted/30">
+      <div className="grid grid-cols-7 border-b bg-muted/30 text-[10px] sm:text-xs">
         {WEEKDAYS.map((day: string, index: number) => (
           <div
             key={day}
@@ -56,7 +56,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
       </div>
 
       {/* 달력 그리드 - 반응형 높이 */}
-      <div className="flex-1 grid grid-rows-6 gap-px bg-border">
+      <div className="flex-1 grid grid-rows-6 gap-px bg-border overflow-y-auto">
         {calendar.map((week: CalendarDay[], weekIndex: number) => (
           <div key={weekIndex} className="grid grid-cols-7 gap-px">
             {week.map((dayData: CalendarDay) => {
@@ -71,7 +71,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
                   key={dayData.dateString}
                   className={cn(
                     'relative flex flex-col transition-colors duration-200',
-                    'min-h-[4rem] sm:min-h-[5rem] lg:min-h-[6rem] p-2',
+                    'min-h-[2.75rem] sm:min-h-[4rem] lg:min-h-[6rem] p-1.5 sm:p-2',
                     dayData.isCurrentMonth
                       ? 'bg-background hover:bg-muted/30'
                       : 'bg-muted/20 text-muted-foreground',

@@ -31,6 +31,8 @@ import {
   CalendarDays,
   FileText,
   Megaphone,
+  Wrench,
+  PackageCheck,
 } from 'lucide-react';
 import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
 import { toast } from 'sonner';
@@ -46,6 +48,8 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   MessageSquare,
   TestTube,
   Megaphone,
+  Wrench,
+  PackageCheck,
 };
 
 export const NotificationSettings: React.FC = () => {
@@ -357,6 +361,11 @@ export const NotificationSettings: React.FC = () => {
               title: '샘플센터',
               icon: Bell,
               channels: Object.entries(NOTIFICATION_CHANNELS).filter(([, config]) => config.section === 'sample-center')
+            },
+            {
+              title: '지그센터',
+              icon: Wrench,
+              channels: Object.entries(NOTIFICATION_CHANNELS).filter(([, config]) => config.section === 'jig-center')
             },
             {
               title: '품질센터',

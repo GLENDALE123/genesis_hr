@@ -60,6 +60,18 @@ export const NOTIFICATION_CHANNELS = {
     description: '품질이슈 상태 변경 및 항목 추가 알림',
     section: 'quality-center',
   },
+  'jig-request': {
+    label: '지그 요청 등록',
+    icon: 'Wrench',
+    description: '지그 요청/관리 신규 요청 등록 알림',
+    section: 'jig-center',
+  },
+  'jig-receive': {
+    label: '지그 입고 처리',
+    icon: 'PackageCheck',
+    description: '지그 요청/관리 입고 처리 알림',
+    section: 'jig-center',
+  },
   'announcement': {
     label: '공지사항',
     icon: 'Megaphone',
@@ -144,6 +156,8 @@ export const DEFAULT_SETTINGS: UserSettings = {
         'announcement': true,
         'work-schedule': true,
         'quality-issue-status': true,
+        'jig-request': true,
+        'jig-receive': true,
     },
     schedule: {
       enabled: false,

@@ -128,8 +128,8 @@ export const AnnouncementContainer: React.FC<AnnouncementContainerProps> = ({
         try {
           await UnifiedNotificationService.sendAnnouncementNotification(
             data.title,
-            userProfile?.displayName || userProfile?.name || '관리자',
-            user?.uid || 'unknown',
+            data.content || '공지사항 본문',
+            data.cooperationRequest || '',
             'new-announcement'
           );
         } catch (notificationError) {

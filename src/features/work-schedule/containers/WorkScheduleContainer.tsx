@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/features/auth';
 import { useWorkSchedule } from '../hooks/useWorkSchedule';
 import { useScheduleActions } from '../hooks/useScheduleActions';
@@ -12,9 +13,9 @@ import { ScheduleSummaryView } from '../components/ScheduleSummary';
 import { ScheduleAdminPanel } from '../components/ScheduleAdminPanel';
 import { LoadingSpinner } from '@/shared/components/common';
 import { Card, CardContent } from '@/shared/components/ui/card';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/shared/components/ui/sheet';
+import { Button } from '@/shared/components/ui/button';
+import { ChevronLeft } from 'lucide-react';
 import { useIsMobile } from '@/shared/hooks/use-mobile';
-import { toast } from 'sonner';
 
 export const WorkScheduleContainer: React.FC = () => {
   const { userProfile } = useAuthStore();
@@ -43,13 +44,14 @@ export const WorkScheduleContainer: React.FC = () => {
   const [mobileSelectedDate, setMobileSelectedDate] = useState<string | null>(null);
 
   const canManage = userProfile?.role === 'Admin';
+  const router = useRouter();
 
   // 날짜 클릭 핸들러
   const handleDateClick = (dateStr: string) => {
     if (!canManage || view !== 'month') return;
 
     if (isMobile) {
-      setMobileSelectedDate(dateStr);
+      router.push(`/work-schedule/mobile/${dateStr}`);
     } else {
       toggleDateSelection(dateStr);
     }
@@ -76,7 +78,7 @@ export const WorkScheduleContainer: React.FC = () => {
   return (
     <>
       <Card className="h-full">
-        <CardContent className="h-full grid grid-rows-[auto_auto_1fr] gap-0">
+        <CardContent className="h-full grid grid-rows-[auto_auto_1fr] gap-0 p-3 sm:p-4 md:p-6">
           {/* 헤더 */}
           <CalendarHeader
             year={year}
@@ -92,7 +94,7 @@ export const WorkScheduleContainer: React.FC = () => {
           <ScheduleSummaryView summary={summary} />
 
           {/* 메인 영역 */}
-          <div className="flex flex-col lg:flex-row gap-4 pt-2 overflow-hidden">
+          <div className="flex flex-col lg:flex-row gap-2 md:gap-4 pt-1 sm:pt-2 overflow-y-auto lg:overflow-hidden">
             {isLoading ? (
               <div className="flex-1 flex items-center justify-center">
                 <LoadingSpinner 
@@ -145,55 +147,57 @@ export const WorkScheduleContainer: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* 모바일 관리 패널 - Sheet 사용 */}
-      {canManage && (
-        <Sheet 
-          open={!!mobileSelectedDate} 
-          onOpenChange={(open: boolean) => !open && setMobileSelectedDate(null)}
-        >
-          <SheetContent side="bottom" className="h-[80vh] flex flex-col">
-            <SheetHeader>
-              <SheetTitle>
-                {mobileSelectedDate && new Date(mobileSelectedDate + 'T00:00:00').toLocaleDateString('ko-KR', {
-                  month: 'long',
-                  day: 'numeric',
-                  weekday: 'long',
-                })}
-              </SheetTitle>
-            </SheetHeader>
-            
-            {/* 현재 근무계획 표시 */}
-            {mobileSelectedDate && (
-              <div className="bg-card p-4 rounded-lg border mb-4">
-                <h4 className="font-semibold mb-2">계획된 근무</h4>
-                {schedules.has(mobileSelectedDate) ? (
-                  <div className="text-lg">
-                    <p className="font-semibold">
-                      {schedules.get(mobileSelectedDate)?.type}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {schedules.get(mobileSelectedDate)?.description}
-                    </p>
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground">계획 없음</p>
-                )}
-              </div>
-            )}
+      {/* 모바일 전용: 전체 화면 생성/편집 폼 */}
+      {canManage && isMobile && mobileSelectedDate && (
+        <div className="fixed inset-0 z-50 bg-background flex flex-col">
+          {/* 상단 헤더 */}
+          <div className="flex items-center gap-2 p-3 border-b">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setMobileSelectedDate(null)}
+              aria-label="뒤로가기"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <h3 className="text-base font-semibold">
+              {new Date(mobileSelectedDate + 'T00:00:00').toLocaleDateString('ko-KR', {
+                month: 'long',
+                day: 'numeric',
+                weekday: 'long',
+              })}
+            </h3>
+          </div>
 
-            {/* 관리 패널 */}
-            {mobileSelectedDate && (
-              <ScheduleAdminPanel
-                dates={new Set([mobileSelectedDate])}
-                onApply={handleApply}
-                onDelete={handleDelete}
-                onCancel={() => setMobileSelectedDate(null)}
-                isSubmitting={isSubmitting}
-                isMobile
-              />
-            )}
-          </SheetContent>
-        </Sheet>
+          {/* 내용 */}
+          <div className="flex-1 overflow-y-auto p-3 space-y-3">
+            <div className="bg-card p-3 rounded-lg border">
+              <h4 className="font-semibold mb-2">계획된 근무</h4>
+              {schedules.has(mobileSelectedDate) ? (
+                <div>
+                  <p className="font-semibold">
+                    {schedules.get(mobileSelectedDate)?.type}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {schedules.get(mobileSelectedDate)?.description}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-muted-foreground">계획 없음</p>
+              )}
+            </div>
+
+            <ScheduleAdminPanel
+              dates={new Set([mobileSelectedDate])}
+              onApply={handleApply}
+              onDelete={handleDelete}
+              onCancel={() => setMobileSelectedDate(null)}
+              isSubmitting={isSubmitting}
+              isMobile
+            />
+          </div>
+        </div>
       )}
     </>
   );

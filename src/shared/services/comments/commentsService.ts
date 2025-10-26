@@ -320,15 +320,34 @@ export class CommentsService {
   }): Promise<void> {
     const { userId, type, collectionName, documentId, commentData, requestData } = params;
     
-    // 제품명/부속명 추출
-    const productName = requestData?.productName || '제품명';
-    const partName = requestData?.partName || '부속명';
-    const productInfo = `${productName}/${partName}`;
+    // 제품명/부속명 추출 (데이터 호환: productName|itemName, partName|parName, 샘플은 items[0].partName)
+    let rawProductName = (requestData && ((requestData as any).productName || (requestData as any).itemName)) || '제품명';
+    let rawPartName = (requestData && ((requestData as any).partName || (requestData as any).parName)) || '';
+
+    // 샘플 요청의 경우 partName이 items[0].partName에 있을 수 있음
+    if (!rawPartName && collectionName === 'sample-requests') {
+      const items = (requestData && (requestData as any).items) || [];
+      if (Array.isArray(items) && items.length > 0) {
+        const firstItem = items[0] || {};
+        if (firstItem && (firstItem as any).partName) {
+          rawPartName = (firstItem as any).partName;
+        }
+      }
+    }
+
+    if (!rawPartName) rawPartName = '부속명';
+    const productName = String(rawProductName);
+    const partName = String(rawPartName);
+    const productInfo = `${productName} ${partName}`;
     
     // 알림 타입별 제목 생성
     let baseTitle = "생산관리부 요청사항";
     if (collectionName === 'sample-requests') {
       baseTitle = "샘플 요청";
+    } else if (collectionName === 'jig-requests') {
+      baseTitle = "지그 요청/관리";
+    } else if (collectionName === 'quality-issues') {
+      baseTitle = "품질이슈";
     }
     
     // 알림 메시지 구성
@@ -338,14 +357,29 @@ export class CommentsService {
     const body = commentData.text;  // ✅ 댓글 원문 그대로 (멘션 포함)
     
     // 사용자 프로필 이미지 가져오기
-    const senderAvatar = await this.getUserAvatar(commentData.uid);
+    // 프로필 사진 우선순위: Firestore(users.photoURL) → Firebase Auth.currentUser.photoURL → undefined
+    let senderAvatar = await this.getUserAvatar(commentData.uid);
+    if (!senderAvatar) {
+      try {
+        const { auth } = await import('@/shared/services/firebase/config');
+        if (auth && auth.currentUser && auth.currentUser.uid === commentData.uid) {
+          senderAvatar = auth.currentUser.photoURL || undefined;
+        }
+      } catch (e) {
+        // 무시: fallback 불가 시 undefined 유지
+      }
+    }
     
     // Firebase Functions URL 설정
     const functionsUrl = 'https://asia-northeast3-hs-jig-b2093.cloudfunctions.net';
     
+    const subType = collectionName === 'jig-requests' ? 'jig'
+      : (collectionName === 'sample-requests' ? 'sample' : 'production');
+
     const payload = {
       targetUsers: [userId],
       type: 'comment-mention',
+      subType: subType,
       title: title,
       body: body,
       requestId: documentId,

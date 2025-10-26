@@ -110,11 +110,22 @@ export const createQualityIssue = async (
 
     // 알림 발송
     try {
+      // 이슈 본문: 첫 이슈 항목(객체면 content, 문자열이면 그대로)
+      const firstIssue = qualityIssueData.issues[0];
+      const description = typeof firstIssue === 'string' ? firstIssue : (firstIssue && firstIssue.content) || '';
+      const status = typeof firstIssue === 'object' && firstIssue && (firstIssue as any).status
+        ? String((firstIssue as any).status)
+        : String(qualityIssueData.status || 'in-progress');
+
       await QualityIssueNotificationService.sendQualityIssueNotification(
-        `${qualityIssueData.productName} - ${qualityIssueData.partName}`,
+        qualityIssueData.productName,
+        qualityIssueData.partName,
+        description,
+        status,
         getUserDisplayName(userProfile, user),
         user.uid,
-        docRef.id
+        docRef.id,
+        (user as any).photoURL || undefined
       );
     } catch (error) {
       console.error('알림 발송 실패:', error);
@@ -317,13 +328,23 @@ export const addIssueItem = async (
         const issueData = issueDoc.data();
         
         if (issueData) {
+          const lastIssue = Array.isArray(issueData.issues) && issueData.issues.length > 0
+            ? issueData.issues[issueData.issues.length - 1]
+            : undefined;
+          const description = lastIssue
+            ? (typeof lastIssue === 'string' ? lastIssue : (lastIssue && lastIssue.content) || '')
+            : '';
+
           await QualityIssueNotificationService.sendQualityIssueStatusChangeNotification(
             issueData.status,
             newStatus || '해결완료',
-            issueData.title,
+            description,
+            (issueData as any).productName || '',
+            (issueData as any).partName || '',
             getUserDisplayName(null, currentUser),
             currentUser.uid,
-            issueId
+            issueId,
+            (currentUser as any).photoURL || undefined
           );
         }
       } catch (error) {

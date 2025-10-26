@@ -49,12 +49,9 @@ export const useNotificationPermission = (): UseNotificationPermissionReturn => 
     return checkNotificationPermission();
   }, [isSupported, platform]);
 
-  // FCMProvider와 동기화를 위해 권한 새로고침
+  // 자동 권한 요청 제거: 사용자가 명시적으로 요청할 때만
   useEffect(() => {
-    if (fcm?.requestPermission) {
-      // 권한 상태 확인을 위해 requestPermission 호출
-      fcm.requestPermission();
-    }
+    // no-op: 기존 자동 요청 로직 제거하여 무한 요청/오류 방지
   }, [fcm]);
 
   // 권한 요청 (FCMProvider의 requestPermission 사용)
@@ -74,7 +71,7 @@ export const useNotificationPermission = (): UseNotificationPermissionReturn => 
       return true;
     }
 
-    // 웹 브라우저에서 권한 요청 (FCMProvider 사용)
+    // 웹 브라우저에서 권한 요청 (FCMProvider 사용) - 보안 컨텍스트에서만
     if (fcm?.requestPermission) {
       return await fcm.requestPermission();
     }

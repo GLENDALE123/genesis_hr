@@ -16,11 +16,23 @@ import {
   Megaphone,
   CalendarDays,
   FileText,
-  TestTube
+  TestTube,
+  Wrench
 } from 'lucide-react';
 import { InboxNotification } from '@/shared/hooks/useNotifications';
 import { cn } from '@/shared/lib/utils';
 import { PRODUCTION_STATUS_COLORS } from '@/features/production/constants';
+const JIG_STATUS_COLORS: Record<string, string> = {
+  '요청': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200',
+  '보류': 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200',
+  '진행중': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200',
+  '입고중': 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-200',
+  '반려': 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200',
+  '완료': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200',
+};
+import { STATUS_COLORS as QUALITY_STATUS_COLORS } from '@/features/quality/constants';
+import { SAMPLE_STATUS_COLORS } from '@/features/sample/constants/sampleConstants';
+import { SampleStatus } from '@/features/sample/types';
 
 interface NotificationPanelProps {
   notifications: InboxNotification[];
@@ -51,6 +63,25 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
 }) => {
   const [isMarkingAllRead, setIsMarkingAllRead] = React.useState(false);
 
+  // 샘플 상태 텍스트를 샘플 배지 클래스에 매핑
+  const getSampleStatusBadgeClass = (statusText: string) => {
+    switch (statusText) {
+      case '대기중':
+      case '접수':
+        return SAMPLE_STATUS_COLORS[SampleStatus.Received];
+      case '진행중':
+        return SAMPLE_STATUS_COLORS[SampleStatus.InProgress];
+      case '보류':
+        return SAMPLE_STATUS_COLORS[SampleStatus.OnHold];
+      case '완료':
+        return SAMPLE_STATUS_COLORS[SampleStatus.Completed];
+      case '반려':
+        return SAMPLE_STATUS_COLORS[SampleStatus.Rejected];
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-300';
+    }
+  };
+
   // 알림 타입별 아이콘 결정
   const getNotificationIcon = (title: string) => {
     if (title?.includes('댓글 : 생산관리부')) return <MessageSquare className="h-3.5 w-3.5 text-blue-500" />;
@@ -62,6 +93,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
     if (title?.includes('부족분')) return <AlertTriangle className="h-3.5 w-3.5 text-orange-500" />;
     if (title?.includes('품질이슈')) return <ShieldAlert className="h-3.5 w-3.5 text-red-500" />;
     if (title?.includes('샘플')) return <TestTube className="h-3.5 w-3.5 text-purple-500" />;
+    if (title?.includes('지그')) return <Wrench className="h-3.5 w-3.5 text-indigo-500" />;
     return <Bell className="h-3.5 w-3.5 text-gray-500" />;
   };
 
@@ -120,6 +152,14 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             const title = notif.title as string;
             const isDailyReport = title === '생산일보';
             const isSampleRequest = title === '샘플 요청';
+            const isAnnouncement = title?.includes('공지사항');
+            const isWorkSchedule = title?.includes('근무계획');
+            const notifType = String((notif as any).type || '');
+            const isCommentNotification = (
+              (title && (title.indexOf('댓글 :') !== -1 || title.indexOf('멘션 :') !== -1)) ||
+              notifType.indexOf('comment') !== -1 ||
+              notifType.indexOf('mention') !== -1
+            );
             const isLogisticsType = requestType || 
               title?.includes('생산관리부') || 
               title?.includes('부족분') || 
@@ -179,36 +219,82 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                         {getNotificationIcon(title)}
                         {title}
                       </span>
-                      {requestType && (
-                        isDailyReport ? (
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "text-xs font-semibold border",
-                              PRODUCTION_STATUS_COLORS[requestType as string] || "bg-gray-100 text-gray-800 border-gray-300"
-                            )}
-                          >
-                            {requestType as string}
-                          </Badge>
-                        ) : (
-                          <span className={cn(
-                            "text-xs font-semibold",
-                            isUrgent ? "text-red-600 dark:text-red-400" : "text-primary"
-                          )}>
-                            {requestType as string}
-                          </span>
+                      {isCommentNotification ? (
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-xs font-semibold border bg-gray-100 text-gray-800 border-gray-300",
+                          )}
+                        >
+                          <MessageSquare className="mr-1 h-3 w-3 text-gray-500" />
+                          댓글
+                        </Badge>
+                      ) : (
+                        requestType && (
+                          isDailyReport ? (
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-xs font-semibold border",
+                                PRODUCTION_STATUS_COLORS[requestType as string] || "bg-gray-100 text-gray-800 border-gray-300"
+                              )}
+                            >
+                              {requestType as string}
+                            </Badge>
+                          ) : (
+                            isSampleRequest ? (
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "text-xs font-semibold border",
+                                  getSampleStatusBadgeClass(String(requestType))
+                                )}
+                              >
+                                {requestType as string}
+                              </Badge>
+                            ) : title === '품질이슈' || title === '품질이슈 등록' || title === '품질이슈 상태 변경' ? (
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "text-xs font-semibold border",
+                                  QUALITY_STATUS_COLORS[String(requestType) as keyof typeof QUALITY_STATUS_COLORS] || "bg-gray-100 text-gray-800 border-gray-300"
+                                )}
+                              >
+                                {requestType as string}
+                              </Badge>
+                            ) : (
+                              // 지그 알림: title이 지그 관련이면 지그 상태 색상 사용
+                              (title === '지그 요청 등록' || title === '지그 입고 처리') ? (
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    "text-xs font-semibold border",
+                                    JIG_STATUS_COLORS[String(requestType)] || "bg-gray-100 text-gray-800 border-gray-300"
+                                  )}
+                                >
+                                  {requestType as string}
+                                </Badge>
+                              ) : (
+                            <span className={cn(
+                              "text-xs font-semibold",
+                              isUrgent ? "text-red-600 dark:text-red-400" : "text-primary"
+                            )}>
+                              {requestType as string}
+                            </span>
+                            ))
+                          )
                         )
                       )}
                     </div>
                     <div className="flex items-start gap-2">
                       <Avatar className="h-8 w-8 flex-shrink-0">
-                        {senderName.toLowerCase() === '시스템' || isScheduleNotification || isDailyReport || isSampleRequest ? (
+                        {senderName.toLowerCase() === '시스템' || isScheduleNotification || isDailyReport || isSampleRequest || isAnnouncement || isWorkSchedule ? (
                           <div className="h-full w-full rounded-full bg-primary flex items-center justify-center">
                             <span className="text-white font-bold text-xs">TMS</span>
                           </div>
                         ) : (
                           <>
-                            <AvatarImage src={senderAvatar as string} alt={senderName as string} />
+                            <AvatarImage src={(senderAvatar as string) || ''} alt={senderName as string} />
                             <AvatarFallback className="bg-muted text-xs">
                               {senderName.charAt(0).toUpperCase()}
                             </AvatarFallback>
@@ -217,14 +303,14 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                       </Avatar>
                       <div className="flex-1 min-w-0 w-full">
                         <div className="flex items-center gap-2 mb-1 w-full">
-                          {senderName.toLowerCase() !== '시스템' && !isScheduleNotification && !isDailyReport && !isSampleRequest && (
+                          {senderName.toLowerCase() !== '시스템' && !isScheduleNotification && !isDailyReport && !isSampleRequest && !isAnnouncement && !isWorkSchedule && (
                             <>
                               <span className="text-sm font-semibold text-foreground whitespace-nowrap">{senderName as string}</span>
                               <span className="text-xs text-muted-foreground">•</span>
                             </>
                           )}
                           <span className="text-sm font-medium text-foreground flex-1 min-w-0 pr-2">
-                            {supplier && !isScheduleNotification && !isDailyReport && !isSampleRequest && `${supplier} `}
+                            {supplier && !isScheduleNotification && !isDailyReport && !isSampleRequest && !isAnnouncement && !isWorkSchedule && `${supplier} `}
                             {subtitle || ''}
                           </span>
                           <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
@@ -244,22 +330,40 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                   </>
                 ) : (
                   /* 댓글/멘션 알림 */
-                  <div className="flex items-start gap-2">
-                    <Avatar className="h-8 w-8 flex-shrink-0">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                        {getNotificationIcon(title)}
+                        {title}
+                      </span>
+                      {isCommentNotification && (
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-xs font-semibold border bg-gray-100 text-gray-800 border-gray-300",
+                          )}
+                        >
+                          <MessageSquare className="mr-1 h-3 w-3 text-gray-500" />
+                          댓글
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <Avatar className="h-8 w-8 flex-shrink-0">
                       {senderName.toLowerCase() === '시스템' ? (
                         <div className="h-full w-full rounded-full bg-primary flex items-center justify-center">
                           <span className="text-white font-bold text-xs">TMS</span>
                         </div>
                       ) : (
                         <>
-                          <AvatarImage src={senderAvatar as string} alt={senderName as string} />
+                          <AvatarImage src={(senderAvatar as string) || ''} alt={senderName as string} />
                           <AvatarFallback className="bg-muted text-xs">
                             {senderName.charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </>
                       )}
-                    </Avatar>
-                    <div className="flex-1 min-w-0 w-full">
+                      </Avatar>
+                      <div className="flex-1 min-w-0 w-full">
                       {senderName.toLowerCase() !== '시스템' && (
                         <div className="flex items-center gap-2 mb-1 w-full">
                           {notif.type === 'mention' ? (
@@ -291,7 +395,9 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                           {timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       )}
-                    </div>
+                      </div>
+                    {/* 댓글/멘션 컨테이너 닫기 */}
+                  </div>
                   </div>
                 )}
               </Link>

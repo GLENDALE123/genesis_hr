@@ -161,8 +161,9 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
         return;
       }
       
-      // 웹 환경: 브라우저 네이티브 알림만 사용
-      if (Notification.permission === 'granted') {
+      // 웹 환경: 브라우저 네이티브 알림만 사용 (보안 컨텍스트에서만)
+      const isSecure = (window as any).isSecureContext || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      if (isSecure && Notification.permission === 'granted') {
         try {
           const notification = new Notification(title, {
             body,
@@ -185,7 +186,7 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
         } catch (error) {
           console.warn('⚠️ [FCM] 브라우저 알림 실패:', error);
         }
-      } else {
+      } else if (isSecure) {
         console.log('⚠️ [FCM] 알림 권한이 허용되지 않아 브라우저 알림을 표시할 수 없습니다.');
       }
       
@@ -260,7 +261,8 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
               const title = notification.title || '새 알림';
               const body = notification.body || notification.message || '';
               
-              if (Notification.permission === 'granted') {
+              const isSecure = (window as any).isSecureContext || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+              if (isSecure && Notification.permission === 'granted') {
                 try {
                   const browserNotification = new Notification(title, {
                     body,
@@ -281,7 +283,7 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
                 } catch (error) {
                   console.warn('⚠️ [Firestore 폴백] 브라우저 알림 실패:', error);
                 }
-              } else {
+              } else if (isSecure) {
                 console.log('⚠️ [Firestore 폴백] 알림 권한이 허용되지 않아 브라우저 알림을 표시할 수 없습니다.');
               }
               

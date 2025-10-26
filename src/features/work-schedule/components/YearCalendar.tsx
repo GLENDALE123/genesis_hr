@@ -53,7 +53,7 @@ export const YearCalendar: React.FC<YearCalendarProps> = ({ year, schedules }) =
 
     return (
       <div className="bg-gray-100 dark:bg-slate-800 p-1 rounded-lg">
-        <h3 className="font-bold text-center mb-2 text-yellow-400 text-sm">{month + 1}월</h3>
+        <h3 className="font-bold text-center mb-1 sm:mb-2 text-yellow-400 text-xs sm:text-sm">{month + 1}월</h3>
         <div className="grid grid-cols-7 text-center text-xs">
           {['일', '월', '화', '수', '목', '금', '토'].map(day => (
             <div key={day} className={cn(
@@ -73,7 +73,7 @@ export const YearCalendar: React.FC<YearCalendarProps> = ({ year, schedules }) =
   };
 
   return (
-    <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-2 w-full overflow-y-auto">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-2 w-full overflow-y-auto">
       {Array.from({ length: 12 }, (_, i) => renderMonthCalendar(i))}
     </div>
   );

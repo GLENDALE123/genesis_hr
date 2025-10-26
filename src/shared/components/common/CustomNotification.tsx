@@ -172,12 +172,12 @@ export class NotificationManager {
   // 설정에서 알림 소리 설정 가져오기
   static getSoundSettings(): boolean {
     try {
-      // localStorage에서 설정 가져오기
-      const settings = localStorage.getItem('user-settings');
-      if (settings) {
-        const parsedSettings = JSON.parse(settings);
-        // settings.notifications.sound 경로로 확인
-        return parsedSettings?.state?.notifications?.sound !== false;
+      // global-store에서 설정 가져오기
+      const globalStore = localStorage.getItem('global-store');
+      if (globalStore) {
+        const parsed = JSON.parse(globalStore);
+        // state.preferences.soundEnabled 경로로 확인
+        return parsed?.state?.preferences?.soundEnabled !== false;
       }
       // 기본값: 소리 켜짐
       return true;
@@ -225,13 +225,7 @@ export class NotificationManager {
       }
     }
 
-    // 앱이 명시적으로 백그라운드일 때만 시스템 알림 사용
-    if (this.isAppInForeground === false) {
-      await this.sendSystemNotification(newNotification);
-      return;
-    }
-
-    // 웹 환경 또는 폴백: 포그라운드에서는 자체 알림 사용
+    // 포그라운드: 자체 알림(toast) 사용
     if (this.notifications.length >= this.maxNotifications) {
       this.notifications.shift();
     }
@@ -243,6 +237,11 @@ export class NotificationManager {
     setTimeout(() => {
       this.remove(newNotification.id);
     }, 5000);
+
+    // 백그라운드: 시스템 알림 추가로 표시
+    if (this.isAppInForeground === false) {
+      await this.sendSystemNotification(newNotification);
+    }
   }
 
   // 시스템 알림 전송
@@ -272,8 +271,13 @@ export class NotificationManager {
         return;
       }
 
-      // 웹 브라우저 환경 - 시스템 알림 사용
+      // 웹 브라우저 환경 - 시스템 알림 사용 (보안 컨텍스트에서만)
       if ('Notification' in window) {
+        const isSecure = (window as any).isSecureContext || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        if (!isSecure) {
+          // 비보안 컨텍스트에서는 브라우저 알림을 시도하지 않음 (toast만 표시되게)
+          return;
+        }
         if (Notification.permission === 'granted') {
           new Notification(titleWithIcon, {
             body: notification.body,
@@ -283,16 +287,9 @@ export class NotificationManager {
             requireInteraction: false,
             silent: false
           });
-        } else if (Notification.permission !== 'denied') {
-          const permission = await Notification.requestPermission();
-          if (permission === 'granted') {
-            new Notification(titleWithIcon, {
-              body: notification.body,
-              icon: notification.senderAvatar || '/favicon.ico',
-              tag: 'mention-notification',
-              badge: '/favicon.ico'
-            });
-          }
+        } else {
+          // 자동 권한 요청 금지: 사용자 트리거에서만 요청하도록 함
+          return;
         }
       }
     } catch (error) {
