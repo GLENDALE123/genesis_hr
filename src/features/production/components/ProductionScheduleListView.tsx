@@ -28,10 +28,12 @@ import {
 } from '@/shared/components/ui/alert-dialog';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/shared/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { PRODUCTION_LINE_OPTIONS } from '@/features/production/constants';
 import { toast } from 'sonner';
+import { useDeviceType } from '@/shared/hooks/use-device';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/components/ui/collapsible';
 
 const getLocalDateString = (date = new Date()) => {
   const offset = date.getTimezoneOffset();
@@ -51,6 +53,8 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
   const isAdmin = useIsAdmin();
   const isManager = useIsManager();
   const canManage = isAdmin || isManager;
+  const { isSmartphone, isTablet } = useDeviceType();
+  const isMobile = isSmartphone || isTablet;
 
   const {
     schedules,
@@ -65,6 +69,7 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
   const today = getLocalDateString(new Date());
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
+  const [isFilterExpanded, setIsFilterExpanded] = useState(false);
   
   // 생산일보 데이터 가져오기 (상태 매칭용)
   const { reports: packagingReports, getReportsByDateRange } = usePackagingReports();
@@ -293,8 +298,31 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
       {/* 필터 영역 - Card로 분리 */}
       <Card className="flex-shrink-0">
         <CardContent className="p-4">
-          <div className="flex flex-col space-y-3">
-            {/* 빠른 필터 버튼들 */}
+          <Collapsible open={isMobile ? isFilterExpanded : true} onOpenChange={setIsFilterExpanded}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold">필터</h3>
+              {isMobile && (
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 gap-1">
+                    {isFilterExpanded ? (
+                      <>
+                        접기
+                        <ChevronUp className="h-4 w-4" />
+                      </>
+                    ) : (
+                      <>
+                        펼치기
+                        <ChevronDown className="h-4 w-4" />
+                      </>
+                    )}
+                  </Button>
+                </CollapsibleTrigger>
+              )}
+            </div>
+
+            <CollapsibleContent className={isMobile ? "overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up" : undefined}>
+              <div className="flex flex-col space-y-3">
+                {/* 빠른 필터 버튼들 */}
             <div className="w-full space-y-1">
               <label className="text-sm font-medium text-foreground">빠른 필터</label>
               <div className="flex flex-wrap items-center gap-2">
@@ -319,8 +347,8 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
               </div>
             </div>
 
-            {/* 날짜 범위 및 검색 */}
-            <div className="flex flex-col md:flex-row gap-2 items-start md:items-end">
+                {/* 날짜 범위 및 검색 */}
+                <div className="flex flex-col md:flex-row gap-2 items-start md:items-end">
               {/* 조회기간 */}
               <div className="w-full md:w-auto space-y-1">
                 <label className="text-sm font-medium text-foreground">조회기간</label>
@@ -398,9 +426,11 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full"
                 />
+                </div>
               </div>
-            </div>
-          </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </CardContent>
       </Card>
 

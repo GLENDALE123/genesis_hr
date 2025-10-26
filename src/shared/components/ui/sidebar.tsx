@@ -5,7 +5,7 @@ import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
 import { PanelLeft } from "lucide-react"
 
-import { useIsMobile } from "@/shared/hooks/use-mobile"
+import { useIsSmartphone, useIsTablet } from "@/shared/hooks"
 import { cn } from "@/shared/lib/utils"
 import { Button } from "@/shared/components/ui/button"
 import { Input } from "@/shared/components/ui/input"
@@ -73,7 +73,7 @@ const SidebarProvider = React.forwardRef<
     },
     ref
   ) => {
-    const isMobile = useIsMobile()
+    const isMobile = useIsSmartphone()
     const [openMobile, setOpenMobile] = React.useState(false)
 
     // This is the internal state of the sidebar.
@@ -570,6 +570,51 @@ const SidebarMenuButton = React.forwardRef<
   ) => {
     const Comp = asChild ? Slot : "button"
     const { isMobile, state } = useSidebar()
+    const isTablet = useIsTablet()
+
+    const [tooltipOpen, setTooltipOpen] = React.useState(false)
+    const closeTimerRef = React.useRef<number | null>(null)
+    const lastPointerTypeRef = React.useRef<string>("")
+    const suppressHoverRef = React.useRef<boolean>(false)
+    const suppressTimerRef = React.useRef<number | null>(null)
+
+    React.useEffect(() => {
+      return () => {
+        if (closeTimerRef.current != null) {
+          window.clearTimeout(closeTimerRef.current)
+        }
+        if (suppressTimerRef.current != null) {
+          window.clearTimeout(suppressTimerRef.current)
+        }
+      }
+    }, [])
+
+    const handlePointerDown: React.PointerEventHandler<HTMLButtonElement> = (e) => {
+      lastPointerTypeRef.current = e.pointerType
+      if (
+        state === "collapsed" && !isMobile && isTablet &&
+        (e.pointerType === "touch" || e.pointerType === "pen")
+      ) {
+        // Touch on tablet: show tooltip for 1s then hide, and suppress hover reopen
+        setTooltipOpen(true)
+        if (closeTimerRef.current != null) {
+          window.clearTimeout(closeTimerRef.current)
+        }
+        closeTimerRef.current = window.setTimeout(() => {
+          setTooltipOpen(false)
+        }, 1000)
+        suppressHoverRef.current = true
+        if (suppressTimerRef.current != null) {
+          window.clearTimeout(suppressTimerRef.current)
+        }
+        suppressTimerRef.current = window.setTimeout(() => {
+          suppressHoverRef.current = false
+        }, 1100)
+      }
+      if (typeof (props as any).onPointerDown === "function") {
+        ;(props as any).onPointerDown(e)
+      }
+    }
 
     const button = (
       <Comp
@@ -578,6 +623,7 @@ const SidebarMenuButton = React.forwardRef<
         data-size={size}
         data-active={isActive}
         className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
+        onPointerDown={handlePointerDown}
         {...props}
       />
     )
@@ -593,7 +639,33 @@ const SidebarMenuButton = React.forwardRef<
     }
 
     return (
-      <Tooltip>
+      <Tooltip
+        open={tooltipOpen}
+        onOpenChange={(nextOpen) => {
+          if (state !== "collapsed" || isMobile) {
+            if (tooltipOpen) setTooltipOpen(false)
+            return
+          }
+
+          // If we're suppressing hover (after a touch), ignore hover-driven opens
+          if (nextOpen && suppressHoverRef.current) {
+            return
+          }
+
+          // Decide behavior based on pointer type: touch -> auto close, hover -> normal
+          const lastWasTouch = lastPointerTypeRef.current === "touch" || lastPointerTypeRef.current === "pen"
+
+          setTooltipOpen(nextOpen)
+          if (nextOpen && lastWasTouch) {
+            if (closeTimerRef.current != null) {
+              window.clearTimeout(closeTimerRef.current)
+            }
+            closeTimerRef.current = window.setTimeout(() => {
+              setTooltipOpen(false)
+            }, 1000)
+          }
+        }}
+      >
         <TooltipTrigger asChild>{button}</TooltipTrigger>
         <TooltipContent
           side="right"

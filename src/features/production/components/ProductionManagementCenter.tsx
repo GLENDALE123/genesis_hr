@@ -32,6 +32,7 @@ import {
 } from '../utils/productionUtils';
 import { isAdmin, isManager } from '@/shared/utils/userUtils';
 import { TABLE_CELL_STYLES, TABLE_HEAD_STYLES } from '../constants/tableStyles';
+import { useIsSmartphone, useIsTablet } from '@/shared/hooks/use-device';
 
 const ProductionManagementCenterComponent: React.FC = () => {
   const searchParams = useSearchParams();
@@ -41,6 +42,9 @@ const ProductionManagementCenterComponent: React.FC = () => {
   const { userProfile } = useAuthStore();
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<ProductionRequest | null>(null);
+  const isSmartphone = useIsSmartphone();
+  const isTablet = useIsTablet();
+  const isSmallScreen = isSmartphone || isTablet;
 
   // 컴포넌트 마운트 로그
   useEffect(() => {
@@ -83,8 +87,12 @@ const ProductionManagementCenterComponent: React.FC = () => {
   }, [requests, selectedRequest]);
 
   const handleNewRequest = useCallback(() => {
+    if (isSmallScreen) {
+      router.push('/production/management/mobile/request');
+      return;
+    }
     setIsFormModalOpen(true);
-  }, []);
+  }, [isSmallScreen, router]);
 
   const handleSelectRequest = useCallback((request: ProductionRequest) => {
     setSelectedRequest(request);
@@ -147,7 +155,7 @@ const ProductionManagementCenterComponent: React.FC = () => {
   }, [deleteComment]);
 
   return (
-    <div className="h-full flex flex-col bg-background rounded-lg shadow-sm">
+    <div className="h-full flex flex-col bg-background rounded-lg shadow-sm p-2 md:p-4">
       {/* 헤더 */}
       <header className="flex-shrink-0 mb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-sm text-muted-foreground">

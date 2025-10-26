@@ -8,23 +8,26 @@ import { cn } from '@/shared/lib/utils';
 import { useGlobalStore } from '@/app/store';
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from '@/shared/components/ui/sheet';
 import { VisuallyHidden } from '@/shared/components/ui/visually-hidden';
-import { useIsMobile } from '@/shared/hooks/use-mobile';
+import { useDeviceType } from '@/shared/hooks/use-device';
 
 interface AppLayoutProps {
   children: React.ReactNode;
   className?: string;
+  noContentPadding?: boolean; // 모바일 풀스크린 페이지 등에서 본문 패딩 제거
 }
 
 export const AppLayout: React.FC<AppLayoutProps> = ({ 
   children, 
-  className 
+  className,
+  noContentPadding = false
 }) => {
   const { 
     preferences, 
     toggleSidebarCollapsed 
   } = useGlobalStore();
   
-  const isMobile = useIsMobile();
+  const { isSmartphone } = useDeviceType();
+  const isMobile = isSmartphone; // 태블릿은 데스크톱 레이아웃 유지
   const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
 
@@ -121,7 +124,9 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
           <main 
             className={cn(
               "flex-1 transition-all duration-300",
-              isMobile ? "overflow-y-auto overflow-x-hidden p-2" : "overflow-y-auto overflow-x-hidden p-4",
+              isMobile 
+                ? (noContentPadding ? "overflow-y-auto overflow-x-hidden p-0" : "overflow-y-auto overflow-x-hidden p-2")
+                : (noContentPadding ? "overflow-y-auto overflow-x-hidden p-0" : "overflow-y-auto overflow-x-hidden p-4"),
               className
             )}
             style={{

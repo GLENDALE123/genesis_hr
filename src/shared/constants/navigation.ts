@@ -74,6 +74,9 @@ export const getRouteIcon = (pathname: string): React.ComponentType<{ className?
   }
 
   // 부분 매칭 (상위 경로 확인)
+  if (pathname.startsWith('/production/daily-report')) {
+    return FileText;
+  }
   if (pathname.startsWith('/production')) {
     return Factory;
   }
@@ -98,6 +101,9 @@ export const getRouteTitle = (pathname: string): string => {
   }
 
   // 부분 매칭 (상위 경로 확인)
+  if (pathname.startsWith('/production/daily-report')) {
+    return '생산일보';
+  }
   if (pathname.startsWith('/production')) {
     return '생산센터';
   }

@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { useIsSmartphone, useIsTablet } from '@/shared/hooks/use-device';
 import { Button } from '@/shared/components/ui/button';
 import { 
   Dialog,
@@ -53,6 +55,10 @@ import { Alert, AlertDescription } from '@/shared/components/ui/alert';
 
 const PackagingDailyReportContainerComponent: React.FC = () => {
   const { user, userProfile } = useAuthStore();
+  const router = useRouter();
+  const isSmartphone = useIsSmartphone();
+  const isTablet = useIsTablet();
+  const isSmallScreen = isSmartphone || isTablet;
   
   // 컴포넌트 마운트 로그
   useEffect(() => {
@@ -167,20 +173,28 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
       toast.error('생산일보를 생성할 권한이 없습니다.');
       return;
     }
-    setSelectedReport(null);
-    setIsEditMode(false);
-    setIsFormOpen(true);
-  }, [canCreate]);
+    if (isSmallScreen) {
+      router.push('/production/daily-report/mobile/register');
+    } else {
+      setSelectedReport(null);
+      setIsEditMode(false);
+      setIsFormOpen(true);
+    }
+  }, [canCreate, isSmallScreen, router]);
 
   const handleEditReport = useCallback((report: PackagingReport) => {
     if (!canUpdate) {
       toast.error('생산일보를 수정할 권한이 없습니다.');
       return;
     }
-    setSelectedReport(report);
-    setIsEditMode(true);
-    setIsFormOpen(true);
-  }, [canUpdate]);
+    if (isSmallScreen) {
+      router.push(`/production/daily-report/mobile/edit/${report.id}`);
+    } else {
+      setSelectedReport(report);
+      setIsEditMode(true);
+      setIsFormOpen(true);
+    }
+  }, [canUpdate, isSmallScreen, router]);
 
   const handleDeleteReport = useCallback((reportId: string) => {
     if (!canDelete) {

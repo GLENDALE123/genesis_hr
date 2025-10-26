@@ -2,7 +2,6 @@
 export { default as FCMProvider, useFCMContext } from './FCMProvider';
 export { default as LoadingSpinner } from './LoadingSpinner';
 export { ClientThemeProvider } from './ClientThemeProvider';
-export { ThemeCustomizer } from './ThemeCustomizer';
 export { CommentsSection } from './CommentsSection';
 export { NetworkStatusProvider } from './NetworkStatusProvider';
 export { UploadingImageGrid, type UploadingImageItem } from './UploadingImageGrid';

@@ -128,16 +128,40 @@ module.exports = {
  					height: '0'
  				}
  			},
- 			'shake': {
+				// Collapsible 전용 (Radix Collapsible height 변수 사용)
+				'collapsible-down': {
+					from: {
+						height: '0'
+					},
+					to: {
+						height: 'var(--radix-collapsible-content-height)'
+					}
+				},
+				'collapsible-up': {
+					from: {
+						height: 'var(--radix-collapsible-content-height)'
+					},
+					to: {
+						height: '0'
+					}
+				},
+			'shake': {
  				'0%, 100%': { transform: 'translateX(0)' },
  				'10%, 30%, 50%, 70%, 90%': { transform: 'translateX(-4px)' },
  				'20%, 40%, 60%, 80%': { transform: 'translateX(4px)' }
- 			}
+			},
+			'slide-in-x': {
+				'0%': { transform: 'translateX(2rem)', opacity: '0' },
+				'100%': { transform: 'translateX(0)', opacity: '1' }
+			}
  		},
  		animation: {
  			'accordion-down': 'accordion-down 0.2s ease-out',
  			'accordion-up': 'accordion-up 0.2s ease-out',
- 			'shake': 'shake 0.5s ease-in-out'
+				'collapsible-down': 'collapsible-down 0.2s ease-out',
+				'collapsible-up': 'collapsible-up 0.2s ease-out',
+			'shake': 'shake 0.5s ease-in-out',
+			'slide-in-x': 'slide-in-x 0.2s ease-out'
  		}
   	}
   },

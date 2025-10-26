@@ -36,7 +36,6 @@ import { logout } from '@/shared/services/firebase/auth';
 import { useRouter, usePathname } from 'next/navigation';
 import { cn } from '@/shared/lib/utils';
 import { getUserDisplayName, getUserInitial, getUserRoleBadgeVariant, getUserRoleText } from '@/shared/utils/userUtils';
-import { ThemeCustomizer } from '@/shared/components/common';
 import { useDevStore } from '@/app/store';
 import { toast } from 'sonner';
 import { getRouteIcon, getRouteTitle } from '@/shared/constants/navigation';
@@ -187,8 +186,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
         {/* Right Section */}
         <div className="flex items-center gap-2">
-          {/* Theme Customizer */}
-          <ThemeCustomizer />
+          {/* Theme Customizer removed */}
 
           {/* Notifications */}
           <Popover open={isNotificationOpen} onOpenChange={setIsNotificationOpen}>

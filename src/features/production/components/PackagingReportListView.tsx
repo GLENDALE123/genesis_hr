@@ -23,12 +23,15 @@ import { Checkbox } from '@/shared/components/ui/checkbox';
 import { PackagingReport, ProductionReportFilter, ShortageRequest } from '@/features/production/types';
 import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
 import { PRODUCTION_LINE_OPTIONS } from '@/features/production/constants';
+import { useIsSmartphone, useIsTablet } from '@/shared/hooks/use-device';
 
 // 테이블 행 컴포넌트 (메모이제이션)
 interface ReportRowProps {
   report: PackagingReport;
   isSelected: boolean;
   hasShortageRequest: boolean;
+  isHighlighted: boolean;
+  isSmallScreen: boolean;
   canUpdate?: boolean;
   canDelete?: boolean;
   onEdit: (report: PackagingReport) => void;
@@ -37,12 +40,15 @@ interface ReportRowProps {
   onOpenProcessConditions: (report: PackagingReport) => void;
   onOpenMemo: (report: PackagingReport) => void;
   onOpenShortageRequest: (report: PackagingReport) => void;
+  onToggleHighlight: (reportId: string) => void;
 }
 
 const ReportRow = React.memo<ReportRowProps>(({
   report,
   isSelected,
   hasShortageRequest,
+  isHighlighted,
+  isSmallScreen,
   canUpdate,
   canDelete,
   onEdit,
@@ -50,7 +56,8 @@ const ReportRow = React.memo<ReportRowProps>(({
   onToggleSelection,
   onOpenProcessConditions,
   onOpenMemo,
-  onOpenShortageRequest
+  onOpenShortageRequest,
+  onToggleHighlight
 }) => {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ko-KR', {
@@ -72,8 +79,220 @@ const ReportRow = React.memo<ReportRowProps>(({
     ? 'bg-[hsl(var(--status-inprogress))] text-[hsl(var(--status-inprogress-foreground))]'
     : 'bg-[hsl(var(--status-requested))] text-[hsl(var(--status-requested-foreground))]';
 
+  const handleRowClick: React.MouseEventHandler<HTMLTableRowElement> = (e) => {
+    if (!isSmallScreen) return;
+    const target = e.target as HTMLElement;
+    if (!target) return;
+    // 인터랙티브 요소 클릭 시 무시
+    const interactive = target.closest('button, a, input, select, textarea, [role="button"], [contenteditable="true"], label');
+    if (interactive) return;
+    onToggleHighlight(report.id);
+  };
+
   return (
-    <TableRow key={report.id} className="border-b">
+    <TableRow
+      key={report.id}
+      className={`border-b transition-colors select-none ${isHighlighted ? 'bg-accent/80 dark:bg-accent/80 xl:bg-transparent' : ''} ${isSmallScreen ? 'cursor-pointer active:bg-accent/50' : ''}`}
+      onClick={handleRowClick}
+    >
+      {/* 작업일자 */}
+      <TableCell className="px-2 py-3 whitespace-nowrap">
+        {formatDate(report.workDate)}
+      </TableCell>
+      {/* 상태 */}
+      <TableCell className="px-2 py-3 whitespace-nowrap">
+        <span className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${statusColorClass}`}>
+          {status}
+        </span>
+      </TableCell>
+      {/* 생산라인 */}
+      <TableCell className="px-2 py-3 whitespace-nowrap">
+        <Badge variant="secondary">{report.productionLine}</Badge>
+      </TableCell>
+      {/* 발주번호 */}
+      <TableCell className="px-2 py-3 whitespace-nowrap">
+        {(report.orderNumbers && report.orderNumbers.join(', ')) || '-'}
+      </TableCell>
+      {/* 발주처 */}
+      <TableCell className="px-2 py-3 whitespace-nowrap">{report.supplier}</TableCell>
+      {/* 제품명/부속명 */}
+      <TableCell className="px-2 py-3 whitespace-nowrap font-semibold">
+        {report.productName}{report.partName ? '/' + report.partName : ''}
+      </TableCell>
+      {/* 발주수량 */}
+      <TableCell className="px-2 py-3 whitespace-nowrap text-right">{(report.orderQuantity && report.orderQuantity.toLocaleString()) || '-'}</TableCell>
+      {/* 사양 */}
+      <TableCell className="px-2 py-3 whitespace-nowrap">{report.specification || '-'}</TableCell>
+      {/* 투입 */}
+      <TableCell className="px-2 py-3 whitespace-nowrap text-right">{(report.inputQuantity && report.inputQuantity.toLocaleString()) || 0}</TableCell>
+      {/* 양품 */}
+      <TableCell className="px-2 py-3 whitespace-nowrap text-green-600 font-medium text-right">
+        {(report.goodQuantity && report.goodQuantity.toLocaleString()) || 0}
+      </TableCell>
+      {/* 불량 */}
+      <TableCell className="px-2 py-3 whitespace-nowrap text-red-600 text-right">
+        {(report.defectQuantity && report.defectQuantity.toLocaleString()) || 0}
+      </TableCell>
+      {/* 인원 */}
+      <TableCell className="px-2 py-3 whitespace-nowrap text-right">{report.personnelCount || '-'}</TableCell>
+      {/* 라인비율 */}
+      <TableCell className="px-2 py-3 whitespace-nowrap">{report.lineRatio || '-'}</TableCell>
+      {/* 시간당생산량 */}
+      <TableCell className="px-2 py-3 whitespace-nowrap text-right">
+        {report.uph || report.productionPerMinute ? (report.uph || report.productionPerMinute)!.toLocaleString() : '-'}
+      </TableCell>
+      {/* 시작시간 */}
+      <TableCell className="px-2 py-3 whitespace-nowrap">{report.startTime || '-'}</TableCell>
+      {/* 종료시간 */}
+      <TableCell className="px-2 py-3 whitespace-nowrap">{report.endTime || '-'}</TableCell>
+      {/* 양품률 */}
+      <TableCell className="px-2 py-3 whitespace-nowrap text-right">
+        {calculateYieldRate(report.goodQuantity || 0, report.inputQuantity || 0)}%
+      </TableCell>
+      {/* 작성자 */}
+      <TableCell className="px-2 py-3 whitespace-nowrap">{report.author.displayName}</TableCell>
+      {/* 공정조건 */}
+      <TableCell className="px-2 py-3 whitespace-nowrap text-center">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onOpenProcessConditions(report)}
+          className="w-full text-center p-1 h-auto hover:bg-accent transition-colors"
+        >
+          {report.processConditions && Object.values(report.processConditions).some(v => (v && v.conditions) || (v && v.remarks)) ? (
+            <span className="font-bold text-green-500 text-base">O</span>
+          ) : (
+            <span className="text-muted-foreground">-</span>
+          )}
+        </Button>
+      </TableCell>
+      {/* 메모 */}
+      <TableCell className="px-2 py-3 whitespace-nowrap text-center">
+        {report.memo ? (
+          <Button
+            variant="link"
+            size="sm"
+            onClick={() => onOpenMemo(report)}
+            className="text-blue-600 dark:text-blue-400 font-semibold hover:underline p-0 h-auto"
+          >
+            메모
+          </Button>
+        ) : (
+          <span className="text-muted-foreground">-</span>
+        )}
+      </TableCell>
+      {/* 부족분 신청 */}
+      <TableCell className="px-2 py-3 whitespace-nowrap text-center">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onOpenShortageRequest(report)}
+          className={hasShortageRequest 
+            ? "text-orange-600 dark:text-orange-400 hover:text-orange-700 hover:bg-orange-100 dark:hover:bg-orange-900/20" 
+            : "text-muted-foreground hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/10"
+          }
+          title={hasShortageRequest ? "부족분 신청됨 (클릭하여 수정)" : "부족분 신청"}
+        >
+          {hasShortageRequest ? (
+            <AlertTriangle className="h-4 w-4 fill-orange-600 dark:fill-orange-400" />
+          ) : (
+            <AlertCircle className="h-4 w-4" />
+          )}
+        </Button>
+      </TableCell>
+      {/* 작업 */}
+      <TableCell className="h-8 px-3 py-1 whitespace-nowrap text-right">
+        {(canUpdate || canDelete) ? (
+          <div className="flex items-center justify-end gap-1">
+            {canUpdate && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onEdit(report)}
+                title="생산일보 수정"
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+            )}
+            {canDelete && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onDelete(report.id)}
+                title="생산일보 삭제"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        ) : (
+          <span className="text-muted-foreground text-xs">-</span>
+        )}
+      </TableCell>
+      {/* 물류이동 체크박스 */}
+      <TableCell className="px-2 py-3 whitespace-nowrap text-center">
+        <Checkbox
+          checked={isSelected}
+          onCheckedChange={() => onToggleSelection(report.id)}
+        />
+      </TableCell>
+    </TableRow>
+  );
+});
+
+ReportRow.displayName = 'ReportRow';
+
+// 위에서 훅 사용 제약을 피하기 위해 컴포넌트를 재정의하여 상태/핸들러 추가
+const ReportRowWithPressState = React.memo<ReportRowProps>((props) => {
+  const {
+    report,
+    isSelected,
+    hasShortageRequest,
+    canUpdate,
+    canDelete,
+    onEdit,
+    onDelete,
+    onToggleSelection,
+    onOpenProcessConditions,
+    onOpenMemo,
+    onOpenShortageRequest
+  } = props;
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+  };
+
+  const calculateYieldRate = (good: number, input: number) => {
+    if (!input || input === 0) return 0;
+    return ((good / input) * 100).toFixed(1);
+  };
+
+  const status = report.endTime ? '생산완료' : (report.startTime ? '작업중' : '대기');
+  const statusColorClass = report.endTime 
+    ? 'bg-[hsl(var(--status-completed))] text-[hsl(var(--status-completed-foreground))]'
+    : report.startTime 
+    ? 'bg-[hsl(var(--status-inprogress))] text-[hsl(var(--status-inprogress-foreground))]'
+    : 'bg-[hsl(var(--status-requested))] text-[hsl(var(--status-requested-foreground))]';
+
+  const [isPressed, setIsPressed] = React.useState(false);
+  const handlePointerDown = () => setIsPressed(true);
+  const clearPressed = () => setIsPressed(false);
+
+  return (
+    <TableRow
+      key={report.id}
+      className={`border-b transition-colors select-none ${isPressed ? 'bg-accent/40 dark:bg-accent/20 xl:bg-transparent' : ''} active:bg-accent/30 xl:active:bg-transparent`}
+      onPointerDown={handlePointerDown}
+      onPointerUp={clearPressed}
+      onPointerCancel={clearPressed}
+      onPointerLeave={clearPressed}
+      onTouchStart={handlePointerDown}
+      onTouchEnd={clearPressed}
+    >
       {/* 작업일자 */}
       <TableCell className="px-2 py-3 whitespace-nowrap">
         {formatDate(report.workDate)}
@@ -224,7 +443,7 @@ const ReportRow = React.memo<ReportRowProps>(({
          prevProps.report === nextProps.report;
 });
 
-ReportRow.displayName = 'ReportRow';
+ReportRowWithPressState.displayName = 'ReportRowWithPressState';
 
 interface PackagingReportListViewProps {
   reports: PackagingReport[];
@@ -295,8 +514,15 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
   canUpdate,
   canDelete
 }) => {
-  // 모바일 필터 표시 상태
+  // 모바일 필터 표시 상태 & 하이라이트 상태
   const [isMobileFilterVisible, setIsMobileFilterVisible] = React.useState(false);
+  const isSmartphone = useIsSmartphone();
+  const isTablet = useIsTablet();
+  const isSmallScreen = isSmartphone || isTablet;
+  const [highlightedId, setHighlightedId] = React.useState<string | null>(null);
+  const toggleHighlight = React.useCallback((id: string) => {
+    setHighlightedId(prev => (prev === id ? null : id));
+  }, []);
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ko-KR', {
       year: 'numeric',
@@ -803,6 +1029,8 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
                       report={report}
                       isSelected={selectedReportIds.has(report.id)}
                       hasShortageRequest={shortageRequestsMap.has(report.id)}
+                      isHighlighted={highlightedId === report.id}
+                      isSmallScreen={isSmallScreen}
                       canUpdate={canUpdate}
                       canDelete={canDelete}
                       onEdit={onEdit}
@@ -811,6 +1039,7 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
                       onOpenProcessConditions={onOpenProcessConditions}
                       onOpenMemo={onOpenMemo}
                       onOpenShortageRequest={onOpenShortageRequest}
+                      onToggleHighlight={toggleHighlight}
                     />
                   ))}
                 </TableBody>

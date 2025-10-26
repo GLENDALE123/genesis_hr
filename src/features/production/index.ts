@@ -16,6 +16,7 @@ export type {
 // Components
 export { PackagingReportListView } from './components/PackagingReportListView';
 export { PackagingReportForm } from './components/PackagingReportForm';
+export { ProductionRequestForm } from './components/ProductionRequestForm';
 export { PackagingReportStats } from './components/PackagingReportStats';
 export { ProcessConditionsModal } from './components/ProcessConditionsModal';
 export { MemoModal } from './components/MemoModal';

@@ -15,11 +15,13 @@ import { LoadingSpinner } from '@/shared/components/common';
 import { Card, CardContent } from '@/shared/components/ui/card';
 import { Button } from '@/shared/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
-import { useIsMobile } from '@/shared/hooks/use-mobile';
+import { useIsSmartphone, useIsTablet } from '@/shared/hooks/use-device';
 
 export const WorkScheduleContainer: React.FC = () => {
   const { userProfile } = useAuthStore();
-  const isMobile = useIsMobile();
+  const isSmartphone = useIsSmartphone();
+  const isTablet = useIsTablet();
+  const isSmallScreen = isSmartphone || isTablet;
   
   const {
     year,
@@ -50,7 +52,7 @@ export const WorkScheduleContainer: React.FC = () => {
   const handleDateClick = (dateStr: string) => {
     if (!canManage || view !== 'month') return;
 
-    if (isMobile) {
+    if (isSmallScreen) {
       router.push(`/work-schedule/mobile/${dateStr}`);
     } else {
       toggleDateSelection(dateStr);
@@ -147,8 +149,8 @@ export const WorkScheduleContainer: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* 모바일 전용: 전체 화면 생성/편집 폼 */}
-      {canManage && isMobile && mobileSelectedDate && (
+      {/* 모바일/태블릿 전용: 전체 화면 생성/편집 폼 */}
+      {canManage && isSmallScreen && mobileSelectedDate && (
         <div className="fixed inset-0 z-50 bg-background flex flex-col">
           {/* 상단 헤더 */}
           <div className="flex items-center gap-2 p-3 border-b">
