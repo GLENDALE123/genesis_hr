@@ -61,6 +61,15 @@ contextBridge.exposeInMainWorld('electron', {
     isMaximized: () => ipcRenderer.invoke('window-is-maximized'),
     resize: (options) => ipcRenderer.invoke('window-resize', options),
     getSize: () => ipcRenderer.invoke('window-get-size'),
+    captureScreenshot: async () => {
+      try {
+        const result = await ipcRenderer.invoke('capture-screenshot');
+        return result;
+      } catch (error) {
+        console.error('❌ [Preload] 스크린샷 캡처 실패:', error);
+        return { success: false, error: error.message };
+      }
+    },
   },
 
   /**
@@ -80,5 +89,6 @@ contextBridge.exposeInMainWorld('electron', {
   },
 });
 
-// Electron 환경임을 표시
-contextBridge.exposeInMainWorld('__ELECTRON__', true);
+// Electron 환경임을 직접 window 객체에 추가 (contextBridge로는 불가능)
+// eslint-disable-next-line no-undef
+window.__ELECTRON__ = true;

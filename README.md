@@ -1,4 +1,4 @@
-# HS Next App
+# TMS 통합관리시스템
 
 Firebase와 Next.js를 사용한 현대적인 웹 애플리케이션입니다.
 

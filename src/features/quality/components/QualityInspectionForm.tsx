@@ -16,7 +16,6 @@ import { IncomingInspectionForm } from './IncomingInspectionForm';
 import { ProcessInspectionForm } from './ProcessInspectionForm';
 import { OutgoingInspectionForm } from './OutgoingInspectionForm';
 import { useAuthStore } from '@/features/auth/store/authStore';
-import { getUserDisplayName } from '@/shared/utils/userUtils';
 import '../utils/migrationTool'; // 마이그레이션 도구 로드
 import { cn } from '@/shared/lib/utils';
 import { toast } from 'sonner';
@@ -87,6 +86,8 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
   onComplete
 }) => {
   const { user, userProfile } = useAuthStore();
+  // 이메일로 fallback하지 않고, 명시적인 표시 이름만 사용
+  const defaultInspectorName = (userProfile && (userProfile as any).displayName) || (user && (user as any).displayName) || '';
   const [activeTab, setActiveTab] = useState<InspectionType>(() => {
     // 수정 모드인 경우 해당 검사 타입으로 초기화
     if (mode === 'edit' && inspectionData?.inspectionType) {
@@ -188,7 +189,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
         specification: '',
         postProcess: '',
         injectionCompany: '',
-        inspector: getUserDisplayName(userProfile || user, null, ''),
+        inspector: defaultInspectorName,
         inspectionDate: new Date().toISOString().split('T')[0],
         imageUrls: [] as string[],
         
@@ -244,7 +245,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     specification: '',
     postProcess: '',
     injectionCompany: '',
-      inspector: getUserDisplayName(userProfile || user, null, ''),
+      inspector: defaultInspectorName,
     inspectionDate: new Date().toISOString().split('T')[0],
     imageUrls: [] as string[],
     
@@ -492,14 +493,15 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       // 이미지 업로드 처리
       let imageUrls: string[] = formData.imageUrls || [];
       if (imageUploadHook.uploadingImages.length > 0) {
-        // 업로드 시작 토스트 표시
-        toast.info('이미지 업로드 중...', { id: 'image-upload-progress' });
-        
-        // 업로드 시작 시 현재 파일 수 초기화
+        // 업로드 시작 시 현재 파일 수 초기화 및 진행 토스트 초기 표시
         setCurrentUploadCount(0);
-        
+        updateProgressToast(toast, 0, imageUploadHook.uploadingImages.length, () => {
+          imageUploadHook.cancelUpload();
+          imageUploadHook.clearUploadingImages();
+        }, 0);
+
         const folder = createUnifiedImagePath(inspectionData.id);
-        
+
         try {
           // 타임아웃과 재시도 로직을 포함한 업로드 Promise 생성
           const uploadFunction = () => imageUploadHook.uploadImages(folder, (progress) => {
@@ -528,15 +530,15 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
             retryableUploadPromise,
             timeoutPromise
           ]);
-          
+          // 업로드 완료 즉시 진행 토스트 닫기 (문서 업데이트와 분리)
+          toast.dismiss('image-upload-progress');
+
           // 수정 모드에서는 기존 이미지와 새 이미지를 합쳐서 저장
           const existingImageUrls = imageUploadHook.uploadingImages
             .filter(item => item.file === null && item.preview) // 기존 이미지들
             .map(item => item.preview!)
             .filter(url => !imageUploadHook.deletedImageUrls.includes(url)); // 삭제된 이미지 제외
           imageUrls = [...existingImageUrls, ...(newImageUrls as string[])];
-          // 이미지 업로드 성공 토스트는 제거 (수정 완료 토스트로 대체)
-          toast.dismiss('image-upload-progress');
           
         } catch (error: any) {
           console.error('이미지 업로드 실패:', error);
@@ -648,8 +650,8 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
         specification: formData.specification || '',
         postProcess: formData.postProcess || '',
         injectionCompany: formData.injectionCompany || '',
-        inspector: formData.inspector || '',
-        inspectionDate: formData.inspectionDate || '',
+        inspector: formData.inspector || defaultInspectorName,
+        inspectionDate: formData.inspectionDate || new Date().toISOString().split('T')[0],
         imageUrls: [], // 먼저 빈 배열로 생성
         
         // 수입검사 필드
@@ -695,11 +697,15 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       
       // 2단계: 이미지가 있으면 업로드 후 문서 업데이트
       if (imageUploadHook.uploadingImages.length > 0) {
-        // 업로드 시작 시 현재 파일 수 초기화
+        // 업로드 시작 시 현재 파일 수 초기화 및 진행 토스트 초기 표시
         setCurrentUploadCount(0);
-        
-        const folder = createUnifiedImagePath(docId, '');
-        
+        updateProgressToast(toast, 0, imageUploadHook.uploadingImages.length, () => {
+          imageUploadHook.cancelUpload();
+          imageUploadHook.clearUploadingImages();
+        }, 0);
+
+        const folder = createUnifiedImagePath(docId);
+
         try {
           // 타임아웃과 재시도 로직을 포함한 업로드 Promise 생성
           const uploadFunction = () => imageUploadHook.uploadImages(folder, (progress) => {
@@ -728,11 +734,11 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
             retryableUploadPromise,
             timeoutPromise
           ]);
-          
+          // 업로드 완료 즉시 진행 토스트 닫기 (문서 업데이트와 분리)
+          toast.dismiss('image-upload-progress');
+
           // 이미지 URL로 문서 업데이트
           await updateQualityInspection(docId, { imageUrls: imageUrls as string[] });
-          // 이미지 업로드 성공 토스트는 제거 (등록 완료 토스트로 대체)
-          toast.dismiss('image-upload-progress');
           
         } catch (error: any) {
           console.error('이미지 업로드 실패:', error);

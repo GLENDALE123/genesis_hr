@@ -21,16 +21,31 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const router = useRouter();
   const { user, isLoading } = useAuthStore();
   const [mounted, setMounted] = useState(false);
+  const [timerStarted, setTimerStarted] = useState(false);
 
   // 클라이언트에서만 마운트 상태 관리
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  // 무한 로딩 방지 타임아웃 (파일 프로토콜/내장서버 환경 보호)
+  useEffect(() => {
+    if (!mounted || timerStarted) return;
+    setTimerStarted(true);
+    const id = setTimeout(() => {
+      try {
+        if (!user && isLoading) {
+          router.push('/login/');
+        }
+      } catch {}
+    }, 4000);
+    return () => clearTimeout(id);
+  }, [mounted, timerStarted, user, isLoading, router]);
+
   useEffect(() => {
     // 로딩이 완료되고 사용자가 로그인되지 않은 경우 로그인 페이지로 리다이렉트
     if (!isLoading && !user) {
-      router.push('/login');
+      router.push('/login/');
     }
   }, [user, isLoading, router]);
 

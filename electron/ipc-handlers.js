@@ -1,4 +1,4 @@
-const { ipcMain, BrowserWindow } = require('electron');
+const { ipcMain, BrowserWindow, clipboard } = require('electron');
 
 /**
  * IPC 핸들러 등록
@@ -61,6 +61,28 @@ module.exports = function registerIpcHandlers() {
       return { width, height };
     }
     return null;
+  });
+
+  // 스크린샷 캡처 (클립보드에 복사)
+  ipcMain.handle('capture-screenshot', async (event) => {
+    try {
+      const window = BrowserWindow.fromWebContents(event.sender);
+      if (!window) {
+        return { success: false, error: 'Window not found' };
+      }
+
+      // 윈도우 캡처
+      const image = window.capturePage();
+      const png = await image;
+
+      // 클립보드에 이미지 복사
+      clipboard.writeImage(png);
+
+      return { success: true };
+    } catch (error) {
+      console.error('스크린샷 캡처 오류:', error);
+      return { success: false, error: error.message };
+    }
   });
 };
 

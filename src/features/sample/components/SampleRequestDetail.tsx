@@ -585,11 +585,15 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
                       <div className="grid grid-cols-4 gap-2">
                         {imageUploadHook.uploadingImages.map((item, index) => (
                           <div key={index} className="relative">
-                            <img
-                              src={item.preview || URL.createObjectURL(item.file!)}
-                              alt={`새 이미지 ${index + 1}`}
-                              className="w-full h-20 object-cover rounded border"
-                            />
+                            {item.preview ? (
+                              <img
+                                src={item.preview}
+                                alt={`새 이미지 ${index + 1}`}
+                                className="w-full h-20 object-cover rounded border"
+                              />
+                            ) : (
+                              <div className="w-full h-20 rounded border bg-muted animate-pulse" aria-hidden="true" />
+                            )}
                             <button
                               type="button"
                               onClick={() => imageUploadHook.removeImage(index)}

@@ -37,6 +37,7 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
   const [cachedImages, setCachedImages] = useState<string[]>([]);
   const [loadedImages, setLoadedImages] = useState<boolean[]>([]);
   const imageRefs = useRef<(HTMLImageElement | HTMLDivElement | null)[]>([]);
+  const blobUrlsRef = useRef<Set<string>>(new Set());
 
   // 지연 로딩을 위한 Intersection Observer
   useEffect(() => {
@@ -136,6 +137,24 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
       loadAllImages();
     }
   }, [enableLazyLoading, loadAllImages]);
+
+  // 생성된 blob URL 추적 (언마운트 시 정리)
+  useEffect(() => {
+    cachedImages.forEach((url) => {
+      if (url && typeof url === 'string' && url.indexOf('blob:') === 0) {
+        blobUrlsRef.current.add(url);
+      }
+    });
+  }, [cachedImages]);
+
+  useEffect(() => {
+    return () => {
+      blobUrlsRef.current.forEach((url) => {
+        try { URL.revokeObjectURL(url); } catch {}
+      });
+      blobUrlsRef.current.clear();
+    };
+  }, []);
 
   // 개별 이미지 로드 (지연 로딩시) - 간단한 버전
   const loadImage = useCallback(async (index: number) => {
@@ -256,11 +275,17 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
           );
         } catch (error) {
           reject(error);
+        } finally {
+          try { URL.revokeObjectURL(tempUrl); } catch {}
         }
       };
       
-      img.onerror = () => reject(new Error('Failed to load image'));
-      img.src = URL.createObjectURL(blob);
+      img.onerror = () => {
+        try { URL.revokeObjectURL(tempUrl); } catch {}
+        reject(new Error('Failed to load image'));
+      };
+      const tempUrl = URL.createObjectURL(blob);
+      img.src = tempUrl;
     });
   }, []);
 

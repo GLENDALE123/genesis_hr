@@ -4,15 +4,16 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Label } from '@/shared/components/ui/label';
 import { Input } from '@/shared/components/ui/input';
 import { Button } from '@/shared/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/shared/components/ui/dialog';
 import { useSettings } from '../hooks/useSettings';
 import { useAuthStore } from '@/features/auth/store/authStore';
-import { User, Mail, Phone, Building2, Upload, Edit, X } from 'lucide-react';
+import { User, Mail, Phone, Building2, Upload, Edit, X, Check } from 'lucide-react';
 import { Spinner } from '@/shared/components/ui/spinner';
 import { toast } from 'sonner';
 import { getUserInitial } from '@/shared/utils/userUtils';
@@ -21,6 +22,8 @@ import { uploadProfilePhoto, compressImage, deleteProfilePhoto } from '@/shared/
 import { updateProfile } from 'firebase/auth';
 import { auth } from '@/shared/services/firebase/config';
 import { updateUserProfile } from '@/shared/services/firebase';
+import Cropper from 'react-easy-crop';
+import { Area } from 'react-easy-crop/types';
 
 export const ProfileSettings: React.FC = () => {
   const { user, userProfile } = useAuthStore();
@@ -33,6 +36,14 @@ export const ProfileSettings: React.FC = () => {
     phoneNumber: userProfile?.contact || settings.profile.phoneNumber || '',
     department: userProfile?.department || settings.profile.department || '',
   });
+
+  // 이미지 크롭 관련 상태
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const handleChange = (field: string, value: string) => {
     // 연락처 필드인 경우 자동 포맷팅
@@ -98,17 +109,119 @@ export const ProfileSettings: React.FC = () => {
     }
   };
 
-  // 프로필 사진 업로드
+  // 이미지 파일 선택 시 미리보기 모달 열기
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !user) return;
+    if (!file || !user) {
+      event.target.value = '';
+      return;
+    }
+
+    // input 초기화 - 같은 파일을 다시 선택할 수 있도록
+    event.target.value = '';
+
+    try {
+      // 이미지 파일 읽기
+      const reader = new FileReader();
+      
+      // Promise로 FileReader 완료를 기다림
+      await new Promise<void>((resolve, reject) => {
+        reader.onloadend = () => {
+          try {
+            setSelectedImage(reader.result as string);
+            setSelectedFile(file);
+            // 다음 tick에서 모달 열기
+            setTimeout(() => {
+              setCropModalOpen(true);
+              resolve();
+            }, 100);
+          } catch (error) {
+            reject(error);
+          }
+        };
+        reader.onerror = () => reject(new Error('이미지 읽기 실패'));
+        reader.readAsDataURL(file);
+      });
+    } catch (error) {
+      console.error('이미지 읽기 실패:', error);
+      toast.error('이미지를 불러오는데 실패했습니다.');
+      setSelectedImage(null);
+      setSelectedFile(null);
+    }
+  };
+
+  // 이미지 크롭 완료 시 호출
+  const onCropComplete = useCallback((croppedArea: Area, croppedAreaPixels: Area) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
+
+  // 크롭된 이미지를 blob으로 변환
+  const createImage = (url: string): Promise<HTMLImageElement> =>
+    new Promise((resolve, reject) => {
+      const image = new Image();
+      image.addEventListener('load', () => resolve(image));
+      image.addEventListener('error', error => reject(error));
+      image.src = url;
+    });
+
+  const getCroppedImg = async (imageSrc: string, pixelCrop: Area): Promise<File> => {
+    const image = await createImage(imageSrc);
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx) {
+      throw new Error('Canvas context not available');
+    }
+
+    const maxSize = Math.max(image.width, image.height);
+    canvas.width = pixelCrop.width;
+    canvas.height = pixelCrop.height;
+
+    ctx.drawImage(
+      image,
+      pixelCrop.x,
+      pixelCrop.y,
+      pixelCrop.width,
+      pixelCrop.height,
+      0,
+      0,
+      pixelCrop.width,
+      pixelCrop.height
+    );
+
+    return new Promise<File>((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            reject(new Error('Failed to create blob'));
+            return;
+          }
+          const file = new File([blob], selectedFile?.name || 'profile.jpg', { type: 'image/jpeg' });
+          resolve(file);
+        },
+        'image/jpeg',
+        0.95
+      );
+    });
+  };
+
+  // 크롭 완료 및 이미지 업로드
+  const handleCropComplete = async () => {
+    if (!selectedImage || !croppedAreaPixels || !user || !selectedFile) {
+      toast.error('이미지를 처리할 수 없습니다.');
+      return;
+    }
 
     try {
       setIsUploadingPhoto(true);
-      toast.info('이미지를 압축하는 중...');
+      setCropModalOpen(false);
+      toast.info('이미지를 처리하는 중...');
+
+      // 크롭된 이미지 생성
+      const croppedFile = await getCroppedImg(selectedImage, croppedAreaPixels);
 
       // 이미지 압축
-      const compressedFile = await compressImage(file, 500, 500, 0.8);
+      const compressedFile = await compressImage(croppedFile, 500, 500, 0.8);
 
       toast.info('이미지를 업로드하는 중...');
 
@@ -117,7 +230,6 @@ export const ProfileSettings: React.FC = () => {
         try {
           await deleteProfilePhoto(user.photoURL);
         } catch (error) {
-          // 삭제 실패는 무시
           console.warn('기존 사진 삭제 실패:', error);
         }
       }
@@ -138,7 +250,12 @@ export const ProfileSettings: React.FC = () => {
 
       toast.success('프로필 사진이 변경되었습니다.');
 
-      // 파일 input 초기화는 자동으로 됩니다
+      // 상태 초기화
+      setSelectedImage(null);
+      setSelectedFile(null);
+      setCroppedAreaPixels(null);
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
     } catch (error) {
       console.error('프로필 사진 업로드 실패:', error);
       const errorMessage = error instanceof Error ? error.message : '프로필 사진 업로드에 실패했습니다.';
@@ -148,8 +265,20 @@ export const ProfileSettings: React.FC = () => {
     }
   };
 
+  // 크롭 모달 취소
+  const handleCropCancel = () => {
+    setCropModalOpen(false);
+    setSelectedImage(null);
+    setSelectedFile(null);
+    setCroppedAreaPixels(null);
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+  };
+
   // 파일 선택 대화상자 열기
-  const handlePhotoClick = () => {
+  const handlePhotoClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     // 파일 선택은 input 요소의 onChange 이벤트로 처리됩니다
     const fileInput = document.getElementById('photo-upload') as HTMLInputElement;
     fileInput?.click();
@@ -165,6 +294,20 @@ export const ProfileSettings: React.FC = () => {
       });
     }
   }, [userProfile, user, settings.profile, isEditing]);
+
+  // 크롭 모달이 닫힐 때 상태 초기화
+  React.useEffect(() => {
+    if (!cropModalOpen) {
+      // 모달이 닫히고 저장 중이 아닐 때만 초기화
+      if (!isUploadingPhoto) {
+        setSelectedImage(null);
+        setSelectedFile(null);
+        setCroppedAreaPixels(null);
+        setCrop({ x: 0, y: 0 });
+        setZoom(1);
+      }
+    }
+  }, [cropModalOpen, isUploadingPhoto]);
 
   if (isLoading) {
     return (
@@ -204,6 +347,7 @@ export const ProfileSettings: React.FC = () => {
                 className="hidden"
               />
               <Button 
+                type="button"
                 variant="outline" 
                 size="sm" 
                 onClick={handlePhotoClick}
@@ -368,6 +512,73 @@ export const ProfileSettings: React.FC = () => {
           </p>
         </CardContent>
       </Card>
+
+      {/* 이미지 크롭 모달 */}
+      <Dialog open={cropModalOpen} onOpenChange={setCropModalOpen}>
+        <DialogContent className="max-w-3xl w-[95vw] sm:w-full">
+          <DialogHeader>
+            <DialogTitle>프로필 사진 편집</DialogTitle>
+          </DialogHeader>
+          
+          <div className="relative w-full aspect-square max-h-[400px] sm:max-h-[500px] md:max-h-[600px]" style={{ background: '#000' }}>
+            {selectedImage && (
+              <Cropper
+                image={selectedImage}
+                crop={crop}
+                zoom={zoom}
+                aspect={1}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={onCropComplete}
+                objectFit="contain"
+                cropShape="round"
+                showGrid={false}
+              />
+            )}
+          </div>
+
+          <div className="space-y-2 px-1">
+            <Label htmlFor="zoom-slider">크기 조정</Label>
+            <input
+              id="zoom-slider"
+              type="range"
+              min={1}
+              max={3}
+              step={0.1}
+              value={zoom}
+              onChange={(e) => setZoom(Number(e.target.value))}
+              className="w-full"
+            />
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button 
+              variant="outline" 
+              onClick={handleCropCancel}
+              disabled={isUploadingPhoto}
+            >
+              <X className="mr-2 h-4 w-4" />
+              취소
+            </Button>
+            <Button 
+              onClick={handleCropComplete}
+              disabled={isUploadingPhoto}
+            >
+              {isUploadingPhoto ? (
+                <>
+                  <Spinner className="mr-2 size-4" />
+                  저장 중...
+                </>
+              ) : (
+                <>
+                  <Check className="mr-2 h-4 w-4" />
+                  저장
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

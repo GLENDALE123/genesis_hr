@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Minus, Square, Copy, X } from 'lucide-react';
+import { Minus, Square, Copy, X, Camera } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
+import { toast } from 'sonner';
 
 interface TitleBarProps {
   className?: string;
@@ -17,20 +18,14 @@ export const TitleBar: React.FC<TitleBarProps> = ({ className }) => {
   const [isMaximized, setIsMaximized] = useState(false);
 
   useEffect(() => {
-    // Electron 환경 체크
-    if (typeof window !== 'undefined' && window.__ELECTRON__ && window.electron) {
+    // Electron 환경 체크: contextBridge로 노출된 window.electron 존재 여부만 확인
+    if (typeof window !== 'undefined' && (window as any).electron) {
       setIsElectron(true);
-      
-      // 초기 최대화 상태 확인
-      window.electron.window.isMaximized().then(setIsMaximized);
-      
-      // 윈도우 리사이즈 이벤트 감지 (최대화 상태 변경)
+      (window as any).electron.window.isMaximized().then(setIsMaximized);
       const handleResize = () => {
-        window.electron?.window.isMaximized().then(setIsMaximized);
+        (window as any).electron?.window.isMaximized().then(setIsMaximized);
       };
-      
       window.addEventListener('resize', handleResize);
-      
       return () => {
         window.removeEventListener('resize', handleResize);
       };
@@ -55,6 +50,34 @@ export const TitleBar: React.FC<TitleBarProps> = ({ className }) => {
     window.electron?.window.close();
   };
 
+  // 스크린샷 캡처 함수 (클립보드 복사)
+  const captureScreenshot = async () => {
+    try {
+      toast.loading('스크린샷 캡처 중...', { id: 'capture-toast' });
+      const result = await (window as any).electron?.window.captureScreenshot();
+      
+      if (result?.success) {
+        toast.success('스크린샷이 클립보드에 복사되었습니다.', { 
+          id: 'capture-toast',
+          duration: 2000
+        });
+      } else if (result?.canceled) {
+        toast.dismiss('capture-toast');
+      } else {
+        toast.error('스크린샷 캡처에 실패했습니다.', { 
+          id: 'capture-toast',
+          description: result?.error || '알 수 없는 오류'
+        });
+      }
+    } catch (error: any) {
+      console.error('스크린샷 캡처 오류:', error);
+      toast.error('스크린샷 캡처 중 오류가 발생했습니다.', { 
+        id: 'capture-toast',
+        description: error.message 
+      });
+    }
+  };
+
   return (
     <div
       className={cn(
@@ -69,9 +92,9 @@ export const TitleBar: React.FC<TitleBarProps> = ({ className }) => {
       {/* 왼쪽: 앱 아이콘 & 타이틀 */}
       <div className="flex items-center gap-2 text-xs px-3">
         <div className="h-4 w-4 rounded-sm bg-primary flex items-center justify-center flex-shrink-0">
-          <span className="text-primary-foreground font-bold text-[10px]">HS</span>
+          <span className="text-primary-foreground font-bold text-[10px]">TMS</span>
         </div>
-        <span className="font-medium text-foreground">HS 인사관리 시스템</span>
+        <span className="font-medium text-foreground">TMS 통합관리시스템</span>
       </div>
 
       {/* 중앙: 드래그 영역 */}
@@ -84,6 +107,15 @@ export const TitleBar: React.FC<TitleBarProps> = ({ className }) => {
           WebkitAppRegion: 'no-drag',
         } as React.CSSProperties}
       >
+        {/* 스크린샷 캡처 버튼 */}
+        <button
+          className="h-full w-10 flex items-center justify-center hover:bg-accent transition-colors border-r border-border"
+          onClick={captureScreenshot}
+          title="스크린샷 캡처"
+        >
+          <Camera className="h-3.5 w-3.5" strokeWidth={1.5} />
+        </button>
+        
         {/* 최소화 버튼 */}
         <button
           className="h-full w-12 flex items-center justify-center hover:bg-accent transition-colors"

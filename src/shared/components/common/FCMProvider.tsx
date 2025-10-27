@@ -106,7 +106,7 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
     const isElectron = typeof window !== 'undefined' && window.__ELECTRON__;
 
     // 1. FCM 메시지 처리 (우선)
-    onForegroundMessage(async (payload) => {
+    const fcmUnsubscribe = onForegroundMessage(async (payload) => {
       // 설정 기반 필터링
       try {
         const settings = await settingsService.getSettings(user.uid);
@@ -273,6 +273,9 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
     }
 
     return () => {
+      if (typeof fcmUnsubscribe === 'function') {
+        try { fcmUnsubscribe(); } catch {}
+      }
       if (firestoreUnsubscribe) {
         firestoreUnsubscribe();
       }

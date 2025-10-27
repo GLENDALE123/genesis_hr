@@ -53,7 +53,7 @@ export const AboutSettings: React.FC = () => {
             앱 정보
           </CardTitle>
           <CardDescription>
-            HS Next 인사관리 시스템
+            TMS 통합관리시스템
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -82,7 +82,7 @@ export const AboutSettings: React.FC = () => {
               <Users className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium">개발</span>
             </div>
-            <span className="text-sm text-muted-foreground">HS Team</span>
+            <span className="text-sm text-muted-foreground">TMS Team</span>
           </div>
         </CardContent>
       </Card>

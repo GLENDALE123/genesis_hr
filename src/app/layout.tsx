@@ -17,8 +17,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "HS Next App",
-  description: "Next.js app with Firebase integration",
+  title: "TMS 통합관리시스템",
+  description: "TMS 통합관리시스템 - Next.js app with Firebase integration",
 };
 
 

@@ -154,38 +154,12 @@ const ProductionManagementCenterComponent: React.FC = () => {
   return (
     <div className="h-full flex flex-col bg-background rounded-lg shadow-sm p-2 md:p-4">
       {/* 헤더 */}
-      <header className="flex-shrink-0 mb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="text-sm text-muted-foreground">
-          총 {filteredRequests.length}건
-        </div>
-        <div className="flex items-center gap-2">
-          {/* 요청 타입 필터 */}
-          <div className="flex items-center gap-1 bg-muted p-1 rounded-lg text-xs">
-            <button 
-              onClick={() => setRequestTypeFilter('all')} 
-              className={`px-2 py-1 rounded transition-colors ${
-                requestTypeFilter === 'all' 
-                  ? 'bg-background shadow' 
-                  : 'hover:bg-background/50'
-              }`}
-            >
-              전체
-            </button>
-            {Object.values(ProductionRequestType).map(type => (
-              <button 
-                key={type} 
-                onClick={() => setRequestTypeFilter(type)} 
-                className={`px-2 py-1 rounded transition-colors ${
-                  requestTypeFilter === type 
-                    ? 'bg-background shadow' 
-                    : 'hover:bg-background/50'
-                }`}
-              >
-                {type}
-              </button>
-            ))}
+      <header className="flex-shrink-0 mb-4 flex flex-col gap-2">
+        {/* 1줄: 건수와 신규 요청 버튼 */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-sm text-muted-foreground">
+            총 {filteredRequests.length}건
           </div>
-          {/* 신규 요청 버튼 */}
           <Button 
             onClick={handleNewRequest}
             className="gap-2"
@@ -193,6 +167,32 @@ const ProductionManagementCenterComponent: React.FC = () => {
             <Plus className="h-4 w-4" />
             신규 요청
           </Button>
+        </div>
+        {/* 2줄: 필터 탭 */}
+        <div className="grid grid-cols-4 gap-1 bg-muted p-1 rounded-lg text-xs w-full">
+          <button 
+            onClick={() => setRequestTypeFilter('all')} 
+            className={`px-2 py-1 rounded transition-colors whitespace-nowrap ${
+              requestTypeFilter === 'all' 
+                ? 'bg-background shadow' 
+                : 'hover:bg-background/50'
+            }`}
+          >
+            전체
+          </button>
+          {Object.values(ProductionRequestType).map(type => (
+            <button 
+              key={type} 
+              onClick={() => setRequestTypeFilter(type)} 
+              className={`px-2 py-1 rounded transition-colors whitespace-nowrap ${
+                requestTypeFilter === type 
+                  ? 'bg-background shadow' 
+                  : 'hover:bg-background/50'
+              }`}
+            >
+              {type}
+            </button>
+          ))}
         </div>
       </header>
 

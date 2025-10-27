@@ -188,7 +188,7 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
       return;
     }
     if (isSmallScreen) {
-      router.push(`/production/daily-report/mobile/edit/${report.id}`);
+      router.push(`/production/daily-report/mobile/edit/?id=${report.id}`);
     } else {
       setSelectedReport(report);
       setIsEditMode(true);

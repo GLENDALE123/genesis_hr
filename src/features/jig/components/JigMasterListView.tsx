@@ -196,18 +196,18 @@ export const JigMasterListView: React.FC<JigMasterListViewProps> = ({
       <CardContent className="p-0 flex-1 min-h-0">
         <div className="h-full overflow-auto">
           <Table className="w-full min-w-[1400px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead className="whitespace-nowrap">생산구분</TableHead>
-                <TableHead className="whitespace-nowrap">발주번호</TableHead>
-                <TableHead className="whitespace-nowrap">발주처</TableHead>
-                <TableHead className="whitespace-nowrap">제품명</TableHead>
-                <TableHead className="whitespace-nowrap">부속명</TableHead>
-                <TableHead className="whitespace-nowrap">지그번호</TableHead>
-                <TableHead className="whitespace-nowrap">이미지</TableHead>
-                <TableHead className="whitespace-nowrap">특이사항</TableHead>
-                <TableHead className="whitespace-nowrap">입력일자</TableHead>
-                <TableHead className="whitespace-nowrap">입력자</TableHead>
+            <TableHeader className="sticky top-0 z-10 bg-background border-b">
+              <TableRow className="border-b">
+                <TableHead className="whitespace-nowrap bg-background">생산구분</TableHead>
+                <TableHead className="whitespace-nowrap bg-background">발주번호</TableHead>
+                <TableHead className="whitespace-nowrap bg-background">발주처</TableHead>
+                <TableHead className="whitespace-nowrap bg-background">제품명</TableHead>
+                <TableHead className="whitespace-nowrap bg-background">부속명</TableHead>
+                <TableHead className="whitespace-nowrap bg-background">지그번호</TableHead>
+                <TableHead className="whitespace-nowrap bg-background">이미지</TableHead>
+                <TableHead className="whitespace-nowrap bg-background">특이사항</TableHead>
+                <TableHead className="whitespace-nowrap bg-background">입력일자</TableHead>
+                <TableHead className="whitespace-nowrap bg-background">입력자</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

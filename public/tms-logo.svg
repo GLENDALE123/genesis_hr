@@ -1,0 +1,19 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- 배경 -->
+  <rect width="512" height="512" fill="#3b82f6"/>
+  
+  <!-- TMS 텍스트 -->
+  <text 
+    x="256" 
+    y="300" 
+    font-family="Arial, sans-serif" 
+    font-size="180" 
+    font-weight="bold" 
+    fill="white" 
+    text-anchor="middle"
+    dominant-baseline="middle"
+  >
+    TMS
+  </text>
+</svg>
+

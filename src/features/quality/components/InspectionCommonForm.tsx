@@ -106,7 +106,7 @@ export const InspectionCommonForm: React.FC<InspectionCommonFormProps> = ({
       <Input
         id="inspectionDate"
         type="date"
-        value={formData.inspectionDate}
+        value={formData.inspectionDate || new Date().toISOString().split('T')[0]}
         onChange={(e) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, inspectionDate: e.target.value }))}
       />
     </div>
@@ -435,7 +435,7 @@ export const useCommonFields = (
       <Input
         id="inspectionDate"
         type="date"
-        value={formData.inspectionDate}
+        value={formData.inspectionDate || new Date().toISOString().split('T')[0]}
         onChange={(e) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, inspectionDate: e.target.value }))}
       />
     </div>

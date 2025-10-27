@@ -59,6 +59,7 @@
     "react": "19.1.0",
     "react-day-picker": "^9.11.0",
     "react-dom": "19.1.0",
+    "react-easy-crop": "^5.5.3",
     "react-hook-form": "^7.64.0",
     "react-resizable-panels": "^3.0.6",
     "recharts": "^2.15.4",
@@ -95,7 +96,7 @@
   },
   "build": {
     "appId": "com.hs.hr",
-    "productName": "HS 인사관리 시스템",
+    "productName": "TMS 통합관리시스템",
     "directories": {
       "output": "dist"
     },
@@ -114,7 +115,7 @@
           ]
         }
       ],
-      "icon": "public/favicon.ico"
+      "icon": "public/tms-logo.png"
     },
     "nsis": {
       "oneClick": false,

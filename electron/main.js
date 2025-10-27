@@ -1,16 +1,138 @@
 const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, Notification, shell } = require('electron');
 const path = require('path');
 const { exec } = require('child_process');
+const http = require('http');
+const fs = require('fs');
 const registerIpcHandlers = require('./ipc-handlers');
 const notificationWindow = require('./notification-window');
 
-// 개발 모드 체크
-const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+// 개발 서버 사용 여부를 명시적으로 제어 (패키지 여부와 무관)
+const DEV_SERVER_URL = process.env.ELECTRON_DEV_SERVER_URL || 'http://210.103.41.103:3000';
+// 기본값: dev 서버 우선 연결. 명시적으로 ELECTRON_DEV=false 설정 시 비활성화
+const preferDevServer = process.env.ELECTRON_DEV !== 'false';
+const isDev = preferDevServer; // 개발자 도구/단축키 동작 기준
+const openDevToolsOnStart = process.env.ELECTRON_OPEN_DEVTOOLS === 'true';
 
 // Electron 환경에서는 Firestore 리스너 방식 사용 (FCM 미사용)
 let mainWindow;
 let tray;
 let hasLoggedNotificationPermission = false; // 알림 권한 로그 1회만 출력
+
+// 네트워크/인증 설정 (사내 프록시/인증서 검사 환경 대비)
+try {
+  app.commandLine.appendSwitch('ignore-certificate-errors', 'true');
+  app.commandLine.appendSwitch('allow-insecure-localhost', 'true');
+} catch {}
+let staticServer = null;
+let staticServerPort = null;
+let devServerInUse = false;
+
+function getContentType(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  if (ext === '.html') return 'text/html; charset=utf-8';
+  if (ext === '.js') return 'application/javascript; charset=utf-8';
+  if (ext === '.css') return 'text/css; charset=utf-8';
+  if (ext === '.json') return 'application/json; charset=utf-8';
+  if (ext === '.svg') return 'image/svg+xml';
+  if (ext === '.png') return 'image/png';
+  if (ext === '.jpg' || ext === '.jpeg') return 'image/jpeg';
+  if (ext === '.ico') return 'image/x-icon';
+  if (ext === '.woff2') return 'font/woff2';
+  if (ext === '.map') return 'application/json; charset=utf-8';
+  return 'application/octet-stream';
+}
+
+function ensureInside(baseDir, targetPath) {
+  const rel = path.relative(baseDir, targetPath);
+  return !rel.startsWith('..') && !path.isAbsolute(rel);
+}
+
+function startStaticOutServer() {
+  return new Promise((resolve) => {
+    const outDir = path.join(__dirname, '../out');
+    const server = http.createServer((req, res) => {
+      try {
+        const url = new URL(req.url, 'http://127.0.0.1');
+        let pathname = decodeURIComponent(url.pathname);
+        if (pathname === '/') pathname = '/index.html';
+        // 디렉토리 요청은 index.html 제공
+        if (pathname.endsWith('/')) pathname = pathname + 'index.html';
+        let filePath = path.join(outDir, pathname);
+        if (!ensureInside(outDir, filePath)) {
+          res.statusCode = 403;
+          res.end('Forbidden');
+          return;
+        }
+        fs.stat(filePath, (err, stat) => {
+          const serveFile = (finalPath) => {
+            fs.readFile(finalPath, (readErr, data) => {
+              if (readErr) {
+                res.statusCode = 404;
+                res.end('Not Found');
+                return;
+              }
+              res.setHeader('Content-Type', getContentType(finalPath));
+              res.end(data);
+            });
+          };
+
+          if (!err) {
+            if (stat.isFile()) {
+              return serveFile(filePath);
+            }
+            if (stat.isDirectory()) {
+              const indexPath = path.join(filePath, 'index.html');
+              return serveFile(indexPath);
+            }
+          }
+
+          // 파일이 아니고, 디렉토리인지 알 수 없을 때 디렉토리 인덱스 시도
+          const possibleDirIndex = path.join(filePath, 'index.html');
+          fs.stat(possibleDirIndex, (dirErr, dirStat) => {
+            if (!dirErr && dirStat.isFile()) {
+              return serveFile(possibleDirIndex);
+            }
+            // 최종 폴백: 루트 index.html (SPA 라우팅)
+            const rootIndex = path.join(outDir, 'index.html');
+            return serveFile(rootIndex);
+          });
+        });
+      } catch (e) {
+        res.statusCode = 500;
+        res.end('Internal Server Error');
+      }
+    });
+    server.listen(0, '127.0.0.1', () => {
+      const addr = server.address();
+      staticServer = server;
+      staticServerPort = addr.port;
+      resolve(staticServerPort);
+    });
+  });
+}
+
+function isUrlReachable(targetUrl) {
+  return new Promise((resolve) => {
+    try {
+      const u = new URL(targetUrl);
+      const proto = u.protocol === 'https:' ? require('https') : require('http');
+      const req = proto.request({
+        method: 'HEAD',
+        hostname: u.hostname,
+        port: u.port || (u.protocol === 'https:' ? 443 : 80),
+        path: '/',
+        timeout: 1200,
+      }, (res) => {
+        resolve(res.statusCode >= 200 && res.statusCode < 500);
+      });
+      req.on('error', () => resolve(false));
+      req.on('timeout', () => { try { req.destroy(); } catch {} resolve(false); });
+      req.end();
+    } catch (e) {
+      resolve(false);
+    }
+  });
+}
 
 /**
  * 메인 윈도우 생성
@@ -30,7 +152,7 @@ function createWindow() {
       webSecurity: false, // Firebase API 호출을 위해 비활성화
       allowRunningInsecureContent: true, // Firebase API 호출을 위해 허용
     },
-    icon: path.join(__dirname, '../public/favicon.ico'),
+    icon: path.join(__dirname, '../public/tms-logo.png'),
     show: false, // 로딩 완료 후 표시
     frame: false, // 타이틀바 제거 (커스텀 타이틀바 사용)
     titleBarStyle: 'hidden', // macOS용 타이틀바 스타일
@@ -44,24 +166,52 @@ function createWindow() {
   // 생성 직후 바로 최대화
   mainWindow.maximize();
 
-  // 개발 모드: Next.js dev 서버 연결
-  // 프로덕션 모드: 정적 빌드 파일 로드
-  const startUrl = isDev
-    ? 'http://localhost:3000'
-    : `file://${path.join(__dirname, '../out/index.html')}`;
-
-  // 개발 모드에서 캐시 클리어 후 로드
-  if (isDev) {
-    mainWindow.webContents.session.clearCache().then(() => {
-      mainWindow.loadURL(startUrl);
-    });
-  } else {
-    mainWindow.loadURL(startUrl);
-  }
+  // 개발: dev 서버가 살아있으면 우선 연결, 아니면 내장 정적 서버로 폴백
+  const load = async () => {
+    const useDev = preferDevServer && await isUrlReachable(DEV_SERVER_URL);
+    devServerInUse = useDev;
+    const startUrl = useDev
+      ? DEV_SERVER_URL
+      : `http://127.0.0.1:${await startStaticOutServer()}`;
+    if (useDev) {
+      await mainWindow.webContents.session.clearCache();
+    }
+    await mainWindow.loadURL(startUrl);
+  };
+  load();
 
   // 알림 권한 자동 허용
   const { session } = mainWindow.webContents;
+  // 시스템 프록시 사용 (회사망 프록시 환경 호환)
+  try {
+    session.setProxy({ mode: 'system' });
+  } catch {}
+  // 잘못된 상대 경로로 요청되는 dev chunk를 루트 /_next로 리라이트
+  try {
+    session.webRequest.onBeforeRequest((details, callback) => {
+      try {
+        if (!devServerInUse) return callback({});
+        const u = new URL(details.url);
+        const origin = `${u.protocol}//${u.host}`;
+        if (origin !== new URL(DEV_SERVER_URL).origin) return callback({});
+        const m = u.pathname.match(/^\/(.+?)\/_next\/(.*)$/);
+        if (m) {
+          const redirectURL = `${origin}/_next/${m[2]}`;
+          return callback({ redirectURL });
+        }
+      } catch {}
+      callback({});
+    });
+  } catch {}
   session.setPermissionRequestHandler((webContents, permission, callback) => {
+  // 네트워크 에러 로깅 (디버깅 용도)
+  try {
+    session.webRequest.onErrorOccurred((details) => {
+      try {
+        console.error('[NetworkError]', details.error, details.url);
+      } catch {}
+    });
+  } catch {}
     // 알림 권한 자동 허용 (Firestore 리스너 방식)
     if (permission === 'notifications') {
       callback(true);
@@ -73,45 +223,45 @@ function createWindow() {
     }
   });
 
-  // 개발 모드에서 새로고침 단축키 등록
-  if (isDev) {
+  // 개발/프로덕션 공통 단축키 등록 (DevTools/새로고침)
+  mainWindow.webContents.on('before-input-event', (event, input) => {
     // F5, Ctrl+R, Cmd+R로 새로고침
-    mainWindow.webContents.on('before-input-event', (event, input) => {
-      if (input.key === 'F5' || (input.control && input.key === 'r') || (input.meta && input.key === 'r')) {
-        event.preventDefault();
+    if (input.key === 'F5' || (input.control && input.key === 'r') || (input.meta && input.key === 'r')) {
+      event.preventDefault();
+      mainWindow.reload();
+    }
+    // F12 또는 Ctrl+Shift+I로 개발자 도구 토글
+    if (input.key === 'F12' || (input.control && input.shift && input.key === 'i')) {
+      event.preventDefault();
+      mainWindow.webContents.toggleDevTools();
+    }
+    // Ctrl+Shift+R로 캐시 클리어 후 새로고침
+    if (input.control && input.shift && input.key === 'r') {
+      event.preventDefault();
+      mainWindow.webContents.session.clearCache().then(() => {
         mainWindow.reload();
-      }
-      // F12 또는 Ctrl+Shift+I로 개발자 도구 토글
-      if (input.key === 'F12' || (input.control && input.shift && input.key === 'i')) {
-        event.preventDefault();
-        mainWindow.webContents.toggleDevTools();
-      }
-      // Ctrl+Shift+R로 캐시 클리어 후 새로고침
-      if (input.control && input.shift && input.key === 'r') {
-        event.preventDefault();
-        mainWindow.webContents.session.clearCache().then(() => {
-          mainWindow.reload();
-        });
-      }
-    });
-  }
+      });
+    }
+  });
 
   // 윈도우가 준비되면 표시
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
-    
-    // 개발 모드에서만 DevTools 자동 열기
-    if (isDev) {
+    // 명시적으로 요청한 경우에만 DevTools 자동 열기
+    if (openDevToolsOnStart) {
       mainWindow.webContents.openDevTools();
     }
   });
 
   // 윈도우 닫기 이벤트
   mainWindow.on('close', (event) => {
-    // Windows/Linux: 시스템 트레이로 최소화
-    if (process.platform !== 'darwin') {
+    // 실제 종료하려는 경우가 아니면 트레이로 최소화
+    if (!app.isQuitting && process.platform !== 'darwin') {
       event.preventDefault();
       mainWindow.hide();
+    } else {
+      // 실제 종료
+      mainWindow = null;
     }
   });
 
@@ -125,7 +275,7 @@ function createWindow() {
  */
 function createTray() {
   // 트레이 아이콘 (16x16 또는 32x32 권장)
-  const iconPath = path.join(__dirname, '../public/favicon.ico');
+  const iconPath = path.join(__dirname, '../public/tms-logo.png');
   const trayIcon = nativeImage.createFromPath(iconPath);
   
   tray = new Tray(trayIcon.resize({ width: 16, height: 16 }));
@@ -158,7 +308,7 @@ function createTray() {
     }
   ]);
 
-  tray.setToolTip('HS 인사관리 시스템');
+  tray.setToolTip('TMS 통합관리시스템');
   tray.setContextMenu(contextMenu);
 
   // 트레이 아이콘 클릭 시 윈도우 토글
@@ -222,10 +372,10 @@ ipcMain.handle('show-notification', async (event, options) => {
     if (useCustom) {
       try {
         notificationWindow.createNotification({
-          title: title || 'HS 인사관리 시스템',
+          title: title || 'TMS 통합관리시스템',
           subtitle: subtitle,  // ✅ 서브타이틀 추가
           body: body || '',
-          icon: icon || path.join(__dirname, '../public/favicon.ico'),
+          icon: icon || path.join(__dirname, '../public/tms-logo.png'),
           senderName: senderName,
           senderAvatar: senderAvatar,
           timestamp: timestamp,
@@ -252,7 +402,7 @@ ipcMain.handle('show-notification', async (event, options) => {
     
     // 네이티브 알림 사용 (폴백)
     const notification = new Notification({
-      title: title || 'HS 인사관리 시스템',
+      title: title || 'TMS 통합관리시스템',
       body: body || '',
       icon: icon || path.join(__dirname, '../public/favicon.ico'),
       silent: false

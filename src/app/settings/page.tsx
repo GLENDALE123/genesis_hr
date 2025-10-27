@@ -4,7 +4,8 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import { NotificationSettings } from '@/features/settings/components/NotificationSettings';
 import { ProfileSettings } from '@/features/settings/components/ProfileSettings';
@@ -13,12 +14,20 @@ import { AboutSettings } from '@/features/settings/components/AboutSettings';
 import { User, Bell, Palette, Info } from 'lucide-react';
 import { ProtectedRoute } from '@/shared/components/auth';
 
-export default function SettingsPage() {
+function SettingsContent() {
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab');
   const [activeTab, setActiveTab] = useState('profile');
 
+  // URL 쿼리 파라미터에서 탭 설정 읽기
+  useEffect(() => {
+    if (tabParam && ['profile', 'notifications', 'appearance', 'about'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
+
   return (
-    <ProtectedRoute>
-      <div className="container mx-auto py-6 px-4 md:px-6 max-w-5xl">
+    <div className="container mx-auto py-6 px-4 md:px-6 max-w-5xl">
       <div className="mb-6">
         <h1 className="text-3xl font-bold">설정</h1>
         <p className="text-muted-foreground mt-2">
@@ -62,7 +71,16 @@ export default function SettingsPage() {
           <AboutSettings />
         </TabsContent>
       </Tabs>
-      </div>
+    </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <ProtectedRoute>
+      <Suspense fallback={<div className="p-6">로딩 중...</div>}>
+        <SettingsContent />
+      </Suspense>
     </ProtectedRoute>
   );
 }

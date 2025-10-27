@@ -118,17 +118,23 @@ export const getFCMToken = async (): Promise<string | null> => {
 };
 
 // 포그라운드 메시지 리스너
-export const onForegroundMessage = (callback: (payload: MessagePayload) => void) => {
+export const onForegroundMessage = (callback: (payload: MessagePayload) => void): (() => void) | void => {
   if (typeof window === 'undefined') return;
   if (isElectronEnv) return;
 
+  let unsubscribe: (() => void) | undefined;
   getMessagingService().then((messagingService) => {
     if (messagingService) {
-      onMessage(messagingService, (payload) => {
+      unsubscribe = onMessage(messagingService, (payload) => {
         callback(payload as MessagePayload);
       });
     }
   });
+  return () => {
+    if (unsubscribe) {
+      try { unsubscribe(); } catch {}
+    }
+  };
 };
 
 // 알림 권한 확인

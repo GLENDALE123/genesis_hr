@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { useMemo } from 'react';
 import { ProtectedRoute } from '@/shared/components/auth';
@@ -6,26 +6,34 @@ import { Button } from '@/shared/components/ui/button';
 import { Card } from '@/shared/components/ui/card';
 import { Sheet, SheetContent } from '@/shared/components/ui/sheet';
 import { ChevronLeft } from 'lucide-react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { PackagingReportForm } from '@/features/production/components/PackagingReportForm';
 import { usePackagingReports } from '@/features/production/hooks/usePackagingReports';
 
-export default function ProductionDailyReportMobileEditPage() {
+export default function ProductionDailyReportMobileEditPage(props: { searchParams?: Record<string, string | string[] | undefined> }) {
   const router = useRouter();
-  const params = useParams<{ id: string }>();
-  const id = params?.id as string;
   const { reports, updateReport } = usePackagingReports();
   const [open, setOpen] = React.useState(true);
-  const handleClose = React.useCallback(() => {
+
+  const id = (props && props.searchParams && props.searchParams.id
+    ? Array.isArray(props.searchParams.id) ? props.searchParams.id[0] : props.searchParams.id
+    : '') as string;
+
+  const handleClose = React.useCallback(function () {
     setOpen(false);
-    setTimeout(() => router.back(), 220);
+    setTimeout(function () { router.back(); }, 220);
   }, [router]);
 
-  const report = useMemo(() => reports.find(r => r.id === id) || null, [reports, id]);
+  const report = useMemo(function () {
+    for (let i = 0; i < reports.length; i++) {
+      if (reports[i].id === id) return reports[i];
+    }
+    return null;
+  }, [reports, id]);
 
   return (
     <ProtectedRoute>
-      <Sheet open={open} onOpenChange={(next: boolean) => { if (!next) handleClose(); }}>
+      <Sheet open={open} onOpenChange={function (next) { if (!next) handleClose(); }}>
         <SheetContent side="right" className="p-0 w-full sm:max-w-none h-screen bg-background rounded-none flex flex-col overflow-hidden">
           {/* 상단 헤더 (고정) */}
           <div className="sticky top-0 z-[100] bg-background border-b flex items-center justify-between gap-2 p-3">
@@ -44,12 +52,12 @@ export default function ProductionDailyReportMobileEditPage() {
               <PackagingReportForm
                 report={report || undefined}
                 isEditMode
-              onSubmit={async (data) => {
+                onSubmit={async function (data) {
                   if (!report) return;
                   await updateReport(report.id, {
                     workDate: data.workDate,
                     productionLine: data.productionLine,
-                    orderNumbers: data.orderNumbers.filter(n => n.trim() !== ''),
+                    orderNumbers: data.orderNumbers.filter(function (n) { return n.trim() !== ''; }),
                     supplier: data.supplier,
                     productName: data.productName,
                     partName: data.partName,
@@ -58,12 +66,17 @@ export default function ProductionDailyReportMobileEditPage() {
                     startTime: data.startTime,
                     endTime: data.endTime,
                     memo: data.memo,
-                    packagedBoxes: data.packagedBoxes.map(box => ({
-                      boxNumber: box.boxNumber,
-                      type: box.type,
-                      quantity: parseInt(box.quantity) || 0,
-                      ...(box.reason && { reason: box.reason })
-                    })),
+                    packagedBoxes: data.packagedBoxes.map(function (box) {
+                      const base: any = {
+                        boxNumber: box.boxNumber,
+                        type: box.type,
+                        quantity: parseInt(box.quantity) || 0
+                      };
+                      if (box.reason) {
+                        base.reason = box.reason;
+                      }
+                      return base;
+                    }),
                   });
                   handleClose();
                 }}

@@ -56,7 +56,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
             <AppHeader onMenuClick={handleMenuClick} />
             <main 
               className={cn(
-                "flex-1 transition-all duration-300 overflow-y-auto overflow-x-hidden p-4",
+                "flex-1 transition-all duration-300 overflow-y-auto p-4",
                 className
               )}
               style={{
@@ -125,8 +125,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
             className={cn(
               "flex-1 transition-all duration-300",
               isMobile 
-                ? (noContentPadding ? "overflow-y-auto overflow-x-hidden p-0" : "overflow-y-auto overflow-x-hidden p-2")
-                : (noContentPadding ? "overflow-y-auto overflow-x-hidden p-0" : "overflow-y-auto overflow-x-hidden p-4"),
+                ? (noContentPadding ? "overflow-y-auto p-0" : "overflow-y-auto p-2")
+                : (noContentPadding ? "overflow-y-auto p-0" : "overflow-y-auto p-4"),
               className
             )}
             style={{

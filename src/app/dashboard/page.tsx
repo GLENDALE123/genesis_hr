@@ -105,7 +105,7 @@ export default function DashboardPage() {
     if (typeof window !== 'undefined' && window.__ELECTRON__ && window.electron) {
       try {
         await window.electron.showNotification({
-          title: 'HS 인사관리 시스템',
+          title: 'TMS 통합관리시스템',
           body: '시스템 알림 테스트입니다! Windows 알림 센터로 표시됩니다.',
           useCustom: false // 시스템 알림 사용
         });
