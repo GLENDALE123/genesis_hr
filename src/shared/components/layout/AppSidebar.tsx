@@ -138,14 +138,32 @@ const AppSidebarComponent = ({
   // 모바일에서는 항상 확장된 상태로 표시, 데스크톱에서는 collapsed 상태에 따라
   const isExpanded = isMobile ? true : (collapsed ? isHovered : !collapsed);
 
-  const isActive = React.useCallback((href: string, exact = false) => {
-    if (exact) {
-      return pathname === href;
-    }
+  // 성능 최적화: isActive 함수를 더 간단하게
+  const checkIsActive = React.useCallback((href: string) => {
     return pathname === href || pathname.startsWith(href + '/');
   }, [pathname]);
 
-
+  // 성능 최적화: 활성 경로를 미리 계산 (메모이제이션)
+  const activePathMap = React.useMemo(() => {
+    const map = new Map<string, boolean>();
+    
+    // 메뉴 항목들의 활성 상태를 미리 계산
+    const checkItems = (items: NavItem[]) => {
+      items.forEach(item => {
+        map.set(item.href, checkIsActive(item.href));
+        if (item.children) {
+          checkItems(item.children);
+        }
+      });
+    };
+    
+    checkItems(mainNavigationItems);
+    checkItems(subNavigationItems);
+    map.set('/settings', checkIsActive('/settings'));
+    map.set('/help', checkIsActive('/help'));
+    
+    return map;
+  }, [checkIsActive]);
 
   // 클릭/탭 네비게이션 핸들러
   const handleClick = React.useCallback((href: string, event?: React.MouseEvent) => {
@@ -184,25 +202,20 @@ const AppSidebarComponent = ({
     }
   }, [pathname, router, isMobile, isDesktop, onMobileClose, updatePreferences]);
 
+  // 성능 최적화: 자식 메뉴 확인 함수 메모이제이션
+  const checkChildActive = React.useCallback((children: NavItem[] | undefined) => {
+    return children?.some(child => pathname === child.href || pathname.startsWith(child.href + '/')) ?? false;
+  }, [pathname]);
+
   const renderNavItem = React.useCallback((item: NavItem, level = 0) => {
     const hasChildren = item.children && item.children.length > 0;
     
+    // 성능 최적화: 활성 상태는 미리 계산된 맵에서 조회
+    let active = activePathMap.get(item.href) || false;
+    
     // 부모 메뉴의 경우: 자식 메뉴 중 하나가 활성화되면 부모도 활성화
-    let active = false;
-    if (level === 0 && hasChildren) {
-      // 자식 메뉴 중 현재 경로와 일치하는 것이 있는지 확인
-      const childMatch = item.children?.some(child => 
-        pathname === child.href || pathname.startsWith(child.href + '/')
-      );
-      if (childMatch) {
-        active = true; // 자식이 활성화되면 부모도 활성화
-      } else {
-        active = isActive(item.href); // 그렇지 않으면 기존 로직 사용
-      }
-    } else {
-      // 자식 메뉴나 자식이 없는 메뉴의 경우
-      // 정확한 매칭 또는 하위 경로 매칭 모두 허용
-      active = pathname === item.href || pathname.startsWith(item.href + '/');
+    if (level === 0 && hasChildren && !active) {
+      active = checkChildActive(item.children);
     }
 
     const navItemContent = (
@@ -271,7 +284,7 @@ const AppSidebarComponent = ({
         )}
       </div>
     );
-  }, [isActive, handleClick, isExpanded, pathname]);
+  }, [activePathMap, checkChildActive, handleClick, isExpanded]);
 
   // 모바일에서는 Sheet 내에서 확장된 상태로 표시
 
@@ -339,7 +352,7 @@ const AppSidebarComponent = ({
                 className={cn(
                   "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors text-left",
                   "min-h-[44px] px-2 py-2 md:px-2 md:py-2 w-full max-w-full overflow-hidden",
-                  isActive('/settings')
+                  activePathMap.get('/settings')
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                 )}
@@ -352,7 +365,7 @@ const AppSidebarComponent = ({
                 className={cn(
                   "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors text-left",
                   "min-h-[44px] px-2 py-2 md:px-2 md:py-2 w-full max-w-full overflow-hidden",
-                  isActive('/help')
+                  activePathMap.get('/help')
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                 )}
@@ -371,7 +384,7 @@ const AppSidebarComponent = ({
                     className={cn(
                       "flex items-center justify-center cursor-pointer rounded-md text-sm font-medium transition-colors",
                       "min-h-[44px] min-w-[44px] md:min-h-[40px] md:min-w-[40px]",
-                      isActive('/settings')
+                      checkIsActive('/settings')
                         ? "bg-primary text-primary-foreground"
                         : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                     )}
@@ -390,7 +403,7 @@ const AppSidebarComponent = ({
                     className={cn(
                       "flex items-center justify-center cursor-pointer rounded-md text-sm font-medium transition-colors",
                       "min-h-[44px] min-w-[44px] md:min-h-[40px] md:min-w-[40px]",
-                      isActive('/help')
+                      checkIsActive('/help')
                         ? "bg-primary text-primary-foreground"
                         : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                     )}

@@ -60,8 +60,8 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
   const handleZoom = useCallback((delta: number) => {
     setScale(prev => {
       const newScale = prev + delta;
-      // 0.5배 ~ 3배 사이로 제한
-      return Math.max(0.5, Math.min(3, newScale));
+      // 1배 ~ 3배 사이로 제한
+      return Math.max(1, Math.min(3, newScale));
     });
   }, []);
 
@@ -159,11 +159,10 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
     if (!open) return;
 
     const handleWheel = (e: WheelEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-        const delta = e.deltaY > 0 ? -0.1 : 0.1;
-        handleZoom(delta);
-      }
+      // Ctrl 키 없이 마우스 스크롤로 확대/축소
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.2 : 0.2;
+      handleZoom(delta);
     };
 
     window.addEventListener('wheel', handleWheel, { passive: false });
