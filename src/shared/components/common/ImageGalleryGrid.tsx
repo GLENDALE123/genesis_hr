@@ -39,35 +39,20 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
   const imageRefs = useRef<(HTMLImageElement | HTMLDivElement | null)[]>([]);
   const blobUrlsRef = useRef<Set<string>>(new Set());
 
-  // 이미지 초기화 - 원본 URL로 시작 (썸네일은 브라우저가 자동으로 처리)
+  // 이미지 초기화 - 썸네일 우선 설정
   useEffect(() => {
     if (images.length === 0) return;
     
-    // 원본 URL로 시작 (더블로딩 방지)
-    setCachedImages(images);
+    // 기본값: 썸네일 URL (useThumbnails=true일 때만)
+    // onError에서 자동으로 원본으로 폴백
+    const initialUrls = images.map(url => {
+      if (useThumbnails) {
+        return getThumbnailURL(url);
+      }
+      return url;
+    });
     
-    // 썸네일이 있는 경우만 썸네일로 교체 (HEAD 요청으로 존재 확인)
-    if (useThumbnails) {
-      images.forEach((url, index) => {
-        const thumbnailUrl = getThumbnailURL(url);
-        
-        // 썸네일 존재 여부 확인
-        fetch(thumbnailUrl, { method: 'HEAD' })
-          .then(response => {
-            if (response.ok) {
-              // 썸네일이 있으면 썸네일로 교체
-              setCachedImages(prev => {
-                const newImages = [...prev];
-                newImages[index] = thumbnailUrl;
-                return newImages;
-              });
-            }
-          })
-          .catch(() => {
-            // 썸네일이 없으면 원본 그대로 유지 (이미 설정됨)
-          });
-      });
-    }
+    setCachedImages(initialUrls);
   }, [images.length, useThumbnails]);
 
   // 모든 이미지 로드 (지연 로딩 비활성화시)
