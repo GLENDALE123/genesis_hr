@@ -571,7 +571,7 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
   }
 
   return (
-    <div className="h-full flex flex-col space-y-4">
+    <div className="flex flex-col space-y-4">
       {/* 필터 및 검색 */}
       <Card className="flex-shrink-0">
         <CardContent className="p-2 sm:p-4">
@@ -965,11 +965,11 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
       )}
 
       {/* 보고서 목록 */}
-      <Card className="flex-1 flex flex-col md:min-h-0 mb-2 md:mb-0">
-        <CardContent className="p-0 flex flex-col flex-1 md:min-h-0">
+      <Card className="mb-2 md:mb-0">
+        <CardContent className="p-0">
           {reports.length === 0 ? (
             /* 빈 상태 - 중앙 정렬 */
-            <div className="flex flex-col items-center justify-center gap-4 flex-1 min-h-[24rem]">
+            <div className="flex flex-col items-center justify-center gap-4 min-h-[24rem]">
               <div className="rounded-full bg-muted/50 p-4">
                 <Package className="h-12 w-12 text-muted-foreground" />
               </div>
@@ -981,8 +981,8 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
               </div>
             </div>
           ) : (
-            /* 스크롤 가능한 테이블 전체 - 모바일에서는 높이 제한 완전 제거 */
-            <div className="flex-1 overflow-x-auto md:h-[600px] md:overflow-y-auto">
+            /* 스크롤 가능한 테이블 전체 - 페이지 전체 스크롤 */
+            <div className="overflow-x-auto">
               <Table className="w-full text-sm text-left text-gray-500 dark:text-slate-400 min-w-[2000px]">
                 {/* 고정 헤더 */}
                 <TableHeader className="sticky top-0 z-10 bg-background">

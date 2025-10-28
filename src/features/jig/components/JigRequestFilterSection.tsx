@@ -1,12 +1,13 @@
 'use client';
 
-import React from 'react';
-import { Search, Filter, Table, Grid3X3, Kanban } from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, Filter, Table, Grid3X3, Kanban, ChevronDown, ChevronUp } from 'lucide-react';
 import { Input } from '@/shared/components/ui/input';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import { Card, CardContent } from '@/shared/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/components/ui/collapsible';
 import { MultiSelectFilter } from './MultiSelectFilter';
 import { JigStatus } from '../types';
 import { ViewMode } from '../types';
@@ -68,74 +69,134 @@ export const JigRequestFilterSection: React.FC<JigRequestFilterSectionProps> = (
   onResetFilters,
   filterInfo,
 }) => {
+  // 모바일에서 접었다 폈다 상태 (기본값: 닫힘)
+  const [isOpen, setIsOpen] = useState(false);
+
   return (
     <div className="pb-3">
       <Card>
         <CardContent className="p-3">
-          {/* 검색 바와 필터를 한 줄에 배치 */}
-          <div className="flex flex-col lg:flex-row gap-3 mb-3">
-            {/* 검색 바 */}
-            <div className="flex-1 min-w-0">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  placeholder="요청 검색..."
-                  value={searchTerm}
-                  onChange={(e) => onSearchChange(e.target.value)}
-                  className="pl-10 h-9"
-                />
+          <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+            {/* 검색 바 - 항상 표시 */}
+            <div className="flex gap-2 mb-3">
+              <div className="flex-1 min-w-0">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                  <Input
+                    placeholder="요청 검색..."
+                    value={searchTerm}
+                    onChange={(e) => onSearchChange(e.target.value)}
+                    className="pl-10 h-9"
+                  />
+                </div>
               </div>
+
+              {/* 모바일에서만 접었다 폈다 버튼 표시 */}
+              <CollapsibleTrigger asChild className="lg:hidden">
+                <Button variant="outline" size="sm" className="h-9 px-3">
+                  {isOpen ? (
+                    <>
+                      <ChevronUp className="h-4 w-4 mr-1" />
+                      접기
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="h-4 w-4 mr-1" />
+                      필터
+                    </>
+                  )}
+                </Button>
+              </CollapsibleTrigger>
             </div>
 
-            {/* 필터 그리드 - 더 컴팩트하게 */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-              {/* 상태 필터 */}
-              <MultiSelectFilter
-                label="상태"
-                placeholder="전체"
-                options={Object.values(JigStatus)}
-                selectedValues={new Set(Array.from(selectedStatuses).map(status => status as string))}
-                onSelectionChange={(values) => onStatusChange(new Set(Array.from(values).map(value => value as JigStatus)))}
-                className="min-w-[120px]"
-              />
+            {/* 필터 그리드 - 모바일에서는 접었다 폈다 가능, 데스크톱에서는 항상 표시 */}
+            <CollapsibleContent className="lg:block lg:overflow-visible">
+              <div className="flex flex-col lg:flex-row gap-3 mb-3">
+                {/* 데스크톱에서 검색바 숨기기 (이미 위에 표시되므로) */}
+                <div className="hidden lg:block lg:flex-1 lg:min-w-0">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                    <Input
+                      placeholder="요청 검색..."
+                      value={searchTerm}
+                      onChange={(e) => onSearchChange(e.target.value)}
+                      className="pl-10 h-9"
+                    />
+                  </div>
+                </div>
 
-              {/* 요청자 필터 */}
-              <MultiSelectFilter
-                label="요청자"
-                placeholder="전체"
-                options={requesters}
-                selectedValues={selectedRequesters}
-                onSelectionChange={onRequesterChange}
-                className="min-w-[120px]"
-              />
+                {/* 필터 그리드 - 더 컴팩트하게 */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                  {/* 상태 필터 */}
+                  <MultiSelectFilter
+                    label="상태"
+                    placeholder="전체"
+                    options={Object.values(JigStatus)}
+                    selectedValues={new Set(Array.from(selectedStatuses).map(status => status as string))}
+                    onSelectionChange={(values) => onStatusChange(new Set(Array.from(values).map(value => value as JigStatus)))}
+                    className="min-w-[120px]"
+                  />
 
-              {/* 수신처 필터 */}
-              <MultiSelectFilter
-                label="수신처"
-                placeholder="전체"
-                options={destinations}
-                selectedValues={selectedDestinations}
-                onSelectionChange={onDestinationChange}
-                className="min-w-[120px]"
-              />
+                  {/* 요청자 필터 */}
+                  <MultiSelectFilter
+                    label="요청자"
+                    placeholder="전체"
+                    options={requesters}
+                    selectedValues={selectedRequesters}
+                    onSelectionChange={onRequesterChange}
+                    className="min-w-[120px]"
+                  />
 
-              {/* 월별 필터 */}
-              <MultiSelectFilter
-                label="월별"
-                placeholder="전체"
-                options={months}
-                selectedValues={selectedMonths}
-                onSelectionChange={onMonthChange}
-                className="min-w-[120px]"
-              />
-            </div>
-          </div>
+                  {/* 수신처 필터 */}
+                  <MultiSelectFilter
+                    label="수신처"
+                    placeholder="전체"
+                    options={destinations}
+                    selectedValues={selectedDestinations}
+                    onSelectionChange={onDestinationChange}
+                    className="min-w-[120px]"
+                  />
 
-          {/* 액션 바 - 더 컴팩트하게 */}
+                  {/* 월별 필터 */}
+                  <MultiSelectFilter
+                    label="월별"
+                    placeholder="전체"
+                    options={months}
+                    selectedValues={selectedMonths}
+                    onSelectionChange={onMonthChange}
+                    className="min-w-[120px]"
+                  />
+                </div>
+              </div>
+            </CollapsibleContent>
+
+            {/* 필터 정보 - 펼쳐졌을 때만 표시 */}
+            {isOpen && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2 lg:hidden">
+                {filterInfo.hasActiveFilters && (
+                  <>
+                    <span>필터:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {filterInfo.activeFilters.map((filter, index) => (
+                        <Badge key={index} variant="secondary" className="text-xs px-1 py-0">
+                          {filter}
+                        </Badge>
+                      ))}
+                    </div>
+                    <span className="text-primary font-medium">
+                      {filterInfo.filteredCount}/{filterInfo.totalCount}
+                    </span>
+                  </>
+                )}
+              </div>
+            )}
+          </Collapsible>
+
+          {/* 액션 바 - 항상 표시 */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-            {/* 필터 정보만 */}
+            {/* 필터 정보 - 데스크톱에서만 표시 */}
             {filterInfo.hasActiveFilters && (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <div className="hidden lg:flex items-center gap-1 text-xs text-muted-foreground">
                 <span>필터:</span>
                 <div className="flex flex-wrap gap-1">
                   {filterInfo.activeFilters.map((filter, index) => (

@@ -239,16 +239,16 @@ export const JigManagementContainer: React.FC = () => {
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* 헤더 */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">지그 요청/관리</h1>
-          <p className="text-muted-foreground">지그 요청을 관리하고 상태를 업데이트하세요</p>
+      <div className="flex flex-row justify-between items-center gap-2 md:gap-4 pb-4">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl md:text-2xl font-bold text-foreground truncate">지그 요청/관리</h1>
+          <p className="hidden md:block text-muted-foreground text-sm">지그 요청을 관리하고 상태를 업데이트하세요</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex-shrink-0">
           {canAddNew && (
-            <Button onClick={handleNewRequest} className="flex-shrink-0">
-              <Plus className="h-4 w-4 mr-2" />
-              신규 요청
+            <Button onClick={handleNewRequest} className="h-8 px-2 md:h-9 md:px-4 text-xs md:text-sm">
+              <Plus className="h-4 w-4 mr-1 md:mr-2" />
+              <span>신규 요청</span>
             </Button>
           )}
         </div>

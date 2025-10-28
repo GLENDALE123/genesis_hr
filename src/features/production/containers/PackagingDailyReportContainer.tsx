@@ -518,7 +518,7 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
 
   return (
     <>
-      <div className="h-full flex flex-col space-y-6">
+      <div className="min-h-full flex flex-col space-y-6 pb-6">
         {/* 상단 액션 바 */}
         <div className="flex items-center justify-between gap-4 flex-shrink-0">
           {/* 좌측: 권한 설정 버튼 */}
@@ -620,7 +620,7 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
         )}
 
         {/* 메인 콘텐츠 - 필터링된 목록 표시 */}
-        <div className="flex-1 min-h-0">
+        <div>
           <PackagingReportListView
             reports={filteredReports}
             loading={loading}

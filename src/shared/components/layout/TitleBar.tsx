@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Minus, Square, Copy, X, Camera, Monitor, Crop } from 'lucide-react';
+import { Minus, Square, Copy, X, Camera, Crop } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { toast } from 'sonner';
 
@@ -9,7 +9,7 @@ interface TitleBarProps {
   className?: string;
 }
 
-type CaptureMode = 'window' | 'area' | 'select';
+type CaptureMode = 'window' | 'area';
 
 /**
  * Electron 커스텀 타이틀바
@@ -55,15 +55,14 @@ export const TitleBar: React.FC<TitleBarProps> = ({ className }) => {
 
   // 캡처 모드 순환 전환
   const toggleCaptureMode = () => {
-    const modes: CaptureMode[] = ['window', 'area', 'select'];
+    const modes: CaptureMode[] = ['window', 'area'];
     const currentIndex = modes.indexOf(captureMode);
     const nextIndex = (currentIndex + 1) % modes.length;
     setCaptureMode(modes[nextIndex]);
     
     const modeNames = {
       window: '전체 윈도우',
-      area: '사각형 영역',
-      select: '창 선택'
+      area: '사각형 영역'
     };
     
     toast.info(`캡처 모드: ${modeNames[modes[nextIndex]]}`, { duration: 1500 });
@@ -74,8 +73,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ className }) => {
     try {
       const modeNames = {
         window: '전체 윈도우',
-        area: '사각형 영역',
-        select: '창 선택'
+        area: '사각형 영역'
       };
       
       toast.loading(`${modeNames[captureMode]} 캡처 중...`, { id: 'capture-toast' });
@@ -138,13 +136,11 @@ export const TitleBar: React.FC<TitleBarProps> = ({ className }) => {
           onClick={toggleCaptureMode}
           title={
             captureMode === 'window' ? '전체 윈도우 캡처 (우클릭: 모드 전환)' :
-            captureMode === 'area' ? '사각형 영역 캡처 (우클릭: 모드 전환)' :
-            '창 선택 캡처 (우클릭: 모드 전환)'
+            '사각형 영역 캡처 (우클릭: 모드 전환)'
           }
         >
           {captureMode === 'window' && <Camera className="h-3.5 w-3.5" strokeWidth={1.5} />}
           {captureMode === 'area' && <Crop className="h-3.5 w-3.5" strokeWidth={1.5} />}
-          {captureMode === 'select' && <Monitor className="h-3.5 w-3.5" strokeWidth={1.5} />}
         </button>
         
         {/* 스크린샷 캡처 버튼 */}
