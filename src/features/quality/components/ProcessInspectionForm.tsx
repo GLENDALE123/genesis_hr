@@ -12,6 +12,7 @@ import type { AutocompleteData } from '../services/autocompleteService';
 import { useCommonFields } from './InspectionCommonForm';
 import type { UseImageUploadReturn } from '@/shared/hooks';
 import { QualityInspection, KeywordPair, ProcessLineData, TestResultDetail } from '../types';
+import { PRODUCTION_LINE_OPTIONS } from '@/features/production/constants';
 
 interface ProcessInspectionFormProps {
   formData: Partial<QualityInspection>;
@@ -276,17 +277,11 @@ export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
                       <SelectValue placeholder="작업라인을 선택하세요" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1코팅">1코팅</SelectItem>
-                      <SelectItem value="2코팅">2코팅</SelectItem>
-                      <SelectItem value="내부코팅1호기">내부코팅1호기</SelectItem>
-                      <SelectItem value="내부코팅2호기">내부코팅2호기</SelectItem>
-                      <SelectItem value="내부코팅3호기">내부코팅3호기</SelectItem>
-                      <SelectItem value="증착1">증착1</SelectItem>
-                      <SelectItem value="증착1상도">증착1상도</SelectItem>
-                      <SelectItem value="증착1하도">증착1하도</SelectItem>
-                      <SelectItem value="증착2">증착2</SelectItem>
-                      <SelectItem value="증착2상도">증착2상도</SelectItem>
-                      <SelectItem value="증착2하도">증착2하도</SelectItem>
+                      {PRODUCTION_LINE_OPTIONS.map((line) => (
+                        <SelectItem key={line} value={line}>
+                          {line}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

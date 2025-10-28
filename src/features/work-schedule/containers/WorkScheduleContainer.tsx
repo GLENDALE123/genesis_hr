@@ -64,16 +64,11 @@ export const WorkScheduleContainer: React.FC = () => {
   return (
     <>
       <Card className="h-full">
-        <CardContent className="h-full grid grid-rows-[auto_auto_1fr] gap-0 p-3 sm:p-4 md:p-6">
+        <CardContent className="h-full grid grid-rows-[auto_auto_1fr] gap-0 p-2 sm:p-3 md:p-4">
           {/* 헤더 */}
           <CalendarHeader
-            year={year}
-            month={view === 'month' ? month : undefined}
             view={view}
             onViewChange={setView}
-            onYearChange={changeYear}
-            onMonthChange={changeMonth}
-            onToday={goToToday}
           />
 
           {/* 통계 요약 */}
@@ -105,6 +100,8 @@ export const WorkScheduleContainer: React.FC = () => {
                         selectedDates={selectedDates}
                         canManage={canManage}
                         onDateClick={handleDateClick}
+                        onMonthChange={changeMonth}
+                        onToday={goToToday}
                         calendarData={calendarData}
                       />
                     </div>

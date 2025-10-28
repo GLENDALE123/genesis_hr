@@ -62,8 +62,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  // 로딩 중일 때는 로딩 스피너 표시
-  if (isLoading) {
+  // 첫 로드 시 (isLoading=true, user=null)에만 스피너 표시
+  // localStorage에 사용자 정보가 있으면 즉시 렌더링
+  if (isLoading && !user) {
     return fallback || (
       <div className="flex items-center justify-center h-screen">
         <LoadingSpinner 
@@ -73,6 +74,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         />
       </div>
     );
+  }
+  
+  // localStorage에 사용자 정보가 있고 isLoading=true인 경우는 백그라운드 검증 중이므로 렌더링
+  if (isLoading && user) {
+    return <>{children}</>;
   }
 
   // 사용자가 로그인되지 않은 경우 아무것도 렌더링하지 않음 (리다이렉트 중)

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { db } from '@/shared/services/firebase/config';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { WorkSchedule, ScheduleSummary, CalendarDay } from '../types';
@@ -16,6 +16,7 @@ export const useWorkSchedule = () => {
   const [schedules, setSchedules] = useState<Map<string, WorkSchedule>>(new Map());
   const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
+  const isInitialLoad = useRef(true);
 
   // 달력 데이터 메모이제이션
   const calendarData = useMemo(() => {
@@ -24,6 +25,11 @@ export const useWorkSchedule = () => {
     }
     return [];
   }, [year, month, schedules, view]);
+
+  // 뷰가 변경될 때 초기 로딩 상태 리셋
+  useEffect(() => {
+    isInitialLoad.current = true;
+  }, [view]);
 
   // 통계 계산
   const summary = useMemo((): ScheduleSummary => {
@@ -57,12 +63,30 @@ export const useWorkSchedule = () => {
       return;
     }
 
-    setIsLoading(true);
+    // 초기 로드일 때만 로딩 상태 표시
+    const shouldShowLoading = isInitialLoad.current;
+    if (shouldShowLoading) {
+      setIsLoading(true);
+    }
     
     let q = query(collection(db, 'work-schedules'));
     
     if (view === 'month') {
-      const { start, end } = getMonthRange(year, month);
+      // 현재 달 기준으로 이전 달, 현재 달, 다음 달 3개월치 데이터를 함께 로드
+      // 이렇게 하면 화살표 클릭 시 깜빡임이 없음
+      const prevMonth = month === 0 ? 11 : month - 1;
+      const prevYear = month === 0 ? year - 1 : year;
+      const nextMonth = month === 11 ? 0 : month + 1;
+      const nextYear = month === 11 ? year + 1 : year;
+      
+      const prevRange = getMonthRange(prevYear, prevMonth);
+      const currentRange = getMonthRange(year, month);
+      const nextRange = getMonthRange(nextYear, nextMonth);
+      
+      // 가장 이른 날짜와 가장 늦은 날짜 사용
+      const start = prevRange.start;
+      const end = nextRange.end;
+      
       q = query(
         collection(db, 'work-schedules'),
         where('date', '>=', start),
@@ -83,7 +107,12 @@ export const useWorkSchedule = () => {
         newSchedules.set(doc.id, { id: doc.id, ...doc.data() } as WorkSchedule);
       });
       setSchedules(newSchedules);
-      setIsLoading(false);
+      
+      // 첫 로드 완료 후 플래그 설정
+      if (shouldShowLoading) {
+        setIsLoading(false);
+        isInitialLoad.current = false;
+      }
     });
 
     return () => unsubscribe();

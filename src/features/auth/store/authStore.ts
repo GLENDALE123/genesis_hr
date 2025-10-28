@@ -38,13 +38,35 @@ interface AuthActions {
 
 // 스크립트에서 설정한 초기 인증 상태 가져오기
 const getInitialAuthState = () => {
-  if (typeof window !== 'undefined' && window.__AUTH_INITIAL_STATE__) {
-    return {
-      user: window.__AUTH_INITIAL_STATE__.user,
-      isLoading: window.__AUTH_INITIAL_STATE__.isLoading,
-      error: window.__AUTH_INITIAL_STATE__.error
-    };
+  // localStorage에 사용자 정보가 있으면 즉시 로드 (스피너 없음)
+  if (typeof window !== 'undefined') {
+    // 스크립트에서 설정한 초기 상태 우선 사용
+    if (window.__AUTH_INITIAL_STATE__) {
+      return {
+        user: window.__AUTH_INITIAL_STATE__.user,
+        isLoading: window.__AUTH_INITIAL_STATE__.isLoading,
+        error: window.__AUTH_INITIAL_STATE__.error
+      };
+    }
+    
+    // localStorage에서 직접 확인
+    try {
+      const authData = localStorage.getItem('auth-store');
+      if (authData) {
+        const parsed = JSON.parse(authData);
+        if (parsed.state && parsed.state.user) {
+          return {
+            user: parsed.state.user,
+            isLoading: false, // localStorage 데이터가 있으면 즉시 로드
+            error: null
+          };
+        }
+      }
+    } catch (e) {
+      // JSON 파싱 실패 무시
+    }
   }
+  
   return {
     user: null,
     isLoading: false,
@@ -100,18 +122,16 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         setError: (error: string | null) => set({ error }),
         
         initializeAuth: (): (() => void) => {
-          // 초기 로딩 상태 설정
-          set({ isLoading: true });
+          // localStorage에 사용자 정보가 있으면 초기 로딩 상태를 false로 시작
+          const { user: currentUser } = useAuthStore.getState();
+          const hasStoredUser = currentUser !== null;
           
-          // 타임아웃 설정 (5초 후에도 콜백이 안 오면 강제로 로딩 해제)
-          const timeoutId = setTimeout(() => {
-            set({ isLoading: false });
-          }, 5000);
+          // 사용자 정보가 있으면 즉시 로드, 없으면 로딩 표시
+          if (!hasStoredUser) {
+            set({ isLoading: true });
+          }
           
           const unsubscribe = onAuthStateChange(async (user) => {
-            // 타임아웃 해제
-            clearTimeout(timeoutId);
-            
             set({ user, isLoading: false, error: null });
             
             if (user) {
@@ -161,7 +181,6 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           
           // 컴포넌트 언마운트 시 구독 해제를 위한 cleanup 함수 반환
           return () => {
-            clearTimeout(timeoutId);
             unsubscribe();
           };
         },

@@ -44,14 +44,27 @@ export const ConditionalLayout: React.FC<ConditionalLayoutProps> = ({
     );
   }
 
-  // 로딩 중이거나 사용자가 로그인되지 않은 경우에도 TitleBar만 표시
-  if (isLoading || !user) {
+  // 사용자가 로그인되지 않은 경우에만 TitleBar만 표시
+  // isLoading이 false이거나 사용자가 있으면 즉시 렌더링 (스피너 없음)
+  if (!isLoading && !user) {
     return (
       <div className="h-screen flex flex-col">
         {/* Electron 커스텀 타이틀바 (frame: false 환경) */}
         <TitleBar />
         <div className="flex-1 overflow-hidden">
           {children}
+        </div>
+      </div>
+    );
+  }
+  
+  // 첫 로드 시 (isLoading=true, user=null)에만 스피너 표시
+  if (isLoading && !user) {
+    return (
+      <div className="h-screen flex flex-col">
+        <TitleBar />
+        <div className="flex-1 overflow-hidden flex items-center justify-center">
+          <div className="text-muted-foreground">인증 확인 중...</div>
         </div>
       </div>
     );

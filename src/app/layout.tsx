@@ -57,7 +57,7 @@ export default function RootLayout({
                       if (parsed.state && parsed.state.user) {
                         window.__AUTH_INITIAL_STATE__ = {
                           user: parsed.state.user,
-                          isLoading: true,
+                          isLoading: false,
                           error: null
                         };
                       }
