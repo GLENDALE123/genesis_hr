@@ -39,56 +39,19 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
   const imageRefs = useRef<(HTMLImageElement | HTMLDivElement | null)[]>([]);
   const blobUrlsRef = useRef<Set<string>>(new Set());
 
-  // 지연 로딩을 위한 Intersection Observer
+  // 이미지 초기화 - 썸네일 URL로 설정
   useEffect(() => {
-    if (!enableLazyLoading) {
-      // 지연 로딩 비활성화시 모든 이미지 즉시 로드
-      loadAllImages();
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const index = parseInt(entry.target.getAttribute('data-index') || '0');
-            loadImage(index);
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      {
-        threshold: 0.1, // 10% 보이면 로드 시작
-        rootMargin: '50px' // 50px 전에 미리 로드
-      }
-    );
-
-    // 각 이미지 요소 관찰 시작
-    imageRefs.current.forEach((img, index) => {
-      if (img) {
-        img.setAttribute('data-index', index.toString());
-        observer.observe(img);
-      }
-    });
-
-    // 첫 화면에 보이는 이미지들 즉시 로드 (3개씩)
-    const loadVisibleImages = async () => {
-      const visibleIndices: number[] = [];
-      imageRefs.current.forEach((img, index) => {
-        if (img && img.getBoundingClientRect().top < window.innerHeight + 200) {
-          visibleIndices.push(index);
-        }
-      });
-      
-      // 처음 3개 이미지 즉시 로드
-      const firstThree = visibleIndices.slice(0, 3);
-      await Promise.allSettled(firstThree.map(index => loadImage(index)));
-    };
+    if (images.length === 0) return;
     
-    loadVisibleImages();
-
-    return () => observer.disconnect();
-  }, [images, enableLazyLoading]);
+    const initialUrls = images.map(url => {
+      if (useThumbnails) {
+        return getThumbnailURL(url);
+      }
+      return url;
+    });
+    
+    setCachedImages(initialUrls);
+  }, [images.length, useThumbnails]);
 
   // 모든 이미지 로드 (지연 로딩 비활성화시)
   const loadAllImages = useCallback(async () => {
@@ -130,13 +93,6 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
     setCachedImages(processedImages);
     setLoadedImages(new Array(images.length).fill(true));
   }, [images, useThumbnails]);
-
-  // 지연 로딩 비활성화시 모든 이미지 로드
-  useEffect(() => {
-    if (!enableLazyLoading) {
-      loadAllImages();
-    }
-  }, [enableLazyLoading, loadAllImages]);
 
   // 생성된 blob URL 추적 (언마운트 시 정리)
   useEffect(() => {
@@ -307,12 +263,14 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
           return (
             <div key={index} className="relative">
               {enableLazyLoading ? (
-                <LazyImage
+                <img
                   src={cachedImages[index] || url}
                   alt={`이미지 ${index + 1}`}
                   className={`w-full ${imageClassName} object-cover border cursor-pointer hover:opacity-80 transition-opacity select-none`}
                   style={{ borderRadius: 'var(--radius)' }}
                   onClick={() => handleImageClick(index)}
+                  loading="lazy"
+                  decoding="async"
                 />
               ) : isLoaded ? (
                 <img
