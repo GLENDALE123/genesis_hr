@@ -59,7 +59,7 @@ export interface ElectronAPI {
     isMaximized: () => Promise<boolean>;
     resize: (options: { width: number; height: number; center?: boolean }) => Promise<{ success: boolean }>;
     getSize: () => Promise<{ width: number; height: number } | null>;
-    captureScreenshot: () => Promise<{ success: boolean; error?: string }>;
+    captureScreenshot: (mode?: 'window' | 'area' | 'select') => Promise<{ success: boolean; error?: string }>;
   };
 
   /**

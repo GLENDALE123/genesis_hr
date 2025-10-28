@@ -14,6 +14,9 @@ class NotificationWindow {
     this.notificationWidth = 350; // 알림 너비 (400px → 350px로 감소)
     this.avatarCache = new Map(); // 아바타 이미지 캐시
     this.maxCacheSize = 50; // 최대 캐시 크기 (메모리 누수 방지)
+    this.autoCloseTimer = null; // 자동 닫기 타이머 ID
+    this.destroyBackupTimer = null; // 백업 파괴 타이머 ID
+    this.nextShowTimer = null; // 다음 알림 표시 타이머 ID
   }
 
   /**
@@ -139,9 +142,9 @@ class NotificationWindow {
           nodeIntegration: false,
           contextIsolation: true,
           preload: path.join(__dirname, 'notification-preload.js'),
-          webSecurity: false,  // 외부 이미지 로딩 허용
-          allowRunningInsecureContent: true,  // HTTPS가 아닌 콘텐츠 허용
-          experimentalFeatures: true  // 실험적 기능 활성화
+          // 보안 기본값 유지. 외부 이미지 로드는 downloadImage로 dataURL 변환하여 처리
+          webSecurity: true,
+          allowRunningInsecureContent: false
         }
       });
 
@@ -174,7 +177,8 @@ class NotificationWindow {
     });
 
     // 7초 후 자동 닫기
-    setTimeout(() => {
+    this.clearTimers();
+    this.autoCloseTimer = setTimeout(() => {
       this.closeNotification(notificationWindow);
     }, 7000);
 
@@ -193,6 +197,7 @@ class NotificationWindow {
         if (this.currentWindow === notificationWindow) {
           this.currentWindow = null;
           this.currentOnClick = null;
+          this.clearTimers();
           this.showNextNotification();
         }
       });
@@ -240,14 +245,16 @@ class NotificationWindow {
     });
     
     // 애니메이션 시간 후 강제 파괴 (백업)
-    setTimeout(() => {
+    if (this.destroyBackupTimer) clearTimeout(this.destroyBackupTimer);
+    this.destroyBackupTimer = setTimeout(() => {
       if (!notificationWindow.isDestroyed()) {
         notificationWindow.destroy();
       }
     }, 250); // 애니메이션(200ms) + 여유(50ms)
     
     // 다음 알림은 애니메이션 완료 후 표시
-    setTimeout(() => {
+    if (this.nextShowTimer) clearTimeout(this.nextShowTimer);
+    this.nextShowTimer = setTimeout(() => {
       this.showNextNotification();
     }, 250);
   }
@@ -265,6 +272,25 @@ class NotificationWindow {
     
     this.currentWindow = null;
     this.currentOnClick = null;
+    this.clearTimers();
+  }
+
+  /**
+   * 내부 타이머 해제
+   */
+  clearTimers() {
+    if (this.autoCloseTimer) {
+      clearTimeout(this.autoCloseTimer);
+      this.autoCloseTimer = null;
+    }
+    if (this.destroyBackupTimer) {
+      clearTimeout(this.destroyBackupTimer);
+      this.destroyBackupTimer = null;
+    }
+    if (this.nextShowTimer) {
+      clearTimeout(this.nextShowTimer);
+      this.nextShowTimer = null;
+    }
   }
 }
 

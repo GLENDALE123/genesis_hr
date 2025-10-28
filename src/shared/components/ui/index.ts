@@ -32,7 +32,7 @@ export { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetT
 export { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuAction, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarRail, SidebarSeparator, SidebarTrigger, useSidebar } from './sidebar';
 export { Skeleton } from './skeleton';
 export { Slider } from './slider';
-export { Spinner, spinnerVariants } from './spinner';
+export { Spinner } from './spinner';
 export { Toaster } from './sonner';
 export { Switch } from './switch';
 export { Table, TableBody, TableCaption, TableCell, TableFooter, TableHead, TableHeader, TableRow } from './table';

@@ -8,18 +8,31 @@ import {
 } from '../services/productionRequestService';
 import { CommentsService } from '@/shared/services/comments/commentsService';
 
+// 간단한 모듈 레벨 캐시로 라우트 전환 시 초기 로딩 플리커를 줄임
+let cachedRequests: ProductionRequest[] = [];
+let hasCachedRequests = false;
+
 export const useProductionRequests = () => {
   const [requests, setRequests] = useState<ProductionRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    setIsLoading(true);
+    // 캐시가 있으면 즉시 표시하고 로딩 플래그를 건너뛴다
+    if (hasCachedRequests) {
+      setRequests(cachedRequests);
+      setIsLoading(false);
+    } else {
+      setIsLoading(true);
+    }
 
     // Firebase 실시간 구독
     const unsubscribe = ProductionRequestService.subscribeToRequests(
       (data) => {
         setRequests(data);
+        // 캐시 업데이트
+        cachedRequests = data;
+        hasCachedRequests = true;
         setIsLoading(false);
       },
       (err) => {

@@ -282,11 +282,10 @@ export const JigManagementContainer: React.FC = () => {
       <div className="flex-1 pb-6 flex flex-col min-h-0">
         {isLoading ? (
           <LoadingSpinner 
-            size="lg" 
-            variant="default" 
             label="로딩 중..." 
             loadingVariant="card"
             className="h-64"
+            size="lg"
           />
         ) : error ? (
           <div className="flex items-center justify-center h-64">

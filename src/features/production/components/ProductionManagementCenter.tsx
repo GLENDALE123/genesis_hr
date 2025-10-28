@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { AlertCircle, Plus, MessageSquare } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
@@ -32,19 +32,14 @@ import {
 } from '../utils/productionUtils';
 import { isAdmin, isManager } from '@/shared/utils/userUtils';
 import { TABLE_CELL_STYLES, TABLE_HEAD_STYLES } from '../constants/tableStyles';
-import { useIsSmartphone, useIsTablet } from '@/shared/hooks/use-device';
 
 const ProductionManagementCenterComponent: React.FC = () => {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const [requestTypeFilter, setRequestTypeFilter] = useState<'all' | ProductionRequestType>('all');
   const { requests, isLoading, createRequest, updateRequestStatus, deleteRequest, addComment, editComment, deleteComment } = useProductionRequests();
   const { userProfile } = useAuthStore();
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<ProductionRequest | null>(null);
-  const isSmartphone = useIsSmartphone();
-  const isTablet = useIsTablet();
-  const isSmallScreen = isSmartphone || isTablet;
 
   // 컴포넌트 마운트 로그
   useEffect(() => {
@@ -64,14 +59,11 @@ const ProductionManagementCenterComponent: React.FC = () => {
       const request = requests.find(req => req.id === requestId);
       if (request) {
         setSelectedRequest(request);
-        
-        // URL 파라미터 제거 (모달 닫을 때를 위해)
-        router.replace('/production/management', { scroll: false });
       } else {
         console.warn('⚠️ [ProductionManagement] 요청을 찾을 수 없음:', requestId);
       }
     }
-  }, [searchParams, requests, isLoading, router]);
+  }, [searchParams, requests, isLoading]);
 
   // 실시간 업데이트: requests가 변경되면 selectedRequest도 동기화
   useEffect(() => {
@@ -84,12 +76,8 @@ const ProductionManagementCenterComponent: React.FC = () => {
   }, [requests, selectedRequest]);
 
   const handleNewRequest = useCallback(() => {
-    if (isSmallScreen) {
-      router.push('/production/management/mobile/request');
-      return;
-    }
     setIsFormModalOpen(true);
-  }, [isSmallScreen, router]);
+  }, []);
 
   const handleSelectRequest = useCallback((request: ProductionRequest) => {
     setSelectedRequest(request);
@@ -200,10 +188,10 @@ const ProductionManagementCenterComponent: React.FC = () => {
       <main className={`flex-1 overflow-auto ${isLoading ? 'flex' : ''}`}>
         {isLoading ? (
           <LoadingSpinner 
-            size="lg" 
             label="생산 데이터 로딩 중..." 
-            variant="default"
+            loadingVariant="default"
             className="flex-1"
+            size="lg"
           />
         ) : filteredRequests.length > 0 ? (
           <div className="relative rounded-md border">

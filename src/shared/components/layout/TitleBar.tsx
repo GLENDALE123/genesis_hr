@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Minus, Square, Copy, X, Camera } from 'lucide-react';
+import { Minus, Square, Copy, X, Camera, Monitor, Crop } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { toast } from 'sonner';
 
 interface TitleBarProps {
   className?: string;
 }
+
+type CaptureMode = 'window' | 'area' | 'select';
 
 /**
  * Electron 커스텀 타이틀바
@@ -16,6 +18,7 @@ interface TitleBarProps {
 export const TitleBar: React.FC<TitleBarProps> = ({ className }) => {
   const [isElectron, setIsElectron] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
+  const [captureMode, setCaptureMode] = useState<CaptureMode>('window');
 
   useEffect(() => {
     // Electron 환경 체크: contextBridge로 노출된 window.electron 존재 여부만 확인
@@ -50,11 +53,33 @@ export const TitleBar: React.FC<TitleBarProps> = ({ className }) => {
     window.electron?.window.close();
   };
 
+  // 캡처 모드 순환 전환
+  const toggleCaptureMode = () => {
+    const modes: CaptureMode[] = ['window', 'area', 'select'];
+    const currentIndex = modes.indexOf(captureMode);
+    const nextIndex = (currentIndex + 1) % modes.length;
+    setCaptureMode(modes[nextIndex]);
+    
+    const modeNames = {
+      window: '전체 윈도우',
+      area: '사각형 영역',
+      select: '창 선택'
+    };
+    
+    toast.info(`캡처 모드: ${modeNames[modes[nextIndex]]}`, { duration: 1500 });
+  };
+
   // 스크린샷 캡처 함수 (클립보드 복사)
   const captureScreenshot = async () => {
     try {
-      toast.loading('스크린샷 캡처 중...', { id: 'capture-toast' });
-      const result = await (window as any).electron?.window.captureScreenshot();
+      const modeNames = {
+        window: '전체 윈도우',
+        area: '사각형 영역',
+        select: '창 선택'
+      };
+      
+      toast.loading(`${modeNames[captureMode]} 캡처 중...`, { id: 'capture-toast' });
+      const result = await (window as any).electron?.window.captureScreenshot(captureMode);
       
       if (result?.success) {
         toast.success('스크린샷이 클립보드에 복사되었습니다.', { 
@@ -107,11 +132,26 @@ export const TitleBar: React.FC<TitleBarProps> = ({ className }) => {
           WebkitAppRegion: 'no-drag',
         } as React.CSSProperties}
       >
+        {/* 캡처 모드 전환 버튼 */}
+        <button
+          className="h-full w-8 flex items-center justify-center hover:bg-accent transition-colors border-r border-border"
+          onClick={toggleCaptureMode}
+          title={
+            captureMode === 'window' ? '전체 윈도우 캡처 (우클릭: 모드 전환)' :
+            captureMode === 'area' ? '사각형 영역 캡처 (우클릭: 모드 전환)' :
+            '창 선택 캡처 (우클릭: 모드 전환)'
+          }
+        >
+          {captureMode === 'window' && <Camera className="h-3.5 w-3.5" strokeWidth={1.5} />}
+          {captureMode === 'area' && <Crop className="h-3.5 w-3.5" strokeWidth={1.5} />}
+          {captureMode === 'select' && <Monitor className="h-3.5 w-3.5" strokeWidth={1.5} />}
+        </button>
+        
         {/* 스크린샷 캡처 버튼 */}
         <button
-          className="h-full w-10 flex items-center justify-center hover:bg-accent transition-colors border-r border-border"
+          className="h-full w-10 flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors border-r border-border"
           onClick={captureScreenshot}
-          title="스크린샷 캡처"
+          title="캡처 실행"
         >
           <Camera className="h-3.5 w-3.5" strokeWidth={1.5} />
         </button>

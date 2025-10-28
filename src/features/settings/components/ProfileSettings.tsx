@@ -355,7 +355,7 @@ export const ProfileSettings: React.FC = () => {
               >
                 {isUploadingPhoto ? (
                   <>
-                    <Spinner className="mr-2 size-4" />
+                    <Spinner className="mr-2 size-4 text-inherit" />
                     업로드 중...
                   </>
                 ) : (
@@ -411,7 +411,7 @@ export const ProfileSettings: React.FC = () => {
                   >
                     {isSaving ? (
                       <>
-                        <Spinner className="mr-2 size-4" />
+                        <Spinner className="mr-2 size-4 text-inherit" />
                         저장 중...
                       </>
                     ) : (
@@ -566,7 +566,7 @@ export const ProfileSettings: React.FC = () => {
             >
               {isUploadingPhoto ? (
                 <>
-                  <Spinner className="mr-2 size-4" />
+                  <Spinner className="mr-2 size-4 text-inherit" />
                   저장 중...
                 </>
               ) : (

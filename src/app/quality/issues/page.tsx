@@ -25,7 +25,6 @@ import { toast } from 'sonner';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
 import { ProtectedRoute } from '@/shared/components/auth';
-
 function QualityIssuesPageContent() {
   const { issues, isLoading, error, searchTerm, setSearchTerm, setStatusFilter, stats } = useQualityIssues();
   const { isFormModalOpen, isSaving, handleSaveIssue, handleCancelForm, openFormModal } = useQualityIssueForm();
@@ -84,6 +83,8 @@ function QualityIssuesPageContent() {
       setIsDetailModalOpen(true);
     }
   }, [searchParams, issues]);
+
+
 
   // 이슈사항 추가 핸들러
   const handleAddIssueItem = async (issueId: string, newIssue: string, newStatus?: string) => {
@@ -194,6 +195,11 @@ function QualityIssuesPageContent() {
     setStatusFilter(status);
   };
 
+  // 새 이슈 등록 핸들러
+  const handleOpenFormModal = () => {
+    openFormModal();
+  };
+
   // 로딩 상태 - 초기 로딩 시에만 스켈레톤 표시
   if (isLoading && issues.length === 0) {
     return (
@@ -248,7 +254,7 @@ function QualityIssuesPageContent() {
               searchTerm={searchTerm}
               onSelectIssue={handleSelectIssue}
               onSearchChange={setSearchTerm}
-              onOpenFormModal={openFormModal}
+              onOpenFormModal={handleOpenFormModal}
             />
           </TabsContent>
           
@@ -259,7 +265,7 @@ function QualityIssuesPageContent() {
               searchTerm={searchTerm}
               onSelectIssue={handleSelectIssue}
               onSearchChange={setSearchTerm}
-              onOpenFormModal={openFormModal}
+              onOpenFormModal={handleOpenFormModal}
               showShippingWaitColumns={true}
             />
           </TabsContent>
@@ -268,34 +274,34 @@ function QualityIssuesPageContent() {
 
       {/* 품질이슈 등록 모달 */}
       <Dialog open={isFormModalOpen} onOpenChange={handleCancelForm}>
-        <DialogContent 
-          className="max-w-6xl"
-          stickyHeader={
-            <DialogHeader>
-              <DialogTitle>신규 품질이슈 등록</DialogTitle>
-            </DialogHeader>
-          }
-          stickyFooter={
-            <div className="flex justify-end gap-3">
-              <Button type="button" variant="outline" onClick={handleCancelForm} disabled={isSaving}>
-                취소
-              </Button>
-              <Button 
-                type="submit" 
-                form="quality-issue-form"
-                disabled={isSaving} 
-                className="min-w-[120px]"
-              >
-                {isSaving ? '저장 중...' : '저장'}
-              </Button>
-            </div>
-          }
-        >
-          <QualityIssueForm
-            onSave={handleSaveIssue}
-          />
-        </DialogContent>
-      </Dialog>
+          <DialogContent 
+            className="max-w-6xl"
+            stickyHeader={
+              <DialogHeader>
+                <DialogTitle>신규 품질이슈 등록</DialogTitle>
+              </DialogHeader>
+            }
+            stickyFooter={
+              <div className="flex justify-end gap-3">
+                <Button type="button" variant="outline" onClick={handleCancelForm} disabled={isSaving}>
+                  취소
+                </Button>
+                <Button 
+                  type="submit" 
+                  form="quality-issue-form"
+                  disabled={isSaving} 
+                  className="min-w-[120px]"
+                >
+                  {isSaving ? '저장 중...' : '저장'}
+                </Button>
+              </div>
+            }
+          >
+            <QualityIssueForm
+              onSave={handleSaveIssue}
+            />
+          </DialogContent>
+        </Dialog>
 
              {/* 품질이슈 상세 모달 */}
              <QualityIssueDetail

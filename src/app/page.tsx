@@ -52,8 +52,8 @@ export default function Home() {
   return (
     <LoadingSpinner 
       fullScreen 
-      size="xl"
       label="인증 상태 확인 중..."
+      size="xl"
     />
   );
 }

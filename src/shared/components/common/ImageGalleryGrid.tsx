@@ -367,7 +367,7 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
                   onClick={() => handleImageClick(index)}
                 >
                   {/* 로딩 상태 UI */}
-                  <Spinner className="size-8 text-blue-500" />
+                  <Spinner className="size-8 text-primary" />
                   <div className="absolute bottom-2 left-2 right-2 text-center">
                     <span className="text-xs text-gray-500 dark:text-gray-400 bg-white/80 dark:bg-black/80 px-2 py-1 rounded">
                       로딩 중...

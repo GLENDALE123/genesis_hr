@@ -42,10 +42,10 @@ export const AppearanceSettings: React.FC = () => {
   if (isLoading) {
     return (
       <LoadingSpinner 
-        size="lg" 
         label="화면 설정을 불러오는 중..." 
-        variant="default"
+        loadingVariant="default"
         className="h-64"
+        size="lg"
       />
     );
   }

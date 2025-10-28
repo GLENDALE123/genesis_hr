@@ -15,6 +15,7 @@ import { Textarea } from '@/shared/components/ui/textarea';
 import { InputSelect } from '@/shared/components/common/InputSelect';
 import { UploadingImageGrid } from '@/shared/components/common/UploadingImageGrid';
 import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
+import { Spinner } from '@/shared/components/ui/spinner';
 import { CreateJigMasterItemData } from '../types';
 import { PRODUCTION_TYPES } from '../constants';
 import { useAuthStore } from '@/features/auth/store/authStore';
@@ -248,7 +249,7 @@ export const JigListForm: React.FC<JigListFormProps> = ({
             >
               {isLoading ? (
                 <>
-                  <LoadingSpinner size="sm" className="mr-2" label="" />
+                  <Spinner className="mr-2 size-4 text-inherit" />
                   저장 중...
                 </>
               ) : (

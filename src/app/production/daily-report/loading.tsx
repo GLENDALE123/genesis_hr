@@ -15,10 +15,10 @@ export default function ProductionDailyReportLoading() {
 
   return (
     <LoadingSpinner 
-      size="lg" 
       label="생산일보 데이터 로딩 중..."
       loadingVariant="card"
       className="min-h-[400px]"
+      size="lg"
     />
   );
 }

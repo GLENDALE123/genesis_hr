@@ -54,8 +54,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return fallback || (
       <div className="flex items-center justify-center h-screen">
         <LoadingSpinner 
-          size="lg" 
-          variant="default" 
+          size="xl" 
           label="인증 확인 중..." 
           loadingVariant="card"
         />
@@ -68,8 +67,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return fallback || (
       <div className="flex items-center justify-center h-screen">
         <LoadingSpinner 
-          size="lg" 
-          variant="default" 
+          size="xl" 
           label="인증 확인 중..." 
           loadingVariant="card"
         />

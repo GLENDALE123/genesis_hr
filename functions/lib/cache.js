@@ -99,13 +99,25 @@ function clearExpiredCache() {
   }
 }
 
-// 주기적 캐시 정리 (5분마다)
-setInterval(clearExpiredCache, 5 * 60 * 1000);
+// 주기적 캐시 정리 (5분마다) - 실행 환경 가드
+function initCacheJanitor() {
+  try {
+    // Cloud Functions 에뮬레이터 또는 장기 실행 프로세스에서만 활성화
+    const isEmulator = process.env.FUNCTIONS_EMULATOR === 'true' || process.env.FIREBASE_EMULATOR_HUB;
+    const isNode = typeof process !== 'undefined' && process.versions && process.versions.node;
+    if (isNode && (isEmulator || process.env.ENABLE_CACHE_JANITOR === 'true')) {
+      setInterval(clearExpiredCache, 5 * 60 * 1000);
+    }
+  } catch (e) {
+    // noop
+  }
+}
 
 module.exports = {
   getCached,
   setCached,
   loadRoutingRuleForTypeCached,
   loadUserProfilesCached,
-  clearExpiredCache
+  clearExpiredCache,
+  initCacheJanitor
 };

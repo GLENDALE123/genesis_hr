@@ -6,6 +6,7 @@ import { X } from "lucide-react"
 
 import { cn } from "@/shared/lib/utils"
 import { useMobileBackHandler } from "@/shared/hooks/useMobileBackHandler"
+import { VisuallyHidden } from "@/shared/components/ui/visually-hidden"
 
 // 모바일 뒤로가기 처리를 위한 커스텀 Dialog Root
 const Dialog: React.FC<React.ComponentPropsWithoutRef<typeof DialogPrimitive.Root>> = ({ 
@@ -73,6 +74,15 @@ const DialogContent = React.forwardRef<
       )}
       {...props}
     >
+      {/* Hidden DialogTitle for accessibility - only when not using stickyHeader */}
+      {!stickyHeader && (
+        <VisuallyHidden>
+          <DialogPrimitive.Title>
+            Dialog
+          </DialogPrimitive.Title>
+        </VisuallyHidden>
+      )}
+
       {/* Sticky Header */}
       {stickyHeader && (
         <div className="flex-shrink-0 bg-transparent border-b p-6 pb-4 relative">

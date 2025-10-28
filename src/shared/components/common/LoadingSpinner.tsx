@@ -2,32 +2,35 @@ import { Spinner } from '../ui/spinner'
 import { cn } from '@/lib/utils'
 
 interface LoadingSpinnerProps {
-  size?: 'sm' | 'default' | 'lg' | 'xl' | '2xl'
-  variant?: 'default' | 'secondary' | 'muted' | 'destructive' | 'success' | 'warning'
-  icon?: 'loader2' | 'loader'
   className?: string
   label?: string
   fullScreen?: boolean
   overlay?: boolean
   centered?: boolean
   loadingVariant?: 'default' | 'minimal' | 'card'
+  size?: 'sm' | 'default' | 'lg' | 'xl'
 }
 
 export const LoadingSpinner = ({
-  size = 'default',
-  variant = 'default',
-  icon = 'loader2',
   label = '로딩 중...',
   className,
   fullScreen = false,
   overlay = false,
   centered = true,
   loadingVariant = 'default',
+  size = 'default',
 }: LoadingSpinnerProps) => {
   const variantClasses = {
     default: 'flex flex-col items-center justify-center gap-2',
     minimal: 'flex items-center justify-center gap-2',
     card: 'flex flex-col items-center justify-center gap-3 p-6 rounded-lg border bg-card',
+  }
+
+  const sizeClasses = {
+    sm: 'size-3',
+    default: 'size-5',
+    lg: 'size-6',
+    xl: 'size-8',
   }
 
   const containerClasses = cn(
@@ -40,12 +43,7 @@ export const LoadingSpinner = ({
 
   return (
     <div className={containerClasses}>
-      <Spinner 
-        size={size} 
-        variant={variant} 
-        icon={icon}
-        label={label}
-      />
+      <Spinner className={cn(sizeClasses[size], 'text-primary')} />
       {label && (
         <p className={cn(
           'text-sm text-muted-foreground',

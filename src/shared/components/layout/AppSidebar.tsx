@@ -271,7 +271,7 @@ const AppSidebarComponent = ({
       className={cn(
         "flex h-full flex-col border-r transition-all duration-300 flex-shrink-0 overflow-x-hidden overflow-y-hidden",
         // 접힘 시 아이콘 폭 유지 (태블릿/데스크톱 동일 정책)
-        isExpanded ? "w-72 md:w-64" : "w-16 md:w-16",
+        isExpanded ? "w-56 md:w-52" : "w-16 md:w-16",
         className
       )}
       style={{
@@ -282,17 +282,17 @@ const AppSidebarComponent = ({
       onMouseLeave={() => isDesktop && collapsed && setIsHovered(false)}
     >
       {/* Sidebar Header */}
-      <div className="flex h-16 items-center justify-center border-b px-3">
+      <div className="flex h-12 items-center justify-center border-b px-2">
         {isExpanded ? (
           <div className="flex items-center gap-2 min-w-0">
-            <div className="h-8 w-8 rounded bg-primary flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-bold text-sm">TMS</span>
+            <div className="h-7 w-7 rounded bg-primary flex items-center justify-center flex-shrink-0">
+              <span className="text-white font-bold text-[10px] leading-none select-none">TMS</span>
             </div>
-            <span className="font-semibold whitespace-nowrap overflow-hidden text-ellipsis">통합관리시스템</span>
+            <span className="font-semibold whitespace-nowrap overflow-hidden text-ellipsis text-xl">통합관리시스템</span>
           </div>
         ) : (
-          <div className="h-8 w-8 rounded bg-primary flex items-center justify-center">
-            <span className="text-white font-bold text-sm">TMS</span>
+          <div className="h-7 w-7 rounded bg-primary flex items-center justify-center">
+            <span className="text-white font-bold text-[10px] leading-none select-none">TMS</span>
           </div>
         )}
       </div>

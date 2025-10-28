@@ -1,4 +1,4 @@
-const { ipcMain, BrowserWindow, clipboard } = require('electron');
+const { ipcMain, BrowserWindow, clipboard, desktopCapturer, screen } = require('electron');
 
 /**
  * IPC 핸들러 등록
@@ -64,19 +64,65 @@ module.exports = function registerIpcHandlers() {
   });
 
   // 스크린샷 캡처 (클립보드에 복사)
-  ipcMain.handle('capture-screenshot', async (event) => {
+  ipcMain.handle('capture-screenshot', async (event, mode = 'window') => {
     try {
       const window = BrowserWindow.fromWebContents(event.sender);
       if (!window) {
         return { success: false, error: 'Window not found' };
       }
 
-      // 윈도우 캡처
-      const image = window.capturePage();
-      const png = await image;
+      let image;
+      
+      if (mode === 'window') {
+        // 현재 윈도우만 캡처
+        image = await window.capturePage();
+      } else if (mode === 'area') {
+        // 영역 선택 모드 - 사용자가 영역 선택 창 열기
+        // 이 모드는 별도 UI로 처리되어야 하므로 임시로 전체 화면 캡처
+        return { success: false, error: 'Please use area selection UI' };
+      } else if (mode === 'select') {
+        // 전체 화면 캡처
+        // 현재 윈도우 숨기기
+        window.hide();
+        
+        // 잠시 대기 (윈도우가 완전히 숨겨지도록)
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // 전체 화면 캡처를 위한 임시 윈도우 생성
+        const { size } = screen.getPrimaryDisplay();
+        const tempWindow = new BrowserWindow({
+          width: size.width,
+          height: size.height,
+          frame: false,
+          transparent: true,
+          skipTaskbar: true,
+          focusable: false
+        });
+        
+        // 화면 전체 영역 설정
+        tempWindow.setBounds({ x: 0, y: 0, width: size.width, height: size.height });
+        
+        // 캡처
+        await new Promise(resolve => setTimeout(resolve, 100));
+        image = await tempWindow.capturePage();
+        
+        // 임시 윈도우 닫기
+        tempWindow.close();
+        
+        // 원래 윈도우 다시 표시
+        await new Promise(resolve => setTimeout(resolve, 100));
+        window.show();
+      } else {
+        // 기본값: 현재 윈도우
+        image = await window.capturePage();
+      }
 
       // 클립보드에 이미지 복사
-      clipboard.writeImage(png);
+      if (image) {
+        clipboard.writeImage(image);
+      } else {
+        return { success: false, error: 'Failed to capture image' };
+      }
 
       return { success: true };
     } catch (error) {

@@ -207,7 +207,9 @@ const ShortageManagementContainerComponent: React.FC = () => {
             canDelete={canDelete}
             onStatusFilterChange={setStatusFilter}
             onSearchChange={setSearchTerm}
-            onSelectRequest={setSelectedRequest}
+            onSelectRequest={(request) => {
+              setSelectedRequest(request);
+            }}
             onCloseDetail={() => setSelectedRequest(null)}
             onStatusUpdate={handleStatusUpdate}
             onDelete={handleDeleteClick}

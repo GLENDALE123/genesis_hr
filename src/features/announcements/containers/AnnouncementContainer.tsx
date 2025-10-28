@@ -170,9 +170,9 @@ export const AnnouncementContainer: React.FC<AnnouncementContainerProps> = ({
   if (isLoading) {
     return (
       <LoadingSpinner 
-        size="lg" 
         loadingVariant="card"
         label="공지사항을 불러오는 중..."
+        size="lg"
       />
     );
   }

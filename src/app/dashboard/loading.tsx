@@ -11,10 +11,10 @@ export default function DashboardLoading() {
 
   return (
     <LoadingSpinner 
-      size="lg" 
       label="대시보드 데이터 로딩 중..."
       loadingVariant="card"
       className="min-h-[400px]"
+      size="lg"
     />
   );
 }

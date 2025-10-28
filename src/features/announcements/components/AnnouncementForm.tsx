@@ -286,7 +286,7 @@ export const AnnouncementForm: React.FC<AnnouncementFormProps> = ({
               className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
             >
               {isSubmitting && (
-                <Spinner size="sm" variant="secondary" />
+                <Spinner className="size-4 text-inherit" />
               )}
               {isSubmitting ? '저장 중...' : '저장'}
             </Button>

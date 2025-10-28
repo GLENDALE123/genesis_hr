@@ -226,10 +226,10 @@ export const NotificationSettings: React.FC = () => {
   if (isLoading) {
     return (
       <LoadingSpinner 
-        size="lg" 
         label="알림 설정을 불러오는 중..." 
         loadingVariant="card"
         className="h-64"
+        size="lg"
       />
     );
   }

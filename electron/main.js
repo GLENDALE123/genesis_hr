@@ -149,8 +149,9 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       // Service Worker 및 알림 활성화
       enableRemoteModule: false,
-      webSecurity: false, // Firebase API 호출을 위해 비활성화
-      allowRunningInsecureContent: true, // Firebase API 호출을 위해 허용
+      // 보안 기본값 유지 (필요시 개별 리소스에서 허용)
+      webSecurity: true,
+      allowRunningInsecureContent: false,
     },
     icon: path.join(__dirname, '../public/tms-logo.png'),
     show: false, // 로딩 완료 후 표시
@@ -186,32 +187,41 @@ function createWindow() {
   try {
     session.setProxy({ mode: 'system' });
   } catch {}
-  // 잘못된 상대 경로로 요청되는 dev chunk를 루트 /_next로 리라이트
-  try {
-    session.webRequest.onBeforeRequest((details, callback) => {
-      try {
-        if (!devServerInUse) return callback({});
-        const u = new URL(details.url);
-        const origin = `${u.protocol}//${u.host}`;
-        if (origin !== new URL(DEV_SERVER_URL).origin) return callback({});
-        const m = u.pathname.match(/^\/(.+?)\/_next\/(.*)$/);
-        if (m) {
-          const redirectURL = `${origin}/_next/${m[2]}`;
-          return callback({ redirectURL });
-        }
-      } catch {}
-      callback({});
-    });
-  } catch {}
+
+  // webRequest 훅 중복 등록 방지
+  if (!session.__hs_hooks_registered) {
+    try {
+      // Dev 상대경로 리라이트는 Dev 서버 사용시에만
+      session.webRequest.onBeforeRequest((details, callback) => {
+        try {
+          if (!devServerInUse) return callback({});
+          const u = new URL(details.url);
+          const origin = `${u.protocol}//${u.host}`;
+          if (origin !== new URL(DEV_SERVER_URL).origin) return callback({});
+          const m = u.pathname.match(/^\/(.+?)\/_next\/(.*)$/);
+          if (m) {
+            const redirectURL = `${origin}/_next/${m[2]}`;
+            return callback({ redirectURL });
+          }
+        } catch {}
+        callback({});
+      });
+    } catch {}
+
+    try {
+      // 네트워크 에러 로깅 (디버깅 용도)
+      session.webRequest.onErrorOccurred((details) => {
+        try {
+          console.error('[NetworkError]', details.error, details.url);
+        } catch {}
+      });
+    } catch {}
+
+    // 플래그 설정
+    Object.defineProperty(session, '__hs_hooks_registered', { value: true, enumerable: false, configurable: false });
+  }
+
   session.setPermissionRequestHandler((webContents, permission, callback) => {
-  // 네트워크 에러 로깅 (디버깅 용도)
-  try {
-    session.webRequest.onErrorOccurred((details) => {
-      try {
-        console.error('[NetworkError]', details.error, details.url);
-      } catch {}
-    });
-  } catch {}
     // 알림 권한 자동 허용 (Firestore 리스너 방식)
     if (permission === 'notifications') {
       callback(true);
@@ -464,6 +474,14 @@ app.on('activate', () => {
  */
 app.on('before-quit', () => {
   app.isQuitting = true;
+  // 정적 서버가 켜져있으면 종료
+  try {
+    if (staticServer) {
+      staticServer.close();
+      staticServer = null;
+      staticServerPort = null;
+    }
+  } catch {}
 });
 
 // Windows 7 호환성을 위한 추가 설정

@@ -64,10 +64,9 @@ const QualityInspectionTableComponent: React.FC<QualityInspectionTableProps> = (
   if (isLoading) {
     return (
       <LoadingSpinner 
-        size="lg" 
         label="품질검사 데이터 로딩 중..." 
-        variant="default"
         className="flex-1 min-h-0"
+        size="lg"
       />
     );
   }

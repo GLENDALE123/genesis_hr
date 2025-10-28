@@ -8,6 +8,8 @@ contextBridge.exposeInMainWorld('electron', {
     send: (channel, ...args) => ipcRenderer.send(channel, ...args),
     on: (channel, listener) => {
       ipcRenderer.on(channel, listener);
+      // 구독 해제 함수를 반환하여 메모리 누수 방지
+      return () => ipcRenderer.removeListener(channel, listener);
     },
     removeListener: (channel, listener) => {
       ipcRenderer.removeListener(channel, listener);
@@ -61,9 +63,9 @@ contextBridge.exposeInMainWorld('electron', {
     isMaximized: () => ipcRenderer.invoke('window-is-maximized'),
     resize: (options) => ipcRenderer.invoke('window-resize', options),
     getSize: () => ipcRenderer.invoke('window-get-size'),
-    captureScreenshot: async () => {
+    captureScreenshot: async (mode) => {
       try {
-        const result = await ipcRenderer.invoke('capture-screenshot');
+        const result = await ipcRenderer.invoke('capture-screenshot', mode);
         return result;
       } catch (error) {
         console.error('❌ [Preload] 스크린샷 캡처 실패:', error);

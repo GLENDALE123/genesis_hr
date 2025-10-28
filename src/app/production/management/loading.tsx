@@ -11,10 +11,10 @@ export default function ProductionManagementLoading() {
 
   return (
     <LoadingSpinner 
-      size="lg" 
       label="생산관리부 데이터 로딩 중..."
       loadingVariant="card"
       className="min-h-[400px]"
+      size="lg"
     />
   );
 }

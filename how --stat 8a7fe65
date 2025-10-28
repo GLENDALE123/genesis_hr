@@ -1,0 +1,29 @@
+[33mcommit a94ea037e0b331e54728a8e86e9eadc264607e6e[m
+Author: HRY <hry@smartqc.com>
+Date:   Mon Oct 27 02:44:57 2025 +0900
+
+    프로덕션 모바일 페이지 추가 및 레이아웃 개선
+
+ .../daily-report/mobile/edit/[id]/page.tsx         |  79 [32m++++[m
+ .../daily-report/mobile/register/page.tsx          |  54 [32m+++[m
+ .../production/management/mobile/request/page.tsx  |  68 [32m+++[m
+ .../components/PackagingReportListView.tsx         | 237 [32m+++++++++[m[31m-[m
+ .../components/ProductionManagementCenter.tsx      |  12 [32m+[m[31m-[m
+ .../components/ProductionRequestForm.tsx           | 225 [32m+++++++++[m
+ .../components/ProductionRequestFormModal.tsx      | 223 [32m++[m[31m-------[m
+ .../components/ProductionScheduleListView.tsx      |  44 [32m+[m[31m-[m
+ .../containers/PackagingDailyReportContainer.tsx   |  30 [32m+[m[31m-[m
+ src/features/production/index.ts                   |   1 [32m+[m
+ .../containers/WorkScheduleContainer.tsx           |  12 [32m+[m[31m-[m
+ src/shared/components/common/ThemeCustomizer.tsx   | 510 [31m---------------------[m
+ src/shared/components/common/index.ts              |   1 [31m-[m
+ src/shared/components/layout/AppHeader.tsx         |   4 [32m+[m[31m-[m
+ src/shared/components/layout/AppLayout.tsx         |  13 [32m+[m[31m-[m
+ src/shared/components/layout/AppSidebar.tsx        | 134 [32m+[m[31m-----[m
+ src/shared/components/ui/sidebar.tsx               |  78 [32m+++[m[31m-[m
+ src/shared/constants/navigation.ts                 |   6 [32m+[m
+ src/shared/hooks/index.ts                          |   2 [32m+[m[31m-[m
+ src/shared/hooks/use-device.ts                     |  40 [32m++[m
+ src/shared/hooks/use-mobile.tsx                    |  22 [31m-[m
+ tailwind.config.js                                 |  30 [32m+[m[31m-[m
+ 22 files changed, 962 insertions(+), 863 deletions(-)

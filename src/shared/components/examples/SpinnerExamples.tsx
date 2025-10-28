@@ -27,23 +27,23 @@ export const SpinnerExamples: React.FC = () => {
             <h3 className="text-lg font-semibold mb-3">크기 변형</h3>
             <div className="flex items-center gap-4">
               <div className="flex flex-col items-center gap-2">
-                <Spinner size="sm" />
+                <Spinner className="size-3" />
                 <span className="text-xs text-muted-foreground">sm</span>
               </div>
               <div className="flex flex-col items-center gap-2">
-                <Spinner size="default" />
+                <Spinner className="size-4" />
                 <span className="text-xs text-muted-foreground">default</span>
               </div>
               <div className="flex flex-col items-center gap-2">
-                <Spinner size="lg" />
+                <Spinner className="size-5" />
                 <span className="text-xs text-muted-foreground">lg</span>
               </div>
               <div className="flex flex-col items-center gap-2">
-                <Spinner size="xl" />
+                <Spinner className="size-6" />
                 <span className="text-xs text-muted-foreground">xl</span>
               </div>
               <div className="flex flex-col items-center gap-2">
-                <Spinner size="2xl" />
+                <Spinner className="size-8" />
                 <span className="text-xs text-muted-foreground">2xl</span>
               </div>
             </div>
@@ -54,27 +54,27 @@ export const SpinnerExamples: React.FC = () => {
             <h3 className="text-lg font-semibold mb-3">색상 변형</h3>
             <div className="flex items-center gap-4">
               <div className="flex flex-col items-center gap-2">
-                <Spinner variant="default" />
+                <Spinner className="size-4" />
                 <span className="text-xs text-muted-foreground">default</span>
               </div>
               <div className="flex flex-col items-center gap-2">
-                <Spinner variant="secondary" />
+                <Spinner className="size-4 text-muted-foreground" />
                 <span className="text-xs text-muted-foreground">secondary</span>
               </div>
               <div className="flex flex-col items-center gap-2">
-                <Spinner variant="muted" />
+                <Spinner className="size-4 text-muted" />
                 <span className="text-xs text-muted-foreground">muted</span>
               </div>
               <div className="flex flex-col items-center gap-2">
-                <Spinner variant="destructive" />
+                <Spinner className="size-4 text-destructive" />
                 <span className="text-xs text-muted-foreground">destructive</span>
               </div>
               <div className="flex flex-col items-center gap-2">
-                <Spinner variant="success" />
+                <Spinner className="size-4 text-green-500" />
                 <span className="text-xs text-muted-foreground">success</span>
               </div>
               <div className="flex flex-col items-center gap-2">
-                <Spinner variant="warning" />
+                <Spinner className="size-4 text-yellow-500" />
                 <span className="text-xs text-muted-foreground">warning</span>
               </div>
             </div>
@@ -85,11 +85,11 @@ export const SpinnerExamples: React.FC = () => {
             <h3 className="text-lg font-semibold mb-3">아이콘 변형</h3>
             <div className="flex items-center gap-4">
               <div className="flex flex-col items-center gap-2">
-                <Spinner icon="loader2" />
+                <Spinner className="size-4" />
                 <span className="text-xs text-muted-foreground">Loader2</span>
               </div>
               <div className="flex flex-col items-center gap-2">
-                <Spinner icon="loader" />
+                <Spinner className="size-4" />
                 <span className="text-xs text-muted-foreground">Loader</span>
               </div>
             </div>
@@ -100,15 +100,15 @@ export const SpinnerExamples: React.FC = () => {
             <h3 className="text-lg font-semibold mb-3">버튼 내 사용</h3>
             <div className="flex gap-4">
               <Button disabled>
-                <Spinner className="mr-2 size-4" />
+                <Spinner className="mr-2 size-4 text-inherit" />
                 로딩 중...
               </Button>
               <Button variant="secondary" disabled>
-                <Spinner variant="secondary" className="mr-2 size-4" />
+                <Spinner className="mr-2 size-4 text-inherit" />
                 처리 중...
               </Button>
               <Button variant="destructive" disabled>
-                <Spinner variant="destructive" className="mr-2 size-4" />
+                <Spinner className="mr-2 size-4 text-inherit" />
                 삭제 중...
               </Button>
             </div>
@@ -119,15 +119,15 @@ export const SpinnerExamples: React.FC = () => {
             <h3 className="text-lg font-semibold mb-3">뱃지 내 사용</h3>
             <div className="flex gap-4">
               <Badge variant="default">
-                <Spinner className="mr-2 size-3" />
+                <Spinner className="mr-2 size-3 text-inherit" />
                 동기화 중
               </Badge>
               <Badge variant="secondary">
-                <Spinner variant="secondary" className="mr-2 size-3" />
+                <Spinner className="mr-2 size-3 text-inherit" />
                 업데이트 중
               </Badge>
               <Badge variant="destructive">
-                <Spinner variant="destructive" className="mr-2 size-3" />
+                <Spinner className="mr-2 size-3 text-inherit" />
                 오류 발생
               </Badge>
             </div>
@@ -160,7 +160,6 @@ export const SpinnerExamples: React.FC = () => {
               <div className="border rounded-lg p-4">
                 <h4 className="text-sm font-medium mb-2">Default</h4>
                 <LoadingSpinner 
-                  size="lg" 
                   label="데이터 로딩 중..." 
                   loadingVariant="default"
                 />
@@ -168,7 +167,6 @@ export const SpinnerExamples: React.FC = () => {
               <div className="border rounded-lg p-4">
                 <h4 className="text-sm font-medium mb-2">Minimal</h4>
                 <LoadingSpinner 
-                  size="lg" 
                   label="로딩 중..." 
                   loadingVariant="minimal"
                 />
@@ -176,7 +174,6 @@ export const SpinnerExamples: React.FC = () => {
               <div className="border rounded-lg p-4">
                 <h4 className="text-sm font-medium mb-2">Card</h4>
                 <LoadingSpinner 
-                  size="lg" 
                   label="처리 중..." 
                   loadingVariant="card"
                 />
@@ -191,8 +188,6 @@ export const SpinnerExamples: React.FC = () => {
               <div className="border rounded-lg p-4">
                 <h4 className="text-sm font-medium mb-2">Success</h4>
                 <LoadingSpinner 
-                  size="lg" 
-                  variant="success"
                   label="성공적으로 처리되었습니다" 
                   loadingVariant="card"
                 />
@@ -200,8 +195,6 @@ export const SpinnerExamples: React.FC = () => {
               <div className="border rounded-lg p-4">
                 <h4 className="text-sm font-medium mb-2">Warning</h4>
                 <LoadingSpinner 
-                  size="lg" 
-                  variant="warning"
                   label="경고: 처리 중입니다" 
                   loadingVariant="card"
                 />

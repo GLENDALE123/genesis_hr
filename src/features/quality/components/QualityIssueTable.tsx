@@ -305,7 +305,7 @@ export const QualityIssueTable: React.FC<QualityIssueTableProps> = ({
                 <TableRow>
                   <TableCell colSpan={showShippingWaitColumns ? 14 : 11} className="py-12 text-center">
                     <div className="flex flex-col items-center justify-center gap-2">
-                      <Spinner className="size-6" />
+                      <Spinner className="size-6 text-primary" />
                       <span className="text-sm text-muted-foreground">품질이슈 데이터 로딩 중...</span>
                     </div>
                   </TableCell>

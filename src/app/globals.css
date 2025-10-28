@@ -482,3 +482,4 @@ button[data-state="unchecked"]:not([role="checkbox"]) {
 .mentions-input .react-mentions__suggestions__item--focused {
   background-color: hsl(var(--muted)) !important;
 }
+

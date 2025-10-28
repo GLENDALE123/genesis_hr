@@ -16,6 +16,7 @@ import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import { InputSelect } from '@/shared/components/common/InputSelect';
 import { UploadingImageGrid } from '@/shared/components/common/UploadingImageGrid';
 import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
+import { Spinner } from '@/shared/components/ui/spinner';
 import { toast } from 'sonner';
 import { 
   updateProgressToast, 
@@ -505,7 +506,7 @@ export const JigRequestForm: React.FC<JigRequestFormProps> = ({
           <Button onClick={handleSubmit} disabled={isLoading || imageUploadHook.isUploading}>
             {isLoading || imageUploadHook.isUploading ? (
               <div className="flex items-center gap-2">
-                <LoadingSpinner size="sm" variant="secondary" />
+                <Spinner className="size-4 text-inherit" />
                 {imageUploadHook.isUploading ? '업로드 중...' : '저장 중...'}
               </div>
             ) : (
