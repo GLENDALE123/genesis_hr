@@ -271,6 +271,20 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
                   onClick={() => handleImageClick(index)}
                   loading="lazy"
                   decoding="async"
+                  draggable={false}
+                  onDragStart={(e) => e.preventDefault()}
+                  onError={() => {
+                    // 썸네일 로드 실패시 원본 URL로 폴백
+                    const currentSrc = cachedImages[index] || url;
+                    const thumbnailUrl = useThumbnails ? getThumbnailURL(url) : null;
+                    if (currentSrc === thumbnailUrl || currentSrc.includes('_thumb.')) {
+                      setCachedImages(prev => {
+                        const newImages = [...prev];
+                        newImages[index] = url; // 원본 URL로 변경
+                        return newImages;
+                      });
+                    }
+                  }}
                 />
               ) : isLoaded ? (
                 <img
