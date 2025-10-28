@@ -35,6 +35,7 @@ export const JigMasterContainer: React.FC = () => {
   const [selectedJig, setSelectedJig] = useState<JigMasterItem | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // 모달이 열려있을 때 실시간으로 업데이트된 데이터 반영
   const currentJig = selectedJig ? masterItems.find(item => item.id === selectedJig.id) || selectedJig : null;
@@ -69,12 +70,15 @@ export const JigMasterContainer: React.FC = () => {
   }, [deleteMasterItem]);
 
   const handleCreateJig = useCallback(async (data: CreateJigMasterItemData, imageFiles: File[]) => {
+    setIsSaving(true);
     try {
       await createMasterItem(data, imageFiles);
       setIsFormModalOpen(false);
     } catch (error) {
       console.error('지그 생성 실패:', error);
       throw error;
+    } finally {
+      setIsSaving(false);
     }
   }, [createMasterItem]);
 
@@ -84,6 +88,7 @@ export const JigMasterContainer: React.FC = () => {
 
   const handleCloseFormModal = useCallback(() => {
     setIsFormModalOpen(false);
+    setIsSaving(false);
   }, []);
 
   // 로딩 상태 - 초기 로딩 시에만 스켈레톤 표시
@@ -145,7 +150,7 @@ export const JigMasterContainer: React.FC = () => {
         isOpen={isFormModalOpen}
         onClose={handleCloseFormModal}
         onSave={handleCreateJig}
-        isLoading={isLoading}
+        isLoading={isSaving}
       />
     </div>
   );

@@ -39,11 +39,40 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
   onClose,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const [scale, setScale] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
   // initialIndex가 변경되면 currentIndex 업데이트
   useEffect(() => {
     setCurrentIndex(initialIndex);
+    setScale(1);
+    setPosition({ x: 0, y: 0 });
   }, [initialIndex]);
+
+  // 이미지 변경 시 확대/위치 초기화
+  useEffect(() => {
+    setScale(1);
+    setPosition({ x: 0, y: 0 });
+  }, [currentIndex]);
+
+  const handleZoom = useCallback((delta: number) => {
+    setScale(prev => {
+      const newScale = prev + delta;
+      // 0.5배 ~ 3배 사이로 제한
+      return Math.max(0.5, Math.min(3, newScale));
+    });
+  }, []);
+
+  const handleDoubleClick = useCallback(() => {
+    if (scale === 1) {
+      setScale(2);
+    } else {
+      setScale(1);
+      setPosition({ x: 0, y: 0 });
+    }
+  }, [scale]);
 
   const handlePrevious = useCallback(() => {
     setCurrentIndex(prevIndex => {
@@ -68,12 +97,22 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
         handleNext();
       } else if (e.key === 'Escape') {
         onClose();
+      } else if (e.key === '+' || e.key === '=') {
+        e.preventDefault();
+        handleZoom(0.2);
+      } else if (e.key === '-') {
+        e.preventDefault();
+        handleZoom(-0.2);
+      } else if (e.key === '0') {
+        e.preventDefault();
+        setScale(1);
+        setPosition({ x: 0, y: 0 });
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, handlePrevious, handleNext, onClose]);
+  }, [open, handlePrevious, handleNext, onClose, handleZoom]);
 
   // 터치 스와이프 핸들러
   useEffect(() => {
@@ -114,6 +153,22 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
       window.removeEventListener('touchend', handleTouchEnd);
     };
   }, [open, handlePrevious, handleNext]);
+
+  // 마우스 휠로 확대/축소
+  useEffect(() => {
+    if (!open) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -0.1 : 0.1;
+        handleZoom(delta);
+      }
+    };
+
+    window.addEventListener('wheel', handleWheel, { passive: false });
+    return () => window.removeEventListener('wheel', handleWheel);
+  }, [open, handleZoom]);
 
   // 마우스 드래그 스와이프 핸들러
   useEffect(() => {
@@ -237,21 +292,47 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
         )}
 
         {/* 이미지 표시 */}
-        <div className="w-full h-full flex items-center justify-center p-4">
+        <div 
+          className="w-full h-full flex items-center justify-center p-4 overflow-hidden"
+          onMouseMove={(e) => {
+            if (isDragging && scale > 1) {
+              setPosition({
+                x: position.x + (e.clientX - dragStart.x),
+                y: position.y + (e.clientY - dragStart.y),
+              });
+              setDragStart({ x: e.clientX, y: e.clientY });
+            }
+          }}
+          onMouseDown={(e) => {
+            if (scale > 1) {
+              setIsDragging(true);
+              setDragStart({ x: e.clientX, y: e.clientY });
+            }
+          }}
+          onMouseUp={() => setIsDragging(false)}
+          onMouseLeave={() => setIsDragging(false)}
+        >
           <img
             src={images[currentIndex]}
             alt={`이미지 ${currentIndex + 1}`}
-            className="max-w-full max-h-[80vh] object-contain select-none"
-            style={{ borderRadius: 'var(--radius)' }}
-            onClick={(e) => e.stopPropagation()}
+            className="select-none cursor-move"
+            style={{ 
+              maxWidth: '100%',
+              maxHeight: '80vh',
+              objectFit: 'contain',
+              borderRadius: 'var(--radius)',
+              transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`,
+              transition: isDragging ? 'none' : 'transform 0.2s',
+            }}
+            onDoubleClick={handleDoubleClick}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (scale === 1) {
+                // 확대되어 있지 않으면 이미지 변경 방지
+              }
+            }}
             draggable={false}
             onDragStart={(e) => e.preventDefault()}
-            onLoad={() => {
-              // 이미지 로드 완료
-            }}
-            onError={() => {
-              // 이미지 로드 실패
-            }}
           />
         </div>
       </DialogContent>
