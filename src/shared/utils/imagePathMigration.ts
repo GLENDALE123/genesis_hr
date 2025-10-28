@@ -152,6 +152,24 @@ export const getThumbnailURL = (imageUrl: string): string => {
 };
 
 /**
+ * Firebase Storage 이미지 URL에 크기 제한 쿼리 추가
+ * Firebase Storage URL에 w (width) 파라미터 추가하여 이미지 크기 제한
+ * @param imageUrl 원본 이미지 URL
+ * @param maxWidth 최대 너비 (픽셀)
+ * @returns 크기 제한된 이미지 URL
+ */
+export const getResizedImageURL = (imageUrl: string, maxWidth: number = 300): string => {
+  try {
+    const url = new URL(imageUrl);
+    // 기존 파라미터 유지하면서 w 파라미터 추가
+    url.searchParams.set('w', maxWidth.toString());
+    return url.toString();
+  } catch {
+    return imageUrl;
+  }
+};
+
+/**
  * 이미지와 썸네일을 함께 삭제
  * @param imageUrl 삭제할 이미지 URL
  * @returns 삭제 결과

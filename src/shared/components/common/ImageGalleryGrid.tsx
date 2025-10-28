@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ImageLightbox } from './ImageLightbox';
 import { LazyImage } from './LazyImage';
 import { ImageCache } from '@/shared/utils/imageUpload';
-import { getThumbnailURL } from '@/shared/utils/imagePathMigration';
+import { getThumbnailURL, getResizedImageURL } from '@/shared/utils/imagePathMigration';
 import { Spinner } from '../ui/spinner';
 
 interface ImageGalleryGridProps {
@@ -39,12 +39,13 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
   const imageRefs = useRef<(HTMLImageElement | HTMLDivElement | null)[]>([]);
   const blobUrlsRef = useRef<Set<string>>(new Set());
 
-  // 이미지 초기화
+  // 이미지 초기화 - Firebase Storage 크기 조정 쿼리 사용
   useEffect(() => {
     if (images.length === 0) return;
     
-    // 기본값: 원본 URL로 시작
-    setCachedImages(images);
+    // Firebase Storage w 파라미터로 이미지 크기 제한 (300px)
+    const resizedUrls = images.map(url => getResizedImageURL(url, 300));
+    setCachedImages(resizedUrls);
   }, [images.length]);
 
   // 모든 이미지 로드 (지연 로딩 비활성화시)
