@@ -26,10 +26,7 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
   },
   
-  // Turbopack 설정 (Next.js 16에서 자동으로 처리됨)
-  turbopack: {
-    // Turbopack 설정이 필요한 경우 여기에 추가
-  },
+  // Turbopack은 빌드 시 자동으로 처리됨 (설정 불필요)
   
   // 터보백 활성화를 위한 추가 설정
   typescript: {
