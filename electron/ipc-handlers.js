@@ -1,5 +1,4 @@
 const { ipcMain, BrowserWindow, clipboard, desktopCapturer, screen, nativeImage } = require('electron');
-const { screenshot } = require('electron-region-screenshot');
 
 /**
  * IPC 핸들러 등록
@@ -78,19 +77,40 @@ module.exports = function registerIpcHandlers() {
         // 현재 윈도우만 캡처
         image = await window.capturePage();
       } else if (mode === 'area') {
-        // 영역 선택 모드 - electron-region-screenshot 사용
-        try {
-          const result = await screenshot();
-          if (result && result.base64) {
-            const image = nativeImage.createFromDataURL(result.base64);
-            clipboard.writeImage(image);
-            return { success: true };
-          } else {
-            return { success: false, canceled: true };
-          }
-        } catch (error) {
-          return { success: false, error: error.message };
-        }
+        // 영역 선택 모드 - 렌더러에서 캡처 후 base64 데이터를 받아서 처리
+        return new Promise((resolve) => {
+          // 렌더러에서 캡처 요청
+          window.webContents.send('request-region-screenshot');
+          
+          // 렌더러로부터 캡처 결과를 받을 핸들러 등록
+          const handler = (event, data) => {
+            if (event.sender === window.webContents) {
+              ipcMain.removeListener('region-screenshot-result', handler);
+              
+              if (data && data.base64) {
+                try {
+                  const image = nativeImage.createFromDataURL(`data:image/png;base64,${data.base64}`);
+                  clipboard.writeImage(image);
+                  resolve({ success: true });
+                } catch (error) {
+                  resolve({ success: false, error: error.message });
+                }
+              } else if (data && data.canceled) {
+                resolve({ success: false, canceled: true });
+              } else {
+                resolve({ success: false, error: 'Failed to capture region' });
+              }
+            }
+          };
+          
+          ipcMain.on('region-screenshot-result', handler);
+          
+          // 타임아웃 처리 (5초 후 자동 취소)
+          setTimeout(() => {
+            ipcMain.removeListener('region-screenshot-result', handler);
+            resolve({ success: false, canceled: true });
+          }, 5000);
+        });
       } else {
         // 기본값: 현재 윈도우
         image = await window.capturePage();

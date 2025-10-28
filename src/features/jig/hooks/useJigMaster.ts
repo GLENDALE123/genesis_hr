@@ -28,12 +28,11 @@ export const useJigMaster = () => {
 
   useEffect(() => {
     const unsubscribe = subscribeToMasters();
-    fetchAutocompleteData();
     
     return () => {
       unsubscribe();
     };
-  }, [subscribeToMasters, fetchAutocompleteData]);
+  }, [subscribeToMasters]);
 
   const handleCreateMasterItem = async (data: CreateJigMasterItemData, imageFiles: File[]) => {
     if (!user) throw new Error('User not authenticated');

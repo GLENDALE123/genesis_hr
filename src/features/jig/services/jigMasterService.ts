@@ -147,8 +147,8 @@ export const subscribeToJigMasters = (
   );
   
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-  let lastData: JigMasterItem[] | null = null; // 마지막 데이터 저장
-  const DEBOUNCE_DELAY = 300; // 300ms로 증가
+  let lastIds: string = ''; // 마지막 ID 문자열 저장 (메모리 효율적)
+  const DEBOUNCE_DELAY = 500; // 500ms로 증가 (불필요한 업데이트 방지)
   
   return onSnapshot(q, (snapshot) => {
     // 디바운싱 적용
@@ -167,19 +167,15 @@ export const subscribeToJigMasters = (
         } as JigMasterItem;
       });
       
-      // 데이터가 실제로 변경되었는지 확인
-      if (lastData && lastData.length === masters.length) {
-        const hasChanges = masters.some((newItem, index) => {
-          const lastItem = lastData![index];
-          return !lastItem || lastItem.id !== newItem.id;
-        });
-        
-        if (!hasChanges) {
-          return; // 변경사항이 없으면 콜백 호출하지 않음
-        }
+      // ID 문자열로 비교 (간단하고 빠름)
+      const currentIds = masters.map(m => m.id).join(',');
+      
+      // 변경사항이 없으면 콜백 호출하지 않음
+      if (lastIds === currentIds) {
+        return;
       }
       
-      lastData = masters; // 현재 데이터 저장
+      lastIds = currentIds;
       onUpdate(masters);
     }, DEBOUNCE_DELAY);
   }, onError);

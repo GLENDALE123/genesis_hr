@@ -1,4 +1,21 @@
 const { contextBridge, ipcRenderer } = require('electron');
+const { screenshot } = require('electron-region-screenshot');
+
+// 영역 스크린샷 요청 수신
+ipcRenderer.on('request-region-screenshot', async () => {
+  try {
+    const result = await screenshot();
+    if (result && result.base64) {
+      ipcRenderer.send('region-screenshot-result', { base64: result.base64 });
+    } else {
+      ipcRenderer.send('region-screenshot-result', { canceled: true });
+    }
+  } catch (error) {
+    console.error('영역 캡처 오류:', error);
+    ipcRenderer.send('region-screenshot-result', { error: error.message });
+  }
+});
+
 // Electron API를 window.electron 객체로 노출
 contextBridge.exposeInMainWorld('electron', {
   /**

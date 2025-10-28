@@ -33,6 +33,10 @@ interface JigMasterState {
     itemNames: string[];
     partNames: string[];
     itemNumbers: string[];
+    productNames: string[];
+    jigNumbers: string[];
+    suppliers: string[];
+    orderNumbers: string[];
   };
   lastFetchTimestamp: number;
   lastUpdated: number | null;
@@ -70,6 +74,10 @@ export const useJigMasterStore = create<JigMasterState & JigMasterActions>()(
         itemNames: [],
         partNames: [],
         itemNumbers: [],
+        productNames: [],
+        jigNumbers: [],
+        suppliers: [],
+        orderNumbers: [],
       },
       lastFetchTimestamp: 0,
       lastUpdated: null,
@@ -93,11 +101,37 @@ export const useJigMasterStore = create<JigMasterState & JigMasterActions>()(
       },
 
       setMasters: (items) => {
+        // autocomplete 데이터 자동 생성 (불필요한 API 호출 제거)
+        const productNames = [...new Set([
+          ...items.map(item => item.productName).filter((v): v is string => Boolean(v)),
+          ...items.map(item => item.itemName).filter((v): v is string => Boolean(v))
+        ])].sort();
+        
+        const partNames = [...new Set(items.map(item => item.partName).filter((v): v is string => Boolean(v)))].sort();
+        
+        const jigNumbers = [...new Set([
+          ...items.map(item => item.jigNumber).filter((v): v is string => Boolean(v)),
+          ...items.map(item => item.itemNumber).filter((v): v is string => Boolean(v))
+        ])].sort();
+        
+        const suppliers = [...new Set(items.map(item => item.supplier).filter((v): v is string => Boolean(v)))].sort();
+        
+        const orderNumbers = [...new Set(items.map(item => item.orderNumber).filter((v): v is string => Boolean(v)))].sort();
+        
         set({
           masterItems: items,
           cache: {
             masterItems: items,
             timestamp: Date.now()
+          },
+          autocompleteData: {
+            itemNames: productNames,
+            partNames,
+            itemNumbers: jigNumbers,
+            productNames,
+            jigNumbers,
+            suppliers,
+            orderNumbers,
           },
           lastUpdated: Date.now(),
           lastFetchTimestamp: Date.now(),
@@ -140,13 +174,8 @@ export const useJigMasterStore = create<JigMasterState & JigMasterActions>()(
         
         const unsubscribe = subscribeToJigMasters(
           (masters) => {
+            // 간단한 길이 비교만 수행 (복잡한 내용 비교 제거)
             const currentItems = get().masterItems;
-            
-            // 참조가 같으면 업데이트하지 않음
-            if (currentItems === masters) {
-              set({ isLoading: false, isFetching: false });
-              return;
-            }
             
             // 길이가 다르면 확실히 변경된 것
             if (currentItems.length !== masters.length) {
@@ -154,16 +183,14 @@ export const useJigMasterStore = create<JigMasterState & JigMasterActions>()(
               return;
             }
             
-            // 길이가 같으면 내용 비교
-            const hasChanges = masters.some((newItem, index) => {
-              const currentItem = currentItems[index];
-              return !currentItem || currentItem.id !== newItem.id;
-            });
+            // 길이가 같으면 단순히 ID 배열만 비교
+            const currentIds = currentItems.map(item => item.id).join(',');
+            const newIds = masters.map(item => item.id).join(',');
             
-            if (hasChanges) {
+            if (currentIds !== newIds) {
               get().setMasters(masters);
             } else {
-              // 변경사항이 없으면 로딩만 해제
+              // 변경사항이 없으면 로딩만 해제 (상태 업데이트 최소화)
               set({ isLoading: false, isFetching: false });
             }
           },

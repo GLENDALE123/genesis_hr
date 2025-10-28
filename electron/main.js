@@ -5,7 +5,6 @@ const http = require('http');
 const fs = require('fs');
 const registerIpcHandlers = require('./ipc-handlers');
 const notificationWindow = require('./notification-window');
-const { initMain } = require('electron-region-screenshot');
 
 // 개발 서버 사용 여부를 명시적으로 제어 (패키지 여부와 무관)
 const DEV_SERVER_URL = process.env.ELECTRON_DEV_SERVER_URL || 'https://tms-ten-beta.vercel.app';
@@ -258,8 +257,6 @@ function createWindow() {
   // 윈도우가 준비되면 표시
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
-    // electron-region-screenshot 라이브러리 초기화
-    initMain(mainWindow.webContents);
     // 명시적으로 요청한 경우에만 DevTools 자동 열기
     if (openDevToolsOnStart) {
       mainWindow.webContents.openDevTools();
