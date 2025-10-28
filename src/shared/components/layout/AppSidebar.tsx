@@ -119,9 +119,20 @@ const AppSidebarComponent = ({
     };
     
     checkScreenSize();
-    window.addEventListener('resize', checkScreenSize);
     
-    return () => window.removeEventListener('resize', checkScreenSize);
+    // 디바운싱된 resize 이벤트 리스너 (150ms)
+    let resizeTimer: ReturnType<typeof setTimeout>;
+    const handleResize = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(checkScreenSize, 150);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(resizeTimer);
+    };
   }, []);
 
   // 모바일에서는 항상 확장된 상태로 표시, 데스크톱에서는 collapsed 상태에 따라
@@ -238,16 +249,14 @@ const AppSidebarComponent = ({
     return (
       <div key={item.title}>
         {!isExpanded ? (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                {navItemContent}
-              </TooltipTrigger>
-              <TooltipContent side="right" className="ml-2">
-                <p>{item.title}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              {navItemContent}
+            </TooltipTrigger>
+            <TooltipContent side="right" className="ml-2">
+              <p>{item.title}</p>
+            </TooltipContent>
+          </Tooltip>
         ) : (
           navItemContent
         )}
@@ -267,20 +276,21 @@ const AppSidebarComponent = ({
   // 모바일에서는 Sheet 내에서 확장된 상태로 표시
 
   return (
-    <div 
-      className={cn(
-        "flex h-full flex-col border-r transition-all duration-300 flex-shrink-0 overflow-x-hidden overflow-y-hidden",
-        // 접힘 시 아이콘 폭 유지 (태블릿/데스크톱 동일 정책)
-        isExpanded ? "w-56 md:w-52" : "w-16 md:w-16",
-        className
-      )}
-      style={{
-        backgroundColor: 'hsl(var(--sidebar-background))',
-        color: 'hsl(var(--sidebar-foreground))',
-      }}
-      onMouseEnter={() => isDesktop && collapsed && setIsHovered(true)}
-      onMouseLeave={() => isDesktop && collapsed && setIsHovered(false)}
-    >
+    <TooltipProvider delayDuration={200}>
+      <div 
+        className={cn(
+          "flex h-full flex-col border-r transition-all duration-300 flex-shrink-0 overflow-x-hidden overflow-y-hidden",
+          // 접힘 시 아이콘 폭 유지 (태블릿/데스크톱 동일 정책)
+          isExpanded ? "w-56 md:w-52" : "w-16 md:w-16",
+          className
+        )}
+        style={{
+          backgroundColor: 'hsl(var(--sidebar-background))',
+          color: 'hsl(var(--sidebar-foreground))',
+        }}
+        onMouseEnter={() => isDesktop && collapsed && setIsHovered(true)}
+        onMouseLeave={() => isDesktop && collapsed && setIsHovered(false)}
+      >
       {/* Sidebar Header */}
       <div className="flex h-12 items-center justify-center border-b px-2">
         {isExpanded ? (
@@ -354,53 +364,50 @@ const AppSidebarComponent = ({
           )}
           {!isExpanded && (
             <div className="flex flex-col gap-2">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={(event) => handleClick('/settings', event)}
-                      className={cn(
-                        "flex items-center justify-center cursor-pointer rounded-md text-sm font-medium transition-colors",
-                        "min-h-[44px] min-w-[44px] md:min-h-[40px] md:min-w-[40px]",
-                        isActive('/settings')
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                      )}
-                    >
-                      <Settings className="h-5 w-5 md:h-4 md:w-4" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className="ml-2">
-                    <p>설정</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={(event) => handleClick('/help', event)}
-                      className={cn(
-                        "flex items-center justify-center cursor-pointer rounded-md text-sm font-medium transition-colors",
-                        "min-h-[44px] min-w-[44px] md:min-h-[40px] md:min-w-[40px]",
-                        isActive('/help')
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                      )}
-                    >
-                      <HelpCircle className="h-5 w-5 md:h-4 md:w-4" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className="ml-2">
-                    <p>도움말</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={(event) => handleClick('/settings', event)}
+                    className={cn(
+                      "flex items-center justify-center cursor-pointer rounded-md text-sm font-medium transition-colors",
+                      "min-h-[44px] min-w-[44px] md:min-h-[40px] md:min-w-[40px]",
+                      isActive('/settings')
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    )}
+                  >
+                    <Settings className="h-5 w-5 md:h-4 md:w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="ml-2">
+                  <p>설정</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={(event) => handleClick('/help', event)}
+                    className={cn(
+                      "flex items-center justify-center cursor-pointer rounded-md text-sm font-medium transition-colors",
+                      "min-h-[44px] min-w-[44px] md:min-h-[40px] md:min-w-[40px]",
+                      isActive('/help')
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    )}
+                  >
+                    <HelpCircle className="h-5 w-5 md:h-4 md:w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="ml-2">
+                  <p>도움말</p>
+                </TooltipContent>
+              </Tooltip>
             </div>
           )}
         </div>
       </div>
     </div>
+    </TooltipProvider>
   );
 };
 
