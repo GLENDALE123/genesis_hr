@@ -152,6 +152,8 @@ function createWindow() {
       // 보안 기본값 유지 (필요시 개별 리소스에서 허용)
       webSecurity: true,
       allowRunningInsecureContent: false,
+      // localStorage 영구 저장 설정
+      partition: 'persist:main',
     },
     icon: path.join(__dirname, '../public/tms-logo.png'),
     show: false, // 로딩 완료 후 표시
