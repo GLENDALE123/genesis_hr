@@ -4,7 +4,7 @@ import path from 'path';
 const nextConfig: NextConfig = {
   // Electron용 정적 빌드 설정
   output: process.env.ELECTRON_BUILD === 'true' ? 'export' : undefined,
-  distDir: 'out',
+  distDir: process.env.ELECTRON_BUILD === 'true' ? 'out' : '.next',
   // 파일 프로토콜에서 정적 자산 상대 경로 사용
   assetPrefix: process.env.ELECTRON_BUILD === 'true' ? './' : undefined,
   
