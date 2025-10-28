@@ -39,21 +39,13 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
   const imageRefs = useRef<(HTMLImageElement | HTMLDivElement | null)[]>([]);
   const blobUrlsRef = useRef<Set<string>>(new Set());
 
-  // 이미지 초기화 - 썸네일 우선 설정
+  // 이미지 초기화
   useEffect(() => {
     if (images.length === 0) return;
     
-    // 기본값: 썸네일 URL (useThumbnails=true일 때만)
-    // onError에서 자동으로 원본으로 폴백
-    const initialUrls = images.map(url => {
-      if (useThumbnails) {
-        return getThumbnailURL(url);
-      }
-      return url;
-    });
-    
-    setCachedImages(initialUrls);
-  }, [images.length, useThumbnails]);
+    // 기본값: 원본 URL로 시작
+    setCachedImages(images);
+  }, [images.length]);
 
   // 모든 이미지 로드 (지연 로딩 비활성화시)
   const loadAllImages = useCallback(async () => {
@@ -276,16 +268,7 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
                   draggable={false}
                   onDragStart={(e) => e.preventDefault()}
                   onError={() => {
-                    // 썸네일 로드 실패시 원본 URL로 폴백
-                    const currentSrc = cachedImages[index] || url;
-                    const thumbnailUrl = useThumbnails ? getThumbnailURL(url) : null;
-                    if (currentSrc === thumbnailUrl || currentSrc.includes('_thumb.')) {
-                      setCachedImages(prev => {
-                        const newImages = [...prev];
-                        newImages[index] = url; // 원본 URL로 변경
-                        return newImages;
-                      });
-                    }
+                    // 이미지 로드 실패시 처리
                   }}
                 />
               ) : isLoaded ? (
@@ -300,35 +283,8 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
                   onClick={() => handleImageClick(index)}
                   draggable={false}
                   onDragStart={(e) => e.preventDefault()}
-                  onError={async () => {
-                    // 이미지 로드 실패시 원본 URL 사용 (썸네일 → 원본 폴백)
-                    const currentSrc = cachedImages[index] || url;
-                    const thumbnailUrl = useThumbnails ? getThumbnailURL(url) : null;
-                    if (currentSrc === thumbnailUrl) {
-                      // 썸네일 로드 실패 - 원본을 직접 사용하거나 CORS 우회 시도
-                      // 원본 URL을 직접 사용 (CORS 문제 우회)
-                      setCachedImages(prev => {
-                        const newImages = [...prev];
-                        newImages[index] = url;
-                        return newImages;
-                      });
-                      
-                      // 원본도 실패할 경우를 대비해 에러 상태 설정
-                      setTimeout(() => {
-                        const img = new Image();
-                        img.onerror = () => {
-                        };
-                        img.src = url;
-                      }, 1000);
-                      
-                    } else {
-                      // 원본도 실패한 경우 - 에러 상태로 표시
-                      setLoadedImages(prev => {
-                        const newLoaded = [...prev];
-                        newLoaded[index] = false;
-                        return newLoaded;
-                      });
-                    }
+                  onError={() => {
+                    // 이미지 로드 실패시 처리
                   }}
                 />
               ) : (
