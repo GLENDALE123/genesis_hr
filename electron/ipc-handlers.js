@@ -118,7 +118,14 @@ module.exports = function registerIpcHandlers() {
           clipboard.writeImage(img);
           console.log('요소가 클립보드에 복사되었습니다.');
         },
-        (img) => {
+        (img, printOptions = {}) => {
+          // 설정값 가져오기 (기본값 설정)
+          const paperSize = printOptions.paperSize || 'A4';
+          const orientation = printOptions.orientation || 'landscape';
+          const margins = parseInt(printOptions.margins || '0');
+          const scale = printOptions.scale || 'fit';
+          const printBackground = printOptions.printBackground !== undefined ? printOptions.printBackground : true;
+          
           // 인쇄용 임시 윈도우 생성
           const { BrowserWindow } = require('electron');
           const printWindow = new BrowserWindow({
@@ -130,12 +137,34 @@ module.exports = function registerIpcHandlers() {
           });
 
           const dataURL = img.toDataURL();
+          const pageSize = `${paperSize} ${orientation}`;
+          const imageWidth = scale === 'fit' || scale === 'fill' ? '100%' : scale + '%';
+          const imageHeight = scale === 'fit' || scale === 'fill' ? '100%' : scale + '%';
+          
           const htmlContent = `
 <!DOCTYPE html>
 <html>
 <head>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    @media print {
+      @page {
+        size: ${pageSize};
+        margin: ${margins}mm;
+      }
+      body {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      img {
+        width: ${imageWidth};
+        height: ${imageHeight};
+        object-fit: ${scale === 'fill' ? 'cover' : 'contain'};
+      }
+    }
     body {
       display: flex;
       align-items: center;
@@ -158,7 +187,10 @@ module.exports = function registerIpcHandlers() {
           printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
           
           printWindow.webContents.once('did-finish-load', () => {
-            printWindow.webContents.print({ silent: false }, (success) => {
+            printWindow.webContents.print({ 
+              silent: false,
+              printBackground: printBackground
+            }, (success) => {
               if (success) {
                 console.log('인쇄 성공');
               } else {
@@ -237,7 +269,14 @@ module.exports = function registerIpcHandlers() {
             console.log('이미지가 클립보드에 복사되었습니다.');
           },
           // 인쇄 콜백
-          (img) => {
+          (img, printOptions = {}) => {
+            // 설정값 가져오기 (기본값 설정)
+            const paperSize = printOptions.paperSize || 'A4';
+            const orientation = printOptions.orientation || 'landscape';
+            const margins = parseInt(printOptions.margins || '0');
+            const scale = printOptions.scale || 'fit';
+            const printBackground = printOptions.printBackground !== undefined ? printOptions.printBackground : true;
+            
             // 인쇄용 임시 윈도우 생성
             const printWindow = new BrowserWindow({
               show: false,
@@ -248,12 +287,34 @@ module.exports = function registerIpcHandlers() {
             });
 
             const dataURL = img.toDataURL();
+            const pageSize = `${paperSize} ${orientation}`;
+            const imageWidth = scale === 'fit' || scale === 'fill' ? '100%' : scale + '%';
+            const imageHeight = scale === 'fit' || scale === 'fill' ? '100%' : scale + '%';
+            
             const htmlContent = `
 <!DOCTYPE html>
 <html>
 <head>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    @media print {
+      @page {
+        size: ${pageSize};
+        margin: ${margins}mm;
+      }
+      body {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      img {
+        width: ${imageWidth};
+        height: ${imageHeight};
+        object-fit: ${scale === 'fill' ? 'cover' : 'contain'};
+      }
+    }
     body {
       display: flex;
       align-items: center;
@@ -276,7 +337,10 @@ module.exports = function registerIpcHandlers() {
             printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
             
             printWindow.webContents.once('did-finish-load', () => {
-              printWindow.webContents.print({ silent: false }, (success) => {
+              printWindow.webContents.print({ 
+                silent: false,
+                printBackground: printBackground
+              }, (success) => {
                 if (success) {
                   console.log('인쇄 성공');
                 } else {

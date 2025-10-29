@@ -110,6 +110,48 @@ function createScreenshotPreview(image, onCopy, onPrint) {
     .btn-danger:hover {
       background: #b71c1c;
     }
+    .print-options {
+      background: #2d2d2d;
+      padding: 12px 20px;
+      border-top: 1px solid #3d3d3d;
+      font-size: 12px;
+    }
+    .print-options-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .print-options-row:last-child {
+      margin-bottom: 0;
+    }
+    .print-options-label {
+      color: #cccccc;
+      width: 60px;
+      flex-shrink: 0;
+    }
+    .print-options-controls {
+      display: flex;
+      gap: 8px;
+      flex: 1;
+    }
+    select {
+      padding: 4px 8px;
+      border: 1px solid #4d4d4d;
+      border-radius: 4px;
+      background: #1e1e1e;
+      color: white;
+      font-size: 12px;
+    }
+    input[type="number"] {
+      padding: 4px 8px;
+      border: 1px solid #4d4d4d;
+      border-radius: 4px;
+      background: #1e1e1e;
+      color: white;
+      font-size: 12px;
+      width: 60px;
+    }
     .image-container {
       flex: 1;
       display: flex;
@@ -153,6 +195,60 @@ function createScreenshotPreview(image, onCopy, onPrint) {
       인쇄
     </button>
   </div>
+  <div class="print-options" id="printOptions">
+    <div class="print-options-row">
+      <div class="print-options-label">용지:</div>
+      <div class="print-options-controls">
+        <select id="paperSize">
+          <option value="A4">A4</option>
+          <option value="Letter">Letter</option>
+          <option value="Legal">Legal</option>
+          <option value="A3">A3</option>
+          <option value="A5">A5</option>
+        </select>
+      </div>
+    </div>
+    <div class="print-options-row">
+      <div class="print-options-label">방향:</div>
+      <div class="print-options-controls">
+        <select id="orientation">
+          <option value="landscape">가로</option>
+          <option value="portrait">세로</option>
+        </select>
+      </div>
+    </div>
+    <div class="print-options-row">
+      <div class="print-options-label">여백:</div>
+      <div class="print-options-controls">
+        <select id="margins">
+          <option value="0">없음</option>
+          <option value="10">10mm</option>
+          <option value="20">20mm</option>
+          <option value="25">25mm</option>
+        </select>
+      </div>
+    </div>
+    <div class="print-options-row">
+      <div class="print-options-label">크기:</div>
+      <div class="print-options-controls">
+        <select id="scale">
+          <option value="fit">맞춤 (최대)</option>
+          <option value="fill">채우기</option>
+          <option value="100">100%</option>
+          <option value="75">75%</option>
+          <option value="50">50%</option>
+          <option value="25">25%</option>
+        </select>
+      </div>
+    </div>
+    <div class="print-options-row">
+      <div class="print-options-label">배경:</div>
+      <div class="print-options-controls">
+        <input type="checkbox" id="printBackground" checked>
+        <label for="printBackground" style="color: #cccccc; margin-left: 4px;">인쇄</label>
+      </div>
+    </div>
+  </div>
   <div class="image-container">
     <div class="image-wrapper">
       <img src="${dataURL}" alt="Screenshot">
@@ -186,7 +282,19 @@ function createScreenshotPreview(image, onCopy, onPrint) {
     });
 
     document.getElementById('printBtn').addEventListener('click', () => {
-      sendToMain('print-screenshot');
+      const paperSize = document.getElementById('paperSize').value;
+      const orientation = document.getElementById('orientation').value;
+      const margins = document.getElementById('margins').value;
+      const scale = document.getElementById('scale').value;
+      const printBackground = document.getElementById('printBackground').checked;
+      
+      sendToMain('print-screenshot', {
+        paperSize,
+        orientation,
+        margins,
+        scale,
+        printBackground
+      });
       showToast('인쇄 대화상자를 여는 중...');
     });
   </script>
@@ -209,7 +317,7 @@ function createScreenshotPreview(image, onCopy, onPrint) {
         onCopy(image);
         event.reply('copy-result', { success: true });
       } else if (channel === 'print-screenshot') {
-        onPrint(image, previewWindow);
+        onPrint(image, data); // 설정 데이터 전달
         event.reply('print-result', { success: true });
       } else if (channel === 'close-preview') {
         cleanup();

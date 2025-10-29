@@ -113,14 +113,22 @@ export const useElementCapture = () => {
       await captureElement(target);
     };
 
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsSelecting(false);
+      }
+    };
+
     document.addEventListener('mouseover', handleMouseOver);
     document.addEventListener('mouseout', handleMouseOut);
     document.addEventListener('click', handleClick, true);
+    document.addEventListener('keydown', handleEscape);
 
     return () => {
       document.removeEventListener('mouseover', handleMouseOver);
       document.removeEventListener('mouseout', handleMouseOut);
       document.removeEventListener('click', handleClick, true);
+      document.removeEventListener('keydown', handleEscape);
       
       // 모든 하이라이트 제거
       document.querySelectorAll('[data-capture-highlight]').forEach(el => {

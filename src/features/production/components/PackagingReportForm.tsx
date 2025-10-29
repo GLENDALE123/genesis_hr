@@ -235,9 +235,12 @@ export const PackagingReportForm: React.FC<PackagingReportFormProps> = ({
             <label className="block text-sm font-medium text-foreground">시작시간</label>
             <div className="relative">
               <Input
-                type="time"
+                type="text"
                 value={formData.startTime}
                 onChange={(e) => handleInputChange('startTime', e.target.value)}
+                placeholder="HH:MM"
+                inputMode="numeric"
+                pattern="[0-9]{2}:[0-9]{2}"
               />
               <Button
                 type="button"
@@ -256,9 +259,12 @@ export const PackagingReportForm: React.FC<PackagingReportFormProps> = ({
             <label className="block text-sm font-medium text-foreground">종료시간</label>
             <div className="relative">
               <Input
-                type="time"
+                type="text"
                 value={formData.endTime}
                 onChange={(e) => handleInputChange('endTime', e.target.value)}
+                placeholder="HH:MM"
+                inputMode="numeric"
+                pattern="[0-9]{2}:[0-9]{2}"
               />
               <Button
                 type="button"
