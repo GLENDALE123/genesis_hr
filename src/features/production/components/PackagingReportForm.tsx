@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from '@/shared/components/ui/select';
 import { Input } from '@/shared/components/ui/input';
+import { TimeField } from '@/shared/components/ui/time-field';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { Calendar } from '@/shared/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
@@ -233,18 +234,20 @@ export const PackagingReportForm: React.FC<PackagingReportFormProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-foreground">시작시간</label>
-            <div className="relative">
-              <Input
-                type="time"
+            <div className="relative flex items-center gap-2">
+              <TimeField
                 value={formData.startTime}
-                onChange={(e) => handleInputChange('startTime', e.target.value)}
+                onChange={(value) => handleInputChange('startTime', value)}
+                format="24h"
+                className="flex-1"
+                aria-label="시작시간"
               />
               <Button
                 type="button"
                 variant="secondary"
                 size="sm"
                 onClick={handleStartTime}
-                className="absolute right-2 top-1/2 -translate-y-1/2 h-7 px-2 text-xs"
+                className="h-9 px-2 text-xs"
               >
                 <Clock className="h-3 w-3 mr-1" />
                 현재
@@ -254,18 +257,20 @@ export const PackagingReportForm: React.FC<PackagingReportFormProps> = ({
 
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-foreground">종료시간</label>
-            <div className="relative">
-              <Input
-                type="time"
+            <div className="relative flex items-center gap-2">
+              <TimeField
                 value={formData.endTime}
-                onChange={(e) => handleInputChange('endTime', e.target.value)}
+                onChange={(value) => handleInputChange('endTime', value)}
+                format="24h"
+                className="flex-1"
+                aria-label="종료시간"
               />
               <Button
                 type="button"
                 variant="secondary"
                 size="sm"
                 onClick={handleEndTime}
-                className="absolute right-2 top-1/2 -translate-y-1/2 h-7 px-2 text-xs"
+                className="h-9 px-2 text-xs"
               >
                 <Clock className="h-3 w-3 mr-1" />
                 현재
