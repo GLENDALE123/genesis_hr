@@ -41,6 +41,31 @@ const getLocalDateString = (date = new Date()) => {
   return localDate.toISOString().split('T')[0];
 };
 
+// 라인별 은은한 배경색 반환 함수
+const getLineBackgroundColor = (line?: string): string => {
+  if (!line) return '';
+  
+  // 증착1 관련 - 파란색 계열
+  if (line.includes('증착1')) {
+    return 'bg-blue-50/30 dark:bg-blue-950/20';
+  }
+  // 증착2 관련 - 보라색 계열
+  if (line.includes('증착2')) {
+    return 'bg-purple-50/30 dark:bg-purple-950/20';
+  }
+  // 코팅 관련 - 초록색 계열
+  if (line.includes('코팅')) {
+    return 'bg-green-50/30 dark:bg-green-950/20';
+  }
+  // 내부코팅 - 노란색 계열
+  if (line.includes('내부코팅')) {
+    return 'bg-yellow-50/30 dark:bg-yellow-950/20';
+  }
+  
+  // 기본 - 회색 계열
+  return 'bg-slate-50/20 dark:bg-slate-900/20';
+};
+
 type QuickFilterType = 'yesterday' | 'today' | 'tomorrow' | 'week' | 'nextWeek' | 'all' | 'custom';
 
 interface ProductionScheduleListViewProps {
@@ -498,8 +523,10 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
                         ? 'bg-[hsl(var(--status-inprogress))] text-[hsl(var(--status-inprogress-foreground))]'
                         : 'bg-[hsl(var(--status-pending))] text-[hsl(var(--status-pending-foreground))]';
                       
+                      const lineBgColor = getLineBackgroundColor(schedule.line);
+                      
                       return (
-                        <TableRow key={schedule.id} className="hover:bg-muted/50">
+                        <TableRow key={schedule.id} className={`${lineBgColor} hover:bg-muted/50`}>
                           <TableCell className="whitespace-nowrap py-1">{schedule.planDate}</TableCell>
                           <TableCell className="whitespace-nowrap py-1">
                             <span className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full ${statusColorClass}`}>
