@@ -298,9 +298,43 @@ export const groupInspectionsByOrder = (
   });
 
   // Map을 배열로 변환하고 최신 날짜순으로 정렬
-  return Array.from(groupedMap.values()).sort((a, b) => 
+  const sortedGroups = Array.from(groupedMap.values()).sort((a, b) => 
     new Date(b.latestDate).getTime() - new Date(a.latestDate).getTime()
   );
+
+  // 각 그룹의 common.workLine을 공정검사 또는 출하검사의 최신 workLine으로 설정
+  sortedGroups.forEach(group => {
+    // 공정검사와 출하검사 중에서 workLine이 있는 최신 검사 찾기
+    const inspectionsWithWorkLine: { inspection: QualityInspection; date: number }[] = [];
+    
+    // 공정검사에서 workLine 찾기
+    group.inProcess.forEach(insp => {
+      if (insp.workLine) {
+        inspectionsWithWorkLine.push({
+          inspection: insp,
+          date: new Date(insp.createdAt).getTime()
+        });
+      }
+    });
+    
+    // 출하검사에서 workLine 찾기
+    group.outgoing.forEach(insp => {
+      if (insp.workLine) {
+        inspectionsWithWorkLine.push({
+          inspection: insp,
+          date: new Date(insp.createdAt).getTime()
+        });
+      }
+    });
+    
+    // 최신 검사의 workLine 사용
+    if (inspectionsWithWorkLine.length > 0) {
+      const latestInspection = inspectionsWithWorkLine.sort((a, b) => b.date - a.date)[0];
+      group.common.workLine = latestInspection.inspection.workLine;
+    }
+  });
+
+  return sortedGroups;
 };
 
 /**

@@ -161,9 +161,11 @@ export interface QualityInspection {
   createdBy?: string; // 작성자 UID
   updatedBy?: string; // 수정자 UID
   
+  // 공정검사 및 출하검사 공통 (workLine)
+  // 출하검사 전용 (workerCount)
+  workLine?: string; // 공정검사 및 출하검사에서 사용
+  workerCount?: string; // 출하검사 전용: HS-Jig 호환: string 타입
   // 공정검사 전용
-  workLine?: string;
-  workerCount?: string; // HS-Jig 호환: string 타입
   preInspectionHistory?: string;
   inProcessInspectionHistory?: string;
   processLines?: ProcessLineData[];
