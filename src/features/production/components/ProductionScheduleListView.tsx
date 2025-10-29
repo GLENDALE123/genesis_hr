@@ -472,7 +472,7 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
                   <React.Fragment key={date}>
                     {/* 날짜 헤더 행 */}
                     <TableRow className="bg-muted/50">
-                      <TableCell colSpan={18 + (canManage ? 1 : 0)} className="whitespace-nowrap font-bold text-base py-1.5">
+                      <TableCell colSpan={18 + (canManage ? 1 : 0)} className="whitespace-nowrap font-bold text-base py-1">
                         <div className="flex items-center gap-4">
                           <span>
                             {date} ({new Date(date + 'T00:00:00').toLocaleDateString('ko-KR', { weekday: 'long' })})
@@ -500,34 +500,34 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
                       
                       return (
                         <TableRow key={schedule.id} className="hover:bg-muted/50">
-                          <TableCell className="whitespace-nowrap py-1.5">{schedule.planDate}</TableCell>
-                          <TableCell className="whitespace-nowrap py-1.5">
+                          <TableCell className="whitespace-nowrap py-1">{schedule.planDate}</TableCell>
+                          <TableCell className="whitespace-nowrap py-1">
                             <span className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full ${statusColorClass}`}>
                               {actualStatus}
                             </span>
                           </TableCell>
-                          <TableCell className="whitespace-nowrap py-1.5">{schedule.shipping}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1.5">{schedule.line}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1.5">{schedule.injection}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1.5">{schedule.orderNumber}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1.5">{schedule.client}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1.5">{schedule.productName}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1.5">{schedule.partName}</TableCell>
-                        <TableCell className="whitespace-nowrap text-right py-1.5">
+                          <TableCell className="whitespace-nowrap py-1">{schedule.shipping}</TableCell>
+                        <TableCell className="whitespace-nowrap py-1">{schedule.line}</TableCell>
+                        <TableCell className="whitespace-nowrap py-1">{schedule.injection}</TableCell>
+                        <TableCell className="whitespace-nowrap py-1">{schedule.orderNumber}</TableCell>
+                        <TableCell className="whitespace-nowrap py-1">{schedule.client}</TableCell>
+                        <TableCell className="whitespace-nowrap py-1">{schedule.productName}</TableCell>
+                        <TableCell className="whitespace-nowrap py-1">{schedule.partName}</TableCell>
+                        <TableCell className="whitespace-nowrap text-right py-1">
                           {schedule.orderQuantity.toLocaleString()}
                         </TableCell>
-                        <TableCell className="whitespace-nowrap py-1.5">{schedule.specification}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1.5">{schedule.postProcess}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1.5" title={schedule.remarks}>{schedule.remarks}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1.5">{schedule.manager}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1.5">{schedule.domesticOrExport}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1.5">{schedule.jigUsed}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1.5">{schedule.newOrRe}</TableCell>
-                        <TableCell className="whitespace-nowrap text-right py-1.5">
+                        <TableCell className="whitespace-nowrap py-1">{schedule.specification}</TableCell>
+                        <TableCell className="whitespace-nowrap py-1">{schedule.postProcess}</TableCell>
+                        <TableCell className="whitespace-nowrap py-1" title={schedule.remarks}>{schedule.remarks}</TableCell>
+                        <TableCell className="whitespace-nowrap py-1">{schedule.manager}</TableCell>
+                        <TableCell className="whitespace-nowrap py-1">{schedule.domesticOrExport}</TableCell>
+                        <TableCell className="whitespace-nowrap py-1">{schedule.jigUsed}</TableCell>
+                        <TableCell className="whitespace-nowrap py-1">{schedule.newOrRe}</TableCell>
+                        <TableCell className="whitespace-nowrap text-right py-1">
                           {schedule.shortageQuantity.toLocaleString()}
                         </TableCell>
                         {canManage && (
-                          <TableCell className="whitespace-nowrap py-1.5">
+                          <TableCell className="whitespace-nowrap py-1">
                             <Button
                               variant="destructive"
                               size="sm"
