@@ -114,7 +114,7 @@ const ReportRow = React.memo<ReportRowProps>(({
         {(report.orderNumbers && report.orderNumbers.join(', ')) || '-'}
       </TableCell>
       {/* 발주처 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap">{report.supplier}</TableCell>
+      <TableCell className="px-2 py-3 whitespace-nowrap font-semibold">{report.supplier}</TableCell>
       {/* 제품명/부속명 */}
       <TableCell className="px-2 py-3 whitespace-nowrap font-semibold">
         {report.productName}{report.partName ? '/' + report.partName : ''}
@@ -312,7 +312,7 @@ const ReportRowWithPressState = React.memo<ReportRowProps>((props) => {
         {(report.orderNumbers && report.orderNumbers.join(', ')) || '-'}
       </TableCell>
       {/* 발주처 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap">{report.supplier}</TableCell>
+      <TableCell className="px-2 py-3 whitespace-nowrap font-semibold">{report.supplier}</TableCell>
       {/* 제품명/부속명 */}
       <TableCell className="px-2 py-3 whitespace-nowrap font-semibold">
         {report.productName}{report.partName ? '/' + report.partName : ''}
@@ -983,7 +983,7 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
           ) : (
             /* 스크롤 가능한 테이블 전체 - 페이지 전체 스크롤 */
             <div className="overflow-x-auto">
-              <Table className="w-full text-sm text-left text-gray-500 dark:text-slate-400 min-w-[2000px]">
+              <Table className="w-full text-sm text-left min-w-[2000px]">
                 {/* 고정 헤더 */}
                 <TableHeader className="sticky top-0 z-10 bg-background">
                   <TableRow className="border-b bg-background">

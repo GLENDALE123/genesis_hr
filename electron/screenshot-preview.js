@@ -162,10 +162,6 @@ function createScreenshotPreview(image, onCopy, onPrint) {
       background: #252526;
     }
     .image-wrapper {
-      background: white;
-      padding: 8px;
-      border-radius: 4px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
       max-width: 100%;
       max-height: 100%;
     }
