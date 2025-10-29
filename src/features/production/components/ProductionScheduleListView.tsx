@@ -47,27 +47,27 @@ const getLineBackgroundColor = (line?: string): string => {
   
   // 증착1 관련 - 파란색 계열
   if (line.includes('증착1')) {
-    return 'bg-blue-100/40 dark:bg-blue-950/20';
+    return 'bg-blue-50/30 dark:bg-blue-950/20';
   }
   // 증착2 관련 - 보라색 계열
   if (line.includes('증착2')) {
-    return 'bg-purple-100/40 dark:bg-purple-950/20';
+    return 'bg-purple-50/30 dark:bg-purple-950/20';
   }
   // 2코팅 - 청록색 계열
   if (line.includes('2코팅')) {
-    return 'bg-cyan-100/40 dark:bg-cyan-950/20';
+    return 'bg-cyan-50/30 dark:bg-cyan-950/20';
   }
   // 1코팅 - 초록색 계열
   if (line.includes('1코팅')) {
-    return 'bg-green-100/40 dark:bg-green-950/20';
+    return 'bg-green-50/30 dark:bg-green-950/20';
   }
   // 내부코팅 - 노란색 계열
   if (line.includes('내부코팅')) {
-    return 'bg-yellow-100/40 dark:bg-yellow-950/20';
+    return 'bg-yellow-50/30 dark:bg-yellow-950/20';
   }
   
   // 기본 - 회색 계열
-  return 'bg-slate-100/30 dark:bg-slate-900/20';
+  return 'bg-slate-50/20 dark:bg-slate-900/20';
 };
 
 type QuickFilterType = 'yesterday' | 'today' | 'tomorrow' | 'week' | 'nextWeek' | 'all' | 'custom';
