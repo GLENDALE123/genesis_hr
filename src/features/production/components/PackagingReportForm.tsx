@@ -48,33 +48,8 @@ export const PackagingReportForm: React.FC<PackagingReportFormProps> = ({
     removeBox,
     handleStartTime,
     handleEndTime,
-    handleTimeBlur,
-    formatTimeDisplay,
-    parseTime,
     validateAndPrepareSubmit
   } = usePackagingForm({ report, isEditMode });
-  
-  // 시와 분 상태
-  const [startHour, setStartHour] = React.useState('00');
-  const [startMinute, setStartMinute] = React.useState('00');
-  const [endHour, setEndHour] = React.useState('00');
-  const [endMinute, setEndMinute] = React.useState('00');
-  
-  // 폼 데이터에서 시간 파싱하여 시/분 분리
-  React.useEffect(() => {
-    const [startH, startM] = parseTime(formData.startTime);
-    const [endH, endM] = parseTime(formData.endTime);
-    setStartHour(startH);
-    setStartMinute(startM);
-    setEndHour(endH);
-    setEndMinute(endM);
-  }, [formData.startTime, formData.endTime, parseTime]);
-  
-  // 시/분 변경 시 HH:mm 형식으로 병합
-  const handleTimeChange = (field: 'startTime' | 'endTime', hour: string, minute: string) => {
-    const combined = formatTimeDisplay(hour, minute);
-    handleInputChange(field, combined);
-  };
 
   // 폼 제출
   const handleSubmit = (e: React.FormEvent) => {
@@ -257,108 +232,44 @@ export const PackagingReportForm: React.FC<PackagingReportFormProps> = ({
         {/* 시작/종료 시간 */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="block text-sm font-medium text-foreground">시작시간</label>
+            <label className="block text-sm font-medium text-foreground">시작시간</label>
+            <div className="relative">
+              <Input
+                type="time"
+                value={formData.startTime}
+                onChange={(e) => handleInputChange('startTime', e.target.value)}
+              />
               <Button
                 type="button"
                 variant="secondary"
                 size="sm"
                 onClick={handleStartTime}
-                className="h-7 px-2 text-xs"
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-7 px-2 text-xs"
               >
                 <Clock className="h-3 w-3 mr-1" />
                 현재
               </Button>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="flex-1">
-                <Input
-                  type="text"
-                  value={startHour}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
-                    const numVal = parseInt(val) || 0;
-                    const clampedVal = Math.min(23, Math.max(0, numVal));
-                    const formatted = String(clampedVal).padStart(2, '0');
-                    setStartHour(formatted);
-                    handleTimeChange('startTime', formatted, startMinute);
-                  }}
-                  placeholder="시"
-                  inputMode="numeric"
-                  className="text-center"
-                />
-              </div>
-              <span className="text-lg font-bold">:</span>
-              <div className="flex-1">
-                <Input
-                  type="text"
-                  value={startMinute}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
-                    const numVal = parseInt(val) || 0;
-                    const clampedVal = Math.min(59, Math.max(0, numVal));
-                    const formatted = String(clampedVal).padStart(2, '0');
-                    setStartMinute(formatted);
-                    handleTimeChange('startTime', startHour, formatted);
-                  }}
-                  placeholder="분"
-                  inputMode="numeric"
-                  className="text-center"
-                />
-              </div>
-            </div>
           </div>
 
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="block text-sm font-medium text-foreground">종료시간</label>
+            <label className="block text-sm font-medium text-foreground">종료시간</label>
+            <div className="relative">
+              <Input
+                type="time"
+                value={formData.endTime}
+                onChange={(e) => handleInputChange('endTime', e.target.value)}
+              />
               <Button
                 type="button"
                 variant="secondary"
                 size="sm"
                 onClick={handleEndTime}
-                className="h-7 px-2 text-xs"
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-7 px-2 text-xs"
               >
                 <Clock className="h-3 w-3 mr-1" />
                 현재
               </Button>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="flex-1">
-                <Input
-                  type="text"
-                  value={endHour}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
-                    const numVal = parseInt(val) || 0;
-                    const clampedVal = Math.min(23, Math.max(0, numVal));
-                    const formatted = String(clampedVal).padStart(2, '0');
-                    setEndHour(formatted);
-                    handleTimeChange('endTime', formatted, endMinute);
-                  }}
-                  placeholder="시"
-                  inputMode="numeric"
-                  className="text-center"
-                />
-              </div>
-              <span className="text-lg font-bold">:</span>
-              <div className="flex-1">
-                <Input
-                  type="text"
-                  value={endMinute}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
-                    const numVal = parseInt(val) || 0;
-                    const clampedVal = Math.min(59, Math.max(0, numVal));
-                    const formatted = String(clampedVal).padStart(2, '0');
-                    setEndMinute(formatted);
-                    handleTimeChange('endTime', endHour, formatted);
-                  }}
-                  placeholder="분"
-                  inputMode="numeric"
-                  className="text-center"
-                />
-              </div>
             </div>
           </div>
         </div>

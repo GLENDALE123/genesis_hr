@@ -221,10 +221,13 @@ function createScreenshotPreview(image, onCopy, onPrint) {
       <div class="print-options-label">여백:</div>
       <div class="print-options-controls">
         <select id="margins">
-          <option value="0">없음</option>
+          <option value="0">0mm</option>
+          <option value="5" selected>5mm (기본)</option>
           <option value="10">10mm</option>
+          <option value="15">15mm</option>
           <option value="20">20mm</option>
           <option value="25">25mm</option>
+          <option value="30">30mm</option>
         </select>
       </div>
     </div>
