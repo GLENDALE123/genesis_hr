@@ -51,18 +51,16 @@ export default function ProductionSchedulePage() {
 
   return (
     <ProtectedRoute>
-      <div className="h-full flex flex-col">
-        <ProductionScheduleListView
-          onOpenUploadModal={() => setIsUploadModalOpen(true)}
-        />
-        
-        <ProductionScheduleUploadModal
-          isOpen={isUploadModalOpen}
-          onClose={() => setIsUploadModalOpen(false)}
-          onSave={handleSaveSchedules}
-          currentDate={currentDate}
-        />
-      </div>
+      <ProductionScheduleListView
+        onOpenUploadModal={() => setIsUploadModalOpen(true)}
+      />
+      
+      <ProductionScheduleUploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onSave={handleSaveSchedules}
+        currentDate={currentDate}
+      />
     </ProtectedRoute>
   );
 }
