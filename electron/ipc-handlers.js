@@ -83,16 +83,22 @@ module.exports = function registerIpcHandlers() {
           // 사용자가 영역 선택
           const bounds = await startAreaSelection(window);
           
-          // 선택한 영역 캡처
+          // 선택한 영역 캡처 (좌표는 메인 창 기준)
           const { x, y, width, height } = bounds;
-          const fullScreenImage = await screen.getPrimaryDisplay().generateImage();
           
-          // 선택한 영역만 잘라내기
-          image = fullScreenImage.crop({
-            x: x,
-            y: y,
-            width: width,
-            height: height
+          // 메인 창 전체를 캡처
+          const fullWindowImage = await window.capturePage();
+          
+          if (!fullWindowImage) {
+            return { success: false, error: 'Failed to capture window' };
+          }
+          
+          // 선택한 영역만 잘라내기 (메인 창 내부 좌표)
+          image = fullWindowImage.crop({
+            x: Math.round(x),
+            y: Math.round(y),
+            width: Math.round(width),
+            height: Math.round(height)
           });
         } catch (error) {
           // 선택 취소

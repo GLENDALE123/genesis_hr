@@ -12,20 +12,23 @@ function startAreaSelection(mainWindow) {
 
     isSelecting = true;
     
-    mainWindow.hide();
+    // 메인 창은 그대로 유지 (항상 위에 있지 않음)
+    if (mainWindow.isMinimized()) {
+      mainWindow.restore();
+    }
     
     setTimeout(() => {
       if (!isSelecting) {
-        mainWindow.show();
         return;
       }
 
-      const primaryDisplay = screen.getPrimaryDisplay();
-      const { width, height } = primaryDisplay.size;
+      // 메인 창의 크기와 위치 가져오기
+      const mainBounds = mainWindow.getBounds();
+      const { x, y, width, height } = mainBounds;
       
       selectorWindow = new BrowserWindow({
-        x: 0,
-        y: 0,
+        x: x,
+        y: y,
         width: width,
         height: height,
         frame: false,
@@ -177,7 +180,7 @@ function startAreaSelection(mainWindow) {
         }
         selectorWindow = null;
         isSelecting = false;
-        mainWindow.show();
+        // 메인 창 포커스
         mainWindow.focus();
       };
 
@@ -205,11 +208,11 @@ function startAreaSelection(mainWindow) {
         cleanup();
       });
 
-      selectorWindow.show();
-      selectorWindow.focus();
-    }, 200);
-  });
-}
+        selectorWindow.show();
+        selectorWindow.focus();
+      }, 200);
+    });
+  }
 
 module.exports = { startAreaSelection };
 
