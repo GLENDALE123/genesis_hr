@@ -240,7 +240,8 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
     });
   }, []);
 
-  const handleImageClick = (index: number) => {
+  const handleImageClick = (e: React.MouseEvent, index: number) => {
+    e.stopPropagation(); // 부모 이벤트 전파 방지 (Dialog 닫힘 방지)
     setSelectedImageIndex(index);
     setLightboxOpen(true);
   };
@@ -251,7 +252,10 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
 
   return (
     <>
-      <div className={`grid ${gridClassName} gap-2`}>
+      <div 
+        className={`grid ${gridClassName} gap-2`}
+        onClick={(e) => e.stopPropagation()} // 부모 이벤트 전파 방지
+      >
         {images.map((url, index) => {
           const isLoaded = loadedImages[index];
           
@@ -263,7 +267,7 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
                   alt={`이미지 ${index + 1}`}
                   className={`w-full ${imageClassName} object-cover border cursor-pointer hover:opacity-80 transition-opacity select-none`}
                   style={{ borderRadius: 'var(--radius)' }}
-                  onClick={() => handleImageClick(index)}
+                  onClick={(e) => handleImageClick(e, index)}
                   loading="lazy"
                   decoding="async"
                   draggable={false}
@@ -281,7 +285,7 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
                   alt={`이미지 ${index + 1}`}
                   className={`w-full ${imageClassName} object-cover border cursor-pointer hover:opacity-80 transition-opacity select-none`}
                   style={{ borderRadius: 'var(--radius)' }}
-                  onClick={() => handleImageClick(index)}
+                  onClick={(e) => handleImageClick(e, index)}
                   draggable={false}
                   onDragStart={(e) => e.preventDefault()}
                   onError={() => {
@@ -295,7 +299,7 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
                   }}
                   className={`w-full ${imageClassName} bg-gray-200 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-md border cursor-pointer flex items-center justify-center relative`}
                   style={{ borderRadius: 'var(--radius)' }}
-                  onClick={() => handleImageClick(index)}
+                  onClick={(e) => handleImageClick(e, index)}
                 >
                   {/* 로딩 상태 UI */}
                   <Spinner className="size-8 text-primary" />

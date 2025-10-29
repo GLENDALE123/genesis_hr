@@ -115,7 +115,7 @@ const AppSidebarComponent = ({
     const checkScreenSize = () => {
       const width = window.innerWidth;
       setIsMobile(width < 768); // 모바일
-      setIsDesktop(width >= 1280); // 데스크톱 (use-device와 정합)
+      setIsDesktop(width >= 1440); // 데스크톱 (use-device와 정합)
     };
     
     checkScreenSize();

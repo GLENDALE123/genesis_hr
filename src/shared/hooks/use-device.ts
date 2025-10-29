@@ -1,9 +1,9 @@
 import * as React from "react"
 
-// Breakpoints (12-inch class 기준 반영)
+// Breakpoints (대형 태블릿 지원)
 // smartphone: < 768
-// tablet: 768 - 1279
-// desktop: >= 1280
+// tablet: 768 - 1439
+// desktop: >= 1440
 
 export function useDeviceType() {
   const [mounted, setMounted] = React.useState(false)
@@ -22,8 +22,8 @@ export function useDeviceType() {
   }
 
   const isSmartphone = width < 768
-  const isTablet = width >= 768 && width < 1280
-  const isDesktop = width >= 1280
+  const isTablet = width >= 768 && width < 1440
+  const isDesktop = width >= 1440
   return { isSmartphone, isTablet, isDesktop, width }
 }
 
