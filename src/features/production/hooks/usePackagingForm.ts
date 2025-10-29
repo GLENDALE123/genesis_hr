@@ -155,7 +155,44 @@ export const usePackagingForm = ({ report, isEditMode = false }: UseProductionFo
       value = value.replace(/[^0-9]/g, '');
     }
 
+    // 시간 필드 입력 형식 보정 (입력 중 자동 형식화)
+    if ((field === 'startTime' || field === 'endTime') && typeof value === 'string') {
+      value = formatTimeDuringTyping(value);
+    }
+
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // 입력 중 시간 자동 형식화: 숫자만 허용, 최대 4자리, 3자리 이상이면 콜론 삽입, 범위 보정(시 00-23, 분 00-59)
+  const formatTimeDuringTyping = (raw: string): string => {
+    const digits = (raw || '').replace(/[^0-9]/g, '').slice(0, 4);
+    if (digits.length <= 2) {
+      return digits; // 시만 입력 중
+    }
+    // HH:MM 구성 (분은 입력된 만큼만 표시)
+    let hh = digits.slice(0, 2);
+    let mm = digits.slice(2);
+    // 범위 보정 (부분 입력 시는 보정하지 않음, 최종 보정은 블러/제출에서)
+    return mm ? `${hh}:${mm}` : `${hh}:`;
+  };
+
+  // 블러/제출 시 최종 시간 확정: HH:mm로 패딩 및 범위 클램프
+  const finalizeTime = (raw: string): string => {
+    const digits = (raw || '').replace(/[^0-9]/g, '');
+    if (digits.length === 0) return '';
+    const hhNum = parseInt(digits.slice(0, 2).padEnd(2, '0'), 10);
+    const mmNum = parseInt(digits.slice(2, 4).padEnd(2, '0'), 10);
+    const hhClamped = Math.min(23, isNaN(hhNum) ? 0 : hhNum);
+    const mmClamped = Math.min(59, isNaN(mmNum) ? 0 : mmNum);
+    const hh = String(hhClamped).padStart(2, '0');
+    const mm = String(mmClamped).padStart(2, '0');
+    return `${hh}:${mm}`;
+  };
+
+  // 시간 입력 블러 시 최종 형식으로 확정 저장
+  const handleTimeBlur = (field: 'startTime' | 'endTime', raw: string) => {
+    const finalized = finalizeTime(raw);
+    setFormData(prev => ({ ...prev, [field]: finalized }));
   };
 
   // 발주번호 변경
@@ -235,8 +272,14 @@ export const usePackagingForm = ({ report, isEditMode = false }: UseProductionFo
       .flatMap(num => num.split(',').map(n => n.trim()))
       .filter(num => num && num !== 'T');
     
+    // 시간 필드 최종 형식 강제 (HH:mm)
+    const normalizedStart = formData.startTime ? finalizeTime(formData.startTime) : '';
+    const normalizedEnd = formData.endTime ? finalizeTime(formData.endTime) : '';
+
     return {
       ...formData,
+      startTime: normalizedStart,
+      endTime: normalizedEnd,
       orderNumbers: allOrderNumbers.length > 0 ? allOrderNumbers : ['']
     };
   };
@@ -257,6 +300,7 @@ export const usePackagingForm = ({ report, isEditMode = false }: UseProductionFo
     removeBox,
     handleStartTime,
     handleEndTime,
+    handleTimeBlur,
     validateAndPrepareSubmit
   };
 };

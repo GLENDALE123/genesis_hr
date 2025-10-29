@@ -48,6 +48,7 @@ export const PackagingReportForm: React.FC<PackagingReportFormProps> = ({
     removeBox,
     handleStartTime,
     handleEndTime,
+    handleTimeBlur,
     validateAndPrepareSubmit
   } = usePackagingForm({ report, isEditMode });
 
@@ -241,6 +242,7 @@ export const PackagingReportForm: React.FC<PackagingReportFormProps> = ({
                 placeholder="HH:MM"
                 inputMode="numeric"
                 pattern="[0-9]{2}:[0-9]{2}"
+                onBlur={(e) => handleTimeBlur('startTime', e.target.value)}
               />
               <Button
                 type="button"
@@ -265,6 +267,7 @@ export const PackagingReportForm: React.FC<PackagingReportFormProps> = ({
                 placeholder="HH:MM"
                 inputMode="numeric"
                 pattern="[0-9]{2}:[0-9]{2}"
+                onBlur={(e) => handleTimeBlur('endTime', e.target.value)}
               />
               <Button
                 type="button"
