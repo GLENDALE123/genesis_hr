@@ -53,8 +53,12 @@ const getLineBackgroundColor = (line?: string): string => {
   if (line.includes('증착2')) {
     return 'bg-purple-50/30 dark:bg-purple-950/20';
   }
-  // 코팅 관련 - 초록색 계열
-  if (line.includes('코팅')) {
+  // 2코팅 - 청록색 계열
+  if (line.includes('2코팅')) {
+    return 'bg-cyan-50/30 dark:bg-cyan-950/20';
+  }
+  // 1코팅 - 초록색 계열
+  if (line.includes('1코팅')) {
     return 'bg-green-50/30 dark:bg-green-950/20';
   }
   // 내부코팅 - 노란색 계열
