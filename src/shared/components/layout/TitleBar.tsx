@@ -1,15 +1,15 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Minus, Square, Copy, X, Camera, Crop } from 'lucide-react';
+import { Minus, Square, Copy, X, Camera, Crop, MousePointer } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { toast } from 'sonner';
+import { useElementCapture } from '@/shared/hooks/use-element-capture';
 
 interface TitleBarProps {
   className?: string;
 }
 
-type CaptureMode = 'window' | 'area';
 
 /**
  * Electron 커스텀 타이틀바
@@ -18,7 +18,7 @@ type CaptureMode = 'window' | 'area';
 export const TitleBar: React.FC<TitleBarProps> = ({ className }) => {
   const [isElectron, setIsElectron] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
-  const [captureMode, setCaptureMode] = useState<CaptureMode>('window');
+  const { isSelecting, startElementCapture, stopElementCapture } = useElementCapture();
 
   useEffect(() => {
     // Electron 환경 체크: contextBridge로 노출된 window.electron 존재 여부만 확인
@@ -53,50 +53,52 @@ export const TitleBar: React.FC<TitleBarProps> = ({ className }) => {
     window.electron?.window.close();
   };
 
-  // 캡처 모드 순환 전환
-  const toggleCaptureMode = () => {
-    const modes: CaptureMode[] = ['window', 'area'];
-    const currentIndex = modes.indexOf(captureMode);
-    const nextIndex = (currentIndex + 1) % modes.length;
-    setCaptureMode(modes[nextIndex]);
-    
-    const modeNames = {
-      window: '전체 윈도우',
-      area: '사각형 영역'
-    };
-    
-    toast.info(`캡처 모드: ${modeNames[modes[nextIndex]]}`, { duration: 1500 });
-  };
-
-  // 스크린샷 캡처 함수 (클립보드 복사)
-  const captureScreenshot = async () => {
+  // 전체 윈도우 캡처
+  const captureWindow = async () => {
     try {
-      const modeNames = {
-        window: '전체 윈도우',
-        area: '사각형 영역'
-      };
-      
-      toast.loading(`${modeNames[captureMode]} 캡처 중...`, { id: 'capture-toast' });
-      const result = await (window as any).electron?.window.captureScreenshot(captureMode);
+      toast.loading('전체 윈도우 캡처 중...', { id: 'capture-toast' });
+      const result = await (window as any).electron?.window.captureScreenshot('window');
       
       if (result?.success) {
-        toast.success('스크린샷이 클립보드에 복사되었습니다.', { 
-          id: 'capture-toast',
-          duration: 2000
-        });
+        toast.dismiss('capture-toast');
       } else if (result?.canceled) {
         toast.dismiss('capture-toast');
       } else {
-        toast.error('스크린샷 캡처에 실패했습니다.', { 
-          id: 'capture-toast',
-          description: result?.error || '알 수 없는 오류'
-        });
+        toast.error('캡처에 실패했습니다.', { id: 'capture-toast', description: result?.error });
       }
     } catch (error: any) {
-      console.error('스크린샷 캡처 오류:', error);
-      toast.error('스크린샷 캡처 중 오류가 발생했습니다.', { 
-        id: 'capture-toast',
-        description: error.message 
+      toast.error('캡처 중 오류가 발생했습니다.', { id: 'capture-toast', description: error.message });
+    }
+  };
+
+  // 영역 선택 캡처
+  const captureArea = async () => {
+    try {
+      toast.loading('영역 선택 캡처 중...', { id: 'capture-toast' });
+      const result = await (window as any).electron?.window.captureScreenshot('area');
+      
+      if (result?.success) {
+        toast.dismiss('capture-toast');
+      } else if (result?.canceled) {
+        toast.dismiss('capture-toast');
+      } else {
+        toast.error('캡처에 실패했습니다.', { id: 'capture-toast', description: result?.error });
+      }
+    } catch (error: any) {
+      toast.error('캡처 중 오류가 발생했습니다.', { id: 'capture-toast', description: error.message });
+    }
+  };
+
+  // 요소 선택 캡처
+  const captureElement = () => {
+    if (isSelecting) {
+      stopElementCapture();
+      toast.dismiss('element-capture-mode');
+    } else {
+      startElementCapture();
+      toast.info('요소 선택 모드: 마우스를 움직여 요소를 선택하세요', { 
+        id: 'element-capture-mode',
+        duration: 3000 
       });
     }
   };
@@ -130,26 +132,35 @@ export const TitleBar: React.FC<TitleBarProps> = ({ className }) => {
           WebkitAppRegion: 'no-drag',
         } as React.CSSProperties}
       >
-        {/* 캡처 모드 전환 버튼 */}
+        {/* 전체 윈도우 캡처 */}
         <button
           className="h-full w-8 flex items-center justify-center hover:bg-accent transition-colors border-r border-border"
-          onClick={toggleCaptureMode}
-          title={
-            captureMode === 'window' ? '전체 윈도우 캡처 (우클릭: 모드 전환)' :
-            '사각형 영역 캡처 (우클릭: 모드 전환)'
-          }
-        >
-          {captureMode === 'window' && <Camera className="h-3.5 w-3.5" strokeWidth={1.5} />}
-          {captureMode === 'area' && <Crop className="h-3.5 w-3.5" strokeWidth={1.5} />}
-        </button>
-        
-        {/* 스크린샷 캡처 버튼 */}
-        <button
-          className="h-full w-10 flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors border-r border-border"
-          onClick={captureScreenshot}
-          title="캡처 실행"
+          onClick={captureWindow}
+          title="전체 윈도우 캡처"
         >
           <Camera className="h-3.5 w-3.5" strokeWidth={1.5} />
+        </button>
+        
+        {/* 영역 선택 캡처 */}
+        <button
+          className="h-full w-8 flex items-center justify-center hover:bg-accent transition-colors border-r border-border"
+          onClick={captureArea}
+          title="사각형 영역 캡처"
+        >
+          <Crop className="h-3.5 w-3.5" strokeWidth={1.5} />
+        </button>
+        
+        {/* 요소 선택 캡처 */}
+        <button
+          className={`h-full w-8 flex items-center justify-center transition-colors border-r border-border ${
+            isSelecting 
+              ? 'bg-primary text-primary-foreground' 
+              : 'hover:bg-accent'
+          }`}
+          onClick={captureElement}
+          title={isSelecting ? '요소 선택 모드 종료' : '요소 선택 캡처'}
+        >
+          <MousePointer className="h-3.5 w-3.5" strokeWidth={1.5} />
         </button>
         
         {/* 최소화 버튼 */}

@@ -72,6 +72,16 @@ contextBridge.exposeInMainWorld('electron', {
         return { success: false, error: error.message };
       }
     },
+    // 특정 요소 캡처 (요소 선택자 또는 요소 ID 전달)
+    captureElement: async (elementSelector) => {
+      try {
+        const result = await ipcRenderer.invoke('capture-element', elementSelector);
+        return result;
+      } catch (error) {
+        console.error('❌ [Preload] 요소 캡처 실패:', error);
+        return { success: false, error: error.message };
+      }
+    },
   },
 
   /**

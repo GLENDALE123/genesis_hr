@@ -60,6 +60,7 @@ export interface ElectronAPI {
     resize: (options: { width: number; height: number; center?: boolean }) => Promise<{ success: boolean }>;
     getSize: () => Promise<{ width: number; height: number } | null>;
     captureScreenshot: (mode?: 'window' | 'area' | 'select') => Promise<{ success: boolean; error?: string }>;
+    captureElement: (elementSelector: string) => Promise<{ success: boolean; error?: string }>;
   };
 
   /**

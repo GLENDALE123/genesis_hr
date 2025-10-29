@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "main": "electron/main.js",
+  "description": "TMS 통합관리시스템",
+  "author": "HS-HR",
   "scripts": {
     "dev": "next dev --turbo",
     "dev:external": "next dev --turbo -H 0.0.0.0 -p 3000",
@@ -126,7 +128,14 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "createStartMenuShortcut": true,
+      "allowElevation": true,
+      "differentialPackage": false,
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": false,
+      "unicode": true,
+      "warningsAsErrors": false,
+      "artifactName": "TMS 통합관리시스템 Setup ${version}.${ext}"
     },
     "extraMetadata": {
       "main": "electron/main.js"

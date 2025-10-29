@@ -1,5 +1,6 @@
-const { ipcMain, BrowserWindow, clipboard, desktopCapturer, screen, nativeImage } = require('electron');
+const { ipcMain, BrowserWindow, clipboard, desktopCapturer, screen, nativeImage, webContents } = require('electron');
 const { startAreaSelection } = require('./area-selector');
+const { createScreenshotPreview } = require('./screenshot-preview');
 
 /**
  * IPC 핸들러 등록
@@ -64,6 +65,120 @@ module.exports = function registerIpcHandlers() {
     return null;
   });
 
+  // 특정 요소 캡처
+  ipcMain.handle('capture-element', async (event, elementSelector) => {
+    try {
+      const window = BrowserWindow.fromWebContents(event.sender);
+      if (!window) {
+        return { success: false, error: 'Window not found' };
+      }
+
+      // 렌더러 프로세스에서 요소의 bounds 가져오기
+      const bounds = await window.webContents.executeJavaScript(`
+        (function() {
+          const element = document.querySelector('${elementSelector}');
+          if (!element) return null;
+          
+          const rect = element.getBoundingClientRect();
+          const scrollX = window.scrollX || window.pageXOffset;
+          const scrollY = window.scrollY || window.pageYOffset;
+          
+          return {
+            x: Math.round(rect.left + scrollX),
+            y: Math.round(rect.top + scrollY),
+            width: Math.round(rect.width),
+            height: Math.round(rect.height)
+          };
+        })();
+      `);
+
+      if (!bounds) {
+        return { success: false, error: 'Element not found' };
+      }
+
+      // 전체 창 캡처
+      const fullWindowImage = await window.capturePage();
+      
+      if (!fullWindowImage) {
+        return { success: false, error: 'Failed to capture window' };
+      }
+
+      // 요소 영역만 잘라내기
+      const image = fullWindowImage.crop({
+        x: bounds.x,
+        y: bounds.y,
+        width: bounds.width,
+        height: bounds.height
+      });
+
+      // 미리보기 창 표시
+      await createScreenshotPreview(
+        image,
+        (img) => {
+          clipboard.writeImage(img);
+          console.log('요소가 클립보드에 복사되었습니다.');
+        },
+        (img) => {
+          // 인쇄용 임시 윈도우 생성
+          const { BrowserWindow } = require('electron');
+          const printWindow = new BrowserWindow({
+            show: false,
+            webPreferences: {
+              nodeIntegration: false,
+              contextIsolation: true
+            }
+          });
+
+          const dataURL = img.toDataURL();
+          const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+  </style>
+</head>
+<body>
+  <img src="${dataURL}" alt="Print">
+</body>
+</html>
+          `;
+
+          printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
+          
+          printWindow.webContents.once('did-finish-load', () => {
+            printWindow.webContents.print({ silent: false }, (success) => {
+              if (success) {
+                console.log('인쇄 성공');
+              } else {
+                console.error('인쇄 실패');
+              }
+              if (printWindow && !printWindow.isDestroyed()) {
+                printWindow.close();
+              }
+            });
+          });
+        }
+      );
+
+      return { success: true };
+    } catch (error) {
+      console.error('요소 캡처 오류:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
   // 스크린샷 캡처 (클립보드에 복사)
   ipcMain.handle('capture-screenshot', async (event, mode = 'window') => {
     try {
@@ -112,9 +227,68 @@ module.exports = function registerIpcHandlers() {
         image = await window.capturePage();
       }
 
-      // 클립보드에 이미지 복사
+      // 미리보기 창 표시
       if (image) {
-        clipboard.writeImage(image);
+        await createScreenshotPreview(
+          image,
+          // 클립보드 복사 콜백
+          (img) => {
+            clipboard.writeImage(img);
+            console.log('이미지가 클립보드에 복사되었습니다.');
+          },
+          // 인쇄 콜백
+          (img) => {
+            // 인쇄용 임시 윈도우 생성
+            const printWindow = new BrowserWindow({
+              show: false,
+              webPreferences: {
+                nodeIntegration: false,
+                contextIsolation: true
+              }
+            });
+
+            const dataURL = img.toDataURL();
+            const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+  </style>
+</head>
+<body>
+  <img src="${dataURL}" alt="Print">
+</body>
+</html>
+            `;
+
+            printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
+            
+            printWindow.webContents.once('did-finish-load', () => {
+              printWindow.webContents.print({ silent: false }, (success) => {
+                if (success) {
+                  console.log('인쇄 성공');
+                } else {
+                  console.error('인쇄 실패');
+                }
+                if (printWindow && !printWindow.isDestroyed()) {
+                  printWindow.close();
+                }
+              });
+            });
+          }
+        );
       } else {
         return { success: false, error: 'Failed to capture image' };
       }
