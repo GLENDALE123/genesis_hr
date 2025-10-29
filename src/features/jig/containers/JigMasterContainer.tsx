@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { JigMasterListView, JigMasterDetail, JigListForm, JigMasterFilterPanel } from '../components';
 import { JigMasterItem, CreateJigMasterItemData } from '../types';
 import { useJigMaster } from '../hooks/useJigMaster';
@@ -14,7 +14,7 @@ import { Alert, AlertDescription } from '@/shared/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 
 export const JigMasterContainer: React.FC = () => {
-  const { masterItems, isLoading, isFetching, error, updateMasterItem, deleteMasterItem, createMasterItem, autocompleteData, getJigsByDateRange } = useJigMaster();
+  const { masterItems, isLoading, isFetching, error, updateMasterItem, deleteMasterItem, createMasterItem, autocompleteData, subscribeToMastersByDateRange, subscribeToMasters } = useJigMaster();
   const userRole = useUserRole() || 'Member';
   const { user, userProfile } = useAuthStore();
   
@@ -29,6 +29,8 @@ export const JigMasterContainer: React.FC = () => {
     yesterday,
     isSearching
   } = useJigMasterFilters();
+  
+  const unsubscribeRef = useRef<(() => void) | null>(null);
   
   // currentUserProfile 메모이제이션 최적화
   const currentUserProfile = useMemo(() => {
@@ -50,12 +52,35 @@ export const JigMasterContainer: React.FC = () => {
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // 날짜 필터 변경 시 구독 업데이트 (검색어가 없을 때만)
+  // 날짜 필터 또는 검색어 변경 시 구독 업데이트
   useEffect(() => {
-    if (!filters.searchTerm && filters.startDate && filters.endDate) {
-      getJigsByDateRange(filters.startDate, filters.endDate);
+    // 이전 구독 해제
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+      unsubscribeRef.current = null;
     }
-  }, [filters.startDate, filters.endDate, filters.searchTerm, getJigsByDateRange]);
+
+    const hasSearch = filters.searchTerm.trim().length > 0;
+
+    if (hasSearch) {
+      // 검색어가 있으면 전체 데이터 구독
+      unsubscribeRef.current = subscribeToMasters();
+    } else if (filters.startDate && filters.endDate) {
+      // 검색어가 없으면 날짜 필터 적용
+      unsubscribeRef.current = subscribeToMastersByDateRange(
+        filters.startDate,
+        filters.endDate
+      );
+    }
+
+    // 컴포넌트 언마운트 시 구독 해제
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+    };
+  }, [filters.startDate, filters.endDate, filters.searchTerm, subscribeToMastersByDateRange, subscribeToMasters]);
 
   // 검색 필터링
   const filteredJigs = useMemo(() => {

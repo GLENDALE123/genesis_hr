@@ -4,7 +4,6 @@
  * 지그 마스터 관리 훅
  */
 
-import { useEffect } from 'react';
 import { useJigMasterStore } from '../store/jigMasterStore';
 import { JigMasterItem, CreateJigMasterItemData, UpdateJigMasterItemData } from '../types';
 import { useAuthStore } from '@/features/auth/store/authStore';
@@ -20,6 +19,7 @@ export const useJigMaster = () => {
     autocompleteData,
     fetchMasterItems,
     subscribeToMasters,
+    subscribeToMastersByDateRange,
     getJigsByDateRange,
     createMasterItem,
     updateMasterItem,
@@ -28,13 +28,14 @@ export const useJigMaster = () => {
     fetchAutocompleteData,
   } = useJigMasterStore();
 
-  useEffect(() => {
-    const unsubscribe = subscribeToMasters();
-    
-    return () => {
-      unsubscribe();
-    };
-  }, [subscribeToMasters]);
+  // 초기 구독은 제거하고, 컨테이너에서 날짜 필터 기반으로 구독하도록 변경
+  // useEffect(() => {
+  //   const unsubscribe = subscribeToMasters();
+  //   
+  //   return () => {
+  //     unsubscribe();
+  //   };
+  // }, [subscribeToMasters]);
 
   const handleCreateMasterItem = async (data: CreateJigMasterItemData, imageFiles: File[]) => {
     if (!user) throw new Error('User not authenticated');
@@ -59,5 +60,7 @@ export const useJigMaster = () => {
     updateMasterItem,
     deleteMasterItem,
     getJigsByDateRange,
+    subscribeToMastersByDateRange,
+    subscribeToMasters,
   };
 };

@@ -138,7 +138,9 @@ export const useJigMasterStore = create<JigMasterState & JigMasterActions>()(
           },
           lastUpdated: Date.now(),
           lastFetchTimestamp: Date.now(),
-          error: null
+          error: null,
+          isLoading: false,
+          isFetching: false
         });
       },
 

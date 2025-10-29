@@ -186,13 +186,17 @@ export const getJigMasterItemsByDateRange = async (
   startDate: string,
   endDate: string
 ): Promise<JigMasterItem[]> => {
+  // 시작일의 시작 시간부터
+  const startDateObj = new Date(startDate);
+  startDateObj.setHours(0, 0, 0, 0);
+  
   // 종료일의 끝 시간까지 포함
   const endDateObj = new Date(endDate);
   endDateObj.setHours(23, 59, 59, 999);
 
   const q = query(
     getCollectionRef(JIG_COLLECTIONS.MASTER),
-    where('createdAt', '>=', startDate),
+    where('createdAt', '>=', startDateObj.toISOString()),
     where('createdAt', '<=', endDateObj.toISOString()),
     orderBy('createdAt', 'desc')
   );
@@ -215,12 +219,17 @@ export const subscribeToJigMastersByDateRange = (
   onUpdate: (masters: JigMasterItem[]) => void,
   onError: (error: Error) => void
 ): (() => void) => {
+  // 시작일의 시작 시간부터
+  const startDateObj = new Date(startDate);
+  startDateObj.setHours(0, 0, 0, 0);
+  
+  // 종료일의 끝 시간까지 포함
   const endDateObj = new Date(endDate);
   endDateObj.setHours(23, 59, 59, 999);
 
   const q = query(
     getCollectionRef(JIG_COLLECTIONS.MASTER),
-    where('createdAt', '>=', startDate),
+    where('createdAt', '>=', startDateObj.toISOString()),
     where('createdAt', '<=', endDateObj.toISOString()),
     orderBy('createdAt', 'desc')
   );
