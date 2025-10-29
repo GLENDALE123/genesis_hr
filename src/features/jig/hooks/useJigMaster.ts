@@ -14,11 +14,13 @@ export const useJigMaster = () => {
   const {
     masterItems,
     isLoading,
+    isFetching,
     error,
     selectedItem,
     autocompleteData,
     fetchMasterItems,
     subscribeToMasters,
+    getJigsByDateRange,
     createMasterItem,
     updateMasterItem,
     deleteMasterItem,
@@ -48,6 +50,7 @@ export const useJigMaster = () => {
   return {
     masterItems,
     isLoading,
+    isFetching,
     error,
     selectedItem,
     autocompleteData,
@@ -55,5 +58,6 @@ export const useJigMaster = () => {
     createMasterItem: handleCreateMasterItem,
     updateMasterItem,
     deleteMasterItem,
+    getJigsByDateRange,
   };
 };

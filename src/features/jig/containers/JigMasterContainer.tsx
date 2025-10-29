@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
-import { JigMasterListView, JigMasterDetail, JigListForm } from '../components';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { JigMasterListView, JigMasterDetail, JigListForm, JigMasterFilterPanel } from '../components';
 import { JigMasterItem, CreateJigMasterItemData } from '../types';
 import { useJigMaster } from '../hooks/useJigMaster';
+import { useJigMasterFilters } from '../hooks/useJigMasterFilters';
 import { useUserRole } from '@/features/auth/hooks/useUserRole';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
 import { useAuthStore } from '@/features/auth/store/authStore';
@@ -13,9 +14,21 @@ import { Alert, AlertDescription } from '@/shared/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 
 export const JigMasterContainer: React.FC = () => {
-  const { masterItems, isLoading, error, updateMasterItem, deleteMasterItem, createMasterItem, autocompleteData } = useJigMaster();
+  const { masterItems, isLoading, isFetching, error, updateMasterItem, deleteMasterItem, createMasterItem, autocompleteData, getJigsByDateRange } = useJigMaster();
   const userRole = useUserRole() || 'Member';
   const { user, userProfile } = useAuthStore();
+  
+  // 필터 훅 사용
+  const {
+    filters,
+    setStartDate,
+    setEndDate,
+    setSearchTerm,
+    resetFilters,
+    today,
+    yesterday,
+    isSearching
+  } = useJigMasterFilters();
   
   // currentUserProfile 메모이제이션 최적화
   const currentUserProfile = useMemo(() => {
@@ -37,8 +50,43 @@ export const JigMasterContainer: React.FC = () => {
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  // 날짜 필터 변경 시 구독 업데이트 (검색어가 없을 때만)
+  useEffect(() => {
+    if (!filters.searchTerm && filters.startDate && filters.endDate) {
+      getJigsByDateRange(filters.startDate, filters.endDate);
+    }
+  }, [filters.startDate, filters.endDate, filters.searchTerm, getJigsByDateRange]);
+
+  // 검색 필터링
+  const filteredJigs = useMemo(() => {
+    if (!filters.searchTerm.trim()) return masterItems;
+    
+    const search = filters.searchTerm.toLowerCase().trim();
+    if (search.length < 2) return masterItems;
+    
+    const normalizedSearch = search.replace(/\s+/g, '');
+    
+    return masterItems.filter(jig => {
+      const productName = (jig.productName || jig.itemName || '').toLowerCase().replace(/\s+/g, '');
+      const partName = jig.partName.toLowerCase().replace(/\s+/g, '');
+      const jigNumber = (jig.jigNumber || jig.itemNumber || '').toLowerCase().replace(/\s+/g, '');
+      const orderNumber = (jig.orderNumber || '').toLowerCase().replace(/\s+/g, '');
+      const supplier = (jig.supplier || '').toLowerCase().replace(/\s+/g, '');
+      const requestType = jig.requestType.toLowerCase().replace(/\s+/g, '');
+      const remarks = (jig.remarks || '').toLowerCase().replace(/\s+/g, '');
+      
+      return productName.includes(normalizedSearch) ||
+             partName.includes(normalizedSearch) ||
+             jigNumber.includes(normalizedSearch) ||
+             orderNumber.includes(normalizedSearch) ||
+             supplier.includes(normalizedSearch) ||
+             requestType.includes(normalizedSearch) ||
+             remarks.includes(normalizedSearch);
+    });
+  }, [masterItems, filters.searchTerm]);
+
   // 모달이 열려있을 때 실시간으로 업데이트된 데이터 반영
-  const currentJig = selectedJig ? masterItems.find(item => item.id === selectedJig.id) || selectedJig : null;
+  const currentJig = selectedJig ? filteredJigs.find(item => item.id === selectedJig.id) || selectedJig : null;
 
   // 이벤트 핸들러들을 useCallback으로 메모이제이션
   const handleSelectJig = useCallback((jig: JigMasterItem) => {
@@ -92,19 +140,11 @@ export const JigMasterContainer: React.FC = () => {
   }, []);
 
   // 로딩 상태 - 초기 로딩 시에만 스켈레톤 표시
-  if (isLoading && masterItems.length === 0) {
+  if (isLoading && filteredJigs.length === 0) {
     return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-10 w-64" />
-          <Skeleton className="h-10 w-32" />
-        </div>
-        <div className="border rounded-lg p-4">
-          <Skeleton className="h-12 w-full mb-2" />
-          {[...Array(10)].map((_, i) => (
-            <Skeleton key={i} className="h-16 w-full mb-1" />
-          ))}
-        </div>
+      <div className="h-full flex flex-col space-y-4">
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="flex-1" />
       </div>
     );
   }
@@ -122,18 +162,31 @@ export const JigMasterContainer: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col h-full">
-      {/* 메인 콘텐츠 */}
-      <div className="flex-1 flex flex-col min-h-0">
-        <div className="flex-1 min-h-0">
-          <JigMasterListView
-            jigs={masterItems}
-            onSelectJig={handleSelectJig}
-            currentUserProfile={currentUserProfile}
-            onOpenFormModal={handleOpenFormModal}
-          />
-        </div>
-      </div>
+    <div className="h-full flex flex-col space-y-4 p-0">
+      {/* 필터 패널 */}
+      <JigMasterFilterPanel
+        startDate={filters.startDate}
+        endDate={filters.endDate}
+        searchTerm={filters.searchTerm}
+        onStartDateChange={setStartDate}
+        onEndDateChange={setEndDate}
+        onSearchTermChange={setSearchTerm}
+        onReset={resetFilters}
+        today={today}
+        yesterday={yesterday}
+        totalCount={filteredJigs.length}
+        isSearching={isSearching}
+        isFetching={isFetching}
+        onOpenFormModal={handleOpenFormModal}
+      />
+
+      {/* 지그 목록 테이블 */}
+      <JigMasterListView
+        jigs={filteredJigs}
+        onSelectJig={handleSelectJig}
+        currentUserProfile={currentUserProfile}
+        totalCount={filteredJigs.length}
+      />
 
       {/* 지그 상세 모달 */}
       <JigMasterDetail

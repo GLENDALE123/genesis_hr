@@ -273,7 +273,7 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
   }
 
   return (
-    <div className="h-full flex flex-col space-y-4">
+    <div className="min-h-full flex flex-col space-y-4 pb-6">
       {/* 헤더 */}
       <div className="flex justify-end">
         {canManage && (
@@ -423,8 +423,8 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
       </Card>
 
       {/* 테이블 */}
-      <Card className="flex-1 overflow-hidden flex flex-col">
-        <CardContent className="p-0 flex-1 overflow-auto">
+      <Card className="flex-1">
+        <CardContent className="p-0">
           {loading && schedules.length === 0 ? (
             <div className="space-y-2 p-4">
               <Skeleton className="h-12 w-full" />

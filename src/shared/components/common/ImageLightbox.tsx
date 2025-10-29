@@ -64,7 +64,14 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
     setScale(prev => {
       const newScale = prev + delta;
       // 1배 ~ 3배 사이로 제한
-      return Math.max(1, Math.min(3, newScale));
+      const finalScale = Math.max(1, Math.min(3, newScale));
+      
+      // 1배로 줌아웃되면 위치 중앙으로 초기화
+      if (finalScale === 1) {
+        setPosition({ x: 0, y: 0 });
+      }
+      
+      return finalScale;
     });
   }, []);
 

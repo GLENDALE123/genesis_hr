@@ -12,7 +12,7 @@ import {
   onCollectionSnapshot,
   getCollectionRef
 } from '@/shared/services/firebase/firestore';
-import { query, orderBy, getDocs, onSnapshot } from 'firebase/firestore';
+import { query, orderBy, getDocs, onSnapshot, where } from 'firebase/firestore';
 import { uploadImageFilesParallel, deleteFile } from '@/shared/services/firebase/storage';
 import { JigMasterItem, CreateJigMasterItemData, UpdateJigMasterItemData } from '../types';
 import { JIG_COLLECTIONS, JIG_STORAGE_PATHS } from '../constants';
@@ -181,6 +181,80 @@ export const subscribeToJigMasters = (
   }, onError);
 };
 
+// 지그 마스터 날짜 범위 조회
+export const getJigMasterItemsByDateRange = async (
+  startDate: string,
+  endDate: string
+): Promise<JigMasterItem[]> => {
+  // 종료일의 끝 시간까지 포함
+  const endDateObj = new Date(endDate);
+  endDateObj.setHours(23, 59, 59, 999);
+
+  const q = query(
+    getCollectionRef(JIG_COLLECTIONS.MASTER),
+    where('createdAt', '>=', startDate),
+    where('createdAt', '<=', endDateObj.toISOString()),
+    orderBy('createdAt', 'desc')
+  );
+  
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => {
+    const data = doc.data();
+    const { id: _, ...cleanData } = data as any;
+    return {
+      id: doc.id,
+      ...cleanData
+    } as JigMasterItem;
+  });
+};
+
+// 지그 마스터 날짜 범위 실시간 구독
+export const subscribeToJigMastersByDateRange = (
+  startDate: string,
+  endDate: string,
+  onUpdate: (masters: JigMasterItem[]) => void,
+  onError: (error: Error) => void
+): (() => void) => {
+  const endDateObj = new Date(endDate);
+  endDateObj.setHours(23, 59, 59, 999);
+
+  const q = query(
+    getCollectionRef(JIG_COLLECTIONS.MASTER),
+    where('createdAt', '>=', startDate),
+    where('createdAt', '<=', endDateObj.toISOString()),
+    orderBy('createdAt', 'desc')
+  );
+  
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let lastIds: string = '';
+  const DEBOUNCE_DELAY = 500;
+  
+  return onSnapshot(q, (snapshot) => {
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+    }
+    
+    debounceTimer = setTimeout(() => {
+      const masters = snapshot.docs.map(doc => {
+        const data = doc.data();
+        const { id: _, ...cleanData } = data as any;
+        return {
+          id: doc.id,
+          ...cleanData
+        } as JigMasterItem;
+      });
+      
+      const currentIds = masters.map(m => m.id).join(',');
+      
+      if (lastIds === currentIds) {
+        return;
+      }
+      
+      lastIds = currentIds;
+      onUpdate(masters);
+    }, DEBOUNCE_DELAY);
+  }, onError);
+};
 
 // 자동완성 데이터 조회 (캐시 최적화)
 let autocompleteCache: {

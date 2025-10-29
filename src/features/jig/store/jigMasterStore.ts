@@ -11,6 +11,7 @@ import {
   deleteJigMasterItem,
   getAutocompleteData,
   subscribeToJigMasters,
+  subscribeToJigMastersByDateRange,
 } from '../services';
 import { persist } from 'zustand/middleware';
 
@@ -47,6 +48,8 @@ interface JigMasterActions {
   setMasters: (items: JigMasterItem[]) => void;
   fetchMasterItems: () => Promise<void>;
   subscribeToMasters: () => () => void;
+  subscribeToMastersByDateRange: (startDate: string, endDate: string) => () => void;
+  getJigsByDateRange: (startDate: string, endDate: string) => void;
   createMasterItem: (data: CreateJigMasterItemData, imageFiles: File[], currentUser: { uid: string; displayName: string }) => Promise<void>;
   updateMasterItem: (id: string, updates: Partial<JigMasterItem>) => Promise<void>;
   deleteMasterItem: (id: string) => Promise<void>;
@@ -204,6 +207,76 @@ export const useJigMasterStore = create<JigMasterState & JigMasterActions>()(
         );
 
         return unsubscribe;
+      },
+
+      subscribeToMastersByDateRange: (startDate, endDate) => {
+        const cachedMasters = get().getCachedMasters();
+        
+        if (cachedMasters) {
+          set({ masterItems: cachedMasters, isLoading: false, isFetching: true });
+        } else {
+          set({ isLoading: true, isFetching: false });
+        }
+        
+        set({ error: null });
+        
+        const unsubscribe = subscribeToJigMastersByDateRange(
+          startDate,
+          endDate,
+          (masters) => {
+            const currentItems = get().masterItems;
+            
+            if (currentItems.length !== masters.length) {
+              get().setMasters(masters);
+              return;
+            }
+            
+            const currentIds = currentItems.map(item => item.id).join(',');
+            const newIds = masters.map(item => item.id).join(',');
+            
+            if (currentIds !== newIds) {
+              get().setMasters(masters);
+            } else {
+              set({ isLoading: false, isFetching: false });
+            }
+          },
+          (error) => {
+            set({ 
+              error: error.message,
+              isLoading: false,
+              isFetching: false
+            });
+          }
+        );
+
+        return unsubscribe;
+      },
+
+      getJigsByDateRange: (startDate, endDate) => {
+        const cachedMasters = get().getCachedMasters();
+        
+        if (cachedMasters) {
+          set({ masterItems: cachedMasters, isLoading: false, isFetching: true });
+        } else {
+          set({ isLoading: true, isFetching: false });
+        }
+        
+        set({ error: null });
+        
+        subscribeToJigMastersByDateRange(
+          startDate,
+          endDate,
+          (masters) => {
+            get().setMasters(masters);
+          },
+          (error) => {
+            set({ 
+              error: error.message,
+              isLoading: false,
+              isFetching: false
+            });
+          }
+        );
       },
 
       createMasterItem: async (data, imageFiles, currentUser) => {
