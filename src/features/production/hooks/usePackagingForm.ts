@@ -194,6 +194,23 @@ export const usePackagingForm = ({ report, isEditMode = false }: UseProductionFo
     const finalized = finalizeTime(raw);
     setFormData(prev => ({ ...prev, [field]: finalized }));
   };
+  
+  // 시/분 분리 파싱 함수: "HH:mm" -> ["HH", "mm"]
+  const parseTime = (timeStr: string): [string, string] => {
+    if (!timeStr) return ['00', '00'];
+    const parts = timeStr.split(':');
+    if (parts.length !== 2) return ['00', '00'];
+    const hour = parts[0]?.padStart(2, '0') || '00';
+    const minute = parts[1]?.padStart(2, '0') || '00';
+    return [hour, minute];
+  };
+  
+  // 시/분 결합 포맷 함수: "HH", "mm" -> "HH:mm"
+  const formatTimeDisplay = (hour: string, minute: string): string => {
+    const h = hour.padStart(2, '0');
+    const m = minute.padStart(2, '0');
+    return `${h}:${m}`;
+  };
 
   // 발주번호 변경
   const handleOrderNumberChange = (index: number, value: string) => {
@@ -301,6 +318,8 @@ export const usePackagingForm = ({ report, isEditMode = false }: UseProductionFo
     handleStartTime,
     handleEndTime,
     handleTimeBlur,
+    parseTime,
+    formatTimeDisplay,
     validateAndPrepareSubmit
   };
 };
