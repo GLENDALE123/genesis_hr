@@ -252,6 +252,20 @@ export const groupInspectionsByOrder = (
   inspections.forEach(inspection => {
     const orderNumber = inspection.orderNumber;
     
+    // 공정검사 호환: 상위 workLine이 비어있을 경우 processLines의 첫 작업라인을 사용
+    const deriveWorkLine = (insp: QualityInspection): string | undefined => {
+      if (insp && insp.workLine) {
+        return insp.workLine;
+      }
+      if (insp && insp.inspectionType === 'inProcess' && insp.processLines && insp.processLines.length > 0) {
+        const firstLine = insp.processLines[0];
+        if (firstLine && firstLine.workLine) {
+          return firstLine.workLine as unknown as string;
+        }
+      }
+      return undefined;
+    };
+
     if (!groupedMap.has(orderNumber)) {
       groupedMap.set(orderNumber, {
         orderNumber,
@@ -267,7 +281,7 @@ export const groupInspectionsByOrder = (
           postProcess: inspection.postProcess,
           injectionMaterial: inspection.injectionMaterial,
           injectionColor: inspection.injectionColor,
-          workLine: inspection.workLine,
+          workLine: deriveWorkLine(inspection),
         },
         incoming: [],
         inProcess: [],
@@ -309,9 +323,17 @@ export const groupInspectionsByOrder = (
     
     // 공정검사에서 workLine 찾기
     group.inProcess.forEach(insp => {
-      if (insp.workLine) {
+      const wl = (function() {
+        if (insp.workLine) return insp.workLine;
+        if (insp.processLines && insp.processLines.length > 0) {
+          const first = insp.processLines[0];
+          if (first && first.workLine) return first.workLine as unknown as string;
+        }
+        return undefined;
+      })();
+      if (wl) {
         inspectionsWithWorkLine.push({
-          inspection: insp,
+          inspection: { ...insp, workLine: wl },
           date: new Date(insp.createdAt).getTime()
         });
       }

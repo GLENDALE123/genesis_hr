@@ -19,6 +19,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/components/ui/dialog';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+} from '@/shared/components/ui/sheet';
+import { useDeviceType } from '@/shared/hooks/use-device';
+import { ArrowLeft } from 'lucide-react';
 import { ProductionRequestType } from '../services/productionRequestService';
 import { ProductionRequestForm } from './ProductionRequestForm';
 import { useImageUpload } from '@/shared/hooks';
@@ -49,6 +58,8 @@ const ProductionRequestFormModalComponent: React.FC<ProductionRequestFormModalPr
   currentUserName = '',
   inline = false,
 }) => {
+  const { isSmartphone, isTablet } = useDeviceType();
+  const isMobileOrTablet = isSmartphone || isTablet;
   // 이미지 업로드 훅 사용
   const imageUploadHook = useImageUpload();
   
