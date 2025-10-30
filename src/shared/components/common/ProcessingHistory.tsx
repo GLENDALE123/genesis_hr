@@ -89,9 +89,9 @@ export const ProcessingHistory: React.FC<ProcessingHistoryProps> = ({
   }
 
   return (
-    <div className={`space-y-2 ${className}`}>
+    <div className={`space-y-2 overflow-x-auto ${className}`}>
       <div className="text-sm font-medium text-foreground">처리 이력</div>
-      <div>
+      <div className="w-full min-w-max">
         {history.map((entry, index) => (
           <div
             key={entry.id || index}
@@ -110,7 +110,7 @@ export const ProcessingHistory: React.FC<ProcessingHistoryProps> = ({
               {entry.status}
             </Badge>
             {getActionText(entry) && (
-              <span className="text-muted-foreground flex-1">
+              <span className="text-muted-foreground flex-none whitespace-nowrap">
                 {getActionText(entry)}
               </span>
             )}
