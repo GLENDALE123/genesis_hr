@@ -216,19 +216,63 @@ const ProductionRequestFormModalComponent: React.FC<ProductionRequestFormModalPr
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent 
-        className="max-w-3xl max-h-[90vh] flex flex-col p-0"
-        stickyHeader={
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold">신규 생산관리부 요청</DialogTitle>
-          </DialogHeader>
-        }
-        stickyFooter={FormFooter}
-      >
-        {FormContent}
-      </DialogContent>
-    </Dialog>
+    <>
+      {!isMobileOrTablet && (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+          <DialogContent 
+            className="max-w-3xl max-h-[90vh] flex flex-col p-0"
+            stickyHeader={
+              <DialogHeader>
+                <DialogTitle className="text-xl font-bold">신규 생산관리부 요청</DialogTitle>
+              </DialogHeader>
+            }
+            stickyFooter={FormFooter}
+          >
+            {FormContent}
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {isMobileOrTablet && (
+        <Sheet open={isOpen} onOpenChange={onClose}>
+          <SheetContent
+            side="right"
+            fullscreen
+            animationVariant={isTablet ? 'tablet' : 'default'}
+            hideClose
+            className="w-full max-w-none h-screen overflow-y-auto p-0"
+          >
+            <SheetHeader className="sticky top-0 z-10 bg-background border-b p-4 text-left">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onClose}
+                  className="-ml-2"
+                  aria-label="뒤로가기"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+                <SheetTitle className="ml-1">
+                  신규 생산관리부 요청
+                </SheetTitle>
+              </div>
+            </SheetHeader>
+            <div className="p-4 pb-24">
+              {FormContent}
+            </div>
+            <SheetFooter className="sticky bottom-0 bg-background border-t p-4 flex-row justify-end gap-2">
+              <Button type="button" variant="outline" onClick={onClose}>
+                취소
+              </Button>
+              <Button type="submit" form="production-request-form" disabled={isSaving}>
+                {isSaving ? '저장 중...' : '요청 저장'}
+              </Button>
+            </SheetFooter>
+          </SheetContent>
+        </Sheet>
+      )}
+    </>
   );
 };
 

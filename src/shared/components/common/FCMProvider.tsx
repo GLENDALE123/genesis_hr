@@ -421,6 +421,44 @@ const getRecentNotificationIds = () => {
     }
   };
 
+  // 로그인 직후 1회 자동 권한 요청 (안전장치 포함)
+  useEffect(() => {
+    // 사용자 없으면 동작 안 함
+    if (!user) return;
+
+    // 클라이언트 보장
+    if (typeof window === 'undefined') return;
+
+    // Electron 환경은 제외 (네이티브 알림 사용)
+    const isElectron = (window as any).__ELECTRON__;
+    if (isElectron) return;
+
+    // 보안 컨텍스트(HTTPS 또는 localhost)에서만 요청
+    const isSecure = (window as any).isSecureContext || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (!isSecure) return;
+
+    // 이미 권한이 결정된 경우(default가 아님) 또는 이미 토큰이 있는 경우 스킵
+    if (state.permission !== 'default' || state.token) return;
+
+    // 세션 단위 중복 요청 방지
+    const prompted = sessionStorage.getItem('hs-next:notif_prompted') === '1';
+    if (prompted) return;
+
+    // 실제 요청 (버튼 인터랙션 없이 허용되는 브라우저 한정)
+    (async () => {
+      try {
+        const granted = await requestPermission();
+        // 한번만 시도하도록 마킹 (성공/실패 무관)
+        sessionStorage.setItem('hs-next:notif_prompted', '1');
+        if (!granted) {
+          // 거부 시 추가 동작 없음 (사용자가 설정에서 다시 시도 가능)
+        }
+      } catch {
+        sessionStorage.setItem('hs-next:notif_prompted', '1');
+      }
+    })();
+  }, [user, state.permission, state.token]);
+
   // 토큰 새로고침
   const refreshToken = async (): Promise<string | null> => {
     try {
