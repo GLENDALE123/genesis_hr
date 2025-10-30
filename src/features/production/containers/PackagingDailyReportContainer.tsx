@@ -33,7 +33,8 @@ import {
   Upload,
   Save,
   X,
-  AlertCircle
+  AlertCircle,
+  ArrowLeft
 } from 'lucide-react';
 import { PackagingReportListView } from '@/features/production/components/PackagingReportListView';
 import { PackagingReportForm } from '@/features/production/components/PackagingReportForm';
@@ -717,21 +718,35 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
         <Sheet open={isFormOpen} onOpenChange={setIsFormOpen}>
           <SheetContent 
             side="right"
-            className="max-h-[90vh] overflow-y-auto"
+            className="w-full max-w-none h-screen overflow-y-auto p-0"
+            fullscreen
+            animationVariant={isTablet ? 'tablet' : 'default'}
+            hideClose
           >
-            <SheetHeader className="mb-4">
-              <SheetTitle>
-                {isEditMode ? '생산일보 수정' : '생산일보 등록'}
-              </SheetTitle>
+            <SheetHeader className="sticky top-0 z-10 bg-background border-b p-4 text-left">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleFormCancel}
+                  className="-ml-2"
+                  aria-label="뒤로가기"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+                <SheetTitle className="ml-1">
+                  {isEditMode ? '생산일보 수정' : '생산일보 등록'}
+                </SheetTitle>
+              </div>
             </SheetHeader>
-            <div className="pb-4">
+            <div className="p-4 pb-24">
               <PackagingReportForm
                 report={selectedReport}
                 isEditMode={isEditMode}
                 onSubmit={handleFormSubmit}
               />
             </div>
-            <SheetFooter className="flex-row justify-end gap-2 pt-4 border-t">
+            <SheetFooter className="sticky bottom-0 bg-background border-t p-4 flex-row justify-end gap-2">
               <Button
                 type="button"
                 variant="outline"

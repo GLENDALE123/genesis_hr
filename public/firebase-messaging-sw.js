@@ -26,7 +26,6 @@ const firebaseConfig = {
   storageBucket: "hs-jig-b2093.firebasestorage.app",
   messagingSenderId: "117861579792",
   appId: "1:117861579792:web:93de9aeca7771940745e95",
-  measurementId: "G-YDJBRPW5BY"
 };
 
 // Firebase 초기화

@@ -43,9 +43,9 @@ export const useMobileBackHandler = ({
       return;
     }
 
-    const handlePopState = (event: PopStateEvent) => {
-      // 모달이 열려있고, 히스토리 상태가 이 컴포넌트와 관련된 경우에만 닫기
-      if (isOpen && event.state?.componentId === componentId.current) {
+    const handlePopState = (_event: PopStateEvent) => {
+      // 모달/시트가 열려있는 동안에는 어떤 popstate라도 닫기 동작 우선
+      if (isOpen) {
         onClose();
       }
     };

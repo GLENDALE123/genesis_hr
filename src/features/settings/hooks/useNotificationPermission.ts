@@ -86,8 +86,11 @@ export const useNotificationPermission = (): UseNotificationPermissionReturn => 
     }
   }, [isSupported, platform, fcm]);
 
+  // 현재 권한: FCM 훅의 상태를 우선 사용, 없으면 즉시 체크 결과 사용
+  const currentPermission: NotificationPermission = (fcm && fcm.permission) || checkPermission();
+
   return {
-    permission: 'default' as NotificationPermission,
+    permission: currentPermission,
     platform,
     isSupported,
     canRequest,

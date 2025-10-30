@@ -16,7 +16,6 @@ const firebaseConfig = {
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'hs-jig-b2093.firebasestorage.app',
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '117861579792',
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '1:117861579792:web:93de9aeca7771940745e95',
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || 'G-YDJBRPW5BY',
 };
 
 // Firebase Cloud Messaging VAPID Key
@@ -83,7 +82,8 @@ export const storage = (() => {
 
 export const analytics = (() => {
   try {
-    if (typeof window !== 'undefined' && !isElectron) {
+    const hasMeasurementId = !!process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID;
+    if (typeof window !== 'undefined' && !isElectron && hasMeasurementId) {
       const analyticsService = getAnalytics(app);
       return analyticsService;
     } else {

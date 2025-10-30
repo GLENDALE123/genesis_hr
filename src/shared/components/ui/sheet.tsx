@@ -73,23 +73,43 @@ interface SheetContentProps
   extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
     VariantProps<typeof sheetVariants> {
   overlayClassName?: string;
+  hideClose?: boolean;
+  fullscreen?: boolean;
+  /**
+   * 애니메이션 변형: 기본(default), 태블릿 전용(tablet), 애니메이션 없음(none)
+   */
+  animationVariant?: 'default' | 'tablet' | 'none';
 }
 
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, overlayClassName, children, ...props }, ref) => (
+>(({ side = "right", className, overlayClassName, children, hideClose, fullscreen, animationVariant = 'default', ...props }, ref) => (
   <SheetPortal>
     <SheetOverlay className={overlayClassName} />
     <SheetPrimitive.Content
       ref={ref}
-      className={cn(sheetVariants({ side }), className)}
+      className={(() => {
+        if (fullscreen) {
+          // Fullscreen 모드: 변형에 따라 애니메이션 세분화
+          const base = "fixed inset-0 z-50 bg-background p-6 shadow-lg h-screen w-screen";
+          const animDefault = "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right duration-500 ease-in-out";
+          const animTablet = "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right duration-700 ease-out";
+          const animNone = "";
+          const anim = animationVariant === 'tablet' ? animTablet : animationVariant === 'none' ? animNone : animDefault;
+          return cn(base, anim, className);
+        }
+        // Variant 모드 유지
+        return cn(sheetVariants({ side }), className);
+      })()}
       {...props}
     >
-      <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
-      </SheetPrimitive.Close>
+      {!hideClose && (
+        <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
+          <X className="h-4 w-4" />
+          <span className="sr-only">Close</span>
+        </SheetPrimitive.Close>
+      )}
       {children}
     </SheetPrimitive.Content>
   </SheetPortal>

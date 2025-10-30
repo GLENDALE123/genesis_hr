@@ -95,15 +95,34 @@ export const getFCMToken = async (): Promise<string | null> => {
     if (typeof window === 'undefined' || !('Notification' in window)) return null;
     if (Notification.permission !== 'granted') return null;
 
-    // FCM 토큰 가져오기
+    // FCM 토큰 가져오기 (서비스 워커 등록과 함께 사용 시 신뢰성 향상)
+    let swReg: ServiceWorkerRegistration | undefined;
+    try {
+      if ('serviceWorker' in navigator) {
+        swReg = await navigator.serviceWorker.ready;
+      }
+    } catch {}
+
     const token = await getToken(messagingService, {
       vapidKey: VAPID_KEY,
+      // @ts-ignore: serviceWorkerRegistration는 선택적 옵션
+      serviceWorkerRegistration: swReg,
     });
 
     if (token) {
       return token;
     } else {
-      console.warn('FCM 토큰을 가져올 수 없습니다.');
+      if (typeof window !== 'undefined') {
+        if (!('Notification' in window)) {
+          console.warn('FCM 토큰을 가져올 수 없습니다. 이 브라우저는 알림을 지원하지 않습니다.');
+        } else if (Notification.permission !== 'granted') {
+          console.warn('FCM 토큰을 가져올 수 없습니다. 알림 권한이 허용되어야 합니다.');
+        } else {
+          console.warn('FCM 토큰을 가져올 수 없습니다.');
+        }
+      } else {
+        console.warn('FCM 토큰을 가져올 수 없습니다.');
+      }
       return null;
     }
   } catch (error) {
