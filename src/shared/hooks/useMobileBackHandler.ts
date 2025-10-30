@@ -36,7 +36,7 @@ export const useMobileBackHandler = ({
     return () => window.removeEventListener('resize', checkIsMobile);
   }, []);
   
-  // 모바일 뒤로가기 처리 (모바일 환경에서만)
+  // 모바일 뒤로가기 처리 (모바일/태블릿 환경에서만)
   useEffect(() => {
     if (!isOpen || !isMobile) {
       setHistoryStateAdded(false);
@@ -62,13 +62,18 @@ export const useMobileBackHandler = ({
     return () => {
       // 정리 함수에서 이벤트 리스너 제거
       window.removeEventListener('popstate', handlePopState);
-      
-      // 모달이 닫힐 때 히스토리 상태 정리
-      if (window.history.state?.componentId === componentId.current && historyStateAdded) {
-        window.history.back();
-      }
     };
   }, [isOpen, onClose, historyStateAdded, isMobile, componentType]);
+
+  // 사용자가 UI로 닫았을 때(열림->닫힘) 한 번만 우리가 추가한 히스토리 항목 제거
+  useEffect(() => {
+    if (!isOpen && historyStateAdded) {
+      if (window.history.state?.componentId === componentId.current) {
+        window.history.back(); // 우리 가짜 state만 한 번 제거 (URL 이동 없음)
+      }
+      setHistoryStateAdded(false);
+    }
+  }, [isOpen, historyStateAdded]);
 
   return {
     isMobile,
