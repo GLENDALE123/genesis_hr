@@ -136,7 +136,7 @@ export const SampleDashboard: React.FC<SampleDashboardProps> = ({
                 <div
                   key={req.id}
                   onClick={() => onSelectRequest(req)}
-                  className="p-3 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                  className="p-3 rounded-lg xl:hover:bg-muted/50 cursor-pointer transition-colors"
                 >
                   <div className="flex justify-between items-start">
                     <p className="font-semibold truncate">

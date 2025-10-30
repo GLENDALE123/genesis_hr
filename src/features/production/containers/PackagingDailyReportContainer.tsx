@@ -718,52 +718,54 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
         <Sheet open={isFormOpen} onOpenChange={setIsFormOpen}>
           <SheetContent 
             side="right"
-            className="w-full max-w-none h-screen overflow-y-auto p-0"
+            className="w-full max-w-none h-screen overflow-hidden p-0"
             fullscreen
             animationVariant={isTablet ? 'tablet' : 'default'}
             hideClose
           >
-            <SheetHeader className="sticky top-0 z-10 bg-background border-b p-4 text-left">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleFormCancel}
-                  className="-ml-2"
-                  aria-label="뒤로가기"
-                >
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
-                <SheetTitle className="ml-1">
-                  {isEditMode ? '생산일보 수정' : '생산일보 등록'}
-                </SheetTitle>
+            <div className="h-full flex flex-col">
+              <SheetHeader className="sticky top-0 z-10 bg-background border-b p-4 text-left">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleFormCancel}
+                    className="-ml-2"
+                    aria-label="뒤로가기"
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                  </Button>
+                  <SheetTitle className="ml-1">
+                    {isEditMode ? '생산일보 수정' : '생산일보 등록'}
+                  </SheetTitle>
+                </div>
+              </SheetHeader>
+              <div className="flex-1 overflow-y-auto overscroll-contain p-4">
+                <PackagingReportForm
+                  report={selectedReport}
+                  isEditMode={isEditMode}
+                  onSubmit={handleFormSubmit}
+                />
               </div>
-            </SheetHeader>
-            <div className="p-4 pb-24">
-              <PackagingReportForm
-                report={selectedReport}
-                isEditMode={isEditMode}
-                onSubmit={handleFormSubmit}
-              />
+              <SheetFooter className="sticky bottom-0 bg-background border-t p-4 flex-row justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleFormCancel}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  취소
+                </Button>
+                <Button
+                  type="submit"
+                  form="packaging-report-form"
+                  className="min-w-[120px]"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {isEditMode ? '수정 저장' : '저장하기'}
+                </Button>
+              </SheetFooter>
             </div>
-            <SheetFooter className="sticky bottom-0 bg-background border-t p-4 flex-row justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleFormCancel}
-              >
-                <X className="h-4 w-4 mr-2" />
-                취소
-              </Button>
-              <Button
-                type="submit"
-                form="packaging-report-form"
-                className="min-w-[120px]"
-              >
-                <Save className="h-4 w-4 mr-2" />
-                {isEditMode ? '수정 저장' : '저장하기'}
-              </Button>
-            </SheetFooter>
           </SheetContent>
         </Sheet>
       )}

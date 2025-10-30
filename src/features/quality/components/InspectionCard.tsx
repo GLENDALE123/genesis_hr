@@ -297,7 +297,7 @@ export const InspectionCard: React.FC<InspectionCardProps> = memo(({
         onOpenChange={() => onToggle(inspection.id)}
       >
         <CollapsibleTrigger asChild>
-          <CardHeader className={`pb-3 cursor-pointer hover:bg-muted/50 transition-colors ${
+          <CardHeader className={`pb-3 cursor-pointer xl:hover:bg-muted/50 transition-colors ${
             isCollapsedState ? 'rounded-lg' : 'rounded-t-lg'
           }`}>
             <div className="flex justify-between items-start">

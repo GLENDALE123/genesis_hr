@@ -105,7 +105,7 @@ const QualityIssueRow = React.memo<{
 
   return (
     <TableRow 
-      className="hover:bg-muted/50"
+      className="xl:hover:bg-muted/50"
       onClick={handleClick}
     >
       {/* 작성일 */}

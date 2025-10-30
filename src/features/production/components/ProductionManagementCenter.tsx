@@ -213,7 +213,7 @@ const ProductionManagementCenterComponent: React.FC = () => {
                     <TableRow 
                       key={req.id} 
                       onClick={() => handleSelectRequest(req)} 
-                      className="cursor-pointer hover:bg-muted/50"
+                      className="cursor-pointer xl:hover:bg-muted/50"
                     >
                       {/* 댓글 컬럼 */}
                       <TableCell className={TABLE_CELL_STYLES.base}>

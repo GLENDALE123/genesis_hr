@@ -16,7 +16,7 @@ export const QualityIssueStatsCards: React.FC<QualityIssueStatsCardsProps> = ({ 
   return (
     <div className="grid grid-cols-4 gap-2 md:gap-4">
       <Card 
-        className={onFilterByStatus ? "cursor-pointer hover:bg-muted/50 transition-colors" : ""}
+        className={onFilterByStatus ? "cursor-pointer xl:hover:bg-muted/50 transition-colors" : ""}
         onClick={() => onFilterByStatus?.('')}
       >
          <CardContent className="p-3 md:p-6">
@@ -41,7 +41,7 @@ export const QualityIssueStatsCards: React.FC<QualityIssueStatsCardsProps> = ({ 
       </Card>
       
       <Card 
-        className={onFilterByStatus ? "cursor-pointer hover:bg-muted/50 transition-colors" : ""}
+        className={onFilterByStatus ? "cursor-pointer xl:hover:bg-muted/50 transition-colors" : ""}
         onClick={() => onFilterByStatus?.('미해결')}
       >
          <CardContent className="p-3 md:p-6">
@@ -70,7 +70,7 @@ export const QualityIssueStatsCards: React.FC<QualityIssueStatsCardsProps> = ({ 
       </Card>
       
       <Card 
-        className={onFilterByStatus ? "cursor-pointer hover:bg-muted/50 transition-colors" : ""}
+        className={onFilterByStatus ? "cursor-pointer xl:hover:bg-muted/50 transition-colors" : ""}
         onClick={() => onFilterByStatus?.('진행중')}
       >
          <CardContent className="p-3 md:p-6">
@@ -99,7 +99,7 @@ export const QualityIssueStatsCards: React.FC<QualityIssueStatsCardsProps> = ({ 
       </Card>
       
       <Card 
-        className={onFilterByStatus ? "cursor-pointer hover:bg-muted/50 transition-colors" : ""}
+        className={onFilterByStatus ? "cursor-pointer xl:hover:bg-muted/50 transition-colors" : ""}
         onClick={() => onFilterByStatus?.('해결완료')}
       >
          <CardContent className="p-3 md:p-6">

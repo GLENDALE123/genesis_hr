@@ -75,7 +75,7 @@ const RequestTableRow: React.FC<{
 
   return (
     <TableRow
-      className="hover:bg-muted/50"
+      className="xl:hover:bg-muted/50"
       onClick={() => onSelectRequest(request)}
     >
       {/* 댓글 컬럼 */}

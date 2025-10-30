@@ -68,7 +68,7 @@ export const SampleStatusBoard: React.FC<SampleStatusBoardProps> = ({
                         key={status}
                         className={cn(
                           'p-2 border',
-                          count > 0 && 'cursor-pointer hover:bg-muted/50 transition-colors'
+                          count > 0 && 'cursor-pointer xl:hover:bg-muted/50 transition-colors'
                         )}
                         onClick={() => count > 0 && onCellClick(status, method)}
                       >

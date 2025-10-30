@@ -53,7 +53,7 @@ export const ShortageRequestTable: React.FC<ShortageRequestTableProps> = ({
                 <TableRow
                   key={request.id}
                   onClick={() => onSelectRequest(request)}
-                  className="cursor-pointer hover:bg-muted/50"
+                  className="cursor-pointer xl:hover:bg-muted/50"
                 >
                   <TableCell className="whitespace-nowrap">
                     {formatDate(request.createdAt)}

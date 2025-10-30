@@ -92,7 +92,7 @@ const ReportRow = React.memo<ReportRowProps>(({
   return (
     <TableRow
       key={report.id}
-      className={`border-b transition-colors select-none ${isHighlighted ? 'bg-accent/80 dark:bg-accent/80 xl:bg-transparent' : ''} ${isSmallScreen ? 'cursor-pointer active:bg-accent/50' : ''}`}
+      className={`border-b transition-colors select-none ${isHighlighted ? 'bg-accent/80 dark:bg-accent/80 xl:bg-transparent' : ''} ${isSmallScreen ? 'cursor-pointer active:bg-accent dark:active:bg-accent/70' : ''}`}
       onClick={handleRowClick}
     >
       {/* 작업일자 */}

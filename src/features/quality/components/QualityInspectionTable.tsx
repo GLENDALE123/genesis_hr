@@ -104,7 +104,7 @@ const QualityInspectionTableComponent: React.FC<QualityInspectionTableProps> = (
                   <TableRow
                     key={group.orderNumber}
                     onClick={() => onSelectGroup(group)}
-                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                    className="cursor-pointer xl:hover:bg-muted/50 transition-colors"
                   >
                     <TableCell className="text-xs whitespace-nowrap">
                       {formatDate(group.latestDate)}

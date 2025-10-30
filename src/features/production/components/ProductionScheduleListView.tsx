@@ -530,7 +530,7 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
                       const lineBgColor = getLineBackgroundColor(schedule.line);
                       
                       return (
-                        <TableRow key={schedule.id} className={`${lineBgColor} hover:bg-muted/50`}>
+                        <TableRow key={schedule.id} className={`${lineBgColor} xl:hover:bg-muted/50`}>
                           <TableCell className="whitespace-nowrap py-1">{schedule.planDate}</TableCell>
                           <TableCell className="whitespace-nowrap py-1">
                             <span className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full ${statusColorClass}`}>

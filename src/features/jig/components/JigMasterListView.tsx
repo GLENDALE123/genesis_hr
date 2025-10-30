@@ -58,7 +58,7 @@ const JigMasterTableRow = memo<{
 
   return (
     <TableRow 
-      className="hover:bg-muted/50"
+      className="xl:hover:bg-muted/50"
       onClick={handleRowClick}
     >
       <TableCell className="whitespace-nowrap">{item.requestType}</TableCell>

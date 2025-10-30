@@ -91,7 +91,7 @@ export const LogisticsTransferModal: React.FC<LogisticsTransferModalProps> = ({
               </thead>
               <tbody>
                 {selectedReports.map(report => (
-                  <tr key={report.id} className="border-t hover:bg-muted/50">
+                  <tr key={report.id} className="border-t xl:hover:bg-muted/50">
                     <td className="p-2 font-mono text-xs">
                       {(report.orderNumbers && report.orderNumbers.join(', ')) || '-'}
                     </td>
