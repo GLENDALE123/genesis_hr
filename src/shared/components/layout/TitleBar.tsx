@@ -114,58 +114,59 @@ export const TitleBar: React.FC<TitleBarProps> = ({ className }) => {
         WebkitAppRegion: 'drag',
       } as React.CSSProperties}
     >
-      {/* 왼쪽: 앱 아이콘 & 타이틀 + 캡처 도구 */}
+      {/* 왼쪽: 앱 아이콘 & 타이틀 */}
       <div className="flex items-center gap-3 text-xs px-3">
         <div className="h-4 w-4 rounded-sm bg-primary flex items-center justify-center flex-shrink-0">
           <span className="text-primary-foreground font-bold text-[10px]">TMS</span>
         </div>
         <span className="font-medium text-foreground">TMS 통합관리시스템</span>
-
-        {/* 캡처 도구 (왼쪽 정렬) */}
-        <div
-          className="flex items-center h-full pl-3 gap-1 border-l border-border"
-          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-        >
-          <span className="text-muted-foreground mr-1">캡처도구</span>
-          {/* 전체 윈도우 캡처 */}
-          <button
-            className="h-6 w-6 flex items-center justify-center hover:bg-accent transition-colors rounded"
-            onClick={captureWindow}
-            title="전체 윈도우 캡처"
-          >
-            <Camera className="h-3.5 w-3.5" strokeWidth={1.5} />
-          </button>
-          {/* 영역 선택 캡처 */}
-          <button
-            className="h-6 w-6 flex items-center justify-center hover:bg-accent transition-colors rounded"
-            onClick={captureArea}
-            title="사각형 영역 캡처"
-          >
-            <Crop className="h-3.5 w-3.5" strokeWidth={1.5} />
-          </button>
-          {/* 요소 선택 캡처 */}
-          <button
-            className={`h-6 w-6 flex items-center justify-center transition-colors rounded ${
-              isSelecting ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
-            }`}
-            onClick={captureElement}
-            title={isSelecting ? '요소 선택 모드 종료' : '요소 선택 캡처'}
-          >
-            <MousePointer className="h-3.5 w-3.5" strokeWidth={1.5} />
-          </button>
-        </div>
       </div>
 
       {/* 중앙: 드래그 영역 */}
       <div className="flex-1" />
 
-      {/* 오른쪽: 윈도우 컨트롤 버튼 (Windows 스타일) */}
+      {/* 오른쪽: 캡처도구 + 윈도우 컨트롤 버튼 (Windows 스타일) */}
       <div 
         className="flex items-center h-full"
         style={{
           WebkitAppRegion: 'no-drag',
         } as React.CSSProperties}
       >
+        {/* 캡처도구 레이블 */}
+        <div className="h-full flex items-center px-2 border-r border-border text-[11px] text-muted-foreground">
+          캡처도구
+        </div>
+        {/* 전체 윈도우 캡처 */}
+        <button
+          className="h-full w-8 flex items-center justify-center hover:bg-accent transition-colors border-r border-border"
+          onClick={captureWindow}
+          title="전체 윈도우 캡처"
+        >
+          <Camera className="h-3.5 w-3.5" strokeWidth={1.5} />
+        </button>
+        
+        {/* 영역 선택 캡처 */}
+        <button
+          className="h-full w-8 flex items-center justify-center hover:bg-accent transition-colors border-r border-border"
+          onClick={captureArea}
+          title="사각형 영역 캡처"
+        >
+          <Crop className="h-3.5 w-3.5" strokeWidth={1.5} />
+        </button>
+        
+        {/* 요소 선택 캡처 */}
+        <button
+          className={`h-full w-8 flex items-center justify-center transition-colors border-r border-border ${
+            isSelecting 
+              ? 'bg-primary text-primary-foreground' 
+              : 'hover:bg-accent'
+          }`}
+          onClick={captureElement}
+          title={isSelecting ? '요소 선택 모드 종료' : '요소 선택 캡처'}
+        >
+          <MousePointer className="h-3.5 w-3.5" strokeWidth={1.5} />
+        </button>
+
         {/* 최소화 버튼 */}
         <button
           className="h-full w-12 flex items-center justify-center hover:bg-accent transition-colors"
