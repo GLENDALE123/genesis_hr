@@ -126,11 +126,11 @@ const ReportRow = React.memo<ReportRowProps>(({
       {/* 투입 */}
       <TableCell className="px-2 py-3 whitespace-nowrap text-right">{(report.inputQuantity && report.inputQuantity.toLocaleString()) || 0}</TableCell>
       {/* 양품 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap text-green-600 font-medium text-right">
+      <TableCell className="px-2 py-3 whitespace-nowrap text-green-600 font-semibold text-right">
         {(report.goodQuantity && report.goodQuantity.toLocaleString()) || 0}
       </TableCell>
       {/* 불량 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap text-red-600 text-right">
+      <TableCell className="px-2 py-3 whitespace-nowrap text-red-600 font-semibold text-right">
         {(report.defectQuantity && report.defectQuantity.toLocaleString()) || 0}
       </TableCell>
       {/* 인원 */}
@@ -138,7 +138,7 @@ const ReportRow = React.memo<ReportRowProps>(({
       {/* 라인비율 */}
       <TableCell className="px-2 py-3 whitespace-nowrap">{report.lineRatio || '-'}</TableCell>
       {/* 시간당생산량 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap text-right">
+      <TableCell className="px-2 py-3 whitespace-nowrap text-right font-semibold text-orange-600 dark:text-orange-400">
         {report.uph || report.productionPerMinute ? (report.uph || report.productionPerMinute)!.toLocaleString() : '-'}
       </TableCell>
       {/* 시작시간 */}
@@ -336,7 +336,7 @@ const ReportRowWithPressState = React.memo<ReportRowProps>((props) => {
       {/* 라인비율 */}
       <TableCell className="px-2 py-3 whitespace-nowrap">{report.lineRatio || '-'}</TableCell>
       {/* 시간당생산량 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap text-right">
+      <TableCell className="px-2 py-3 whitespace-nowrap text-right font-semibold text-orange-600 dark:text-orange-400">
         {report.uph || report.productionPerMinute ? (report.uph || report.productionPerMinute)!.toLocaleString() : '-'}
       </TableCell>
       {/* 시작시간 */}

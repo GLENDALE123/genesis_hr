@@ -23,10 +23,11 @@ export const useMobileBackHandler = ({
   const [historyStateAdded, setHistoryStateAdded] = useState(false);
   const componentId = useRef(`${componentType.toLowerCase()}-${Math.random().toString(36).substr(2, 9)}`);
   
-  // 모바일 환경 감지 (리사이즈에 반응)
+  // 모바일/태블릿 환경 감지 (리사이즈에 반응)
   useEffect(() => {
     const checkIsMobile = () => {
-      setIsMobile(window.innerWidth <= 768);
+      // 스마트폰(<768) + 태블릿(768~1439) 모두 포함
+      setIsMobile(window.innerWidth < 1440);
     };
     
     checkIsMobile();

@@ -8,6 +8,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/components/ui/dialog';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+} from '@/shared/components/ui/sheet';
+import { useDeviceType } from '@/shared/hooks/use-device';
 import { LogisticsTransferModal, LogisticsTransferData } from '@/features/production/components/LogisticsTransferModal';
 import {
   AlertDialog,
@@ -53,6 +61,8 @@ import { Alert, AlertDescription } from '@/shared/components/ui/alert';
 
 const PackagingDailyReportContainerComponent: React.FC = () => {
   const { user, userProfile } = useAuthStore();
+  const { isSmartphone, isTablet } = useDeviceType();
+  const isMobileOrTablet = isSmartphone || isTablet;
   
   // 컴포넌트 마운트 로그
   useEffect(() => {
@@ -656,19 +666,72 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
         </div>
       </div>
 
-      {/* 등록/수정 모달 */}
-      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent 
-          className="max-w-7xl max-h-[90vh]"
-          stickyHeader={
-            <DialogHeader>
-              <DialogTitle>
+      {/* 등록/수정 모달 - 데스크톱: Dialog */}
+      {!isMobileOrTablet && (
+        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+          <DialogContent 
+            className="max-w-7xl max-h-[90vh]"
+            stickyHeader={
+              <DialogHeader>
+                <DialogTitle>
+                  {isEditMode ? '생산일보 수정' : '생산일보 등록'}
+                </DialogTitle>
+              </DialogHeader>
+            }
+            stickyFooter={
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleFormCancel}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  취소
+                </Button>
+                <Button
+                  type="submit"
+                  form="packaging-report-form"
+                  className="min-w-[120px]"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {isEditMode ? '수정 저장' : '저장하기'}
+                </Button>
+              </div>
+            }
+            onInteractOutside={(e) => {
+              // 외부 클릭 시 모달 닫기 방지 (실수로 닫히는 것 방지)
+              e.preventDefault();
+            }}
+          >
+            <PackagingReportForm
+              report={selectedReport}
+              isEditMode={isEditMode}
+              onSubmit={handleFormSubmit}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* 등록/수정 시트 - 모바일/태블릿: Sheet */}
+      {isMobileOrTablet && (
+        <Sheet open={isFormOpen} onOpenChange={setIsFormOpen}>
+          <SheetContent 
+            side="right"
+            className="max-h-[90vh] overflow-y-auto"
+          >
+            <SheetHeader className="mb-4">
+              <SheetTitle>
                 {isEditMode ? '생산일보 수정' : '생산일보 등록'}
-              </DialogTitle>
-            </DialogHeader>
-          }
-          stickyFooter={
-            <div className="flex justify-end gap-2">
+              </SheetTitle>
+            </SheetHeader>
+            <div className="pb-4">
+              <PackagingReportForm
+                report={selectedReport}
+                isEditMode={isEditMode}
+                onSubmit={handleFormSubmit}
+              />
+            </div>
+            <SheetFooter className="flex-row justify-end gap-2 pt-4 border-t">
               <Button
                 type="button"
                 variant="outline"
@@ -685,20 +748,10 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
                 <Save className="h-4 w-4 mr-2" />
                 {isEditMode ? '수정 저장' : '저장하기'}
               </Button>
-            </div>
-          }
-          onInteractOutside={(e) => {
-            // 외부 클릭 시 모달 닫기 방지 (실수로 닫히는 것 방지)
-            e.preventDefault();
-          }}
-        >
-          <PackagingReportForm
-            report={selectedReport}
-            isEditMode={isEditMode}
-            onSubmit={handleFormSubmit}
-          />
-        </DialogContent>
-      </Dialog>
+            </SheetFooter>
+          </SheetContent>
+        </Sheet>
+      )}
 
       {/* 공정조건 모달 */}
       <ProcessConditionsModal
