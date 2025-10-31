@@ -965,7 +965,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
           </TabsList>
 
           <div className="flex-1 overflow-y-auto">
-            <form id="quality-inspection-form" onSubmit={handleSubmit} className="space-y-6">
+            <form id="quality-inspection-form" onSubmit={isEditMode ? handleUpdate : handleSubmit} className="space-y-6">
               {renderFormFields()}
             </form>
           </div>
