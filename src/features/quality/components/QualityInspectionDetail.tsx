@@ -12,6 +12,7 @@ import { Edit, Trash2, Plus } from 'lucide-react';
 import { useQualityInspections } from '../hooks/useQualityInspections';
 import { QualityInspectionForm } from './QualityInspectionForm';
 import { InspectionCard } from './InspectionCard';
+import { useDeviceType } from '@/shared/hooks/use-device';
 
 interface QualityInspectionDetailProps {
   group: GroupedInspectionData | null;
@@ -44,6 +45,7 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
   refreshTrigger
 }) => {
   const { user, userProfile } = useAuthStore();
+  const { isSmartphone } = useDeviceType();
   const [activeTab, setActiveTab] = useState<'incoming' | 'inProcess' | 'outgoing'>(initialTab || 'incoming');
   const [collapsedInspections, setCollapsedInspections] = useState<{
     [key: string]: boolean;
@@ -241,7 +243,7 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent 
-          className="w-[90vw] max-w-7xl h-[90vh] overflow-hidden flex flex-col"
+          className={isSmartphone ? "overflow-hidden flex flex-col" : "w-[90vw] max-w-7xl h-[90vh] overflow-hidden flex flex-col"}
           stickyHeader={
             <DialogHeader>
               <DialogTitle className="flex items-center justify-between">

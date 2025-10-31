@@ -30,13 +30,31 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   const isMobile = isSmartphone; // 태블릿은 데스크톱 레이아웃 유지
   const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
+  const [viewportHeight, setViewportHeight] = React.useState<string>('100vh');
 
   const sidebarCollapsed = preferences.sidebarCollapsed;
   
-  // 모바일 환경에서 마운트 상태 관리
+  // 모바일 환경에서 마운트 상태 관리 및 뷰포트 높이 계산
   React.useEffect(() => {
     setMounted(true);
-  }, []);
+    
+    // 모바일에서 실제 뷰포트 높이 계산
+    if (isMobile && typeof window !== 'undefined') {
+      const updateViewportHeight = () => {
+        const vh = window.innerHeight;
+        setViewportHeight(`${vh}px`);
+      };
+      
+      updateViewportHeight();
+      window.addEventListener('resize', updateViewportHeight);
+      window.addEventListener('orientationchange', updateViewportHeight);
+      
+      return () => {
+        window.removeEventListener('resize', updateViewportHeight);
+        window.removeEventListener('orientationchange', updateViewportHeight);
+      };
+    }
+  }, [isMobile]);
   
   const handleMenuClick = () => {
     if (isMobile) {
@@ -49,14 +67,25 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   // 마운트되지 않은 상태에서는 기본 레이아웃만 렌더링
   if (!mounted) {
     return (
-      <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: 'hsl(var(--background))' }}>
+      <div 
+        className="flex flex-col overflow-hidden" 
+        style={{ 
+          backgroundColor: 'hsl(var(--background))',
+          height: isMobile ? viewportHeight : '100vh'
+        }}
+      >
         <TitleBar />
         <div className="flex flex-1 overflow-hidden">
           <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-            <AppHeader onMenuClick={handleMenuClick} />
+            <div className="flex-shrink-0">
+              <AppHeader onMenuClick={handleMenuClick} />
+            </div>
             <main 
               className={cn(
-                "flex-1 transition-all duration-300 overflow-y-auto p-4",
+                "flex-1 transition-all duration-300",
+                isMobile 
+                  ? (noContentPadding ? "overflow-y-auto p-0 pb-4" : "overflow-y-auto p-2 pb-6")
+                  : (noContentPadding ? "overflow-y-auto p-0" : "overflow-y-auto p-4"),
                 className
               )}
               style={{
@@ -64,9 +93,15 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
                 color: 'hsl(var(--main-foreground))',
               }}
             >
-              <div className="h-full w-full">
-                {children}
-              </div>
+              {isMobile ? (
+                // 모바일: wrapper div 제거로 스크롤 문제 해결
+                children
+              ) : (
+                // 데스크톱: 기존 구조 유지
+                <div className="h-full w-full">
+                  {children}
+                </div>
+              )}
             </main>
           </div>
         </div>
@@ -75,7 +110,13 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   }
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: 'hsl(var(--background))' }}>
+    <div 
+      className="flex flex-col overflow-hidden" 
+      style={{ 
+        backgroundColor: 'hsl(var(--background))',
+        height: isMobile ? viewportHeight : '100vh'
+      }}
+    >
       {/* Electron 커스텀 타이틀바 (frame: false 환경) */}
       <TitleBar />
       
@@ -118,14 +159,16 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         {/* Right Area (Header + Main Content) */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           {/* Header */}
-          <AppHeader onMenuClick={handleMenuClick} />
+          <div className="flex-shrink-0">
+            <AppHeader onMenuClick={handleMenuClick} />
+          </div>
           
           {/* Main Content */}
           <main 
             className={cn(
               "flex-1 transition-all duration-300",
               isMobile 
-                ? (noContentPadding ? "overflow-y-auto p-0" : "overflow-y-auto p-2")
+                ? (noContentPadding ? "overflow-y-auto p-0 pb-4" : "overflow-y-auto p-2 pb-6")
                 : (noContentPadding ? "overflow-y-auto p-0" : "overflow-y-auto p-4"),
               className
             )}
@@ -134,9 +177,15 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
               color: 'hsl(var(--main-foreground))',
             }}
           >
-            <div className="h-full w-full">
-              {children}
-            </div>
+            {isMobile ? (
+              // 모바일: wrapper div 제거로 스크롤 문제 해결
+              children
+            ) : (
+              // 데스크톱: 기존 구조 유지
+              <div className="h-full w-full">
+                {children}
+              </div>
+            )}
           </main>
         </div>
       </div>

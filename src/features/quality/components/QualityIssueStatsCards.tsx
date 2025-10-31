@@ -18,7 +18,7 @@ export const QualityIssueStatsCards: React.FC<QualityIssueStatsCardsProps> = ({ 
     <div className="grid grid-cols-4 gap-2 md:gap-4">
       {/* 전체 이슈 */}
       <Card 
-        className={onFilterByStatus ? `cursor-pointer xl:hover:bg-muted/50 transition-colors ${currentFilter === '' ? 'ring-2 ring-primary ring-offset-2 bg-muted/50' : ''}` : ""}
+        className={onFilterByStatus ? `cursor-pointer xl:hover:bg-muted/50 transition-colors ${currentFilter === '' ? 'ring-2 ring-primary bg-muted/50' : ''}` : ""}
         onClick={() => onFilterByStatus?.('')}
       >
          <CardContent className="p-3 md:p-6">
@@ -44,7 +44,7 @@ export const QualityIssueStatsCards: React.FC<QualityIssueStatsCardsProps> = ({ 
       
       {/* 진행중 */}
       <Card 
-        className={onFilterByStatus ? `cursor-pointer xl:hover:bg-muted/50 transition-colors ${currentFilter === '진행중' ? 'ring-2 ring-yellow-600 ring-offset-2 bg-yellow-50/50 dark:bg-yellow-950/20' : ''}` : ""}
+        className={onFilterByStatus ? `cursor-pointer xl:hover:bg-muted/50 transition-colors ${currentFilter === '진행중' ? 'ring-2 ring-yellow-500 bg-yellow-50/50 dark:bg-yellow-950/20' : ''}` : ""}
         onClick={() => onFilterByStatus?.('진행중')}
       >
          <CardContent className="p-3 md:p-6">
@@ -74,7 +74,7 @@ export const QualityIssueStatsCards: React.FC<QualityIssueStatsCardsProps> = ({ 
       
       {/* 해결완료 */}
       <Card 
-        className={onFilterByStatus ? `cursor-pointer xl:hover:bg-muted/50 transition-colors ${currentFilter === '해결완료' ? 'ring-2 ring-green-600 ring-offset-2 bg-green-50/50 dark:bg-green-950/20' : ''}` : ""}
+        className={onFilterByStatus ? `cursor-pointer xl:hover:bg-muted/50 transition-colors ${currentFilter === '해결완료' ? 'ring-2 ring-green-500 bg-green-50/50 dark:bg-green-950/20' : ''}` : ""}
         onClick={() => onFilterByStatus?.('해결완료')}
       >
          <CardContent className="p-3 md:p-6">
@@ -104,7 +104,7 @@ export const QualityIssueStatsCards: React.FC<QualityIssueStatsCardsProps> = ({ 
       
       {/* 미해결 */}
       <Card 
-        className={onFilterByStatus ? `cursor-pointer xl:hover:bg-muted/50 transition-colors ${currentFilter === '미해결' ? 'ring-2 ring-red-600 ring-offset-2 bg-red-50/50 dark:bg-red-950/20' : ''}` : ""}
+        className={onFilterByStatus ? `cursor-pointer xl:hover:bg-muted/50 transition-colors ${currentFilter === '미해결' ? 'ring-2 ring-red-500 bg-red-50/50 dark:bg-red-950/20' : ''}` : ""}
         onClick={() => onFilterByStatus?.('미해결')}
       >
          <CardContent className="p-3 md:p-6">
