@@ -92,7 +92,7 @@ const SheetContent = React.forwardRef<
       className={(() => {
         if (fullscreen) {
           // Fullscreen 모드: 변형에 따라 애니메이션 세분화
-          const base = "fixed inset-0 z-50 bg-background p-6 shadow-lg h-screen w-screen";
+          const base = "fixed inset-0 z-50 bg-background p-6 shadow-lg h-[100dvh] w-[100dvw] pb-[env(safe-area-inset-bottom)]";
           const animDefault = "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right duration-500 ease-in-out";
           const animTablet = "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right duration-700 ease-out";
           const animNone = "";
