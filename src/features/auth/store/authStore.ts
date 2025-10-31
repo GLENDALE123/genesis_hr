@@ -6,6 +6,7 @@ import { onAuthStateChange } from '@/shared/services/firebase/auth';
 import { AuthService } from '@/features/auth/services';
 import { UserProfile } from '@/features/auth/types';
 import { usePermissionsStore } from './permissionsStore';
+import { auth } from '@/shared/services/firebase/config';
 
 // 전역 윈도우 객체에 인증 초기 상태 타입 추가
 declare global {
@@ -135,9 +136,9 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             set({ user, isLoading: false, error: null });
             
             if (user) {
-              // 사용자 프로필 정보도 함께 로드 (재시도 로직 포함)
+              // 사용자 프로필 정보도 함께 로드 (재시도 로직 포함, 더 빠른 재시도)
               let retries = 0;
-              const maxRetries = 3;
+              const maxRetries = 5;
               
               while (retries < maxRetries) {
                 try {
@@ -148,11 +149,12 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                     break;
                   }
                   
-                  // userProfile이 null이면 재시도
+                  // userProfile이 null이면 재시도 (더 짧은 대기 시간)
                   retries++;
                   if (retries < maxRetries) {
                     console.warn(`⚠️ [AuthStore] 프로필 로드 재시도 ${retries}/${maxRetries}`);
-                    await new Promise(resolve => setTimeout(resolve, 500 * retries));
+                    // 재시도 간격을 줄여서 더 빠르게 반응 (300ms, 600ms, 900ms...)
+                    await new Promise(resolve => setTimeout(resolve, 300 * retries));
                   }
                 } catch (error) {
                   retries++;
@@ -168,7 +170,8 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                     set({ userProfile: null });
                   } else if (!isPermissionError) {
                     console.warn(`⚠️ [AuthStore] 프로필 로드 재시도 ${retries}/${maxRetries} (에러)`, error);
-                    await new Promise(resolve => setTimeout(resolve, 500 * retries));
+                    // 에러 발생 시에도 더 빠른 재시도
+                    await new Promise(resolve => setTimeout(resolve, 300 * retries));
                   }
                 }
               }
@@ -186,9 +189,13 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         },
         
         refreshUserProfile: async () => {
-          const { user } = useAuthStore.getState();
-          if (!user) {
-            return;
+          // auth.currentUser를 직접 확인하여 로그인 직후에도 빠르게 프로필 가져오기
+          if (!auth?.currentUser) {
+            // auth.currentUser가 없으면 store의 user 확인
+            const { user } = useAuthStore.getState();
+            if (!user) {
+              return;
+            }
           }
           
           try {
@@ -196,7 +203,30 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             
             const userProfile = await AuthService.getCurrentUserProfile();
             
-            set({ userProfile, isLoading: false });
+            // 프로필을 가져왔으면 store 업데이트
+            if (userProfile) {
+              set({ userProfile, isLoading: false });
+            } else {
+              // 프로필이 없으면 재시도 (최대 3번)
+              let retries = 0;
+              const maxRetries = 3;
+              
+              while (retries < maxRetries) {
+                await new Promise(resolve => setTimeout(resolve, 300 * (retries + 1)));
+                const retryProfile = await AuthService.getCurrentUserProfile();
+                
+                if (retryProfile) {
+                  set({ userProfile: retryProfile, isLoading: false });
+                  return;
+                }
+                
+                retries++;
+              }
+              
+              // 최종 실패
+              set({ isLoading: false });
+              console.warn('⚠️ [AuthStore] 사용자 프로필 새로고침 실패: 프로필을 찾을 수 없습니다.');
+            }
           } catch (error) {
             console.error('❌ [AuthStore] 사용자 프로필 새로고침 실패:', error);
             set({ isLoading: false });

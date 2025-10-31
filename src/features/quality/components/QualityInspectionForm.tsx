@@ -2,9 +2,11 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/shared/components/ui/sheet';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
+import { ArrowLeft } from 'lucide-react';
 import { QualityInspection, InspectionType, InspectionResult, TestResultDetail, ReliabilityReview, ProcessLineData, KeywordPair, WorkerInspectionData } from '../types';
 import { INSPECTION_TYPE_LABELS, INSPECTION_RESULT_COLORS, INJECTION_COLOR_OPTIONS } from '../constants';
 import { subscribeToAutocompleteData, updateAutocompleteData, AutocompleteData } from '../services/autocompleteService';
@@ -18,6 +20,7 @@ import { OutgoingInspectionForm } from './OutgoingInspectionForm';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import '../utils/migrationTool'; // 마이그레이션 도구 로드
 import { cn } from '@/shared/lib/utils';
+import { useDeviceType } from '@/shared/hooks/use-device';
 import { toast } from 'sonner';
 import { 
   updateProgressToast, 
@@ -86,6 +89,8 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
   onComplete
 }) => {
   const { user, userProfile } = useAuthStore();
+  const { isSmartphone, isTablet } = useDeviceType();
+  const isMobileOrTablet = isSmartphone || isTablet;
   // 이메일로 fallback하지 않고, 명시적인 표시 이름만 사용
   const defaultInspectorName = (userProfile && (userProfile as any).displayName) || (user && (user as any).displayName) || '';
   const [activeTab, setActiveTab] = useState<InspectionType>(() => {
@@ -904,125 +909,183 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     );
   };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={(open: boolean) => {
-      if (!open) {
-        handleClose();
-      }
-    }}>
-      <DialogContent className="w-[95vw] h-[95vh] max-w-[1400px] overflow-hidden pb-0">
-        <DialogTitle className="sr-only">
-          {isCreateMode ? '품질검사 작성' : isEditMode ? '품질검사 수정' : '품질검사 상세'}
-        </DialogTitle>
-        <DialogDescription className="sr-only">
-          {isCreateMode ? '품질검사 정보를 입력하는 폼입니다.' : 
-           isEditMode ? '품질검사 정보를 수정하는 폼입니다.' : 
-           '품질검사 상세 정보를 확인하는 폼입니다.'}
-        </DialogDescription>
-        
-        <div className="flex flex-col h-full">
-          <DialogHeader className="flex-shrink-0 pb-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold">
-                  {isCreateMode ? '품질검사 작성' : isEditMode ? '품질검사 수정' : '품질검사 상세'}
-                </h2>
-                <p className="text-muted-foreground">
-                  {isViewMode ? `${INSPECTION_TYPE_LABELS[activeTab]} 정보를 확인하세요` :
-                   `${INSPECTION_TYPE_LABELS[activeTab]} 정보를 ${isEditMode ? '수정' : '입력'}하세요`}
-                </p>
-              </div>
-              <Badge 
-                className={cn(
-                  "text-sm font-medium",
-                  INSPECTION_RESULT_COLORS[formData.result || '합격']
-                )}
-              >
-                {formData.result}
-              </Badge>
-            </div>
-          </DialogHeader>
-
-          <div className="flex-1 overflow-hidden">
-            <Tabs value={activeTab} onValueChange={(value: string) => {
-              // 수정 모드에서는 탭 변경을 허용하지 않음 (해당 검사 타입만 수정 가능)
-              if (mode === 'edit') {
-                return;
-              }
-              
-              setActiveTab(value as InspectionType);
-            }} className="h-full flex flex-col">
-              <TabsList className="grid w-full grid-cols-3 mb-4">
-                <TabsTrigger 
-                  value="incoming" 
-                  disabled={mode === 'edit' && inspectionData?.inspectionType !== 'incoming'}
-                >
-                  수입검사
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="inProcess" 
-                  disabled={mode === 'edit' && inspectionData?.inspectionType !== 'inProcess'}
-                >
-                  공정검사
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="outgoing" 
-                  disabled={mode === 'edit' && inspectionData?.inspectionType !== 'outgoing'}
-                >
-                  출하검사
-                </TabsTrigger>
-              </TabsList>
-
-              <div className="flex-1 overflow-y-auto">
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  {renderFormFields()}
-                </form>
-              </div>
-              
-              {/* 버튼 영역 */}
-              <div className="flex justify-end gap-2 px-4 pt-4 pb-0 border-t">
-                <Button type="button" onClick={handleClose} disabled={isSaving}>
-                  취소
-                </Button>
-                
-                {/* 삭제 버튼 - Admin만 표시 */}
-                {canDelete() && (
-                  <Button 
-                    type="button" 
-                    onClick={handleDelete}
-                    disabled={isSaving}
-                    className="bg-red-500 text-white hover:bg-red-600"
-                  >
-                    {isSaving ? '삭제 중...' : '삭제'}
-                  </Button>
-                )}
-                
-                {/* 수정/저장 버튼 */}
-                {!isViewMode && (
-                <Button 
-                  type="submit" 
-                    onClick={isEditMode ? handleUpdate : handleSubmit}
-                  disabled={isSaving}
-                  className="min-w-[120px]"
-                >
-                  {isSaving ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                        {isEditMode ? '수정 중...' : '저장 중...'}
-                    </>
-                    ) : (
-                      isEditMode ? '수정' : '저장하기'
-                    )}
-                </Button>
-                )}
-              </div>
-            </Tabs>
+  // 폼 내용 추출
+  const FormContent = (
+    <div className="flex flex-col h-full">
+      <div className="flex-shrink-0 pb-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">
+              {isCreateMode ? '품질검사 작성' : isEditMode ? '품질검사 수정' : '품질검사 상세'}
+            </h2>
+            <p className="text-muted-foreground">
+              {isViewMode ? `${INSPECTION_TYPE_LABELS[activeTab]} 정보를 확인하세요` :
+               `${INSPECTION_TYPE_LABELS[activeTab]} 정보를 ${isEditMode ? '수정' : '입력'}하세요`}
+            </p>
           </div>
+          <Badge 
+            className={cn(
+              "text-sm font-medium",
+              INSPECTION_RESULT_COLORS[formData.result || '합격']
+            )}
+          >
+            {formData.result}
+          </Badge>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+
+      <div className="flex-1 overflow-hidden">
+        <Tabs value={activeTab} onValueChange={(value: string) => {
+          // 수정 모드에서는 탭 변경을 허용하지 않음 (해당 검사 타입만 수정 가능)
+          if (mode === 'edit') {
+            return;
+          }
+          
+          setActiveTab(value as InspectionType);
+        }} className="h-full flex flex-col">
+          <TabsList className="grid w-full grid-cols-3 mb-4">
+            <TabsTrigger 
+              value="incoming" 
+              disabled={mode === 'edit' && inspectionData?.inspectionType !== 'incoming'}
+            >
+              수입검사
+            </TabsTrigger>
+            <TabsTrigger 
+              value="inProcess" 
+              disabled={mode === 'edit' && inspectionData?.inspectionType !== 'inProcess'}
+            >
+              공정검사
+            </TabsTrigger>
+            <TabsTrigger 
+              value="outgoing" 
+              disabled={mode === 'edit' && inspectionData?.inspectionType !== 'outgoing'}
+            >
+              출하검사
+            </TabsTrigger>
+          </TabsList>
+
+          <div className="flex-1 overflow-y-auto">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {renderFormFields()}
+            </form>
+          </div>
+        </Tabs>
+      </div>
+    </div>
+  );
+
+  // Footer 버튼들
+  const FormFooter = (
+    <div className="flex justify-end gap-2">
+      <Button type="button" onClick={handleClose} disabled={isSaving}>
+        취소
+      </Button>
+      
+      {/* 삭제 버튼 - Admin만 표시 */}
+      {canDelete() && (
+        <Button 
+          type="button" 
+          onClick={handleDelete}
+          disabled={isSaving}
+          className="bg-red-500 text-white hover:bg-red-600"
+        >
+          {isSaving ? '삭제 중...' : '삭제'}
+        </Button>
+      )}
+      
+      {/* 수정/저장 버튼 */}
+      {!isViewMode && (
+        <Button 
+          type="submit" 
+          onClick={isEditMode ? handleUpdate : handleSubmit}
+          disabled={isSaving}
+          className="min-w-[120px]"
+        >
+          {isSaving ? (
+            <>
+              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              {isEditMode ? '수정 중...' : '저장 중...'}
+            </>
+          ) : (
+            isEditMode ? '수정' : '저장하기'
+          )}
+        </Button>
+      )}
+    </div>
+  );
+
+  const handleDialogChange = (open: boolean) => {
+    if (!open) {
+      handleClose();
+    }
+  };
+
+  return (
+    <>
+      {/* 데스크톱: Dialog */}
+      {!isMobileOrTablet && (
+        <Dialog open={isOpen} onOpenChange={handleDialogChange}>
+          <DialogContent 
+            className="w-[95vw] h-[95vh] max-w-[1400px] overflow-hidden pb-0"
+            stickyHeader={
+              <DialogHeader>
+                <DialogTitle>
+                  {isCreateMode ? '품질검사 작성' : isEditMode ? '품질검사 수정' : '품질검사 상세'}
+                </DialogTitle>
+                <DialogDescription className="sr-only">
+                  {isCreateMode ? '품질검사 정보를 입력하는 폼입니다.' : 
+                   isEditMode ? '품질검사 정보를 수정하는 폼입니다.' : 
+                   '품질검사 상세 정보를 확인하는 폼입니다.'}
+                </DialogDescription>
+              </DialogHeader>
+            }
+            stickyFooter={FormFooter}
+          >
+            {FormContent}
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* 모바일/태블릿: Sheet */}
+      {isMobileOrTablet && (
+        <Sheet open={isOpen} onOpenChange={handleDialogChange}>
+          <SheetContent 
+            side="right"
+            fullscreen
+            animationVariant={isTablet ? 'tablet' : 'default'}
+            hideClose
+            className="w-full max-w-none h-screen overflow-hidden p-0"
+          >
+            <div className="h-full flex flex-col">
+              <SheetHeader className="sticky top-0 z-10 bg-background border-b p-4 text-left">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleClose}
+                    className="-ml-2"
+                    aria-label="뒤로가기"
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                  </Button>
+                  <SheetTitle className="ml-1">
+                    {isCreateMode ? '품질검사 작성' : isEditMode ? '품질검사 수정' : '품질검사 상세'}
+                  </SheetTitle>
+                </div>
+              </SheetHeader>
+              <div className="flex-1 overflow-y-auto overscroll-contain p-4">
+                {FormContent}
+              </div>
+              <SheetFooter className="sticky bottom-0 bg-background border-t p-4 flex-row justify-end gap-2">
+                {FormFooter}
+              </SheetFooter>
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
+    </>
   );
 };

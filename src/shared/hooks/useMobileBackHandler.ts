@@ -14,6 +14,27 @@ interface UseMobileBackHandlerOptions {
   componentType?: string;
 }
 
+// 전역 히스토리 스택 관리 (중첩된 모달/시트 처리용)
+const historyStack: Array<{ componentId: string; onClose: () => void }> = [];
+
+// 전역 popstate 핸들러 (단일 핸들러로 관리)
+let globalPopStateHandler: ((event: PopStateEvent) => void) | null = null;
+
+const setupGlobalPopStateHandler = () => {
+  if (globalPopStateHandler) return; // 이미 설정됨
+
+  globalPopStateHandler = (_event: PopStateEvent) => {
+    // 히스토리 스택에서 가장 최근 항목(가장 위에 있는 것)을 처리
+    if (historyStack.length > 0) {
+      const topItem = historyStack[historyStack.length - 1];
+      topItem.onClose();
+      historyStack.pop(); // 스택에서 제거
+    }
+  };
+
+  window.addEventListener('popstate', globalPopStateHandler);
+};
+
 export const useMobileBackHandler = ({
   isOpen,
   onClose,
@@ -43,25 +64,22 @@ export const useMobileBackHandler = ({
       return;
     }
 
-    const handlePopState = (_event: PopStateEvent) => {
-      // 모달/시트가 열려있는 동안에는 어떤 popstate라도 닫기 동작 우선
-      if (isOpen) {
-        onClose();
-      }
-    };
-
     // 히스토리에 상태 추가 (모달이 열렸음을 표시) - 한 번만 실행
     if (!historyStateAdded) {
       window.history.pushState({ componentId: componentId.current }, '');
       setHistoryStateAdded(true);
+      // 스택에 추가 (가장 최근 것)
+      historyStack.push({ componentId: componentId.current, onClose });
+      // 전역 핸들러 설정 (한 번만)
+      setupGlobalPopStateHandler();
     }
-    
-    // popstate 이벤트 리스너 추가
-    window.addEventListener('popstate', handlePopState);
 
     return () => {
-      // 정리 함수에서 이벤트 리스너 제거
-      window.removeEventListener('popstate', handlePopState);
+      // 스택에서 제거
+      const index = historyStack.findIndex(item => item.componentId === componentId.current);
+      if (index !== -1) {
+        historyStack.splice(index, 1);
+      }
     };
   }, [isOpen, onClose, historyStateAdded, isMobile, componentType]);
 
@@ -72,6 +90,11 @@ export const useMobileBackHandler = ({
         window.history.back(); // 우리 가짜 state만 한 번 제거 (URL 이동 없음)
       }
       setHistoryStateAdded(false);
+      // 스택에서도 제거
+      const index = historyStack.findIndex(item => item.componentId === componentId.current);
+      if (index !== -1) {
+        historyStack.splice(index, 1);
+      }
     }
   }, [isOpen, historyStateAdded]);
 

@@ -102,7 +102,10 @@
     "productName": "TMS 통합관리시스템",
     "asarUnpack": [
       "*.exe",
-      "node_modules/electron-region-screenshot/**/*"
+      "node_modules/electron-region-screenshot/**/*",
+      "electron/notification.html",
+      "electron/notification-preload.js",
+      "electron/notification-window.js"
     ],
     "directories": {
       "output": "dist"

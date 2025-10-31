@@ -139,7 +139,15 @@ export function LoginForm() {
         });
         
         // 회원가입 성공 후 사용자 프로필 강제 새로고침
-        await refreshUserProfile();
+        // auth.currentUser가 즉시 설정되므로 빠르게 프로필 가져오기
+        try {
+          await refreshUserProfile();
+        } catch (profileError) {
+          console.warn('⚠️ [LoginForm] 프로필 로드 실패, 재시도 중...', profileError);
+          // 프로필 로드 실패 시 약간 대기 후 재시도
+          await new Promise(resolve => setTimeout(resolve, 200));
+          await refreshUserProfile();
+        }
         
         toast.success('회원가입이 완료되었습니다!', {
           description: '환영합니다. 로그인되었습니다.',
@@ -168,7 +176,15 @@ export function LoginForm() {
           });
           
           // 로그인 성공 후 사용자 프로필 강제 새로고침
-          await refreshUserProfile();
+          // auth.currentUser가 즉시 설정되므로 빠르게 프로필 가져오기
+          try {
+            await refreshUserProfile();
+          } catch (profileError) {
+            console.warn('⚠️ [LoginForm] 프로필 로드 실패, 재시도 중...', profileError);
+            // 프로필 로드 실패 시 약간 대기 후 재시도
+            await new Promise(resolve => setTimeout(resolve, 200));
+            await refreshUserProfile();
+          }
           
           toast.success('로그인되었습니다!');
           router.push('/dashboard');
@@ -197,7 +213,15 @@ export function LoginForm() {
                 }
                 
                 // 마이그레이션 성공 후 사용자 프로필 강제 새로고침
-                await refreshUserProfile();
+                // auth.currentUser가 즉시 설정되므로 빠르게 프로필 가져오기
+                try {
+                  await refreshUserProfile();
+                } catch (profileError) {
+                  console.warn('⚠️ [LoginForm] 프로필 로드 실패, 재시도 중...', profileError);
+                  // 프로필 로드 실패 시 약간 대기 후 재시도
+                  await new Promise(resolve => setTimeout(resolve, 200));
+                  await refreshUserProfile();
+                }
                 
                 toast.success('계정이 성공적으로 연결되었습니다!', {
                   description: '로그인되었습니다.'
