@@ -79,7 +79,7 @@ const DialogContent = React.forwardRef<
           // 기본: 중앙에 위치한 모달
           !isFullscreenOnMobile && "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-0 border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
           // 모바일 전체화면 모드 (중앙에서 확대)
-          isFullscreenOnMobile && "fixed inset-0 z-50 grid w-screen h-screen gap-0 bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+          isFullscreenOnMobile && "fixed inset-0 z-50 grid w-[100dvw] h-[100dvh] gap-0 bg-background shadow-lg duration-200 pb-[env(safe-area-inset-bottom)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
           stickyHeader && stickyFooter ? "max-h-[90vh] grid-rows-[auto_1fr_auto]" : 
           stickyHeader ? "max-h-[90vh] grid-rows-[auto_1fr]" :
           stickyFooter ? "max-h-[90vh] grid-rows-[1fr_auto]" : "",
