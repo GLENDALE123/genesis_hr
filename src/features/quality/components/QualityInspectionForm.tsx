@@ -1057,10 +1057,10 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
             fullscreen
             animationVariant={isTablet ? 'tablet' : 'default'}
             hideClose
-            className="w-full max-w-none h-screen overflow-hidden p-0"
+            className="w-full max-w-none overflow-hidden p-0 flex flex-col"
           >
-            <div className="h-full flex flex-col">
-              <SheetHeader className="sticky top-0 z-10 bg-background border-b p-4 text-left">
+            <div className="h-full flex flex-col max-h-[100dvh] pb-[env(safe-area-inset-bottom)]">
+              <SheetHeader className="sticky top-0 z-10 bg-background border-b p-4 text-left flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <Button
                     variant="ghost"
@@ -1076,10 +1076,10 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
                   </SheetTitle>
                 </div>
               </SheetHeader>
-              <div className="flex-1 overflow-y-auto overscroll-contain p-4">
+              <div className="flex-1 overflow-y-auto overscroll-contain p-4 min-h-0">
                 {FormContent}
               </div>
-              <SheetFooter className="sticky bottom-0 bg-background border-t p-4 flex-row justify-end gap-2">
+              <SheetFooter className="sticky bottom-0 bg-background border-t p-4 flex-row justify-end gap-2 flex-shrink-0 pb-[calc(1rem+env(safe-area-inset-bottom))]">
                 {FormFooter}
               </SheetFooter>
             </div>
