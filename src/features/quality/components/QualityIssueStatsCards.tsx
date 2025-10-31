@@ -16,8 +16,9 @@ interface QualityIssueStatsCardsProps {
 export const QualityIssueStatsCards: React.FC<QualityIssueStatsCardsProps> = ({ stats, onFilterByStatus, currentFilter = '' }) => {
   return (
     <div className="grid grid-cols-4 gap-2 md:gap-4">
+      {/* 전체 이슈 */}
       <Card 
-        className={onFilterByStatus ? `cursor-pointer xl:hover:bg-muted/50 transition-colors ${currentFilter === '' ? 'ring-2 ring-primary bg-muted/50' : ''}` : ""}
+        className={onFilterByStatus ? `cursor-pointer xl:hover:bg-muted/50 transition-colors ${currentFilter === '' ? 'ring-2 ring-primary ring-offset-2 bg-muted/50' : ''}` : ""}
         onClick={() => onFilterByStatus?.('')}
       >
          <CardContent className="p-3 md:p-6">
@@ -41,37 +42,9 @@ export const QualityIssueStatsCards: React.FC<QualityIssueStatsCardsProps> = ({ 
          </CardContent>
       </Card>
       
+      {/* 진행중 */}
       <Card 
-        className={onFilterByStatus ? `cursor-pointer xl:hover:bg-muted/50 transition-colors ${currentFilter === '미해결' ? 'ring-2 ring-red-500 bg-red-50/50 dark:bg-red-950/20' : ''}` : ""}
-        onClick={() => onFilterByStatus?.('미해결')}
-      >
-         <CardContent className="p-3 md:p-6">
-           {/* 모바일 레이아웃 */}
-           <div className="flex flex-col items-center text-center md:hidden">
-             <div className="flex items-center gap-1 mb-2">
-               <p className="text-xs font-medium text-muted-foreground whitespace-nowrap">미해결</p>
-               <div className="h-3 w-3 rounded-full bg-red-100 flex items-center justify-center">
-                 <AlertCircle className="h-2 w-2 text-red-600" />
-               </div>
-             </div>
-             <p className="text-lg font-bold text-red-600">{stats.unresolved}</p>
-           </div>
-           
-           {/* 데스크톱 레이아웃 */}
-           <div className="hidden md:flex items-center justify-between">
-             <div>
-               <p className="text-sm font-medium text-muted-foreground">미해결</p>
-               <p className="text-2xl font-bold text-red-600">{stats.unresolved}</p>
-             </div>
-             <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center">
-               <AlertCircle className="h-4 w-4 text-red-600" />
-             </div>
-           </div>
-         </CardContent>
-      </Card>
-      
-      <Card 
-        className={onFilterByStatus ? `cursor-pointer xl:hover:bg-muted/50 transition-colors ${currentFilter === '진행중' ? 'ring-2 ring-yellow-500 bg-yellow-50/50 dark:bg-yellow-950/20' : ''}` : ""}
+        className={onFilterByStatus ? `cursor-pointer xl:hover:bg-muted/50 transition-colors ${currentFilter === '진행중' ? 'ring-2 ring-yellow-600 ring-offset-2 bg-yellow-50/50 dark:bg-yellow-950/20' : ''}` : ""}
         onClick={() => onFilterByStatus?.('진행중')}
       >
          <CardContent className="p-3 md:p-6">
@@ -99,8 +72,9 @@ export const QualityIssueStatsCards: React.FC<QualityIssueStatsCardsProps> = ({ 
          </CardContent>
       </Card>
       
+      {/* 해결완료 */}
       <Card 
-        className={onFilterByStatus ? `cursor-pointer xl:hover:bg-muted/50 transition-colors ${currentFilter === '해결완료' ? 'ring-2 ring-green-500 bg-green-50/50 dark:bg-green-950/20' : ''}` : ""}
+        className={onFilterByStatus ? `cursor-pointer xl:hover:bg-muted/50 transition-colors ${currentFilter === '해결완료' ? 'ring-2 ring-green-600 ring-offset-2 bg-green-50/50 dark:bg-green-950/20' : ''}` : ""}
         onClick={() => onFilterByStatus?.('해결완료')}
       >
          <CardContent className="p-3 md:p-6">
@@ -127,7 +101,36 @@ export const QualityIssueStatsCards: React.FC<QualityIssueStatsCardsProps> = ({ 
            </div>
          </CardContent>
       </Card>
+      
+      {/* 미해결 */}
+      <Card 
+        className={onFilterByStatus ? `cursor-pointer xl:hover:bg-muted/50 transition-colors ${currentFilter === '미해결' ? 'ring-2 ring-red-600 ring-offset-2 bg-red-50/50 dark:bg-red-950/20' : ''}` : ""}
+        onClick={() => onFilterByStatus?.('미해결')}
+      >
+         <CardContent className="p-3 md:p-6">
+           {/* 모바일 레이아웃 */}
+           <div className="flex flex-col items-center text-center md:hidden">
+             <div className="flex items-center gap-1 mb-2">
+               <p className="text-xs font-medium text-muted-foreground whitespace-nowrap">미해결</p>
+               <div className="h-3 w-3 rounded-full bg-red-100 flex items-center justify-center">
+                 <AlertCircle className="h-2 w-2 text-red-600" />
+               </div>
+             </div>
+             <p className="text-lg font-bold text-red-600">{stats.unresolved}</p>
+           </div>
+           
+           {/* 데스크톱 레이아웃 */}
+           <div className="hidden md:flex items-center justify-between">
+             <div>
+               <p className="text-sm font-medium text-muted-foreground">미해결</p>
+               <p className="text-2xl font-bold text-red-600">{stats.unresolved}</p>
+             </div>
+             <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center">
+               <AlertCircle className="h-4 w-4 text-red-600" />
+             </div>
+           </div>
+         </CardContent>
+      </Card>
     </div>
   );
 };
-

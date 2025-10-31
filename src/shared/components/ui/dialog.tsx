@@ -7,6 +7,7 @@ import { X } from "lucide-react"
 import { cn } from "@/shared/lib/utils"
 import { useMobileBackHandler } from "@/shared/hooks/useMobileBackHandler"
 import { VisuallyHidden } from "@/shared/components/ui/visually-hidden"
+import { useDeviceType } from "@/shared/hooks/use-device"
 
 // 모바일 뒤로가기 처리를 위한 커스텀 Dialog Root
 const Dialog: React.FC<React.ComponentPropsWithoutRef<typeof DialogPrimitive.Root>> = ({ 
@@ -55,72 +56,100 @@ interface DialogContentProps extends React.ComponentPropsWithoutRef<typeof Dialo
   className?: string;
   stickyHeader?: React.ReactNode;
   stickyFooter?: React.ReactNode;
+  /**
+   * 모바일에서 전체화면으로 표시할지 여부
+   * @default true
+   */
+  mobileFullscreen?: boolean;
 }
 
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   DialogContentProps
->(({ className, children, stickyHeader, stickyFooter, ...props }, ref) => (
-  <DialogPortal>
-    <DialogOverlay />
-    <DialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-0 border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
-        stickyHeader && stickyFooter ? "max-h-[90vh] grid-rows-[auto_1fr_auto]" : 
-        stickyHeader ? "max-h-[90vh] grid-rows-[auto_1fr]" :
-        stickyFooter ? "max-h-[90vh] grid-rows-[1fr_auto]" : "",
-        className
-      )}
-      {...props}
-    >
-      {/* Hidden DialogTitle for accessibility - only when not using stickyHeader */}
-      {!stickyHeader && (
-        <VisuallyHidden>
-          <DialogPrimitive.Title>
-            Dialog
-          </DialogPrimitive.Title>
-        </VisuallyHidden>
-      )}
+>(({ className, children, stickyHeader, stickyFooter, mobileFullscreen = true, ...props }, ref) => {
+  const { isSmartphone } = useDeviceType();
+  const isFullscreenOnMobile = mobileFullscreen && isSmartphone;
 
-      {/* Sticky Header */}
-      {stickyHeader && (
-        <div className="flex-shrink-0 bg-transparent border-b p-6 pb-4 relative">
-          {stickyHeader}
+  return (
+    <DialogPortal>
+      <DialogOverlay />
+      <DialogPrimitive.Content
+        ref={ref}
+        className={cn(
+          // 기본: 중앙에 위치한 모달
+          !isFullscreenOnMobile && "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-0 border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
+          // 모바일 전체화면 모드 (중앙에서 확대)
+          isFullscreenOnMobile && "fixed inset-0 z-50 grid w-screen h-screen gap-0 bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+          stickyHeader && stickyFooter ? "max-h-[90vh] grid-rows-[auto_1fr_auto]" : 
+          stickyHeader ? "max-h-[90vh] grid-rows-[auto_1fr]" :
+          stickyFooter ? "max-h-[90vh] grid-rows-[1fr_auto]" : "",
+          isFullscreenOnMobile && "!max-h-none",
+          className
+        )}
+        {...props}
+      >
+        {/* Hidden DialogTitle for accessibility - only when not using stickyHeader */}
+        {!stickyHeader && (
+          <VisuallyHidden>
+            <DialogPrimitive.Title>
+              Dialog
+            </DialogPrimitive.Title>
+          </VisuallyHidden>
+        )}
+
+        {/* Sticky Header */}
+        {stickyHeader && (
+          <div className={cn(
+            "flex-shrink-0 bg-transparent border-b relative",
+            isFullscreenOnMobile ? "p-4" : "p-6 pb-4"
+          )}>
+            {stickyHeader}
+            <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+              <X className="h-4 w-4" />
+              <span className="sr-only">Close</span>
+            </DialogPrimitive.Close>
+          </div>
+        )}
+
+        {/* Main Content */}
+        <div className={cn(
+          "overflow-y-auto min-h-0",
+          stickyHeader && stickyFooter ? (
+            isFullscreenOnMobile ? "p-4" : "p-6 pt-4 pb-4"
+          ) :
+          stickyHeader ? (
+            isFullscreenOnMobile ? "p-4 pt-2" : "p-6 pt-4"
+          ) :
+          stickyFooter ? (
+            isFullscreenOnMobile ? "p-4 pb-2" : "p-6 pb-4"
+          ) : (
+            isFullscreenOnMobile ? "p-4" : "p-6"
+          )
+        )}>
+          {children}
+        </div>
+
+        {/* Sticky Footer */}
+        {stickyFooter && (
+          <div className={cn(
+            "flex-shrink-0 bg-transparent border-t",
+            isFullscreenOnMobile ? "p-4" : "p-6 pt-4"
+          )}>
+            {stickyFooter}
+          </div>
+        )}
+
+        {/* Close button for non-sticky header */}
+        {!stickyHeader && (
           <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
             <X className="h-4 w-4" />
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>
-        </div>
-      )}
-
-      {/* Main Content */}
-      <div className={cn(
-        "overflow-y-auto min-h-0",
-        stickyHeader && stickyFooter ? "p-6 pt-4 pb-4" :
-        stickyHeader ? "p-6 pt-4" :
-        stickyFooter ? "p-6 pb-4" : "p-6"
-      )}>
-        {children}
-      </div>
-
-      {/* Sticky Footer */}
-      {stickyFooter && (
-        <div className="flex-shrink-0 bg-transparent border-t p-6 pt-4">
-          {stickyFooter}
-        </div>
-      )}
-
-      {/* Close button for non-sticky header */}
-      {!stickyHeader && (
-        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-          <X className="h-4 w-4" />
-          <span className="sr-only">Close</span>
-        </DialogPrimitive.Close>
-      )}
-    </DialogPrimitive.Content>
-  </DialogPortal>
-))
+        )}
+      </DialogPrimitive.Content>
+    </DialogPortal>
+  );
+})
 DialogContent.displayName = DialogPrimitive.Content.displayName
 
 const DialogHeader = ({

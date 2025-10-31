@@ -13,7 +13,7 @@ import {
 } from '@/shared/components/ui/alert-dialog';
 import { ShortageManagementListView } from '@/features/production/components/ShortageManagementListView';
 import { ShortageRequest } from '@/features/production/types';
-import { useAuthStore, usePagePermissions, PermissionSettingsButton } from '@/features/auth';
+import { useAuthStore } from '@/features/auth';
 import { toast } from 'sonner';
 import { getFirebaseErrorMessage } from '@/shared/utils/firebaseErrorHandler';
 import {
@@ -26,13 +26,6 @@ import { Skeleton } from '@/shared/components/ui/skeleton';
 const ShortageManagementContainerComponent: React.FC = () => {
   const { user, userProfile } = useAuthStore();
   
-  // 페이지별 권한 확인
-  const { 
-    canRead, 
-    canUpdate, 
-    canDelete 
-  } = usePagePermissions('production-shortage-management');
-
   const {
     requests,
     isLoading: loading,
@@ -59,10 +52,8 @@ const ShortageManagementContainerComponent: React.FC = () => {
       await fetchRequests();
     };
 
-    if (canRead) {
-      fetchData();
-    }
-  }, [canRead, fetchRequests]);
+    fetchData();
+  }, [fetchRequests]);
 
   // 필터링된 요청 목록
   const filteredRequests = useMemo(() => {
@@ -81,8 +72,8 @@ const ShortageManagementContainerComponent: React.FC = () => {
 
   // 상태 업데이트 핸들러
   const handleStatusUpdate = useCallback(async (requestId: string, newStatus: 'requested' | 'completed') => {
-    if (!canUpdate || !user || !userProfile) {
-      toast.error('상태를 변경할 권한이 없습니다.');
+    if (!user || !userProfile) {
+      toast.error('사용자 정보가 없습니다.');
       return;
     }
     
@@ -105,16 +96,12 @@ const ShortageManagementContainerComponent: React.FC = () => {
       const errorInfo = getFirebaseErrorMessage(error);
       toast.error(errorInfo.message);
     }
-  }, [canUpdate, user, userProfile, updateCachedRequest]);
+  }, [user, userProfile, updateCachedRequest]);
 
   // 삭제 확인 핸들러
   const handleDeleteClick = useCallback((request: ShortageRequest) => {
-    if (!canDelete) {
-      toast.error('부족분 요청을 삭제할 권한이 없습니다.');
-      return;
-    }
     setDeleteConfirmState({ isOpen: true, request });
-  }, [canDelete]);
+  }, []);
 
   // 삭제 실행 핸들러
   const confirmDelete = useCallback(async () => {
@@ -145,23 +132,6 @@ const ShortageManagementContainerComponent: React.FC = () => {
     setDeleteConfirmState({ isOpen: false, request: null });
   }, []);
 
-  // 읽기 권한 확인
-  if (!canRead) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 space-y-4">
-        <div className="text-center">
-          <h3 className="text-base font-semibold text-muted-foreground">접근 권한 없음</h3>
-          <p className="text-sm text-muted-foreground mt-2">
-            부족분 관리 페이지에 접근할 권한이 없습니다.
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            관리자에게 권한을 요청하세요.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   // 로딩 상태 - 초기 로딩 시에만 스켈레톤 표시
   if (loading && requests.length === 0) {
     return (
@@ -186,13 +156,6 @@ const ShortageManagementContainerComponent: React.FC = () => {
       <div className="h-full flex flex-col space-y-6">
         {/* 상단 액션 바 */}
         <div className="flex items-center justify-between gap-4 flex-shrink-0">
-          {/* 좌측: 권한 설정 버튼 (Admin만 표시) */}
-          <div>
-            <PermissionSettingsButton 
-              pageId="production-shortage-management" 
-              pageName="부족분 관리" 
-            />
-          </div>
         </div>
 
         {/* 메인 콘텐츠 */}
@@ -203,8 +166,8 @@ const ShortageManagementContainerComponent: React.FC = () => {
             statusFilter={statusFilter}
             searchTerm={searchTerm}
             selectedRequest={selectedRequest}
-            canManage={canUpdate || false}
-            canDelete={canDelete}
+            canManage={true}
+            canDelete={true}
             onStatusFilterChange={setStatusFilter}
             onSearchChange={setSearchTerm}
             onSelectRequest={(request) => {

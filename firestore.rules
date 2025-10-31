@@ -54,34 +54,10 @@ service cloud.firestore {
         resource.data.userId == request.auth.uid;
     }
     
-    // 생산 일보 컬렉션 (이중 보호: 역할 + 권한 설정)
+    // 생산 일보 컬렉션
     match /packaging-reports/{reportId} {
-      // 📖 읽기: Admin/Manager는 무조건 허용, 나머지는 user-permissions 체크
-      allow read: if request.auth != null && (
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin' ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Manager' ||
-        exists(/databases/$(database)/documents/user-permissions/$(request.auth.uid))
-      );
-      
-      // ✏️ 생성: Admin/Manager 역할 또는 권한 설정에서 create 권한 있는 경우
-      allow create: if request.auth != null && (
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin' ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Manager' ||
-        (exists(/databases/$(database)/documents/user-permissions/$(request.auth.uid)) &&
-         'create' in get(/databases/$(database)/documents/user-permissions/$(request.auth.uid)).data.pagePermissions['production-daily-report'].crudPermissions)
-      );
-      
-      // 🔄 수정: Admin/Manager 역할 또는 권한 설정에서 update 권한 있는 경우
-      allow update: if request.auth != null && (
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin' ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Manager' ||
-        (exists(/databases/$(database)/documents/user-permissions/$(request.auth.uid)) &&
-         'update' in get(/databases/$(database)/documents/user-permissions/$(request.auth.uid)).data.pagePermissions['production-daily-report'].crudPermissions)
-      );
-      
-      // 🗑️ 삭제: Admin만 가능 (중요한 작업이므로 역할만 체크)
-      allow delete: if request.auth != null && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
+      // 로그인한 사용자는 모든 작업 가능
+      allow read, write: if request.auth != null;
     }
     
     // 사용자별 권한 설정 컬렉션
