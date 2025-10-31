@@ -490,7 +490,10 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
   // 수정 핸들러
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inspectionData?.id || !onUpdate) return;
+    if (!inspectionData?.id || !onUpdate) {
+      console.error('수정 불가: inspectionData?.id:', inspectionData?.id, 'onUpdate:', !!onUpdate);
+      return;
+    }
     
     setIsSaving(true);
     
@@ -965,7 +968,18 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
           </TabsList>
 
           <div className="flex-1 overflow-y-auto">
-            <form id="quality-inspection-form" onSubmit={isEditMode ? handleUpdate : handleSubmit} className="space-y-6">
+            <form 
+              id="quality-inspection-form" 
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (isEditMode) {
+                  handleUpdate(e);
+                } else {
+                  handleSubmit(e);
+                }
+              }} 
+              className="space-y-6"
+            >
               {renderFormFields()}
             </form>
           </div>
