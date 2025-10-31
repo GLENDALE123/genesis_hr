@@ -965,7 +965,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
           </TabsList>
 
           <div className="flex-1 overflow-y-auto">
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form id="quality-inspection-form" onSubmit={handleSubmit} className="space-y-6">
               {renderFormFields()}
             </form>
           </div>
@@ -976,7 +976,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
 
   // Footer 버튼들
   const FormFooter = (
-    <div className="flex justify-end gap-2">
+    <>
       <Button type="button" onClick={handleClose} disabled={isSaving}>
         취소
       </Button>
@@ -997,7 +997,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       {!isViewMode && (
         <Button 
           type="submit" 
-          onClick={isEditMode ? handleUpdate : handleSubmit}
+          form="quality-inspection-form"
           disabled={isSaving}
           className="min-w-[120px]"
         >
@@ -1014,7 +1014,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
           )}
         </Button>
       )}
-    </div>
+    </>
   );
 
   const handleDialogChange = (open: boolean) => {
