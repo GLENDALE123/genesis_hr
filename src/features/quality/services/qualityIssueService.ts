@@ -20,6 +20,34 @@ import { updateAutocompleteData } from './autocompleteService';
 const COLLECTION_NAME = 'quality-issues';
 
 /**
+ * Firestore에서 가져온 createdAt 값을 ISO 문자열로 변환
+ * Firestore Timestamp 객체인 경우 Date로 변환 후 ISO 문자열로,
+ * 이미 문자열인 경우 그대로 사용
+ */
+const convertCreatedAt = (createdAt: unknown): string => {
+  // Firestore Timestamp 객체인 경우 (toDate 메서드가 있는지 확인)
+  if (createdAt && typeof createdAt === 'object' && 'toDate' in createdAt && typeof (createdAt as any).toDate === 'function') {
+    const date = (createdAt as any).toDate();
+    if (date instanceof Date && !isNaN(date.getTime())) {
+      return date.toISOString();
+    }
+  }
+  
+  // 이미 ISO 문자열인 경우
+  if (typeof createdAt === 'string' && createdAt) {
+    return createdAt;
+  }
+  
+  // Date 객체인 경우
+  if (createdAt instanceof Date && !isNaN(createdAt.getTime())) {
+    return createdAt.toISOString();
+  }
+  
+  // 변환할 수 없는 경우 기존 값을 문자열로 반환 (현재 시간으로 대체하지 않음)
+  return createdAt ? String(createdAt) : new Date().toISOString();
+};
+
+/**
  * 품질이슈 컬렉션 참조 가져오기
  */
 const getCollectionRef = () => {
@@ -179,8 +207,8 @@ export const subscribeToQualityIssues = (
           return {
             id: doc.id,
             ...data,
-            // Firestore Timestamp를 Date로 변환
-            createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+            // Firestore Timestamp를 ISO 문자열로 변환
+            createdAt: convertCreatedAt(data.createdAt),
           } as QualityIssue;
         });
         callback(issues);
@@ -208,7 +236,7 @@ export const getQualityIssue = async (docId: string): Promise<QualityIssue | nul
       return {
         id: docSnap.id,
         ...data,
-        createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+        createdAt: convertCreatedAt(data.createdAt),
       } as QualityIssue;
     }
     return null;

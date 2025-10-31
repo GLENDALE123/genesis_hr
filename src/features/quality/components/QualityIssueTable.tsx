@@ -23,11 +23,10 @@ interface QualityIssueTableProps {
 // 헬퍼 함수들 - 컴포넌트 외부로 이동하여 재생성 방지
 const formatDate = (dateString: string | Date) => {
   const dateObj = typeof dateString === 'string' ? new Date(dateString) : dateString;
-  return dateObj.toLocaleDateString('ko-KR', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  return `${year}. ${month}. ${day}`;
 };
 
 const getDepartmentColor = (department: string) => {

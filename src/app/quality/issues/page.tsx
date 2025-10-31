@@ -26,7 +26,7 @@ import { useAuthStore } from '@/features/auth/store/authStore';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
 import { ProtectedRoute } from '@/shared/components/auth';
 function QualityIssuesPageContent() {
-  const { issues, isLoading, error, searchTerm, setSearchTerm, setStatusFilter, stats } = useQualityIssues();
+  const { issues, isLoading, error, searchTerm, setSearchTerm, setStatusFilter, statusFilter, stats } = useQualityIssues();
   const { isFormModalOpen, isSaving, handleSaveIssue, handleCancelForm, openFormModal } = useQualityIssueForm();
   const { user, userProfile } = useAuthStore();
   const searchParams = useSearchParams();
@@ -236,7 +236,7 @@ function QualityIssuesPageContent() {
 
       {/* 통계 카드 */}
       <div className="flex-shrink-0">
-        <QualityIssueStatsCards stats={stats} onFilterByStatus={handleFilterByStatus} />
+        <QualityIssueStatsCards stats={stats} onFilterByStatus={handleFilterByStatus} currentFilter={statusFilter} />
       </div>
 
       {/* 탭으로 전체/출하대기 구분 */}

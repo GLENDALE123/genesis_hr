@@ -549,7 +549,7 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
                         </TableCell>
                         <TableCell className="whitespace-nowrap py-1">{schedule.specification}</TableCell>
                         <TableCell className="whitespace-nowrap py-1">{schedule.postProcess}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1" title={schedule.remarks}>{schedule.remarks}</TableCell>
+                        <TableCell className="whitespace-nowrap py-1 text-red-600 font-semibold" title={schedule.remarks}>{schedule.remarks}</TableCell>
                         <TableCell className="whitespace-nowrap py-1">{schedule.manager}</TableCell>
                         <TableCell className="whitespace-nowrap py-1">{schedule.domesticOrExport}</TableCell>
                         <TableCell className="whitespace-nowrap py-1">{schedule.jigUsed}</TableCell>

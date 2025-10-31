@@ -23,6 +23,14 @@ try {
   app.commandLine.appendSwitch('ignore-certificate-errors', 'true');
   app.commandLine.appendSwitch('allow-insecure-localhost', 'true');
 } catch {}
+
+// 폰트 렌더링 선명도 개선 설정 (Windows 하이 DPI 지원)
+try {
+  // Windows DPI awareness 활성화 (자동으로 처리되지만 명시적으로 설정)
+  if (process.platform === 'win32') {
+    app.commandLine.appendSwitch('high-dpi-support', '1');
+  }
+} catch {}
 let staticServer = null;
 let staticServerPort = null;
 let devServerInUse = false;
@@ -143,6 +151,7 @@ function createWindow() {
     height: 800,       // 기본 크기
     minWidth: 400,     // 최소 크기
     minHeight: 500,    // 최소 크기
+    backgroundColor: '#ffffff', // 배경색 설정 (렌더링 깜빡임 방지 및 선명도 개선)
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -154,6 +163,8 @@ function createWindow() {
       allowRunningInsecureContent: false,
       // localStorage 영구 저장 설정
       partition: 'persist:main',
+      // 폰트 렌더링 선명도 개선
+      enableBlinkFeatures: 'CSSFontFeatureValues',
     },
     icon: path.join(__dirname, '../public/tms-logo.png'),
     show: false, // 로딩 완료 후 표시
@@ -168,6 +179,11 @@ function createWindow() {
 
   // 생성 직후 바로 최대화
   mainWindow.maximize();
+
+  // 줌 레벨을 1.0으로 고정 (흐린 텍스트 방지)
+  mainWindow.webContents.on('did-finish-load', () => {
+    mainWindow.webContents.setZoomFactor(1.0);
+  });
 
   // 개발: dev 서버가 살아있으면 우선 연결, 아니면 내장 정적 서버로 폴백
   const load = async () => {

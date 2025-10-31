@@ -10,7 +10,7 @@ export const useQualityIssues = () => {
   const { user } = useAuthStore();
   const [mounted, setMounted] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('진행중');
   
   // Zustand 스토어 사용
   const {
@@ -169,10 +169,10 @@ export const useQualityIssues = () => {
       );
     })
     .sort((a, b) => {
-      // createdAt 기준으로 오름차순 정렬 (오래된 것이 위에)
+      // createdAt 기준으로 내림차순 정렬 (최신이 위에)
       const dateA = new Date(a.createdAt).getTime();
       const dateB = new Date(b.createdAt).getTime();
-      return dateA - dateB;
+      return dateB - dateA;
     });
 
   // 통계 계산
