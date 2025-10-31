@@ -7,6 +7,7 @@ import { Badge } from '@/shared/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import Link from 'next/link';
+import Image from 'next/image';
 import { ROUTE_ICONS } from '@/shared/constants/navigation';
 import { useGlobalStore } from '@/app/store';
 import {
@@ -308,14 +309,26 @@ const AppSidebarComponent = ({
       <div className="flex h-12 items-center justify-center border-b px-2">
         {isExpanded ? (
           <div className="flex items-center gap-2 min-w-0">
-            <div className="h-7 w-7 rounded bg-primary flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-bold text-[10px] leading-none select-none">TMS</span>
+            <div className="h-7 w-7 rounded flex items-center justify-center flex-shrink-0 overflow-hidden">
+              <Image 
+                src="/tms-logo.png" 
+                alt="TMS 로고" 
+                width={28} 
+                height={28}
+                className="object-contain"
+              />
             </div>
             <span className="font-semibold whitespace-nowrap overflow-hidden text-ellipsis text-xl">통합관리시스템</span>
           </div>
         ) : (
-          <div className="h-7 w-7 rounded bg-primary flex items-center justify-center">
-            <span className="text-white font-bold text-[10px] leading-none select-none">TMS</span>
+          <div className="h-7 w-7 rounded flex items-center justify-center overflow-hidden">
+            <Image 
+              src="/tms-logo.png" 
+              alt="TMS 로고" 
+              width={28} 
+              height={28}
+              className="object-contain"
+            />
           </div>
         )}
       </div>

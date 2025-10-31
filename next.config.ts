@@ -100,16 +100,6 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-      // 공용 정적 파일 캐시 헤더
-      {
-        source: '/favicon.ico',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=86400',
-          },
-        ],
-      },
       {
         source: '/manifest.json',
         headers: [

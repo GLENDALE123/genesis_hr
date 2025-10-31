@@ -303,7 +303,7 @@ export class UnifiedNotificationService {
     requesterUid: string,
     requesterAvatar?: string
   ): Promise<void> {
-    await this.sendNotification({
+    await UnifiedNotificationService.sendNotification({
       type: NotificationType.PRODUCTION_REQUEST,
       title: '생산관리부 요청사항',
       body: content,
@@ -328,7 +328,7 @@ export class UnifiedNotificationService {
     requester: string,
     requesterAvatar?: string
   ): Promise<void> {
-    await this.sendNotification({
+    await UnifiedNotificationService.sendNotification({
       type: NotificationType.SHORTAGE_REQUEST,
       title: '부족분 신청',
       body: content,
@@ -355,7 +355,7 @@ export class UnifiedNotificationService {
     requesterUid: string,
     requesterAvatar?: string
   ): Promise<void> {
-    await this.sendNotification({
+    await UnifiedNotificationService.sendNotification({
       type: NotificationType.PRODUCTION_REQUEST,
       centerInfo: requestType,
       title: '생산관리부 요청사항',
@@ -450,7 +450,7 @@ export class UnifiedNotificationService {
         }
       }
 
-      await this.sendNotification({
+      await UnifiedNotificationService.sendNotification({
         type: NotificationType.DAILY_REPORT,
         title,
         body,
@@ -492,7 +492,7 @@ export class UnifiedNotificationService {
         deleted: '생산일정을 삭제했습니다.'
       };
       
-      await this.sendNotification({
+      await UnifiedNotificationService.sendNotification({
         type: NotificationType.PRODUCTION_SCHEDULE,
         title: '생산일정',
         body: `${getUserDisplayName(null, user)}님이 ${actionMessages[action]}`,
@@ -536,7 +536,7 @@ export class UnifiedNotificationService {
         ? formatDateRangeKorean(uniqueDates[0], uniqueDates[0])
         : formatDateRangeKorean(uniqueDates[0], uniqueDates[uniqueDates.length - 1]);
       
-      await this.sendNotification({
+      await UnifiedNotificationService.sendNotification({
         type: NotificationType.PRODUCTION_SCHEDULE,
         title: '생산일정',
         body: `${getUserDisplayName(null, user)}님이 ${schedules.length}건의 생산일정을 일괄 등록했습니다.`,
@@ -575,7 +575,7 @@ export class UnifiedNotificationService {
     announcementId?: string
   ): Promise<{ success: boolean; targetCount: number; error?: string }> {
     try {
-      const result = await this.sendNotification({
+      const result = await UnifiedNotificationService.sendNotification({
         type: NotificationType.ANNOUNCEMENT,
         title: '공지사항',
         body: bodyText,
@@ -617,7 +617,7 @@ export class UnifiedNotificationService {
     description: string
   ): Promise<{ success: boolean; targetCount: number; error?: string }> {
     try {
-      const result = await this.sendNotification({
+      const result = await UnifiedNotificationService.sendNotification({
         type: NotificationType.WORK_SCHEDULE,
         title: '근무계획 변경',
         body: `${dateRangeText} 근무계획이 변경되었습니다`,
@@ -664,7 +664,7 @@ export class UnifiedNotificationService {
   ): Promise<void> {
     try {
       const subtitle = `${productName} ${partName}`;
-      await this.sendNotification({
+      await UnifiedNotificationService.sendNotification({
         type: NotificationType.QUALITY_ISSUE,
         title: '품질이슈 등록',
         body: description,
@@ -703,7 +703,7 @@ export class UnifiedNotificationService {
   ): Promise<{ success: boolean; targetCount: number; error?: string }> {
     try {
       const subtitle = `${productName} ${partName}`;
-      const result = await this.sendNotification({
+      const result = await UnifiedNotificationService.sendNotification({
         type: NotificationType.QUALITY_ISSUE_STATUS,
         title: '품질이슈 상태 변경',
         body: description,
@@ -768,7 +768,7 @@ export class UnifiedNotificationService {
     const subtitle = `${productName} ${partName}`;
     const body = `${senderName}님이 "${productName} ${partName}" (지그번호: ${jigNumber})의 ${requestType} 요청을 등록하였습니다.`;
 
-    await this.sendNotification({
+    await UnifiedNotificationService.sendNotification({
       type: NotificationType.JIG_REQUEST,
       title: '지그 요청 등록',
       body,
@@ -820,7 +820,7 @@ export class UnifiedNotificationService {
     const subtitle = `${productName} ${partName}`;
     const body = `${senderName}님이 ${productName} ${partName} ${receivedQuantity.toLocaleString()}개를 입고 처리하였습니다.\n입고현황: ${currentReceivedQuantity.toLocaleString()}/${totalQuantity.toLocaleString()}`;
 
-    await this.sendNotification({
+    await UnifiedNotificationService.sendNotification({
       type: NotificationType.JIG_RECEIVE,
       title: '지그 입고 처리',
       body,
@@ -878,7 +878,7 @@ export class UnifiedNotificationService {
         body = `"${productAndPart}" 샘플 요청 상태가 ${oldStatusText}에서 ${newStatusText}로 변경되었습니다.`;
       }
       
-      const result = await this.sendNotification({
+      const result = await UnifiedNotificationService.sendNotification({
         type: NotificationType.SAMPLE_STATUS,
         title,
         body,
@@ -975,7 +975,7 @@ export class UnifiedNotificationService {
 - 도착처: 화성공장
 - 추가 요청: 오후 3시까지 도착 요망`;
 
-    await this.sendNotification({
+    await UnifiedNotificationService.sendNotification({
       type: NotificationType.PRODUCTION_REQUEST,
       title: '생산관리부 요청사항',
       body: testContent,
@@ -999,7 +999,7 @@ export class UnifiedNotificationService {
   ): Promise<void> {
     const testContent = `1,000EA, 사유: 테스트용 부족분 신청입니다.`;
 
-    await this.sendNotification({
+    await UnifiedNotificationService.sendNotification({
       type: NotificationType.SHORTAGE_REQUEST,
       title: '부족분 신청',
       body: testContent,
@@ -1038,7 +1038,7 @@ export class UnifiedNotificationService {
 
     const data = testData[requestType] || testData['긴급건'];
 
-    await this.sendNotification({
+    await UnifiedNotificationService.sendNotification({
       type: NotificationType.PRODUCTION_REQUEST,
       title: '생산관리부 요청사항',
       body: data.content,

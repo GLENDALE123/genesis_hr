@@ -912,8 +912,8 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     );
   };
 
-  // 폼 내용 추출
-  const FormContent = (
+  // 폼 내용 추출 (데스크톱용)
+  const FormContentDesktop = (
     <div className="flex flex-col h-full">
       <div className="flex-shrink-0 pb-4">
         <div className="flex items-center justify-between">
@@ -937,6 +937,60 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
         </div>
       </div>
 
+      <div className="flex-1 overflow-hidden">
+        <Tabs value={activeTab} onValueChange={(value: string) => {
+          // 수정 모드에서는 탭 변경을 허용하지 않음 (해당 검사 타입만 수정 가능)
+          if (mode === 'edit') {
+            return;
+          }
+          
+          setActiveTab(value as InspectionType);
+        }} className="h-full flex flex-col">
+          <TabsList className="grid w-full grid-cols-3 mb-4">
+            <TabsTrigger 
+              value="incoming" 
+              disabled={mode === 'edit' && inspectionData?.inspectionType !== 'incoming'}
+            >
+              수입검사
+            </TabsTrigger>
+            <TabsTrigger 
+              value="inProcess" 
+              disabled={mode === 'edit' && inspectionData?.inspectionType !== 'inProcess'}
+            >
+              공정검사
+            </TabsTrigger>
+            <TabsTrigger 
+              value="outgoing" 
+              disabled={mode === 'edit' && inspectionData?.inspectionType !== 'outgoing'}
+            >
+              출하검사
+            </TabsTrigger>
+          </TabsList>
+
+          <div className="flex-1 overflow-y-auto">
+            <form 
+              id="quality-inspection-form" 
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (isEditMode) {
+                  handleUpdate(e);
+                } else {
+                  handleSubmit(e);
+                }
+              }} 
+              className="space-y-6"
+            >
+              {renderFormFields()}
+            </form>
+          </div>
+        </Tabs>
+      </div>
+    </div>
+  );
+
+  // 폼 내용 추출 (모바일용 - 헤더 없음)
+  const FormContentMobile = (
+    <div className="flex flex-col h-full">
       <div className="flex-1 overflow-hidden">
         <Tabs value={activeTab} onValueChange={(value: string) => {
           // 수정 모드에서는 탭 변경을 허용하지 않음 (해당 검사 타입만 수정 가능)
@@ -1058,7 +1112,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
             }
             stickyFooter={FormFooter}
           >
-            {FormContent}
+            {FormContentDesktop}
           </DialogContent>
         </Dialog>
       )}
@@ -1075,23 +1129,33 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
           >
             <div className="h-full flex flex-col max-h-[100dvh] pb-[env(safe-area-inset-bottom)]">
               <SheetHeader className="sticky top-0 z-10 bg-background border-b p-4 text-left flex-shrink-0">
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleClose}
-                    className="-ml-2"
-                    aria-label="뒤로가기"
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleClose}
+                      className="-ml-2"
+                      aria-label="뒤로가기"
+                    >
+                      <ArrowLeft className="h-5 w-5" />
+                    </Button>
+                    <SheetTitle className="ml-1">
+                      {isCreateMode ? '품질검사 작성' : isEditMode ? '품질검사 수정' : '품질검사 상세'}
+                    </SheetTitle>
+                  </div>
+                  <Badge 
+                    className={cn(
+                      "text-sm font-medium",
+                      INSPECTION_RESULT_COLORS[formData.result || '합격']
+                    )}
                   >
-                    <ArrowLeft className="h-5 w-5" />
-                  </Button>
-                  <SheetTitle className="ml-1">
-                    {isCreateMode ? '품질검사 작성' : isEditMode ? '품질검사 수정' : '품질검사 상세'}
-                  </SheetTitle>
+                    {formData.result}
+                  </Badge>
                 </div>
               </SheetHeader>
               <div className="flex-1 overflow-y-auto overscroll-contain p-4 min-h-0">
-                {FormContent}
+                {FormContentMobile}
               </div>
               <SheetFooter className="sticky bottom-0 bg-background border-t p-4 flex-row justify-end gap-2 flex-shrink-0 pb-[calc(1rem+env(safe-area-inset-bottom))]">
                 {FormFooter}

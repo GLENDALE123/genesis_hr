@@ -144,8 +144,8 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
         try {
           const notification = new Notification(title, {
             body,
-            icon: '/favicon.ico',
-            badge: '/favicon.ico',
+            icon: '/tms-logo.png',
+            badge: '/tms-logo.png',
             tag: 'fcm-notification',
             requireInteraction: false,
             data: payload.data || {},
@@ -240,7 +240,7 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
                 try {
                   const browserNotification = new Notification(title, {
                     body,
-                    icon: '/favicon.ico',
+                    icon: '/tms-logo.png',
                     tag: `firestore-${notificationId}`,
                     requireInteraction: false,
                   });

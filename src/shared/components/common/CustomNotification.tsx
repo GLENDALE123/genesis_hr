@@ -281,9 +281,9 @@ export class NotificationManager {
         if (Notification.permission === 'granted') {
           new Notification(titleWithIcon, {
             body: notification.body,
-            icon: notification.senderAvatar || '/favicon.ico',
+            icon: notification.senderAvatar || '/tms-logo.png',
             tag: 'mention-notification',
-            badge: '/favicon.ico',
+            badge: '/tms-logo.png',
             requireInteraction: false,
             silent: false
           });

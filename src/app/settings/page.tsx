@@ -11,20 +11,28 @@ import { NotificationSettings } from '@/features/settings/components/Notificatio
 import { ProfileSettings } from '@/features/settings/components/ProfileSettings';
 import { AppearanceSettings } from '@/features/settings/components/AppearanceSettings';
 import { AboutSettings } from '@/features/settings/components/AboutSettings';
-import { User, Bell, Palette, Info } from 'lucide-react';
+import { User, Bell, Palette, Info, Database } from 'lucide-react';
 import { ProtectedRoute } from '@/shared/components/auth';
+import { useAuthStore } from '@/features/auth/store/authStore';
+import { MigrationPanel } from '@/features/user-migration/components/MigrationPanel';
 
 function SettingsContent() {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get('tab');
+  const { userProfile } = useAuthStore();
+  const isAdmin = userProfile?.role === 'Admin';
   const [activeTab, setActiveTab] = useState('profile');
+
+  const validTabs = isAdmin 
+    ? ['profile', 'notifications', 'appearance', 'about', 'migration']
+    : ['profile', 'notifications', 'appearance', 'about'];
 
   // URL 쿼리 파라미터에서 탭 설정 읽기
   useEffect(() => {
-    if (tabParam && ['profile', 'notifications', 'appearance', 'about'].includes(tabParam)) {
+    if (tabParam && validTabs.includes(tabParam)) {
       setActiveTab(tabParam);
     }
-  }, [tabParam]);
+  }, [tabParam, validTabs]);
 
   return (
     <div className="container mx-auto py-6 px-4 md:px-6 max-w-5xl">
@@ -36,7 +44,7 @@ function SettingsContent() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 h-auto">
+        <TabsList className={`grid w-full h-auto ${isAdmin ? 'grid-cols-5' : 'grid-cols-4'}`}>
           <TabsTrigger value="profile" className="flex flex-col gap-1 py-3">
             <User className="h-4 w-4" />
             <span className="text-xs">프로필</span>
@@ -53,6 +61,12 @@ function SettingsContent() {
             <Info className="h-4 w-4" />
             <span className="text-xs">정보</span>
           </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="migration" className="flex flex-col gap-1 py-3">
+              <Database className="h-4 w-4" />
+              <span className="text-xs">동기화</span>
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="profile" className="space-y-4">
@@ -70,6 +84,12 @@ function SettingsContent() {
         <TabsContent value="about" className="space-y-4">
           <AboutSettings />
         </TabsContent>
+
+        {isAdmin && (
+          <TabsContent value="migration" className="space-y-4">
+            <MigrationPanel />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

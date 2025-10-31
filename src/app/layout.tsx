@@ -19,6 +19,11 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "TMS 통합관리시스템",
   description: "TMS 통합관리시스템 - Next.js app with Firebase integration",
+  icons: {
+    icon: '/tms-logo.png',
+    shortcut: '/tms-logo.png',
+    apple: '/tms-logo.png',
+  },
 };
 
 

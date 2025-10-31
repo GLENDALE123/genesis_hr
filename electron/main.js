@@ -432,7 +432,7 @@ ipcMain.handle('show-notification', async (event, options) => {
     const notification = new Notification({
       title: title || 'TMS 통합관리시스템',
       body: body || '',
-      icon: icon || path.join(__dirname, '../public/favicon.ico'),
+      icon: icon || path.join(__dirname, '../public/tms-logo.png'),
       silent: false
     });
 

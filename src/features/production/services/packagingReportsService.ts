@@ -52,11 +52,11 @@ export class PackagingReportsService {
         throw new Error('Firebase not initialized');
       }
 
-      // 숫자 필드 안전하게 변환하는 헬퍼 함수 (undefined 반환)
-      const parseNumber = (value: string | undefined): number | undefined => {
-        if (!value || value.trim() === '') return undefined;
+      // 숫자 필드 안전하게 변환하는 헬퍼 함수 (null 반환)
+      const parseNumber = (value: string | undefined): number | null => {
+        if (!value || value.trim() === '') return null;
         const parsed = parseInt(value.trim());
-        return isNaN(parsed) ? undefined : parsed;
+        return isNaN(parsed) ? null : parsed;
       };
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -79,7 +79,7 @@ export class PackagingReportsService {
         memo: formData.memo || '',
         imageUrls: [],
         status: calculateStatus(formData.startTime || '', formData.endTime || ''), // 시간 기반 상태 계산
-        // 숫자 필드들 (null 허용)
+        // 숫자 필드들 (undefined 방지를 위해 null 사용)
         orderQuantity: parseNumber(formData.orderQuantity),
         productionPerMinute: parseNumber(formData.productionPerMinute),
         uph: parseNumber(formData.uph),
@@ -93,12 +93,15 @@ export class PackagingReportsService {
       };
 
       // PackagedBoxFormData를 PackagedBox로 변환 (null 허용)
-      reportData.packagedBoxes = formData.packagedBoxes.map(box => ({
-        boxNumber: box.boxNumber || '',
-        type: box.type || '',
-        quantity: parseNumber(box.quantity) != null ? parseNumber(box.quantity) : 0,
-        reason: box.reason || null
-      }));
+      reportData.packagedBoxes = formData.packagedBoxes.map(box => {
+        const parsedQuantity = parseNumber(box.quantity);
+        return {
+          boxNumber: box.boxNumber || '',
+          type: box.type || '',
+          quantity: parsedQuantity != null ? parsedQuantity : 0,
+          reason: box.reason || null
+        };
+      });
 
       const docRef = await addDoc(collection(db, 'packaging-reports'), reportData);
       

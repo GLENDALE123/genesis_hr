@@ -55,8 +55,8 @@ if (messaging) {
     
     const notificationOptions = {
       body: notificationBody,
-      icon: '/favicon.ico',
-      badge: '/favicon.ico',
+      icon: '/tms-logo.png',
+      badge: '/tms-logo.png',
       tag: 'firebase-notification',
       requireInteraction: true,
       data: payload.data || {},

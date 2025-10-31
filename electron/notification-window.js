@@ -157,7 +157,7 @@ class NotificationWindow {
         title,
         subtitle: options.subtitle,  // ✅ 서브타이틀 추가
         body,
-        icon: icon || path.join(__dirname, '../public/favicon.ico'),
+        icon: icon || path.join(__dirname, '../public/tms-logo.png'),
         senderName: options.senderName,
         senderAvatar: processedSenderAvatar,  // ✅ 처리된 아바타 사용
         timestamp: options.timestamp || new Date().toISOString(),
