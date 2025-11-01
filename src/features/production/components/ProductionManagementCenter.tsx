@@ -107,8 +107,8 @@ const ProductionManagementCenterComponent: React.FC = () => {
       quantity: parseInt(data.quantity),
       status: ProductionRequestStatus.Requested,
       author: {
-        uid: userProfile.uid,
-        displayName: getUserDisplayName(userProfile, null),
+        uid: user?.uid || '',
+        displayName: getUserDisplayName(user, userProfile),
       },
       imageUrls,
     });
@@ -116,7 +116,7 @@ const ProductionManagementCenterComponent: React.FC = () => {
 
   const handleStatusUpdate = useCallback(async (id: string, status: ProductionRequestStatus, reason?: string) => {
     if (!userProfile) return;
-    await updateRequestStatus(id, status, getUserDisplayName(userProfile, null), reason);
+    await updateRequestStatus(id, status, getUserDisplayName(user, userProfile), reason);
   }, [userProfile, updateRequestStatus]);
 
   const handleDelete = useCallback(async (id: string) => deleteRequest(id), [deleteRequest]);
@@ -125,8 +125,8 @@ const ProductionManagementCenterComponent: React.FC = () => {
     if (!userProfile) return;
     await addComment(id, {
       text,
-      user: getUserDisplayName(userProfile, null),
-      uid: userProfile.uid,
+      user: getUserDisplayName(user, userProfile),
+      uid: user?.uid || '',
       mentionedUserIds,
     });
   }, [userProfile, addComment]);
@@ -206,7 +206,7 @@ const ProductionManagementCenterComponent: React.FC = () => {
               </TableHeader>
               <TableBody>
                 {filteredRequests.map(req => {
-                  const unread = checkUnreadComments(req.comments, (userProfile && userProfile.uid) || '');
+                  const unread = checkUnreadComments(req.comments, user?.uid || '');
                   const commentCount = (req.comments && req.comments.length) || 0;
                   
                   return (
@@ -290,7 +290,7 @@ const ProductionManagementCenterComponent: React.FC = () => {
         isOpen={!!selectedRequest}
         onClose={() => setSelectedRequest(null)}
         request={selectedRequest}
-        currentUserUid={(userProfile && userProfile.uid) || ''}
+        currentUserUid={user?.uid || ''}
         isAdmin={isAdmin(userProfile)}
         isManager={isManager(userProfile)}
         onStatusUpdate={handleStatusUpdate}

@@ -5,7 +5,7 @@ import {
   signUp as sharedSignUp,
   logout as sharedLogout,
   getCurrentUserProfile as sharedGetCurrentUserProfile
-} from '@/shared/services/firebase/auth';
+} from '@/shared/services/firebase';
 import { SignUpData, LoginData, UserProfile } from '@/features/auth/types';
 import { 
   validateSignUpForm, 

@@ -3,33 +3,40 @@
  */
 
 import { create } from 'zustand';
-import { JigMasterItem, CreateJigMasterItemData } from '../types';
-import {
-  getJigMasterItems,
-  createJigMasterItem,
-  updateJigMasterItem,
-  deleteJigMasterItem,
-  getAutocompleteData,
-  subscribeToJigMasters,
-  subscribeToJigMastersByDateRange,
-} from '../services';
 import { devtools, persist } from 'zustand/middleware';
+import { JigMasterItem } from '../types';
 
 /**
- * 캐시 인터페이스
+ * 지그 마스터 데이터 캐시 인터페이스
  */
-interface JigMasterCache {
+interface DateRangeCache {
+  startDate: string;
+  endDate: string;
   masterItems: JigMasterItem[];
-  timestamp: number;
+  timestamp: number; // 캐시 시간
 }
 
 interface JigMasterState {
+  // 캐시된 데이터 (날짜 범위별)
+  cache: DateRangeCache | null;
+  
+  // 현재 표시 중인 데이터
   masterItems: JigMasterItem[];
-  cache: JigMasterCache | null;
+  
+  // 로딩 상태
   isLoading: boolean;
   isFetching: boolean; // 백그라운드 fetching
-  error: string | null;
+  
+  // 에러
+  error: Error | null;
+  
+  // 마지막 업데이트 시간
+  lastUpdated: number | null;
+  
+  // 선택된 항목
   selectedItem: JigMasterItem | null;
+  
+  // 자동완성 데이터
   autocompleteData: {
     itemNames: string[];
     partNames: string[];
@@ -39,40 +46,57 @@ interface JigMasterState {
     suppliers: string[];
     orderNumbers: string[];
   };
-  lastFetchTimestamp: number;
-  lastUpdated: number | null;
 }
 
 interface JigMasterActions {
-  getCachedMasters: () => JigMasterItem[] | null;
-  setMasters: (items: JigMasterItem[]) => void;
-  fetchMasterItems: () => Promise<void>;
-  subscribeToMasters: () => () => void;
-  subscribeToMastersByDateRange: (startDate: string, endDate: string) => () => void;
-  getJigsByDateRange: (startDate: string, endDate: string) => void;
-  createMasterItem: (data: CreateJigMasterItemData, imageFiles: File[], currentUser: { uid: string; displayName: string }) => Promise<void>;
-  updateMasterItem: (id: string, updates: Partial<JigMasterItem>) => Promise<void>;
-  deleteMasterItem: (id: string) => Promise<void>;
-  setSelectedItem: (item: JigMasterItem | null) => void;
-  fetchAutocompleteData: () => Promise<void>;
+  // 캐시 확인 및 반환
+  getCachedMasters: (startDate: string, endDate: string) => JigMasterItem[] | null;
+  
+  // 데이터 설정 (캐싱)
+  setMasters: (masterItems: JigMasterItem[], startDate: string, endDate: string) => void;
+  
+  // 로딩 상태 설정
   setLoading: (loading: boolean) => void;
   setFetching: (fetching: boolean) => void;
-  setError: (error: string | null) => void;
+  
+  // 에러 설정
+  setError: (error: Error | null) => void;
+  
+  // 캐시 초기화
   clearCache: () => void;
+  
+  // 특정 지그 업데이트 (실시간 동기화)
+  updateMaster: (masterId: string, updateData: Partial<JigMasterItem>) => void;
+  
+  // 특정 지그 삭제 (실시간 동기화)
+  deleteMaster: (masterId: string) => void;
+  
+  // 새 지그 추가 (실시간 동기화)
+  addMaster: (master: JigMasterItem) => void;
+  
+  // 선택된 항목 설정
+  setSelectedItem: (item: JigMasterItem | null) => void;
+  
+  // 자동완성 데이터 설정
+  setAutocompleteData: (data: JigMasterState['autocompleteData']) => void;
 }
 
-const CACHE_DURATION = 5 * 60 * 1000; // 5분 캐시 유효 시간
+type JigMasterStore = JigMasterState & JigMasterActions;
 
-export const useJigMasterStore = create<JigMasterState & JigMasterActions>()(
+// 캐시 유효 시간 (5분)
+const CACHE_DURATION = 5 * 60 * 1000;
+
+export const useJigMasterStore = create<JigMasterStore>()(
   devtools(
     persist(
       (set, get) => ({
         // State
-        masterItems: [],
         cache: null,
+        masterItems: [],
         isLoading: false,
         isFetching: false,
         error: null,
+        lastUpdated: null,
         selectedItem: null,
         autocompleteData: {
           itemNames: [],
@@ -83,50 +107,54 @@ export const useJigMasterStore = create<JigMasterState & JigMasterActions>()(
           suppliers: [],
           orderNumbers: [],
         },
-        lastFetchTimestamp: 0,
-        lastUpdated: null,
-
+        
         // Actions
-        getCachedMasters: () => {
+        getCachedMasters: (startDate: string, endDate: string) => {
           const { cache } = get();
           
           if (!cache) return null;
           
-          // 캐시 유효 시간 확인
-          const now = Date.now();
-          const cacheAge = now - cache.timestamp;
-          
-          if (cacheAge < CACHE_DURATION) {
-            return cache.masterItems;
-          } else {
+          // 날짜 범위가 일치하는지 확인
+          if (cache.startDate !== startDate || cache.endDate !== endDate) {
+            return null;
           }
           
-          return null;
+          // 캐시 유효 시간 확인
+          const now = Date.now();
+          if (now - cache.timestamp > CACHE_DURATION) {
+            return null;
+          }
+          
+          return cache.masterItems;
         },
-
-        setMasters: (items) => {
-          // autocomplete 데이터 자동 생성 (불필요한 API 호출 제거)
+        
+        setMasters: (masterItems: JigMasterItem[], startDate: string, endDate: string) => {
+          // autocomplete 데이터 자동 생성
           const productNames = [...new Set([
-            ...items.map(item => item.productName).filter((v): v is string => Boolean(v)),
-            ...items.map(item => item.itemName).filter((v): v is string => Boolean(v))
+            ...masterItems.map(item => item.productName).filter((v): v is string => Boolean(v)),
+            ...masterItems.map(item => item.itemName).filter((v): v is string => Boolean(v))
           ])].sort();
-          
-          const partNames = [...new Set(items.map(item => item.partName).filter((v): v is string => Boolean(v)))].sort();
-          
+
+          const partNames = [...new Set(masterItems.map(item => item.partName).filter((v): v is string => Boolean(v)))].sort();
+
           const jigNumbers = [...new Set([
-            ...items.map(item => item.jigNumber).filter((v): v is string => Boolean(v)),
-            ...items.map(item => item.itemNumber).filter((v): v is string => Boolean(v))
+            ...masterItems.map(item => item.jigNumber).filter((v): v is string => Boolean(v)),
+            ...masterItems.map(item => item.itemNumber).filter((v): v is string => Boolean(v))
           ])].sort();
-          
-          const suppliers = [...new Set(items.map(item => item.supplier).filter((v): v is string => Boolean(v)))].sort();
-          
-          const orderNumbers = [...new Set(items.map(item => item.orderNumber).filter((v): v is string => Boolean(v)))].sort();
+
+          const suppliers = [...new Set(masterItems.map(item => item.supplier).filter((v): v is string => Boolean(v)))].sort();
+
+          const orderNumbers = [...new Set(masterItems.map(item => item.orderNumber).filter((v): v is string => Boolean(v)))].sort();
+
+          const now = Date.now();
           
           set({
-            masterItems: items,
+            masterItems,
             cache: {
-              masterItems: items,
-              timestamp: Date.now()
+              startDate,
+              endDate,
+              masterItems,
+              timestamp: now
             },
             autocompleteData: {
               itemNames: productNames,
@@ -137,264 +165,146 @@ export const useJigMasterStore = create<JigMasterState & JigMasterActions>()(
               suppliers,
               orderNumbers,
             },
-            lastUpdated: Date.now(),
-            lastFetchTimestamp: Date.now(),
-            error: null,
+            lastUpdated: now,
             isLoading: false,
-            isFetching: false
+            isFetching: false,
+            error: null
           });
         },
-
-        fetchMasterItems: async () => {
-          set({ isLoading: true, error: null });
-          try {
-            const items = await getJigMasterItems();
-            set({ 
-              masterItems: items,
-              cache: {
-                masterItems: items,
-                timestamp: Date.now()
-              },
-              lastFetchTimestamp: Date.now(),
-              lastUpdated: Date.now(),
-              isLoading: false 
-            });
-          } catch (error) {
-            set({ 
-              error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
-              isLoading: false 
-            });
-          }
+        
+        setLoading: (isLoading: boolean) => {
+          set({ isLoading });
         },
-
-        subscribeToMasters: () => {
-          console.log('🔔 subscribeToMasters 시작');
+        
+        setFetching: (isFetching: boolean) => {
+          set({ isFetching });
+        },
+        
+        setError: (error: Error | null) => {
+          set({ error, isLoading: false, isFetching: false });
+        },
+        
+        clearCache: () => {
+          set({ cache: null });
+        },
+        
+        updateMaster: (masterId: string, updateData: Partial<JigMasterItem>) => {
+          const { masterItems, cache } = get();
           
-          const cachedMasters = get().getCachedMasters();
-          
-          if (cachedMasters) {
-            console.log('✅ 캐시된 데이터 있음, 개수:', cachedMasters.length);
-            set({ masterItems: cachedMasters, isLoading: false, isFetching: true });
-          } else {
-            console.log('⏳ 캐시 없음, 로딩 시작');
-            set({ isLoading: true, isFetching: false });
+          // 기존 지그 데이터 찾기
+          const existingMaster = masterItems.find(item => item.id === masterId);
+          if (!existingMaster) {
+            console.warn(`📦 지그 업데이트 실패: ${masterId}를 찾을 수 없음`);
+            return;
           }
           
-          set({ error: null });
+          // 실제 변경사항이 있는지 확인
+          const hasChanges = Object.keys(updateData).some(key => {
+            const typedKey = key as keyof JigMasterItem;
+            return existingMaster[typedKey] !== updateData[typedKey];
+          });
           
-          let isFirstCallback = true;
+          if (!hasChanges) {
+            return;
+          }
           
-          const unsubscribe = subscribeToJigMasters(
-            (masters) => {
-              console.log('📥 구독 콜백 실행 (전체), 데이터 개수:', masters.length, '첫 콜백:', isFirstCallback);
-              
-              // 첫 번째 콜백은 항상 업데이트 (로딩 해제를 보장)
-              if (isFirstCallback) {
-                isFirstCallback = false;
-                console.log('✅ 첫 번째 콜백 - setMasters 호출');
-                get().setMasters(masters);
-                return;
-              }
-              
-              // 간단한 길이 비교만 수행 (복잡한 내용 비교 제거)
-              const currentItems = get().masterItems;
-              
-              // 길이가 다르면 확실히 변경된 것
-              if (currentItems.length !== masters.length) {
-                console.log('📊 길이 변경됨, setMasters 호출');
-                get().setMasters(masters);
-                return;
-              }
-              
-              // 길이가 같으면 단순히 ID 배열만 비교
-              const currentIds = currentItems.map(item => item.id).join(',');
-              const newIds = masters.map(item => item.id).join(',');
-              
-              if (currentIds !== newIds) {
-                console.log('🔄 ID 변경됨, setMasters 호출');
-                get().setMasters(masters);
-              } else {
-                console.log('⚠️ 변경사항 없음, 로딩만 해제');
-                // 변경사항이 없으면 로딩만 해제 (상태 업데이트 최소화)
-                set({ isLoading: false, isFetching: false });
-              }
-            },
-            (error) => {
-              console.error('❌ 구독 에러:', error);
-              set({ 
-                error: error.message,
-                isLoading: false,
-                isFetching: false
-              });
-            }
+          // 업데이트된 지그 목록 생성
+          const updatedItems = masterItems.map(item =>
+            item.id === masterId ? { ...item, ...updateData } : item
           );
-
-          return unsubscribe;
-        },
-
-        subscribeToMastersByDateRange: (startDate, endDate) => {
-          console.log('🔔 subscribeToMastersByDateRange 시작:', startDate, endDate);
           
-          const cachedMasters = get().getCachedMasters();
-          
-          if (cachedMasters) {
-            console.log('✅ 캐시된 데이터 있음, 개수:', cachedMasters.length);
-            set({ masterItems: cachedMasters, isLoading: false, isFetching: true });
-          } else {
-            console.log('⏳ 캐시 없음, 로딩 시작');
-            set({ isLoading: true, isFetching: false });
-          }
-          
-          set({ error: null });
-          
-          let isFirstCallback = true;
-          
-          const unsubscribe = subscribeToJigMastersByDateRange(
-            startDate,
-            endDate,
-            (masters) => {
-              console.log('📥 구독 콜백 실행, 데이터 개수:', masters.length, '첫 콜백:', isFirstCallback);
-              
-              const currentItems = get().masterItems;
-              
-              // 첫 번째 콜백은 항상 업데이트 (로딩 해제를 보장)
-              if (isFirstCallback) {
-                isFirstCallback = false;
-                console.log('✅ 첫 번째 콜백 - setMasters 호출');
-                get().setMasters(masters);
-                return;
-              }
-              
-              if (currentItems.length !== masters.length) {
-                console.log('📊 길이 변경됨, setMasters 호출');
-                get().setMasters(masters);
-                return;
-              }
-              
-              const currentIds = currentItems.map(item => item.id).join(',');
-              const newIds = masters.map(item => item.id).join(',');
-              
-              if (currentIds !== newIds) {
-                console.log('🔄 ID 변경됨, setMasters 호출');
-                get().setMasters(masters);
-              } else {
-                console.log('⚠️ 변경사항 없음, 로딩만 해제');
-                // 변경사항이 없으면 로딩만 해제 (상태 업데이트 최소화)
-                set({ isLoading: false, isFetching: false });
-              }
-            },
-            (error) => {
-              console.error('❌ 구독 에러:', error);
-              set({ 
-                error: error.message,
-                isLoading: false,
-                isFetching: false
-              });
-            }
-          );
-
-          return unsubscribe;
-        },
-
-        getJigsByDateRange: (startDate, endDate) => {
-          const cachedMasters = get().getCachedMasters();
-          
-          if (cachedMasters) {
-            set({ masterItems: cachedMasters, isLoading: false, isFetching: true });
-          } else {
-            set({ isLoading: true, isFetching: false });
-          }
-          
-          set({ error: null });
-          
-          subscribeToJigMastersByDateRange(
-            startDate,
-            endDate,
-            (masters) => {
-              get().setMasters(masters);
-            },
-            (error) => {
-              set({ 
-                error: error.message,
-                isLoading: false,
-                isFetching: false
-              });
-            }
-          );
-        },
-
-        createMasterItem: async (data, imageFiles, currentUser) => {
-          set({ isLoading: true, error: null });
-          try {
-            await createJigMasterItem(data, imageFiles, currentUser);
-            // 실시간 구독으로 자동 업데이트됨
-          } catch (error) {
-            set({ 
-              error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
-              isLoading: false
-            });
-          }
-        },
-
-        updateMasterItem: async (id, updates) => {
-          set({ isLoading: true, error: null });
-          try {
-            await updateJigMasterItem(id, updates);
-            
-            // 로컬 상태 즉시 업데이트 (UI 반응성 향상)
-            const currentItems = get().masterItems;
-            const updatedItems = currentItems.map(item => 
-              item.id === id ? { ...item, ...updates } : item
+          // 캐시도 함께 업데이트
+          if (cache) {
+            const updatedCacheItems = cache.masterItems.map(item =>
+              item.id === masterId ? { ...item, ...updateData } : item
             );
             
-            // 캐시도 함께 업데이트
-            get().setMasters(updatedItems);
+            set({
+              masterItems: updatedItems,
+              cache: {
+                ...cache,
+                masterItems: updatedCacheItems
+              },
+              lastUpdated: Date.now()
+            });
+          } else {
+            set({
+              masterItems: updatedItems,
+              lastUpdated: Date.now()
+            });
+          }
+        },
+        
+        deleteMaster: (masterId: string) => {
+          const { masterItems, cache } = get();
+          
+          // 삭제된 지그 목록 생성
+          const filteredItems = masterItems.filter(item => item.id !== masterId);
+          
+          // 캐시도 함께 업데이트
+          if (cache) {
+            const filteredCacheItems = cache.masterItems.filter(item => item.id !== masterId);
             
-          } catch (error) {
-            set({ 
-              error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
-              isLoading: false 
+            set({
+              masterItems: filteredItems,
+              cache: {
+                ...cache,
+                masterItems: filteredCacheItems
+              },
+              lastUpdated: Date.now()
+            });
+          } else {
+            set({
+              masterItems: filteredItems,
+              lastUpdated: Date.now()
             });
           }
         },
-
-        deleteMasterItem: async (id) => {
-          set({ isLoading: true, error: null });
-          try {
-            await deleteJigMasterItem(id);
-            set({ isLoading: false });
-          } catch (error) {
-            set({ 
-              error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
-              isLoading: false 
+        
+        addMaster: (master: JigMasterItem) => {
+          const { masterItems, cache } = get();
+          
+          // 이미 존재하는지 확인
+          if (masterItems.find(item => item.id === master.id)) {
+            return;
+          }
+          
+          // 새 지그를 맨 앞에 추가 (최신순)
+          const updatedItems = [master, ...masterItems];
+          
+          // 캐시도 함께 업데이트
+          if (cache) {
+            const updatedCacheItems = [master, ...cache.masterItems];
+            
+            set({
+              masterItems: updatedItems,
+              cache: {
+                ...cache,
+                masterItems: updatedCacheItems
+              },
+              lastUpdated: Date.now()
+            });
+          } else {
+            set({
+              masterItems: updatedItems,
+              lastUpdated: Date.now()
             });
           }
         },
-
-        setSelectedItem: (item) => set({ selectedItem: item }),
-
-        fetchAutocompleteData: async () => {
-          try {
-            // 백그라운드에서 자동완성 데이터 로드 (로딩 상태 변경하지 않음)
-            const data = await getAutocompleteData();
-            set({ autocompleteData: data });
-          } catch (error) {
-            console.error('자동완성 데이터 로드 실패:', error);
-            // 자동완성 실패는 전체 로딩에 영향을 주지 않음
-          }
+        
+        setSelectedItem: (item: JigMasterItem | null) => {
+          set({ selectedItem: item });
         },
-
-        setLoading: (loading) => set({ isLoading: loading }),
-        setFetching: (fetching) => set({ isFetching: fetching }),
-        setError: (error) => set({ error }),
-        clearCache: () => set({ cache: null }),
+        
+        setAutocompleteData: (data: JigMasterState['autocompleteData']) => {
+          set({ autocompleteData: data });
+        },
       }),
       {
         name: 'jig-master-storage',
         partialize: (state) => ({
           cache: state.cache,
           autocompleteData: state.autocompleteData,
-          lastFetchTimestamp: state.lastFetchTimestamp,
           lastUpdated: state.lastUpdated,
         }),
       }

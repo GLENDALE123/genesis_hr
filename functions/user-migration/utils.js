@@ -94,9 +94,63 @@ function valuesDiffer(value1, value2) {
   return String(v1).trim() !== String(v2).trim();
 }
 
+/**
+ * displayName에서 이름과 직급을 분리
+ * @param {string} displayName - 분리할 displayName
+ * @returns {{name: string, position: string|null}} 분리된 이름과 직급
+ * 
+ * 예시:
+ * - "유호령사원" → { name: "유호령", position: "사원" }
+ * - "한지훈 과장" → { name: "한지훈", position: "과장" }
+ * - "임형택" → { name: "임형택", position: null }
+ */
+function parseDisplayNameAndPosition(displayName) {
+  if (!displayName) {
+    return { name: '', position: null };
+  }
+
+  const cleaned = String(displayName).trim();
+  
+  // 직급 목록 (우선순위 순서: 긴 것부터)
+  const positions = [
+    '본부장', '선임직장', '부직장', '실장', '팀장', '회장', '사장', 
+    '전무', '상무', '이사', '부장', '차장', '과장', '대리', '주임',
+    '직장', '반장', '조장', '사원', '선임'
+  ];
+  
+  // 띄어쓰기 있는 경우: "한지훈 과장"
+  const withSpacePattern = new RegExp(`^(.+?)\\s+(${positions.join('|')})$`);
+  const withSpaceMatch = cleaned.match(withSpacePattern);
+  
+  if (withSpaceMatch) {
+    return {
+      name: withSpaceMatch[1].trim(),
+      position: withSpaceMatch[2].trim()
+    };
+  }
+  
+  // 띄어쓰기 없는 경우: "유호령사원"
+  const withoutSpacePattern = new RegExp(`^(.+?)(${positions.join('|')})$`);
+  const withoutSpaceMatch = cleaned.match(withoutSpacePattern);
+  
+  if (withoutSpaceMatch) {
+    return {
+      name: withoutSpaceMatch[1].trim(),
+      position: withoutSpaceMatch[2].trim()
+    };
+  }
+  
+  // 직급이 없는 경우
+  return {
+    name: cleaned,
+    position: null
+  };
+}
+
 module.exports = {
   normalizePhoneNumber,
   denormalizePhoneNumber,
   valuesDiffer,
+  parseDisplayNameAndPosition,
 };
 

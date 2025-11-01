@@ -4,19 +4,17 @@ import { User } from 'firebase/auth';
 export type UserRole = 'Admin' | 'Manager' | 'Member';
 
 // Firestore에 저장될 사용자 프로필 정보
+// uid, email, displayName, phoneNumber, photoURL, name은 Firebase Auth에서 가져옴
+// Firestore에는 추가 정보(role, position, department)만 저장
 export interface UserProfile {
-  uid: string;              // Firebase Auth UID
-  email: string;            // 이메일 (Firebase Auth에서 가져옴)
-  name: string;             // 이름
-  displayName: string;      // 표시 이름
-  role: UserRole;           // 역할 (Admin/Manager/Member)
-  position?: string;        // 직책 (선택사항)
-  department?: string;      // 부서 (선택사항)
-  phoneNumber?: string;     // 전화번호 (선택사항)
-  photoURL?: string;        // 프로필 사진 URL (선택사항)
+  role: UserRole;           // 역할 (Admin/Manager/Member) - Firestore에만 저장
+  position?: string;        // 직책 (선택사항) - Firestore에만 저장
+  department?: string;      // 부서 (선택사항) - Firestore에만 저장
   createdAt: Date;          // 계정 생성일
   updatedAt: Date;          // 마지막 업데이트일
   lastLoginAt?: Date;       // 마지막 로그인 시간
+  // uid, email, displayName, phoneNumber, photoURL, name 제거 (Firebase Auth에서 가져옴)
+  // uid는 Firestore 문서 ID로만 사용 (users/{uid})
 }
 
 // 회원가입 시 사용할 데이터

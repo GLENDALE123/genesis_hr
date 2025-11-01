@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { JigMasterListView, JigMasterDetail, JigListForm, JigMasterFilterPanel } from '../components';
 import { JigMasterItem, CreateJigMasterItemData } from '../types';
 import { useJigMaster } from '../hooks/useJigMaster';
@@ -8,16 +8,12 @@ import { useJigMasterFilters } from '../hooks/useJigMasterFilters';
 import { useUserRole } from '@/features/auth/hooks/useUserRole';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
 import { useAuthStore } from '@/features/auth/store/authStore';
-import { Button } from '@/shared/components/ui/button';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/shared/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
+import { createJigMasterItem, updateJigMasterItem, deleteJigMasterItem } from '../services/jigMasterService';
 
 export const JigMasterContainer: React.FC = () => {
-  const { masterItems, isLoading, isFetching, error, updateMasterItem, deleteMasterItem, createMasterItem, autocompleteData, subscribeToMastersByDateRange, subscribeToMasters } = useJigMaster();
-  const userRole = useUserRole() || 'Member';
-  const { user, userProfile } = useAuthStore();
-  
   // 필터 훅 사용
   const {
     filters,
@@ -29,14 +25,20 @@ export const JigMasterContainer: React.FC = () => {
     yesterday,
     isSearching
   } = useJigMasterFilters();
-  
-  const unsubscribeRef = useRef<(() => void) | null>(null);
+
+  // 지그 마스터 훅 - 필터 옵션 전달
+  const { filteredMasterItems, isLoading, isFetching, error, getMastersByDateRange } = useJigMaster({
+    searchTerm: filters.searchTerm
+  });
+
+  const userRole = useUserRole() || 'Member';
+  const { user, userProfile } = useAuthStore();
   
   // currentUserProfile 메모이제이션 최적화
   const currentUserProfile = useMemo(() => {
     if (!user) return null;
     
-    const displayName = getUserDisplayName(userProfile, user, '로딩 중...');
+    const displayName = getUserDisplayName(user, userProfile as any, '로딩 중...');
     
     return {
       uid: user.uid,
@@ -45,90 +47,24 @@ export const JigMasterContainer: React.FC = () => {
       role: userRole,
       isLoading: !userProfile
     };
-  }, [user?.uid, user?.email, userProfile?.displayName, userRole]); // 더 구체적인 의존성
+  }, [user?.uid, user?.email, userProfile, userRole]);
   
   const [selectedJig, setSelectedJig] = useState<JigMasterItem | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // 날짜 필터 또는 검색어 변경 시 구독 업데이트
+  // 날짜 필터 변경 시 구독 업데이트 (검색어가 없을 때만)
   useEffect(() => {
-    console.log('🔔 JigMasterContainer useEffect 실행:', {
-      startDate: filters.startDate,
-      endDate: filters.endDate,
-      searchTerm: filters.searchTerm,
-      isLoading,
-      masterItemsCount: masterItems.length
-    });
-
-    // 이전 구독 해제
-    if (unsubscribeRef.current) {
-      console.log('🔔 이전 구독 해제');
-      unsubscribeRef.current();
-      unsubscribeRef.current = null;
+    if (!filters.searchTerm && filters.startDate && filters.endDate) {
+      getMastersByDateRange(filters.startDate, filters.endDate);
     }
-
-    const hasSearch = filters.searchTerm.trim().length > 0;
-
-    if (hasSearch) {
-      console.log('🔔 검색어 모드 - 전체 데이터 구독 시작');
-      // 검색어가 있으면 전체 데이터 구독
-      unsubscribeRef.current = subscribeToMasters();
-    } else if (filters.startDate && filters.endDate) {
-      console.log('🔔 날짜 필터 모드 - 날짜 범위 구독 시작');
-      // 검색어가 없으면 날짜 필터 적용
-      unsubscribeRef.current = subscribeToMastersByDateRange(
-        filters.startDate,
-        filters.endDate
-      );
-    } else {
-      console.log('⚠️ 필터 조건 없음 - 구독하지 않음');
-    }
-
-    // 컴포넌트 언마운트 시 구독 해제
-    return () => {
-      console.log('🔔 cleanup 실행');
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-        unsubscribeRef.current = null;
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.startDate, filters.endDate, filters.searchTerm]);
-
-  // 검색 필터링
-  const filteredJigs = useMemo(() => {
-    if (!filters.searchTerm.trim()) return masterItems;
-    
-    const search = filters.searchTerm.toLowerCase().trim();
-    if (search.length < 2) return masterItems;
-    
-    const normalizedSearch = search.replace(/\s+/g, '');
-    
-    return masterItems.filter(jig => {
-      const productName = (jig.productName || jig.itemName || '').toLowerCase().replace(/\s+/g, '');
-      const partName = jig.partName.toLowerCase().replace(/\s+/g, '');
-      const jigNumber = (jig.jigNumber || jig.itemNumber || '').toLowerCase().replace(/\s+/g, '');
-      const orderNumber = (jig.orderNumber || '').toLowerCase().replace(/\s+/g, '');
-      const supplier = (jig.supplier || '').toLowerCase().replace(/\s+/g, '');
-      const requestType = jig.requestType.toLowerCase().replace(/\s+/g, '');
-      const remarks = (jig.remarks || '').toLowerCase().replace(/\s+/g, '');
-      
-      return productName.includes(normalizedSearch) ||
-             partName.includes(normalizedSearch) ||
-             jigNumber.includes(normalizedSearch) ||
-             orderNumber.includes(normalizedSearch) ||
-             supplier.includes(normalizedSearch) ||
-             requestType.includes(normalizedSearch) ||
-             remarks.includes(normalizedSearch);
-    });
-  }, [masterItems, filters.searchTerm]);
+  }, [filters.startDate, filters.endDate, filters.searchTerm, getMastersByDateRange]);
 
   // 모달이 열려있을 때 실시간으로 업데이트된 데이터 반영
-  const currentJig = selectedJig ? filteredJigs.find(item => item.id === selectedJig.id) || selectedJig : null;
+  const currentJig = selectedJig ? filteredMasterItems.find(item => item.id === selectedJig.id) || selectedJig : null;
 
-  // 이벤트 핸들러들을 useCallback으로 메모이제이션
+  // 이벤트 핸들러들
   const handleSelectJig = useCallback((jig: JigMasterItem) => {
     setSelectedJig(jig);
     setIsDetailModalOpen(true);
@@ -141,26 +77,32 @@ export const JigMasterContainer: React.FC = () => {
 
   const handleUpdateJig = useCallback(async (id: string, updates: Partial<Omit<JigMasterItem, 'id' | 'createdAt'>>) => {
     try {
-      await updateMasterItem(id, updates);
+      await updateJigMasterItem(id, updates);
     } catch (error) {
       console.error('지그 업데이트 실패:', error);
       throw error;
     }
-  }, [updateMasterItem]);
+  }, []);
 
   const handleDeleteJig = useCallback(async (id: string) => {
     try {
-      await deleteMasterItem(id);
+      await deleteJigMasterItem(id);
     } catch (error) {
       console.error('지그 삭제 실패:', error);
       throw error;
     }
-  }, [deleteMasterItem]);
+  }, []);
 
   const handleCreateJig = useCallback(async (data: CreateJigMasterItemData, imageFiles: File[]) => {
+    if (!user) throw new Error('User not authenticated');
+    
     setIsSaving(true);
     try {
-      await createMasterItem(data, imageFiles);
+      const displayName = getUserDisplayName(user, userProfile as any, 'Unknown User');
+      await createJigMasterItem(data, imageFiles, {
+        uid: user.uid,
+        displayName,
+      });
       setIsFormModalOpen(false);
     } catch (error) {
       console.error('지그 생성 실패:', error);
@@ -168,7 +110,7 @@ export const JigMasterContainer: React.FC = () => {
     } finally {
       setIsSaving(false);
     }
-  }, [createMasterItem]);
+  }, [user, userProfile]);
 
   const handleOpenFormModal = useCallback(() => {
     setIsFormModalOpen(true);
@@ -180,8 +122,7 @@ export const JigMasterContainer: React.FC = () => {
   }, []);
 
   // 로딩 상태 - 초기 로딩 시에만 스켈레톤 표시
-  if (isLoading && filteredJigs.length === 0) {
-    console.log('⏳ 스켈레톤 표시 중:', { isLoading, filteredJigsCount: filteredJigs.length, masterItemsCount: masterItems.length });
+  if (isLoading && filteredMasterItems.length === 0) {
     return (
       <div className="h-full flex flex-col space-y-4">
         <Skeleton className="h-32 w-full" />
@@ -196,7 +137,7 @@ export const JigMasterContainer: React.FC = () => {
       <Alert variant="destructive">
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
-          데이터를 불러오는 중 오류가 발생했습니다: {error}
+          데이터를 불러오는 중 오류가 발생했습니다: {error.message}
         </AlertDescription>
       </Alert>
     );
@@ -215,7 +156,7 @@ export const JigMasterContainer: React.FC = () => {
         onReset={resetFilters}
         today={today}
         yesterday={yesterday}
-        totalCount={filteredJigs.length}
+        totalCount={filteredMasterItems.length}
         isSearching={isSearching}
         isFetching={isFetching}
         onOpenFormModal={handleOpenFormModal}
@@ -223,10 +164,10 @@ export const JigMasterContainer: React.FC = () => {
 
       {/* 지그 목록 테이블 */}
       <JigMasterListView
-        jigs={filteredJigs}
+        jigs={filteredMasterItems}
         onSelectJig={handleSelectJig}
         currentUserProfile={currentUserProfile}
-        totalCount={filteredJigs.length}
+        totalCount={filteredMasterItems.length}
       />
 
       {/* 지그 상세 모달 */}

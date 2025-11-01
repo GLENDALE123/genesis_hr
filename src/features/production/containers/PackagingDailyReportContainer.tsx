@@ -49,6 +49,7 @@ import {
 import { PackagingReport, PackagingFormData, ShortageRequest } from '@/features/production/types';
 import { toast } from 'sonner';
 import { getFirebaseErrorMessage } from '@/shared/utils/firebaseErrorHandler';
+import { getUserDisplayName } from '@/shared/utils/userUtils';
 import {
   createShortageRequest,
   updateShortageRequest,
@@ -336,7 +337,7 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
     setIsSavingShortage(true);
     
     try {
-      const author = { uid: user.uid, displayName: userProfile.displayName };
+      const author = { uid: user.uid, displayName: getUserDisplayName(user, userProfile) };
       
       if (shortageModalState.existingRequest) {
         // 기존 부족분 신청 수정
@@ -441,7 +442,7 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
         const requestId = await createLogisticsRequest(
           selectedReports,
           transferData,
-          { uid: user.uid, displayName: userProfile.displayName }
+          { uid: user.uid, displayName: getUserDisplayName(user, userProfile) }
         );
         
         toast.success(`물류이동 요청이 생성되었습니다. (${requestId})`);

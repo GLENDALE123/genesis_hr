@@ -9,6 +9,8 @@ export interface UserSyncMismatch {
   auth: string | null;
   firestoreEmail?: string;
   authEmail?: string;
+  suggestedName?: string;
+  suggestedPosition?: string | null;
 }
 
 export interface UserSyncMismatches {
@@ -24,6 +26,8 @@ export interface UserSyncMatch {
   value?: string | null;
   firestoreEmail?: string;
   authEmail?: string;
+  suggestedName?: string;
+  suggestedPosition?: string | null;
 }
 
 export interface UserSyncMatches {
@@ -39,7 +43,7 @@ export interface UserSyncAnalysis {
   matchedUsers: number;
   mismatches: UserSyncMismatches;
   matches: UserSyncMatches;
-  missingInFirestore: Array<{ uid: string; email?: string; authDisplayName?: string }>;
+  missingInFirestore: Array<{ uid: string; email?: string; authDisplayName?: string; shouldDelete?: boolean }>;
   missingInAuth: Array<{ uid: string; email?: string; displayName?: string }>;
 }
 
@@ -62,7 +66,7 @@ export interface MigrateUserSyncResults {
     firestore: {
       displayName: number;
       photoURL: number;
-      contact: number;
+      position: number;
     };
   };
   skipped: number;
@@ -73,6 +77,57 @@ export interface MigrateUserSyncResponse {
   ok: boolean;
   dryRun?: boolean;
   results?: MigrateUserSyncResults;
+  error?: string;
+  timestamp?: string;
+}
+
+export interface DeleteAuthUsersResults {
+  totalRequested: number;
+  deleted: number;
+  errors: Array<{ uid: string; error: string }>;
+}
+
+export interface DeleteAuthUsersResponse {
+  ok: boolean;
+  dryRun?: boolean;
+  results?: DeleteAuthUsersResults;
+  error?: string;
+  timestamp?: string;
+}
+
+export interface AuthUserInfo {
+  uid: string;
+  email?: string | null;
+  displayName?: string | null;
+  photoURL?: string | null;
+  phoneNumber?: string | null;
+  emailVerified: boolean;
+  disabled: boolean;
+  metadata: {
+    creationTime: string;
+    lastSignInTime?: string | null;
+  };
+}
+
+export interface GetUserAuthInfoResponse {
+  ok: boolean;
+  user?: AuthUserInfo;
+  error?: string;
+  timestamp?: string;
+}
+
+export interface RemovePhoneNumberResults {
+  totalUsers: number;
+  processed: number;
+  removed: number;
+  skipped: number;
+  errors: Array<{ error: string }>;
+}
+
+export interface RemovePhoneNumberResponse {
+  ok: boolean;
+  dryRun?: boolean;
+  results?: RemovePhoneNumberResults;
   error?: string;
   timestamp?: string;
 }

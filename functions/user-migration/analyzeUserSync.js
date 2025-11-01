@@ -6,7 +6,7 @@
 const { onRequest } = require('firebase-functions/v2/https');
 const admin = require('firebase-admin');
 const { initializeFirebase } = require('../lib/utils');
-const { valuesDiffer } = require('./utils');
+const { valuesDiffer, parseDisplayNameAndPosition, normalizePhoneNumber, denormalizePhoneNumber } = require('./utils');
 
 /**
  * Admin 권한 확인
@@ -110,6 +110,14 @@ exports.analyzeUserSync = onRequest({
       missingInAuth: [],
     };
     
+    // 삭제 대상 UID 목록
+    const DELETE_TARGET_UIDS = [
+      'Zyc6Kea9CJh2b37lLValzMaWIvw1',  // fhlajf@naver.com - 이현석
+      'tjIEDmd0KBOWKt24z2aci4snCs33',  // qyh96190727@gmail.com - 임정애
+      'uD8wr4sK3DdzQmBt1eouemuedno2',  // alwn2440@gmail.com - 김성균직장
+      'wr3hxywGxCeghiR6SsrHud7W3YC3',  // linzhengai0727@gmail.com - 임정애
+    ];
+    
     for (const authUser of authUsers) {
       const firestoreUser = firestoreUsers.get(authUser.uid);
       
@@ -118,28 +126,40 @@ exports.analyzeUserSync = onRequest({
           uid: authUser.uid,
           email: authUser.email,
           authDisplayName: authUser.displayName,
+          shouldDelete: DELETE_TARGET_UIDS.includes(authUser.uid),
         });
         continue;
       }
       
       analysis.matchedUsers++;
       
-      // displayName 비교
+      // displayName 비교 및 position 분리 제안
       if (valuesDiffer(firestoreUser.displayName, authUser.displayName)) {
+        // 분리 가능한 displayName 찾기 (Firestore 또는 Auth 중 값이 있는 것)
+        const sourceDisplayName = firestoreUser.displayName || authUser.displayName;
+        const parsed = parseDisplayNameAndPosition(sourceDisplayName);
+        
         analysis.mismatches.displayName.count++;
         analysis.mismatches.displayName.details.push({
           uid: authUser.uid,
           email: authUser.email,
           firestore: firestoreUser.displayName || null,
           auth: authUser.displayName || null,
+          suggestedName: parsed.name,
+          suggestedPosition: parsed.position,
         });
       } else {
-        // 일치하는 경우
+        // 일치하는 경우에도 position 분리 제안 추가
+        const sourceDisplayName = firestoreUser.displayName || authUser.displayName;
+        const parsed = parseDisplayNameAndPosition(sourceDisplayName);
+        
         analysis.matches.displayName.count++;
         analysis.matches.displayName.details.push({
           uid: authUser.uid,
           email: authUser.email,
-          value: firestoreUser.displayName || authUser.displayName || null,
+          value: sourceDisplayName || null,
+          suggestedName: parsed.name,
+          suggestedPosition: parsed.position,
         });
       }
       
@@ -180,10 +200,28 @@ exports.analyzeUserSync = onRequest({
       }
       
       // phoneNumber 비교 (Firestore.contact vs Auth.phoneNumber)
+      // 정규화해서 비교해야 함 (Firestore: "010-1234-5678" vs Auth: "+821012345678")
       const firestorePhone = firestoreUser.contact || null;
       const authPhone = authUser.phoneNumber || null;
       
-      if (valuesDiffer(firestorePhone, authPhone)) {
+      // 정규화해서 비교
+      const normalizedFirestorePhone = firestorePhone ? normalizePhoneNumber(firestorePhone) : null;
+      const normalizedAuthPhone = authPhone || null; // Auth phoneNumber는 이미 +82 형식
+      
+      // 둘 다 null이면 일치로 간주
+      if (!normalizedFirestorePhone && !normalizedAuthPhone) {
+        // 둘 다 null이면 일치 (카운트는 안 함)
+      } else if (!normalizedFirestorePhone || !normalizedAuthPhone) {
+        // 하나만 있는 경우 불일치
+        analysis.mismatches.phoneNumber.count++;
+        analysis.mismatches.phoneNumber.details.push({
+          uid: authUser.uid,
+          email: authUser.email,
+          firestore: firestorePhone,
+          auth: authPhone,
+        });
+      } else if (normalizedFirestorePhone !== normalizedAuthPhone) {
+        // 정규화된 값이 다른 경우 불일치
         analysis.mismatches.phoneNumber.count++;
         analysis.mismatches.phoneNumber.details.push({
           uid: authUser.uid,
@@ -192,15 +230,13 @@ exports.analyzeUserSync = onRequest({
           auth: authPhone,
         });
       } else {
-        // 일치하는 경우 (둘 다 null이 아닌 경우만)
-        if (firestorePhone || authPhone) {
-          analysis.matches.phoneNumber.count++;
-          analysis.matches.phoneNumber.details.push({
-            uid: authUser.uid,
-            email: authUser.email,
-            value: firestorePhone || authPhone || null,
-          });
-        }
+        // 정규화된 값이 같은 경우 일치
+        analysis.matches.phoneNumber.count++;
+        analysis.matches.phoneNumber.details.push({
+          uid: authUser.uid,
+          email: authUser.email,
+          value: firestorePhone || authPhone || null,
+        });
       }
     }
     

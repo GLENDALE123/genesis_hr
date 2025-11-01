@@ -10,7 +10,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Separator } from '@/shared/components/ui/separator';
 import { Badge } from '@/shared/components/ui/badge';
 import { useAuthStore } from '@/features/auth/store/authStore';
-import { logout } from '@/shared/services/firebase/auth';
+import { logout } from '@/shared/services/firebase';
 import { useRouter } from 'next/navigation';
 import { Info, LogOut, Package, Calendar, Users, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';

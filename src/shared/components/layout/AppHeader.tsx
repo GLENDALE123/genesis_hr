@@ -32,7 +32,7 @@ import {
   Shield
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
-import { logout } from '@/shared/services/firebase/auth';
+import { logout } from '@/shared/services/firebase';
 import { useRouter, usePathname } from 'next/navigation';
 import { cn } from '@/shared/lib/utils';
 import { getUserDisplayName, getUserInitial, getUserRoleBadgeVariant, getUserRoleText } from '@/shared/utils/userUtils';
@@ -221,13 +221,13 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 px-3 rounded-full flex items-center gap-2">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={user?.photoURL || ''} alt={getUserDisplayName(userProfile || user, null, '')} />
+                  <AvatarImage src={user?.photoURL || ''} alt={getUserDisplayName(user, userProfile, '')} />
                   <AvatarFallback>
-                    {getUserInitial(userProfile || user, 'U')}
+                    {getUserInitial(user || userProfile, 'U')}
                   </AvatarFallback>
                 </Avatar>
                 <span className="hidden sm:block text-sm font-medium">
-                  {getUserDisplayName(userProfile || user, null, '사용자')}
+                  {getUserDisplayName(user, userProfile, '사용자')}
                 </span>
               </Button>
             </DropdownMenuTrigger>
@@ -235,7 +235,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-medium leading-none">
-                    {getUserDisplayName(userProfile || user, null, '사용자')}
+                    {getUserDisplayName(user, userProfile, '사용자')}
                   </p>
                   <p className="text-xs leading-none text-muted-foreground">
                     {user?.email}

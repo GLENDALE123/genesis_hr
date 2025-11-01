@@ -6,7 +6,7 @@
 const { onRequest } = require('firebase-functions/v2/https');
 const admin = require('firebase-admin');
 const { initializeFirebase } = require('../lib/utils');
-const { normalizePhoneNumber, denormalizePhoneNumber, valuesDiffer } = require('./utils');
+const { normalizePhoneNumber, denormalizePhoneNumber, valuesDiffer, parseDisplayNameAndPosition } = require('./utils');
 
 /**
  * Admin 권한 확인
@@ -95,7 +95,7 @@ exports.migrateUserSync = onRequest({
       processed: 0,
       updated: {
         auth: { displayName: 0, photoURL: 0, phoneNumber: 0 },
-        firestore: { displayName: 0, photoURL: 0, contact: 0 },
+        firestore: { displayName: 0, photoURL: 0, position: 0 },
       },
       skipped: 0,
       errors: [],
@@ -117,14 +117,17 @@ exports.migrateUserSync = onRequest({
         try {
           results.processed++;
           
+          // displayName 처리: 이름과 직급 분리
+          const sourceDisplayName = firestoreUser.displayName || authUser.displayName;
+          const parsed = parseDisplayNameAndPosition(sourceDisplayName);
+          
           // Firestore → Firebase Auth 동기화
           const authUpdates = {};
           let needsAuthUpdate = false;
           
-          // displayName
-          if (firestoreUser.displayName && 
-              valuesDiffer(firestoreUser.displayName, authUser.displayName)) {
-            authUpdates.displayName = firestoreUser.displayName;
+          // displayName: Auth에는 직급 제거된 이름만 저장
+          if (parsed.name && valuesDiffer(parsed.name, authUser.displayName)) {
+            authUpdates.displayName = parsed.name;
             needsAuthUpdate = true;
           }
           
@@ -178,10 +181,10 @@ exports.migrateUserSync = onRequest({
           const firestoreUpdates = {};
           let needsFirestoreUpdate = false;
           
-          // displayName
-          if (authUser.displayName && 
-              valuesDiffer(authUser.displayName, firestoreUser.displayName)) {
-            firestoreUpdates.displayName = authUser.displayName;
+          // displayName: Firestore에는 원본 유지 (수정하지 않음)
+          // position: 분리된 직급만 새 필드로 추가
+          if (parsed.position !== undefined && parsed.position !== firestoreUser.position) {
+            firestoreUpdates.position = parsed.position;
             needsFirestoreUpdate = true;
           }
           
@@ -190,15 +193,6 @@ exports.migrateUserSync = onRequest({
               valuesDiffer(authUser.photoURL, firestoreUser.photoURL)) {
             firestoreUpdates.photoURL = authUser.photoURL;
             needsFirestoreUpdate = true;
-          }
-          
-          // contact (Auth.phoneNumber → Firestore.contact)
-          if (authUser.phoneNumber) {
-            const denormalizedPhone = denormalizePhoneNumber(authUser.phoneNumber);
-            if (denormalizedPhone && valuesDiffer(denormalizedPhone, firestoreUser.contact)) {
-              firestoreUpdates.contact = denormalizedPhone;
-              needsFirestoreUpdate = true;
-            }
           }
           
           if (needsFirestoreUpdate) {
@@ -210,7 +204,7 @@ exports.migrateUserSync = onRequest({
             
             if (firestoreUpdates.displayName) results.updated.firestore.displayName++;
             if (firestoreUpdates.photoURL) results.updated.firestore.photoURL++;
-            if (firestoreUpdates.contact) results.updated.firestore.contact++;
+            if (firestoreUpdates.position !== undefined) results.updated.firestore.position++;
           }
           
         } catch (error) {

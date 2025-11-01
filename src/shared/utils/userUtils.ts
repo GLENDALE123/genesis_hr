@@ -29,47 +29,33 @@ interface UserWithRole extends UserLike {
 // ============================================================================
 
 /**
- * 사용자 표시 이름 가져오기 (개선된 버전)
+ * 사용자 표시 이름 가져오기
  * 
  * @description
- * 우선순위: userProfile.displayName > user.displayName > user.email > email에서 이름 추출 > fallback
+ * 우선순위: user.displayName > user.email에서 이름 추출 > fallback
+ * Firebase Auth가 Source of Truth이므로 user.displayName을 우선 사용
  * 
- * @param userProfile - Firestore 사용자 프로필 (우선순위 1)
- * @param user - Firebase Auth 사용자 (우선순위 2)
+ * @param user - Firebase Auth 사용자 (우선순위 1)
+ * @param userProfile - Firestore 사용자 프로필 (현재는 사용하지 않음, 호환성을 위해 유지)
  * @param fallback - 기본값 (기본: 'Unknown')
  * @returns 표시할 사용자 이름
  * 
  * @example
- * const userName = getUserDisplayName(userProfile, user); // "홍길동"
- * const userName = getUserDisplayName(null, user, '알 수 없음'); // "알 수 없음"
+ * const userName = getUserDisplayName(user, userProfile); // "홍길동"
+ * const userName = getUserDisplayName(user, null, '알 수 없음'); // "알 수 없음"
  */
 export const getUserDisplayName = (
-  userProfile: UserLike | null | undefined,
-  user: UserLike | null | undefined = null,
+  user: UserLike | null | undefined,
+  userProfile: UserLike | null | undefined = null,
   fallback: string = 'Unknown'
 ): string => {
-  // 1순위: userProfile.displayName (Firestore에서 가져온 정확한 이름)
-  if (userProfile?.displayName) {
-    return userProfile.displayName;
-  }
-  
-  // 2순위: user.displayName (Firebase Auth, 일반적으로 null이지만 혹시 모를 경우)
+  // 1순위: user.displayName (Firebase Auth에서 가져온 표시 이름)
   if (user?.displayName) {
     return user.displayName;
   }
   
-  // 3순위: userProfile.name (혹시 다른 필드명으로 저장된 경우)
-  if (userProfile?.name) {
-    return userProfile.name;
-  }
-  
-  // 4순위: user.name (혹시 다른 필드명으로 저장된 경우)
-  if (user?.name) {
-    return user.name;
-  }
-  
-  // 5순위: 이메일에서 이름 추출 (userProfile.email 우선)
-  const email = userProfile?.email || user?.email;
+  // 2순위: 이메일에서 이름 추출
+  const email = user?.email;
   if (email) {
     const emailName = email.split('@')[0];
     // 이메일이 의미있는 이름인지 확인 (숫자나 특수문자만 있는 경우 제외)
@@ -78,7 +64,7 @@ export const getUserDisplayName = (
     }
   }
   
-  // 6순위: fallback
+  // 3순위: fallback
   return fallback;
 };
 

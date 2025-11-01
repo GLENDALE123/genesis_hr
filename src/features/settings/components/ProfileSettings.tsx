@@ -20,9 +20,7 @@ import { toast } from 'sonner';
 import { getUserInitial } from '@/shared/utils/userUtils';
 import { formatPhoneNumber } from '@/shared/utils/phoneUtils';
 import { uploadProfilePhoto, compressImage, deleteProfilePhoto } from '@/shared/services/firebase/storage';
-import { updateProfile } from 'firebase/auth';
-import { auth } from '@/shared/services/firebase/config';
-import { updateUserProfile } from '@/shared/services/firebase';
+import { updateUserProfile, updateAuthProfile } from '@/shared/services/firebase';
 import Cropper from 'react-easy-crop';
 import { Area } from 'react-easy-crop/types';
 import { DEPARTMENT_OPTIONS, normalizeDepartmentName } from '@/shared/constants/departments';
@@ -36,8 +34,8 @@ export const ProfileSettings: React.FC = () => {
   const [formData, setFormData] = useState(() => {
     const rawDepartment = userProfile?.department || settings.profile.department || '';
     return {
-      displayName: userProfile?.displayName || user?.displayName || '',
-      phoneNumber: userProfile?.phoneNumber || settings.profile.phoneNumber || '',
+      displayName: user?.displayName || '',
+      phoneNumber: user?.phoneNumber ? formatPhoneNumber(user.phoneNumber.replace(/^\+82/, '0').replace(/-/g, '')) : '',
       department: normalizeDepartmentName(rawDepartment),
     };
   });
@@ -68,8 +66,8 @@ export const ProfileSettings: React.FC = () => {
     // 원래 값으로 되돌리기
     const rawDepartment = userProfile?.department || settings.profile.department || '';
     setFormData({
-      displayName: userProfile?.displayName || user?.displayName || '',
-      phoneNumber: userProfile?.phoneNumber || settings.profile.phoneNumber || '',
+      displayName: user?.displayName || '',
+      phoneNumber: user?.phoneNumber ? formatPhoneNumber(user.phoneNumber.replace(/^\+82/, '0').replace(/-/g, '')) : '',
       department: normalizeDepartmentName(rawDepartment),
     });
     setIsEditing(false);
@@ -84,19 +82,16 @@ export const ProfileSettings: React.FC = () => {
     try {
       setIsSaving(true);
       
-      // 1. Firestore users/{userId} 문서 업데이트 (userProfile)
-      await updateUserProfile(user.uid, {
-        displayName: formData.displayName,
-        department: formData.department || undefined,
+      // 1. Firebase Auth 프로필 업데이트 (displayName, phoneNumber)
+      await updateAuthProfile({
+        displayName: formData.displayName || undefined,
         phoneNumber: formData.phoneNumber || undefined,
       });
       
-      // 2. Firebase Auth 프로필 업데이트
-      if (auth && auth.currentUser) {
-        await updateProfile(auth.currentUser, {
-          displayName: formData.displayName,
-        });
-      }
+      // 2. Firestore users/{userId} 문서 업데이트 (position, department만)
+      await updateUserProfile(user.uid, {
+        department: formData.department || undefined,
+      });
       
       // 3. Settings 문서 업데이트
       await updateProfileSettings({
@@ -243,15 +238,10 @@ export const ProfileSettings: React.FC = () => {
       // Storage에 업로드
       const photoURL = await uploadProfilePhoto(user.uid, compressedFile);
 
-      // 1. Firebase Auth 프로필 업데이트
-      if (auth && auth.currentUser) {
-        await updateProfile(auth.currentUser, { photoURL });
-      }
+      // 1. Firebase Auth 프로필 업데이트 (photoURL)
+      await updateAuthProfile({ photoURL });
 
-      // 2. Firestore users/{userId} 문서 업데이트 (userProfile)
-      await updateUserProfile(user.uid, { photoURL });
-
-      // 3. Firestore 설정 업데이트
+      // 2. Firestore 설정 업데이트
       await updateProfileSettings({ photoURL });
 
       toast.success('프로필 사진이 변경되었습니다.');
@@ -296,8 +286,8 @@ export const ProfileSettings: React.FC = () => {
       const rawDepartment = userProfile?.department || settings.profile.department || '';
       const normalizedDepartment = normalizeDepartmentName(rawDepartment);
       setFormData({
-        displayName: userProfile?.displayName || user?.displayName || '',
-        phoneNumber: userProfile?.phoneNumber || settings.profile.phoneNumber || '',
+        displayName: user?.displayName || '',
+        phoneNumber: user?.phoneNumber ? formatPhoneNumber(user.phoneNumber.replace(/^\+82/, '0').replace(/-/g, '')) : '',
         department: normalizedDepartment,
       });
     }
@@ -339,7 +329,7 @@ export const ProfileSettings: React.FC = () => {
           <div className="flex items-center gap-4">
             <Avatar className="h-20 w-20">
               <AvatarImage 
-                src={userProfile?.photoURL || user?.photoURL || ''} 
+                src={user?.photoURL || ''} 
                 alt={formData.displayName} 
               />
               <AvatarFallback className="text-2xl">

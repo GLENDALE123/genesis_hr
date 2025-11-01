@@ -1,20 +1,24 @@
 // Firebase 설정 및 서비스들 export
 export { default as app, auth, db, storage, analytics } from './config';
 
-// Auth 서비스
+// Auth 서비스 (userProfile.ts에서 직접 export)
 export {
   signIn,
   signUp,
   logout,
   onAuthStateChange,
-  getCurrentUserProfile
-} from './auth';
+  getCurrentUserProfile,
+  updateAuthProfile
+} from './userProfile';
 
 // UserProfile 서비스
 export {
   createUserProfile,
   getUserProfile,
   getUserProfileByEmail,
+  getUserProfileByLoginId,
+  checkLoginIdExists,
+  checkEmailExists,
   updateLastLogin,
   updateUserProfile,
   getAllUsers,

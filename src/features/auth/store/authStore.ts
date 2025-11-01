@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
 import { devtools, persist } from 'zustand/middleware';
 import { User } from 'firebase/auth';
-import { onAuthStateChange } from '@/shared/services/firebase/auth';
+import { onAuthStateChange } from '@/shared/services/firebase';
 import { AuthService } from '@/features/auth/services';
 import { UserProfile } from '@/features/auth/types';
 import { usePermissionsStore } from './permissionsStore';
@@ -240,7 +240,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           user: state.user ? {
             uid: state.user.uid,
             email: state.user.email,
-            displayName: getUserDisplayName(state.userProfile, state.user),
+            displayName: getUserDisplayName(state.user, state.userProfile),
             photoURL: state.user.photoURL,
           } : null
         }),

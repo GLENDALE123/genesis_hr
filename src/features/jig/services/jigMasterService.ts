@@ -81,7 +81,13 @@ export const createJigMasterItem = async (
   };
 
   await setDocument(JIG_COLLECTIONS.MASTER, id, jigMasterItem);
-  return { id, ...jigMasterItem };
+  const newItem = { id, ...jigMasterItem };
+  
+  // Zustand 스토어에도 추가 (실시간 반영)
+  const { useJigMasterStore } = await import('../store/jigMasterStore');
+  useJigMasterStore.getState().addMaster(newItem);
+  
+  return newItem;
 };
 
 // 지그 마스터 수정
@@ -99,6 +105,10 @@ export const updateJigMasterItem = async (
     // id 필드가 포함되어 있다면 제거 (문서 내부에 id 필드 저장하지 않음)
     const { id: _, ...updateData } = updates as any;
     await updateDocument(JIG_COLLECTIONS.MASTER, id, updateData);
+    
+    // Zustand 스토어에도 업데이트 (실시간 반영)
+    const { useJigMasterStore } = await import('../store/jigMasterStore');
+    useJigMasterStore.getState().updateMaster(id, updateData);
     
   } catch (error: any) {
     if (error.code === 'not-found' || error.message?.includes('No document to update')) {
@@ -130,6 +140,10 @@ export const deleteJigMasterItem = async (id: string): Promise<void> => {
     
     // 문서 삭제
     await deleteDocument(JIG_COLLECTIONS.MASTER, id);
+    
+    // Zustand 스토어에서도 삭제 (실시간 반영)
+    const { useJigMasterStore } = await import('../store/jigMasterStore');
+    useJigMasterStore.getState().deleteMaster(id);
     
   } catch (error) {
     throw error;
@@ -238,31 +252,38 @@ export const subscribeToJigMastersByDateRange = (
   let lastIds: string = '';
   const DEBOUNCE_DELAY = 500;
   
-  return onSnapshot(q, (snapshot) => {
-    if (debounceTimer) {
-      clearTimeout(debounceTimer);
-    }
-    
-    debounceTimer = setTimeout(() => {
-      const masters = snapshot.docs.map(doc => {
-        const data = doc.data();
-        const { id: _, ...cleanData } = data as any;
-        return {
-          id: doc.id,
-          ...cleanData
-        } as JigMasterItem;
-      });
-      
-      const currentIds = masters.map(m => m.id).join(',');
-      
-      if (lastIds === currentIds) {
-        return;
+  return onSnapshot(
+    q, 
+    (snapshot) => {
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
       }
       
-      lastIds = currentIds;
-      onUpdate(masters);
-    }, DEBOUNCE_DELAY);
-  }, onError);
+      debounceTimer = setTimeout(() => {
+        const masters = snapshot.docs.map(doc => {
+          const data = doc.data();
+          const { id: _, ...cleanData } = data as any;
+          return {
+            id: doc.id,
+            ...cleanData
+          } as JigMasterItem;
+        });
+        
+        const currentIds = masters.map(m => m.id).join(',');
+        
+        if (lastIds === currentIds) {
+          return;
+        }
+        
+        lastIds = currentIds;
+        onUpdate(masters);
+      }, DEBOUNCE_DELAY);
+    }, 
+    (error) => {
+      console.error('❌ Firestore 구독 에러:', error);
+      onError(error);
+    }
+  );
 };
 
 // 자동완성 데이터 조회 (캐시 최적화)
