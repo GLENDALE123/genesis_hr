@@ -91,6 +91,25 @@ export const validateDepartment = (department: string): ValidationResult => {
   return { isValid: true };
 };
 
+// 전화번호 검증 (선택사항)
+export const validateContact = (contact: string): ValidationResult => {
+  if (!contact.trim()) {
+    return { isValid: true }; // 선택사항이므로 빈 값도 허용
+  }
+  
+  const cleaned = contact.replace(/[\s\-()]/g, '');
+  
+  // 11자리 모바일 번호만 허용 (010, 011, 016, 017, 018, 019)
+  if (!/^01[0-69]\d{8}$/.test(cleaned)) {
+    return { 
+      isValid: false, 
+      error: '올바른 전화번호 형식을 입력해주세요. (예: 010-1234-5678)' 
+    };
+  }
+  
+  return { isValid: true };
+};
+
 // 이메일 또는 로그인 아이디 형식 판단
 export const isEmailFormat = (input: string): boolean => {
   return input.includes('@');

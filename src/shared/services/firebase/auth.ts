@@ -15,6 +15,7 @@ import {
 import { SignUpData, LoginData, UserProfile } from '@/features/auth/types';
 import { settingsService } from '../settings/settingsService';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
+import { normalizeToFirebaseAuthPhone } from '@/shared/utils/phoneUtils';
 
 // 로그인 함수 (이메일로 로그인)
 export const signIn = async (loginData: LoginData) => {
@@ -58,16 +59,30 @@ export const signIn = async (loginData: LoginData) => {
 export const signUp = async (signUpData: SignUpData) => {
   if (!auth) throw new Error('Firebase Auth is not initialized');
   try {
-    const { email, password, displayName } = signUpData;
+    const { email, password, displayName, phoneNumber } = signUpData;
     
     // Firebase Auth로 계정 생성 (이메일 중복은 Firebase Auth가 자동으로 체크)
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     
-    // 사용자 프로필 업데이트 (현재 프로젝트에서는 Firebase Auth에 displayName 사용하지 않음)
-    // displayName은 Firestore users/{uid}에만 저장
-    // if (displayName) {
-    //   await updateProfile(userCredential.user, { displayName });
-    // }
+    // Firebase Auth 프로필 업데이트 (displayName, phoneNumber)
+    const authProfileUpdates: { displayName?: string; phoneNumber?: string } = {};
+    
+    if (displayName) {
+      authProfileUpdates.displayName = displayName;
+    }
+    
+    // 전화번호를 Firebase Auth 형식으로 변환해서 저장
+    if (phoneNumber) {
+      const normalizedPhone = normalizeToFirebaseAuthPhone(phoneNumber);
+      if (normalizedPhone) {
+        authProfileUpdates.phoneNumber = normalizedPhone;
+      }
+    }
+    
+    // Firebase Auth 프로필 업데이트
+    if (Object.keys(authProfileUpdates).length > 0) {
+      await updateProfile(userCredential.user, authProfileUpdates);
+    }
     
     // Firestore에 사용자 프로필 생성
     await createUserProfile(signUpData, userCredential.user.uid);

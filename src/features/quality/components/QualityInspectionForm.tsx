@@ -1044,7 +1044,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
 
   // Footer 버튼들
   const FormFooter = (
-    <>
+    <div className="flex justify-end gap-2">
       <Button type="button" onClick={handleClose} disabled={isSaving}>
         취소
       </Button>
@@ -1082,7 +1082,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
           )}
         </Button>
       )}
-    </>
+    </div>
   );
 
   const handleDialogChange = (open: boolean) => {
@@ -1158,7 +1158,39 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
                 {FormContentMobile}
               </div>
               <SheetFooter className="sticky bottom-0 bg-background border-t p-4 flex-row justify-end gap-2 flex-shrink-0 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-                {FormFooter}
+                <Button type="button" onClick={handleClose} disabled={isSaving}>
+                  취소
+                </Button>
+                {canDelete() && (
+                  <Button 
+                    type="button" 
+                    onClick={handleDelete}
+                    disabled={isSaving}
+                    className="bg-red-500 text-white hover:bg-red-600"
+                  >
+                    {isSaving ? '삭제 중...' : '삭제'}
+                  </Button>
+                )}
+                {!isViewMode && (
+                  <Button 
+                    type="submit" 
+                    form="quality-inspection-form"
+                    disabled={isSaving}
+                    className="min-w-[120px]"
+                  >
+                    {isSaving ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        {isEditMode ? '수정 중...' : '저장 중...'}
+                      </>
+                    ) : (
+                      isEditMode ? '수정' : '저장하기'
+                    )}
+                  </Button>
+                )}
               </SheetFooter>
             </div>
           </SheetContent>

@@ -37,8 +37,8 @@ export const createUserProfile = async (userData: SignUpData, uid: string): Prom
   if (userData.department) {
     userProfile.department = userData.department;
   }
-  if (userData.contact) {
-    userProfile.contact = userData.contact;
+  if (userData.phoneNumber) {
+    userProfile.phoneNumber = userData.phoneNumber;
   }
   
   await setDoc(doc(db, USERS_COLLECTION, uid), userProfile);

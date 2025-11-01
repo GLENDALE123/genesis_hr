@@ -50,6 +50,11 @@ export const AUTH_VALIDATION_RULES = {
   DEPARTMENT: {
     MAX_LENGTH: 20,
   },
+  
+  // 전화번호 규칙
+  CONTACT: {
+    PATTERN: /^01[0-9]-?\d{3,4}-?\d{4}$/,
+  },
 } as const;
 
 // Firestore 컬렉션 이름
@@ -68,6 +73,7 @@ export const FORM_PLACEHOLDERS = {
   NAME: '이름을 입력하세요',
   POSITION: '직책을 입력하세요 (예: 대리, 과장)',
   DEPARTMENT: '부서를 입력하세요 (예: 개발팀, 마케팅팀)',
+  CONTACT: '전화번호를 입력하세요 (예: 010-1234-5678)',
   PASSWORD: '비밀번호를 입력하세요',
   CONFIRM_PASSWORD: '비밀번호를 다시 입력하세요',
 } as const;
@@ -78,6 +84,7 @@ export const FORM_LABELS = {
   NAME: '이름',
   POSITION: '직책',
   DEPARTMENT: '부서',
+  CONTACT: '전화번호',
   PASSWORD: '비밀번호',
   CONFIRM_PASSWORD: '비밀번호 확인',
 } as const;

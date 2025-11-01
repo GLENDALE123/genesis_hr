@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/sha
 import { Label } from '@/shared/components/ui/label';
 import { Input } from '@/shared/components/ui/input';
 import { Button } from '@/shared/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/shared/components/ui/dialog';
 import { useSettings } from '../hooks/useSettings';
@@ -24,6 +25,7 @@ import { auth } from '@/shared/services/firebase/config';
 import { updateUserProfile } from '@/shared/services/firebase';
 import Cropper from 'react-easy-crop';
 import { Area } from 'react-easy-crop/types';
+import { DEPARTMENT_OPTIONS, normalizeDepartmentName } from '@/shared/constants/departments';
 
 export const ProfileSettings: React.FC = () => {
   const { user, userProfile } = useAuthStore();
@@ -31,10 +33,13 @@ export const ProfileSettings: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({
-    displayName: userProfile?.displayName || user?.displayName || '',
-    phoneNumber: userProfile?.contact || settings.profile.phoneNumber || '',
-    department: userProfile?.department || settings.profile.department || '',
+  const [formData, setFormData] = useState(() => {
+    const rawDepartment = userProfile?.department || settings.profile.department || '';
+    return {
+      displayName: userProfile?.displayName || user?.displayName || '',
+      phoneNumber: userProfile?.phoneNumber || settings.profile.phoneNumber || '',
+      department: normalizeDepartmentName(rawDepartment),
+    };
   });
 
   // 이미지 크롭 관련 상태
@@ -61,10 +66,11 @@ export const ProfileSettings: React.FC = () => {
 
   const handleCancel = () => {
     // 원래 값으로 되돌리기
+    const rawDepartment = userProfile?.department || settings.profile.department || '';
     setFormData({
       displayName: userProfile?.displayName || user?.displayName || '',
-      phoneNumber: userProfile?.contact || settings.profile.phoneNumber || '',
-      department: userProfile?.department || settings.profile.department || '',
+      phoneNumber: userProfile?.phoneNumber || settings.profile.phoneNumber || '',
+      department: normalizeDepartmentName(rawDepartment),
     });
     setIsEditing(false);
   };
@@ -82,7 +88,7 @@ export const ProfileSettings: React.FC = () => {
       await updateUserProfile(user.uid, {
         displayName: formData.displayName,
         department: formData.department || undefined,
-        contact: formData.phoneNumber || undefined,
+        phoneNumber: formData.phoneNumber || undefined,
       });
       
       // 2. Firebase Auth 프로필 업데이트
@@ -287,10 +293,12 @@ export const ProfileSettings: React.FC = () => {
   // userProfile 변경 시 formData 업데이트
   React.useEffect(() => {
     if (!isEditing) {
+      const rawDepartment = userProfile?.department || settings.profile.department || '';
+      const normalizedDepartment = normalizeDepartmentName(rawDepartment);
       setFormData({
         displayName: userProfile?.displayName || user?.displayName || '',
-        phoneNumber: userProfile?.contact || settings.profile.phoneNumber || '',
-        department: userProfile?.department || settings.profile.department || '',
+        phoneNumber: userProfile?.phoneNumber || settings.profile.phoneNumber || '',
+        department: normalizedDepartment,
       });
     }
   }, [userProfile, user, settings.profile, isEditing]);
@@ -480,14 +488,20 @@ export const ProfileSettings: React.FC = () => {
               <Building2 className="h-4 w-4" />
               부서
             </Label>
-            <Input
-              id="department"
-              value={formData.department}
-              onChange={(e) => handleChange('department', e.target.value)}
-              placeholder="예: 생산관리부"
+            <Select 
+              value={formData.department} 
+              onValueChange={(value) => handleChange('department', value)}
               disabled={!isEditing || isSaving}
-              className={!isEditing ? 'bg-muted' : ''}
-            />
+            >
+              <SelectTrigger className={!isEditing ? 'bg-muted' : ''}>
+                <SelectValue placeholder="부서를 선택하세요" />
+              </SelectTrigger>
+              <SelectContent>
+                {DEPARTMENT_OPTIONS.map(dept => (
+                  <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>

@@ -6,7 +6,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/components/ui/collapsible';
 import { ChevronDown, ChevronRight, Edit, Trash2 } from 'lucide-react';
-import { QualityInspection } from '../types';
+import { QualityInspection, TestResultDetail, DefectResultPair } from '../types';
 import { INSPECTION_RESULT_COLORS, INSPECTION_TYPE_COLORS } from '../constants';
 import { cn } from '@/shared/lib/utils';
 import { ImageGalleryGrid } from '@/shared/components/common/ImageGalleryGrid';
@@ -58,6 +58,16 @@ export const InspectionCard: React.FC<InspectionCardProps> = memo(({
         </dd>
       </div>
     );
+  };
+
+  // TestResultDetail 타입 가드
+  const isTestResultDetail = (value: string | TestResultDetail | undefined): value is TestResultDetail => {
+    return typeof value === 'object' && value !== null && 'result' in value;
+  };
+
+  // DefectResultPair 타입 가드
+  const isDefectResultPair = (pair: DefectResultPair | { defect: string; result: string }): pair is DefectResultPair => {
+    return 'defectKeyword' in pair;
   };
 
   // 검사가 1개만 있을 때는 접기/펼치기 없이 바로 표시
@@ -160,6 +170,7 @@ export const InspectionCard: React.FC<InspectionCardProps> = memo(({
             {/* 수입검사 전용 필드 */}
             {inspection.inspectionType === 'incoming' && (
               <>
+                {renderField('사출포장', inspection.packagingInfo)}
                 {renderField('외관검사이력', inspection.appearanceHistory)}
                 {renderField('기능검사이력', inspection.functionHistory)}
                 {renderField('최종협의(소속)', inspection.finalConsultationDept)}
@@ -212,13 +223,79 @@ export const InspectionCard: React.FC<InspectionCardProps> = memo(({
                     </dd>
                   </div>
                 )}
+
+                {/* 신뢰성 테스트 결과 */}
+                {inspection.reliabilityTestResult && (
+                  <div className="md:col-span-2 space-y-1">
+                    <dt className="text-sm font-medium text-muted-foreground">신뢰성 테스트 결과</dt>
+                    <dd className="text-sm text-foreground">
+                      {isTestResultDetail(inspection.reliabilityTestResult) ? (
+                        <>
+                          {inspection.reliabilityTestResult.result}
+                          {inspection.reliabilityTestResult.action && ` (처리: ${inspection.reliabilityTestResult.action})`}
+                          {inspection.reliabilityTestResult.decisionMaker && ` (결정자: ${inspection.reliabilityTestResult.decisionMaker})`}
+                        </>
+                      ) : (
+                        String(inspection.reliabilityTestResult)
+                      )}
+                    </dd>
+                  </div>
+                )}
+
+                {/* 색상 체크 결과 */}
+                {inspection.colorCheckResult && (
+                  <div className="md:col-span-2 space-y-1">
+                    <dt className="text-sm font-medium text-muted-foreground">색상 체크 결과</dt>
+                    <dd className="text-sm text-foreground">
+                      {isTestResultDetail(inspection.colorCheckResult) ? (
+                        <>
+                          {inspection.colorCheckResult.result}
+                          {inspection.colorCheckResult.action && ` (처리: ${inspection.colorCheckResult.action})`}
+                          {inspection.colorCheckResult.decisionMaker && ` (결정자: ${inspection.colorCheckResult.decisionMaker})`}
+                        </>
+                      ) : (
+                        String(inspection.colorCheckResult)
+                      )}
+                    </dd>
+                  </div>
+                )}
+
+                {renderField('사출포장', inspection.injectionPackaging)}
+                {renderField('후가공포장', inspection.postProcessPackaging)}
               </>
             )}
             
             {/* 출하검사 전용 필드 */}
             {inspection.inspectionType === 'outgoing' && (
               <>
-                {void 0}
+                {renderField('작업라인', inspection.workLine)}
+                {renderField('재검사요청 키워드', inspection.reinspectionKeyword)}
+                {renderField('재검사요청 내용', inspection.reinspectionContent)}
+                
+                {/* 불량키워드 & 검사결과 세트 */}
+                {inspection.defectResultPairs && inspection.defectResultPairs.length > 0 && (
+                  <div className="md:col-span-2 space-y-2">
+                    <dt className="text-sm font-medium text-muted-foreground">불량키워드 & 검사결과</dt>
+                    <dd className="space-y-2">
+                      {inspection.defectResultPairs.map((pair, idx) => {
+                        if (!isDefectResultPair(pair)) return null;
+                        return (
+                          <div key={idx} className="p-3 bg-muted rounded-md text-xs space-y-1">
+                            <p><strong>불량키워드:</strong> {pair.defectKeyword}</p>
+                            <p><strong>검사결과:</strong> {pair.inspectionResult}</p>
+                            {pair.inspectionResult === '한도승인' && (
+                              <>
+                                {pair.limitApprovalContent && <p><strong>한도승인 내용:</strong> {pair.limitApprovalContent}</p>}
+                                {pair.limitApprovalDecisionMaker && <p><strong>한도결정자:</strong> {pair.limitApprovalDecisionMaker}</p>}
+                              </>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </dd>
+                  </div>
+                )}
+                
                 {renderField('작업자 인원수', inspection.workerCount ? `${inspection.workerCount}명` : undefined)}
                 {renderField('사출포장', inspection.injectionPackaging)}
                 {renderField('후가공포장', inspection.postProcessPackaging)}
@@ -401,6 +478,7 @@ export const InspectionCard: React.FC<InspectionCardProps> = memo(({
               {/* 수입검사 전용 필드 */}
               {inspection.inspectionType === 'incoming' && (
                 <>
+                  {renderField('사출포장', inspection.packagingInfo)}
                   {renderField('외관검사이력', inspection.appearanceHistory)}
                   {renderField('기능검사이력', inspection.functionHistory)}
                   {renderField('최종협의(소속)', inspection.finalConsultationDept)}
@@ -453,13 +531,79 @@ export const InspectionCard: React.FC<InspectionCardProps> = memo(({
                       </dd>
                     </div>
                   )}
+
+                  {/* 신뢰성 테스트 결과 */}
+                  {inspection.reliabilityTestResult && (
+                    <div className="md:col-span-2 space-y-1">
+                      <dt className="text-sm font-medium text-muted-foreground">신뢰성 테스트 결과</dt>
+                      <dd className="text-sm text-foreground">
+                        {isTestResultDetail(inspection.reliabilityTestResult) ? (
+                          <>
+                            {inspection.reliabilityTestResult.result}
+                            {inspection.reliabilityTestResult.action && ` (처리: ${inspection.reliabilityTestResult.action})`}
+                            {inspection.reliabilityTestResult.decisionMaker && ` (결정자: ${inspection.reliabilityTestResult.decisionMaker})`}
+                          </>
+                        ) : (
+                          String(inspection.reliabilityTestResult)
+                        )}
+                      </dd>
+                    </div>
+                  )}
+
+                  {/* 색상 체크 결과 */}
+                  {inspection.colorCheckResult && (
+                    <div className="md:col-span-2 space-y-1">
+                      <dt className="text-sm font-medium text-muted-foreground">색상 체크 결과</dt>
+                      <dd className="text-sm text-foreground">
+                        {isTestResultDetail(inspection.colorCheckResult) ? (
+                          <>
+                            {inspection.colorCheckResult.result}
+                            {inspection.colorCheckResult.action && ` (처리: ${inspection.colorCheckResult.action})`}
+                            {inspection.colorCheckResult.decisionMaker && ` (결정자: ${inspection.colorCheckResult.decisionMaker})`}
+                          </>
+                        ) : (
+                          String(inspection.colorCheckResult)
+                        )}
+                      </dd>
+                    </div>
+                  )}
+
+                  {renderField('사출포장', inspection.injectionPackaging)}
+                  {renderField('후가공포장', inspection.postProcessPackaging)}
                 </>
               )}
               
               {/* 출하검사 전용 필드 */}
               {inspection.inspectionType === 'outgoing' && (
                 <>
-                  {void 0}
+                  {renderField('작업라인', inspection.workLine)}
+                  {renderField('재검사요청 키워드', inspection.reinspectionKeyword)}
+                  {renderField('재검사요청 내용', inspection.reinspectionContent)}
+                  
+                  {/* 불량키워드 & 검사결과 세트 */}
+                  {inspection.defectResultPairs && inspection.defectResultPairs.length > 0 && (
+                    <div className="md:col-span-2 space-y-2">
+                      <dt className="text-sm font-medium text-muted-foreground">불량키워드 & 검사결과</dt>
+                      <dd className="space-y-2">
+                        {inspection.defectResultPairs.map((pair, idx) => {
+                          if (!isDefectResultPair(pair)) return null;
+                          return (
+                            <div key={idx} className="p-3 bg-muted rounded-md text-xs space-y-1">
+                              <p><strong>불량키워드:</strong> {pair.defectKeyword}</p>
+                              <p><strong>검사결과:</strong> {pair.inspectionResult}</p>
+                              {pair.inspectionResult === '한도승인' && (
+                                <>
+                                  {pair.limitApprovalContent && <p><strong>한도승인 내용:</strong> {pair.limitApprovalContent}</p>}
+                                  {pair.limitApprovalDecisionMaker && <p><strong>한도결정자:</strong> {pair.limitApprovalDecisionMaker}</p>}
+                                </>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </dd>
+                    </div>
+                  )}
+                  
                   {renderField('작업자 인원수', inspection.workerCount ? `${inspection.workerCount}명` : undefined)}
                   {renderField('사출포장', inspection.injectionPackaging)}
                   {renderField('후가공포장', inspection.postProcessPackaging)}

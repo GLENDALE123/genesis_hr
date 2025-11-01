@@ -10,6 +10,7 @@ import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Alert, AlertDescription } from '@/shared/components/ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { 
   FORM_PLACEHOLDERS, 
   FORM_LABELS, 
@@ -20,10 +21,13 @@ import {
 import { 
   validateEmail, 
   validatePassword, 
-  validateName 
+  validateName,
+  validateContact 
 } from '@/features/auth/utils';
 import { Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
+import { formatPhoneNumber } from '@/shared/utils/phoneUtils';
+import { DEPARTMENT_OPTIONS } from '@/shared/constants/departments';
 
 export function LoginForm() {
   const [email, setEmail] = useState('');
@@ -32,6 +36,7 @@ export function LoginForm() {
   const [name, setName] = useState('');
   const [position, setPosition] = useState('');
   const [department, setDepartment] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -43,12 +48,14 @@ export function LoginForm() {
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [nameError, setNameError] = useState('');
+  const [phoneNumberError, setPhoneNumberError] = useState('');
   
   // shake 애니메이션 트리거 상태
   const [shakeEmail, setShakeEmail] = useState(false);
   const [shakePassword, setShakePassword] = useState(false);
   const [shakeName, setShakeName] = useState(false);
   const [shakeConfirmPassword, setShakeConfirmPassword] = useState(false);
+  const [shakePhoneNumber, setShakePhoneNumber] = useState(false);
   
   const router = useRouter();
   const { user, refreshUserProfile } = useAuthStore();
@@ -75,7 +82,7 @@ export function LoginForm() {
   }
 
   // shake 애니메이션 트리거 함수
-  const triggerShake = (field: 'email' | 'password' | 'name' | 'confirmPassword') => {
+  const triggerShake = (field: 'email' | 'password' | 'name' | 'confirmPassword' | 'phoneNumber') => {
     if (field === 'email') {
       setShakeEmail(true);
       setTimeout(() => setShakeEmail(false), 500);
@@ -88,6 +95,9 @@ export function LoginForm() {
     } else if (field === 'confirmPassword') {
       setShakeConfirmPassword(true);
       setTimeout(() => setShakeConfirmPassword(false), 500);
+    } else if (field === 'phoneNumber') {
+      setShakePhoneNumber(true);
+      setTimeout(() => setShakePhoneNumber(false), 500);
     }
   };
 
@@ -98,6 +108,7 @@ export function LoginForm() {
     setEmailError('');
     setPasswordError('');
     setNameError('');
+    setPhoneNumberError('');
 
     try {
       if (isSignUp) {
@@ -128,6 +139,16 @@ export function LoginForm() {
           throw new Error(nameValidation.error);
         }
         
+        // 전화번호 검증 (선택사항이므로 입력된 경우만)
+        if (phoneNumber.trim()) {
+          const phoneNumberValidation = validateContact(phoneNumber);
+          if (!phoneNumberValidation.isValid) {
+            setPhoneNumberError(phoneNumberValidation.error || '');
+            triggerShake('phoneNumber');
+            throw new Error(phoneNumberValidation.error);
+          }
+        }
+        
         await AuthService.signUp({
           email: email.trim(),
           password,
@@ -136,6 +157,7 @@ export function LoginForm() {
           displayName: name.trim(),
           position: position.trim() || undefined,
           department: department.trim() || undefined,
+          phoneNumber: phoneNumber.trim() || undefined,
         });
         
         // 회원가입 성공 후 사용자 프로필 강제 새로고침
@@ -382,14 +404,36 @@ export function LoginForm() {
               
               <div className="space-y-2">
                 <Label htmlFor="department">{FORM_LABELS.DEPARTMENT}</Label>
+                <Select value={department} onValueChange={setDepartment}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="부서를 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEPARTMENT_OPTIONS.map(dept => (
+                      <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="phoneNumber">{FORM_LABELS.CONTACT}</Label>
                 <Input
-                  id="department"
-                  name="department"
-                  type="text"
-                  placeholder={FORM_PLACEHOLDERS.DEPARTMENT}
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
+                  id="phoneNumber"
+                  name="phoneNumber"
+                  type="tel"
+                  placeholder={FORM_PLACEHOLDERS.CONTACT}
+                  value={phoneNumber}
+                  onChange={(e) => {
+                    const formatted = formatPhoneNumber(e.target.value);
+                    setPhoneNumber(formatted);
+                    setPhoneNumberError('');
+                  }}
+                  className={`${phoneNumberError ? 'border-destructive focus-visible:ring-destructive' : ''} ${shakePhoneNumber ? 'animate-shake' : ''}`}
                 />
+                {phoneNumberError && (
+                  <p className="text-sm text-destructive">{phoneNumberError}</p>
+                )}
               </div>
             </>
           )}
@@ -417,6 +461,7 @@ export function LoginForm() {
               setName('');
               setPosition('');
               setDepartment('');
+              setPhoneNumber('');
               setError('');
               setShowPassword(false);
               setShowConfirmPassword(false);
