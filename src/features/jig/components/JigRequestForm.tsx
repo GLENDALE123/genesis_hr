@@ -8,6 +8,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/shared/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/shared/components/ui/sheet';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
@@ -28,6 +29,8 @@ import { PRODUCTION_TYPES } from '../constants';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useImageUpload } from '@/shared/hooks';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
+import { useDeviceType } from '@/shared/hooks/use-device';
+import { ArrowLeft } from 'lucide-react';
 
 interface JigRequestFormProps {
   isOpen: boolean;
@@ -52,6 +55,8 @@ export const JigRequestForm: React.FC<JigRequestFormProps> = ({
   editingRequest = null,
   autocompleteData,
 }) => {
+  const { isSmartphone, isTablet } = useDeviceType();
+  const isMobileOrTablet = isSmartphone || isTablet;
   const { user, userProfile } = useAuthStore();
   
   // 이미지 업로드 훅 사용
@@ -283,238 +288,307 @@ export const JigRequestForm: React.FC<JigRequestFormProps> = ({
     }));
   };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
-        <DialogHeader>
-          <DialogTitle>{editingRequest ? '지그 요청 수정' : '지그 요청 등록'}</DialogTitle>
-        </DialogHeader>
-        
-        <ScrollArea className="max-h-[70vh] pr-4">
-          <div className="space-y-6 p-1">
-            {/* 기본 정보 */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">기본 정보</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="requestDate">요청일</Label>
-                  <Input
-                    id="requestDate"
-                    type="date"
-                    value={formData.requestDate}
-                    onChange={(e) => handleInputChange('requestDate', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="requestType">요청 유형</Label>
-                  <InputSelect
-                    value={formData.requestType}
-                    onChange={(value) => handleInputChange('requestType', value)}
-                    options={PRODUCTION_TYPES}
-                    placeholder="요청 유형 선택"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="requester">요청자</Label>
-                  <InputSelect
-                    value={formData.requester}
-                    onChange={(value) => handleInputChange('requester', value)}
-                    options={autocompleteData?.requesters || []}
-                    placeholder="요청자 선택"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="destination">수신처</Label>
-                  <InputSelect
-                    value={formData.destination}
-                    onChange={(value) => handleInputChange('destination', value)}
-                    options={autocompleteData?.destinations || []}
-                    placeholder="수신처 선택"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="deliveryDate">납기일</Label>
-                  <Input
-                    id="deliveryDate"
-                    type="date"
-                    value={formData.deliveryDate}
-                    onChange={(e) => handleInputChange('deliveryDate', e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
+  const handleDialogChange = (open: boolean) => {
+    if (!open) {
+      onClose();
+    }
+  };
 
-            {/* 지그 정보 */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">지그 정보</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="itemName">품목명</Label>
-                  <InputSelect
-                    value={formData.itemName}
-                    onChange={(value) => handleInputChange('itemName', value)}
-                    options={autocompleteData?.itemNames || []}
-                    placeholder="품목명 입력"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="partName">부품명</Label>
-                  <InputSelect
-                    value={formData.partName}
-                    onChange={(value) => handleInputChange('partName', value)}
-                    options={autocompleteData?.partNames || []}
-                    placeholder="부품명 입력"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="itemNumber">품번</Label>
-                  <InputSelect
-                    value={formData.itemNumber}
-                    onChange={(value) => handleInputChange('itemNumber', value)}
-                    options={autocompleteData?.itemNumbers || []}
-                    placeholder="품번 입력"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="jigHandleLength">지그 핸들 길이</Label>
-                  <Input
-                    id="jigHandleLength"
-                    type="number"
-                    value={formData.jigHandleLength || ''}
-                    onChange={(e) => handleInputChange('jigHandleLength', e.target.value ? Number(e.target.value) : 0)}
-                    placeholder="지그 핸들 길이"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <Label htmlFor="specification">규격</Label>
-                  <Textarea
-                    id="specification"
-                    value={formData.specification}
-                    onChange={(e) => handleInputChange('specification', e.target.value)}
-                    placeholder="규격 입력"
-                    rows={3}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* 수량 및 비용 */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">수량 및 비용</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="quantity">수량</Label>
-                  <Input
-                    id="quantity"
-                    type="number"
-                    min="1"
-                    value={formData.quantity}
-                    onChange={(e) => handleInputChange('quantity', Number(e.target.value))}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="coreCost">코어비</Label>
-                  <Input
-                    id="coreCost"
-                    type="number"
-                    value={formData.coreCost || ''}
-                    onChange={(e) => handleInputChange('coreCost', e.target.value ? Number(e.target.value) : 0)}
-                    placeholder="코어비"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="unitPrice">단가</Label>
-                  <Input
-                    id="unitPrice"
-                    type="number"
-                    value={formData.unitPrice || ''}
-                    onChange={(e) => handleInputChange('unitPrice', e.target.value ? Number(e.target.value) : 0)}
-                    placeholder="단가"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* 이미지 업로드 */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">이미지 첨부</h3>
-              <div className="space-y-4">
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      const input = document.createElement('input');
-                      input.type = 'file';
-                      input.accept = 'image/*';
-                      input.multiple = true;
-                      input.onchange = (e) => handleFileInputChange(e as any);
-                      input.click();
-                    }}
-                  >
-                    파일 선택
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      const input = document.createElement('input');
-                      input.type = 'file';
-                      input.accept = 'image/*';
-                      input.capture = 'environment';
-                      input.onchange = (e) => handleFileInputChange(e as any);
-                      input.click();
-                    }}
-                  >
-                    사진 촬영
-                  </Button>
-                </div>
-                
-                {/* 이미지 그리드 */}
-                {imageUploadHook.uploadingImages.length > 0 && (
-                  <UploadingImageGrid
-                    items={imageUploadHook.uploadingImages}
-                    onRemove={imageUploadHook.removeImage}
-                    gridClassName="grid-cols-[repeat(auto-fill,minmax(100px,1fr))]"
-                    imageClassName="h-24"
-                  />
-                )}
-              </div>
-            </div>
-
-            {/* 비고 */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">비고</h3>
-              <div>
-                <Label htmlFor="remarks">비고</Label>
-                <Textarea
-                  id="remarks"
-                  value={formData.remarks}
-                  onChange={(e) => handleInputChange('remarks', e.target.value)}
-                  placeholder="비고 입력"
-                  rows={4}
-                />
-              </div>
-            </div>
+  const FormContent = (
+    <div className="space-y-6">
+      {/* 기본 정보 */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">기본 정보</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="requestDate">요청일</Label>
+            <Input
+              id="requestDate"
+              type="date"
+              value={formData.requestDate}
+              onChange={(e) => handleInputChange('requestDate', e.target.value)}
+            />
           </div>
-        </ScrollArea>
+          <div>
+            <Label htmlFor="requestType">요청 유형</Label>
+            <InputSelect
+              value={formData.requestType}
+              onChange={(value) => handleInputChange('requestType', value)}
+              options={PRODUCTION_TYPES}
+              placeholder="요청 유형 선택"
+            />
+          </div>
+          <div>
+            <Label htmlFor="requester">요청자</Label>
+            <InputSelect
+              value={formData.requester}
+              onChange={(value) => handleInputChange('requester', value)}
+              options={autocompleteData?.requesters || []}
+              placeholder="요청자 선택"
+            />
+          </div>
+          <div>
+            <Label htmlFor="destination">수신처</Label>
+            <InputSelect
+              value={formData.destination}
+              onChange={(value) => handleInputChange('destination', value)}
+              options={autocompleteData?.destinations || []}
+              placeholder="수신처 선택"
+            />
+          </div>
+          <div>
+            <Label htmlFor="deliveryDate">납기일</Label>
+            <Input
+              id="deliveryDate"
+              type="date"
+              value={formData.deliveryDate}
+              onChange={(e) => handleInputChange('deliveryDate', e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
 
-        <DialogFooter className="flex justify-end gap-2">
-          <Button variant="outline" onClick={handleCancel} disabled={isLoading || imageUploadHook.isUploading}>
-            취소
-          </Button>
-          <Button onClick={handleSubmit} disabled={isLoading || imageUploadHook.isUploading}>
-            {isLoading || imageUploadHook.isUploading ? (
-              <div className="flex items-center gap-2">
-                <Spinner className="size-4 text-inherit" />
-                {imageUploadHook.isUploading ? '업로드 중...' : '저장 중...'}
+      {/* 지그 정보 */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">지그 정보</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="itemName">품목명</Label>
+            <InputSelect
+              value={formData.itemName}
+              onChange={(value) => handleInputChange('itemName', value)}
+              options={autocompleteData?.itemNames || []}
+              placeholder="품목명 입력"
+            />
+          </div>
+          <div>
+            <Label htmlFor="partName">부품명</Label>
+            <InputSelect
+              value={formData.partName}
+              onChange={(value) => handleInputChange('partName', value)}
+              options={autocompleteData?.partNames || []}
+              placeholder="부품명 입력"
+            />
+          </div>
+          <div>
+            <Label htmlFor="itemNumber">품번</Label>
+            <InputSelect
+              value={formData.itemNumber}
+              onChange={(value) => handleInputChange('itemNumber', value)}
+              options={autocompleteData?.itemNumbers || []}
+              placeholder="품번 입력"
+            />
+          </div>
+          <div>
+            <Label htmlFor="jigHandleLength">지그 핸들 길이</Label>
+            <Input
+              id="jigHandleLength"
+              type="number"
+              value={formData.jigHandleLength || ''}
+              onChange={(e) => handleInputChange('jigHandleLength', e.target.value ? Number(e.target.value) : 0)}
+              placeholder="지그 핸들 길이"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <Label htmlFor="specification">규격</Label>
+            <Textarea
+              id="specification"
+              value={formData.specification}
+              onChange={(e) => handleInputChange('specification', e.target.value)}
+              placeholder="규격 입력"
+              rows={3}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* 수량 및 비용 */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">수량 및 비용</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <Label htmlFor="quantity">수량</Label>
+            <Input
+              id="quantity"
+              type="number"
+              min="1"
+              value={formData.quantity}
+              onChange={(e) => handleInputChange('quantity', Number(e.target.value))}
+            />
+          </div>
+          <div>
+            <Label htmlFor="coreCost">코어비</Label>
+            <Input
+              id="coreCost"
+              type="number"
+              value={formData.coreCost || ''}
+              onChange={(e) => handleInputChange('coreCost', e.target.value ? Number(e.target.value) : 0)}
+              placeholder="코어비"
+            />
+          </div>
+          <div>
+            <Label htmlFor="unitPrice">단가</Label>
+            <Input
+              id="unitPrice"
+              type="number"
+              value={formData.unitPrice || ''}
+              onChange={(e) => handleInputChange('unitPrice', e.target.value ? Number(e.target.value) : 0)}
+              placeholder="단가"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* 이미지 업로드 */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">이미지 첨부</h3>
+        <div className="space-y-4">
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+                input.multiple = true;
+                input.onchange = (e) => handleFileInputChange(e as any);
+                input.click();
+              }}
+            >
+              파일 선택
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+                input.capture = 'environment';
+                input.onchange = (e) => handleFileInputChange(e as any);
+                input.click();
+              }}
+            >
+              사진 촬영
+            </Button>
+          </div>
+          
+          {/* 이미지 그리드 */}
+          {imageUploadHook.uploadingImages.length > 0 && (
+            <UploadingImageGrid
+              items={imageUploadHook.uploadingImages}
+              onRemove={imageUploadHook.removeImage}
+              gridClassName="grid-cols-[repeat(auto-fill,minmax(100px,1fr))]"
+              imageClassName="h-24"
+            />
+          )}
+        </div>
+      </div>
+
+      {/* 비고 */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">비고</h3>
+        <div>
+          <Label htmlFor="remarks">비고</Label>
+          <Textarea
+            id="remarks"
+            value={formData.remarks}
+            onChange={(e) => handleInputChange('remarks', e.target.value)}
+            placeholder="비고 입력"
+            rows={4}
+          />
+        </div>
+      </div>
+    </div>
+  );
+
+  const FormFooter = (
+    <div className="flex justify-end gap-2">
+      <Button variant="outline" onClick={handleCancel} disabled={isLoading || imageUploadHook.isUploading}>
+        취소
+      </Button>
+      <Button onClick={handleSubmit} disabled={isLoading || imageUploadHook.isUploading}>
+        {isLoading || imageUploadHook.isUploading ? (
+          <div className="flex items-center gap-2">
+            <Spinner className="size-4 text-inherit" />
+            {imageUploadHook.isUploading ? '업로드 중...' : '저장 중...'}
+          </div>
+        ) : (
+          editingRequest ? '수정' : '등록'
+        )}
+      </Button>
+    </div>
+  );
+
+  return (
+    <>
+      {/* 데스크톱: Dialog */}
+      {!isMobileOrTablet && (
+        <Dialog open={isOpen} onOpenChange={handleDialogChange}>
+          <DialogContent 
+            className="max-w-4xl max-h-[90vh] overflow-hidden p-0"
+            stickyHeader={
+              <DialogHeader>
+                <DialogTitle>{editingRequest ? '지그 요청 수정' : '지그 요청 등록'}</DialogTitle>
+              </DialogHeader>
+            }
+            stickyFooter={FormFooter}
+          >
+            {FormContent}
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* 모바일/태블릿: Sheet */}
+      {isMobileOrTablet && (
+        <Sheet open={isOpen} onOpenChange={handleDialogChange}>
+          <SheetContent 
+            side="right"
+            fullscreen
+            animationVariant={isTablet ? 'tablet' : 'default'}
+            hideClose
+            className="w-full max-w-none overflow-hidden p-0 flex flex-col"
+          >
+            <div className="h-full flex flex-col max-h-[100dvh] pb-[env(safe-area-inset-bottom)]">
+              <SheetHeader className="sticky top-0 z-10 bg-background border-b p-4 text-left flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onClose}
+                    className="-ml-2"
+                    aria-label="뒤로가기"
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                  </Button>
+                  <SheetTitle className="ml-1">
+                    {editingRequest ? '지그 요청 수정' : '지그 요청 등록'}
+                  </SheetTitle>
+                </div>
+              </SheetHeader>
+              <div className="flex-1 overflow-y-auto overscroll-contain p-4 min-h-0">
+                {FormContent}
               </div>
-            ) : (
-              editingRequest ? '수정' : '등록'
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+              <SheetFooter className="sticky bottom-0 bg-background border-t p-4 flex-row justify-end gap-2 flex-shrink-0 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+                <Button type="button" onClick={handleCancel} disabled={isLoading || imageUploadHook.isUploading}>
+                  취소
+                </Button>
+                <Button onClick={handleSubmit} disabled={isLoading || imageUploadHook.isUploading}>
+                  {isLoading || imageUploadHook.isUploading ? (
+                    <div className="flex items-center gap-2">
+                      <Spinner className="size-4 text-inherit" />
+                      {imageUploadHook.isUploading ? '업로드 중...' : '저장 중...'}
+                    </div>
+                  ) : (
+                    editingRequest ? '수정' : '등록'
+                  )}
+                </Button>
+              </SheetFooter>
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
+    </>
   );
 };

@@ -234,8 +234,13 @@ export const ProductionScheduleUploadModal: React.FC<ProductionScheduleUploadMod
               <Table>
                 <TableHeader className="sticky top-0 bg-muted">
                   <TableRow>
-                    {displayHeaders.map(h => (
-                      <TableHead key={h} className="whitespace-nowrap">{h}</TableHead>
+                    {displayHeaders.map((h, index) => (
+                      <TableHead 
+                        key={h} 
+                        className={`whitespace-nowrap ${index === 0 ? 'rounded-tl-lg' : ''} ${index === displayHeaders.length - 1 ? 'rounded-tr-lg' : ''}`}
+                      >
+                        {h}
+                      </TableHead>
                     ))}
                   </TableRow>
                 </TableHeader>

@@ -54,8 +54,17 @@ export const JigMasterContainer: React.FC = () => {
 
   // 날짜 필터 또는 검색어 변경 시 구독 업데이트
   useEffect(() => {
+    console.log('🔔 JigMasterContainer useEffect 실행:', {
+      startDate: filters.startDate,
+      endDate: filters.endDate,
+      searchTerm: filters.searchTerm,
+      isLoading,
+      masterItemsCount: masterItems.length
+    });
+
     // 이전 구독 해제
     if (unsubscribeRef.current) {
+      console.log('🔔 이전 구독 해제');
       unsubscribeRef.current();
       unsubscribeRef.current = null;
     }
@@ -63,24 +72,30 @@ export const JigMasterContainer: React.FC = () => {
     const hasSearch = filters.searchTerm.trim().length > 0;
 
     if (hasSearch) {
+      console.log('🔔 검색어 모드 - 전체 데이터 구독 시작');
       // 검색어가 있으면 전체 데이터 구독
       unsubscribeRef.current = subscribeToMasters();
     } else if (filters.startDate && filters.endDate) {
+      console.log('🔔 날짜 필터 모드 - 날짜 범위 구독 시작');
       // 검색어가 없으면 날짜 필터 적용
       unsubscribeRef.current = subscribeToMastersByDateRange(
         filters.startDate,
         filters.endDate
       );
+    } else {
+      console.log('⚠️ 필터 조건 없음 - 구독하지 않음');
     }
 
     // 컴포넌트 언마운트 시 구독 해제
     return () => {
+      console.log('🔔 cleanup 실행');
       if (unsubscribeRef.current) {
         unsubscribeRef.current();
         unsubscribeRef.current = null;
       }
     };
-  }, [filters.startDate, filters.endDate, filters.searchTerm, subscribeToMastersByDateRange, subscribeToMasters]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.startDate, filters.endDate, filters.searchTerm]);
 
   // 검색 필터링
   const filteredJigs = useMemo(() => {
@@ -166,6 +181,7 @@ export const JigMasterContainer: React.FC = () => {
 
   // 로딩 상태 - 초기 로딩 시에만 스켈레톤 표시
   if (isLoading && filteredJigs.length === 0) {
+    console.log('⏳ 스켈레톤 표시 중:', { isLoading, filteredJigsCount: filteredJigs.length, masterItemsCount: masterItems.length });
     return (
       <div className="h-full flex flex-col space-y-4">
         <Skeleton className="h-32 w-full" />

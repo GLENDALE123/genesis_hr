@@ -2,7 +2,7 @@
 
 import React, { memo, useCallback, useMemo } from 'react';
 import { JigMasterItem, UserProfile } from '../types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
+import { Card, CardContent } from '@/shared/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/components/ui/table';
 import { Image } from 'lucide-react';
 
@@ -61,6 +61,7 @@ const JigMasterTableRow = memo<{
       className="xl:hover:bg-muted/50"
       onClick={handleRowClick}
     >
+      <TableCell className="whitespace-nowrap">{formattedDate}</TableCell>
       <TableCell className="whitespace-nowrap">{item.requestType}</TableCell>
       <TableCell className="whitespace-nowrap">{getOrderNumber}</TableCell>
       <TableCell className="whitespace-nowrap">{getSupplier}</TableCell>
@@ -80,7 +81,6 @@ const JigMasterTableRow = memo<{
       <TableCell className="whitespace-nowrap truncate max-w-sm" title={item.remarks}>
         {item.remarks || '-'}
       </TableCell>
-      <TableCell className="whitespace-nowrap">{formattedDate}</TableCell>
       <TableCell className="whitespace-nowrap">
         {creatorName}
       </TableCell>
@@ -119,16 +119,12 @@ export const JigMasterListView: React.FC<JigMasterListViewProps> = ({
 
   return (
     <Card className="h-full flex flex-col">
-      <CardHeader className="flex-shrink-0 py-3 px-6">
-        <div className="flex items-center justify-between">
-          <CardTitle>지그 목록</CardTitle>
-        </div>
-      </CardHeader>
       <CardContent className="p-0 flex-1 min-h-0">
         <div className="h-full overflow-auto">
           <Table className="w-full min-w-[1400px]">
             <TableHeader className="sticky top-0 z-10 bg-background border-b">
               <TableRow className="border-b">
+                <TableHead className="whitespace-nowrap bg-background rounded-tl-lg">입력일자</TableHead>
                 <TableHead className="whitespace-nowrap bg-background">생산구분</TableHead>
                 <TableHead className="whitespace-nowrap bg-background">발주번호</TableHead>
                 <TableHead className="whitespace-nowrap bg-background">발주처</TableHead>
@@ -137,8 +133,7 @@ export const JigMasterListView: React.FC<JigMasterListViewProps> = ({
                 <TableHead className="whitespace-nowrap bg-background">지그번호</TableHead>
                 <TableHead className="whitespace-nowrap bg-background">이미지</TableHead>
                 <TableHead className="whitespace-nowrap bg-background">특이사항</TableHead>
-                <TableHead className="whitespace-nowrap bg-background">입력일자</TableHead>
-                <TableHead className="whitespace-nowrap bg-background">입력자</TableHead>
+                <TableHead className="whitespace-nowrap bg-background rounded-tr-lg">입력자</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

@@ -145,7 +145,7 @@ export const SampleRequestTable: React.FC<SampleRequestTableProps> = ({
         <Table className="min-w-max">
           <TableHeader className="sticky top-0 z-10 bg-background border-b">
             <TableRow className="border-b">
-              <TableHead className="whitespace-nowrap bg-background"></TableHead>
+              <TableHead className="whitespace-nowrap bg-background rounded-tl-lg"></TableHead>
               <TableHead className="whitespace-nowrap bg-background">요청일</TableHead>
               <TableHead className="whitespace-nowrap bg-background">납기요청일</TableHead>
               <TableHead className="whitespace-nowrap bg-background">상태</TableHead>
@@ -159,7 +159,7 @@ export const SampleRequestTable: React.FC<SampleRequestTableProps> = ({
               <TableHead className="whitespace-nowrap bg-background">색상(사양)</TableHead>
               <TableHead className="whitespace-nowrap bg-background">요청수량</TableHead>
               <TableHead className="whitespace-nowrap bg-background">후가공</TableHead>
-              <TableHead className="whitespace-nowrap bg-background">비고</TableHead>
+              <TableHead className="whitespace-nowrap bg-background rounded-tr-lg">비고</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

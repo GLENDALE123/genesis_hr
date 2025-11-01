@@ -35,7 +35,7 @@ export const ShortageRequestTable: React.FC<ShortageRequestTableProps> = ({
         <Table className="w-full min-w-[1200px]">
           <TableHeader className="sticky top-0 z-10 bg-background">
             <TableRow>
-              <TableHead className="whitespace-nowrap">요청일</TableHead>
+              <TableHead className="whitespace-nowrap rounded-tl-lg">요청일</TableHead>
               <TableHead className="whitespace-nowrap">상태</TableHead>
               <TableHead className="whitespace-nowrap">요청자</TableHead>
               <TableHead className="whitespace-nowrap">생산라인</TableHead>
@@ -43,7 +43,7 @@ export const ShortageRequestTable: React.FC<ShortageRequestTableProps> = ({
               <TableHead className="whitespace-nowrap">발주처</TableHead>
               <TableHead className="whitespace-nowrap">제품명/부속명</TableHead>
               <TableHead className="whitespace-nowrap">부족분 사유</TableHead>
-              <TableHead className="whitespace-nowrap text-right">요청수량</TableHead>
+              <TableHead className="whitespace-nowrap text-right rounded-tr-lg">요청수량</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

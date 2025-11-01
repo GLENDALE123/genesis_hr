@@ -475,7 +475,7 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
               <Table>
               <TableHeader className="sticky top-0 z-10 bg-muted">
                 <TableRow>
-                  <TableHead className="whitespace-nowrap">계획일자</TableHead>
+                  <TableHead className="whitespace-nowrap rounded-tl-lg">계획일자</TableHead>
                   <TableHead className="whitespace-nowrap">진행</TableHead>
                   <TableHead className="whitespace-nowrap">출하</TableHead>
                   <TableHead className="whitespace-nowrap">라인</TableHead>
@@ -492,8 +492,8 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
                   <TableHead className="whitespace-nowrap">내/수</TableHead>
                   <TableHead className="whitespace-nowrap">사용지그</TableHead>
                   <TableHead className="whitespace-nowrap">신/재</TableHead>
-                  <TableHead className="whitespace-nowrap text-right">부족수량</TableHead>
-                  {canManage && <TableHead className="whitespace-nowrap">작업</TableHead>}
+                  <TableHead className={`whitespace-nowrap text-right ${canManage ? '' : 'rounded-tr-lg'}`}>부족수량</TableHead>
+                  {canManage && <TableHead className="whitespace-nowrap rounded-tr-lg">작업</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>

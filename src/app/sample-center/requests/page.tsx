@@ -109,10 +109,12 @@ export default function SampleRequestsPage() {
             <div className="text-sm text-muted-foreground">
               총 {filteredRequests.length}건의 샘플 요청
             </div>
-            <Button onClick={() => setShowForm(true)}>
-              <Plus className="h-4 w-4 mr-1" />
-              신규 요청
-            </Button>
+            <div className="w-full sm:w-auto flex justify-end sm:justify-start">
+              <Button onClick={() => setShowForm(true)}>
+                <Plus className="h-4 w-4 mr-1" />
+                신규 요청
+              </Button>
+            </div>
           </div>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mt-4">
             {/* 검색 */}

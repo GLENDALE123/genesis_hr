@@ -137,7 +137,7 @@ export const InspectionCard: React.FC<InspectionCardProps> = memo(({
           </p>
         </CardHeader>
         <CardContent>
-          <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <dl className="grid grid-cols-2 gap-4">
             {/* 공통 필드 */}
             {renderField('발주번호', inspection.orderNumber)}
             {renderField('발주처', inspection.supplier)}
@@ -155,7 +155,7 @@ export const InspectionCard: React.FC<InspectionCardProps> = memo(({
             
             {/* 키워드 페어 */}
             {inspection.keywordPairs && inspection.keywordPairs.length > 0 && (
-              <div className="md:col-span-2 space-y-2">
+              <div className="col-span-2 space-y-2">
                 <dt className="text-sm font-medium text-muted-foreground">불량 키워드</dt>
                 <dd className="flex flex-wrap gap-2">
                   {inspection.keywordPairs.map((pair, idx) => (
@@ -198,7 +198,7 @@ export const InspectionCard: React.FC<InspectionCardProps> = memo(({
                 
                 {/* 공정 라인 정보 */}
                 {inspection.processLines && inspection.processLines.length > 0 && (
-                  <div className="md:col-span-2 space-y-2">
+                  <div className="col-span-2 space-y-2">
                     <dt className="text-sm font-medium text-muted-foreground">공정 라인 정보</dt>
                     <dd className="space-y-2">
                       {inspection.processLines.map((line, idx) => (
@@ -226,7 +226,7 @@ export const InspectionCard: React.FC<InspectionCardProps> = memo(({
 
                 {/* 신뢰성 테스트 결과 */}
                 {inspection.reliabilityTestResult && (
-                  <div className="md:col-span-2 space-y-1">
+                  <div className="col-span-2 space-y-1">
                     <dt className="text-sm font-medium text-muted-foreground">신뢰성 테스트 결과</dt>
                     <dd className="text-sm text-foreground">
                       {isTestResultDetail(inspection.reliabilityTestResult) ? (
@@ -244,7 +244,7 @@ export const InspectionCard: React.FC<InspectionCardProps> = memo(({
 
                 {/* 색상 체크 결과 */}
                 {inspection.colorCheckResult && (
-                  <div className="md:col-span-2 space-y-1">
+                  <div className="col-span-2 space-y-1">
                     <dt className="text-sm font-medium text-muted-foreground">색상 체크 결과</dt>
                     <dd className="text-sm text-foreground">
                       {isTestResultDetail(inspection.colorCheckResult) ? (
@@ -274,7 +274,7 @@ export const InspectionCard: React.FC<InspectionCardProps> = memo(({
                 
                 {/* 불량키워드 & 검사결과 세트 */}
                 {inspection.defectResultPairs && inspection.defectResultPairs.length > 0 && (
-                  <div className="md:col-span-2 space-y-2">
+                  <div className="col-span-2 space-y-2">
                     <dt className="text-sm font-medium text-muted-foreground">불량키워드 & 검사결과</dt>
                     <dd className="space-y-2">
                       {inspection.defectResultPairs.map((pair, idx) => {
@@ -302,7 +302,7 @@ export const InspectionCard: React.FC<InspectionCardProps> = memo(({
                 
                 {/* 작업자별 검사 결과 */}
                 {inspection.workers && inspection.workers.length > 0 && (
-                  <div className="md:col-span-2 space-y-2">
+                  <div className="col-span-2 space-y-2">
                     <dt className="text-sm font-medium text-muted-foreground">작업자별 검사 결과</dt>
                     <dd className="space-y-2">
                       {inspection.workers.map((worker, idx) => (
@@ -330,7 +330,7 @@ export const InspectionCard: React.FC<InspectionCardProps> = memo(({
                 
                 {/* 신뢰성 테스트 */}
                 {inspection.reliabilityReview && (
-                  <div className="md:col-span-2 space-y-1">
+                  <div className="col-span-2 space-y-1">
                     <dt className="text-sm font-medium text-muted-foreground">신뢰성 테스트</dt>
                     <dd className="text-sm text-foreground">
                       {inspection.reliabilityReview.method}: {inspection.reliabilityReview.result}
@@ -445,7 +445,7 @@ export const InspectionCard: React.FC<InspectionCardProps> = memo(({
         </CollapsibleTrigger>
         <CollapsibleContent>
           <CardContent>
-            <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <dl className="grid grid-cols-2 gap-4">
               {/* 공통 필드 */}
               {renderField('발주번호', inspection.orderNumber)}
               {renderField('발주처', inspection.supplier)}
@@ -463,7 +463,7 @@ export const InspectionCard: React.FC<InspectionCardProps> = memo(({
               
               {/* 키워드 페어 */}
               {inspection.keywordPairs && inspection.keywordPairs.length > 0 && (
-                <div className="md:col-span-2 space-y-2">
+                <div className="col-span-2 space-y-2">
                   <dt className="text-sm font-medium text-muted-foreground">불량 키워드</dt>
                   <dd className="flex flex-wrap gap-2">
                     {inspection.keywordPairs.map((pair, idx) => (
@@ -506,7 +506,7 @@ export const InspectionCard: React.FC<InspectionCardProps> = memo(({
                   
                   {/* 공정 라인 정보 */}
                   {inspection.processLines && inspection.processLines.length > 0 && (
-                    <div className="md:col-span-2 space-y-2">
+                    <div className="col-span-2 space-y-2">
                       <dt className="text-sm font-medium text-muted-foreground">공정 라인 정보</dt>
                       <dd className="space-y-2">
                         {inspection.processLines.map((line, idx) => (
@@ -534,7 +534,7 @@ export const InspectionCard: React.FC<InspectionCardProps> = memo(({
 
                   {/* 신뢰성 테스트 결과 */}
                   {inspection.reliabilityTestResult && (
-                    <div className="md:col-span-2 space-y-1">
+                    <div className="col-span-2 space-y-1">
                       <dt className="text-sm font-medium text-muted-foreground">신뢰성 테스트 결과</dt>
                       <dd className="text-sm text-foreground">
                         {isTestResultDetail(inspection.reliabilityTestResult) ? (
@@ -552,7 +552,7 @@ export const InspectionCard: React.FC<InspectionCardProps> = memo(({
 
                   {/* 색상 체크 결과 */}
                   {inspection.colorCheckResult && (
-                    <div className="md:col-span-2 space-y-1">
+                    <div className="col-span-2 space-y-1">
                       <dt className="text-sm font-medium text-muted-foreground">색상 체크 결과</dt>
                       <dd className="text-sm text-foreground">
                         {isTestResultDetail(inspection.colorCheckResult) ? (
@@ -582,7 +582,7 @@ export const InspectionCard: React.FC<InspectionCardProps> = memo(({
                   
                   {/* 불량키워드 & 검사결과 세트 */}
                   {inspection.defectResultPairs && inspection.defectResultPairs.length > 0 && (
-                    <div className="md:col-span-2 space-y-2">
+                    <div className="col-span-2 space-y-2">
                       <dt className="text-sm font-medium text-muted-foreground">불량키워드 & 검사결과</dt>
                       <dd className="space-y-2">
                         {inspection.defectResultPairs.map((pair, idx) => {
@@ -610,7 +610,7 @@ export const InspectionCard: React.FC<InspectionCardProps> = memo(({
                   
                   {/* 작업자별 검사 결과 */}
                   {inspection.workers && inspection.workers.length > 0 && (
-                    <div className="md:col-span-2 space-y-2">
+                    <div className="col-span-2 space-y-2">
                       <dt className="text-sm font-medium text-muted-foreground">작업자별 검사 결과</dt>
                       <dd className="space-y-2">
                         {inspection.workers.map((worker, idx) => (
@@ -638,7 +638,7 @@ export const InspectionCard: React.FC<InspectionCardProps> = memo(({
                   
                   {/* 신뢰성 테스트 */}
                   {inspection.reliabilityReview && (
-                    <div className="md:col-span-2 space-y-1">
+                    <div className="col-span-2 space-y-1">
                       <dt className="text-sm font-medium text-muted-foreground">신뢰성 테스트</dt>
                       <dd className="text-sm text-foreground">
                         {inspection.reliabilityReview.method}: {inspection.reliabilityReview.result}

@@ -180,8 +180,8 @@ export const JigRequestTable: React.FC<JigRequestTableProps> = ({
     }
   }, [sortField, sortDirection]);
 
-  const SortableHeader = useCallback(({ field, children }: { field: SortField; children: React.ReactNode }) => (
-    <TableHead className="whitespace-nowrap text-primary-foreground">
+  const SortableHeader = useCallback(({ field, children, className }: { field: SortField; children: React.ReactNode; className?: string }) => (
+    <TableHead className={`whitespace-nowrap text-primary-foreground ${className || ''}`}>
       <button
         onClick={() => handleSort(field)}
         className="flex items-center gap-1 hover:text-primary-foreground/80"
@@ -198,7 +198,7 @@ export const JigRequestTable: React.FC<JigRequestTableProps> = ({
         <Table className="min-w-max">
           <TableHeader className="sticky top-0 z-10 bg-primary">
             <TableRow className="hover:bg-primary">
-              <TableHead className="whitespace-nowrap text-primary-foreground px-2"></TableHead>
+              <TableHead className="whitespace-nowrap text-primary-foreground px-2 rounded-tl-lg"></TableHead>
               <SortableHeader field="requestDate">요청일자</SortableHeader>
               <SortableHeader field="deliveryDate">납기일</SortableHeader>
               <SortableHeader field="status">상태</SortableHeader>
@@ -210,7 +210,7 @@ export const JigRequestTable: React.FC<JigRequestTableProps> = ({
               <SortableHeader field="itemNumber">지그번호</SortableHeader>
               <TableHead className="whitespace-nowrap text-primary-foreground w-16">이미지</TableHead>
               <SortableHeader field="receivedQuantity">완료수량</SortableHeader>
-              <SortableHeader field="quantity">발주수량</SortableHeader>
+              <SortableHeader field="quantity" className="rounded-tr-lg">발주수량</SortableHeader>
             </TableRow>
           </TableHeader>
           <TableBody>

@@ -8,6 +8,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/shared/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/shared/components/ui/sheet';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
@@ -22,7 +23,8 @@ import { useAuthStore } from '@/features/auth/store/authStore';
 import { useImageUpload } from '@/shared/hooks';
 import { useOrderNumberFormatter } from '@/shared/hooks/useOrderNumberFormatter';
 import { subscribeToAutocompleteData, type AutocompleteData } from '@/features/quality/services/autocompleteService';
-import { Upload, Camera } from 'lucide-react';
+import { Upload, Camera, ArrowLeft } from 'lucide-react';
+import { useDeviceType } from '@/shared/hooks/use-device';
 
 interface JigListFormProps {
   isOpen: boolean;
@@ -37,6 +39,8 @@ export const JigListForm: React.FC<JigListFormProps> = ({
   onSave,
   isLoading = false,
 }) => {
+  const { isSmartphone, isTablet } = useDeviceType();
+  const isMobileOrTablet = isSmartphone || isTablet;
   const { user } = useAuthStore();
   
   // 이미지 업로드 훅 사용
@@ -219,52 +223,15 @@ export const JigListForm: React.FC<JigListFormProps> = ({
     }
   };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent 
-        className="max-w-2xl max-h-[90vh]" 
-        onOpenAutoFocus={(e: Event) => e.preventDefault()}
-        stickyFooter={
-          <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleReset}
-              disabled={isLoading}
-            >
-              초기화
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={isLoading}
-            >
-              취소
-            </Button>
-            <Button
-              type="submit"
-              form="jig-form"
-              disabled={isLoading || !formData.orderNumber?.trim() || !formData.supplier?.trim() || !formData.productName?.trim() || !formData.partName?.trim()}
-            >
-              {isLoading ? (
-                <>
-                  <Spinner className="mr-2 size-4 text-inherit" />
-                  저장 중...
-                </>
-              ) : (
-                '등록'
-              )}
-            </Button>
-          </div>
-        }
-      >
-        <DialogHeader>
-          <DialogTitle>새 지그 등록</DialogTitle>
-        </DialogHeader>
+  const handleDialogChange = (open: boolean) => {
+    if (!open) {
+      onClose();
+    }
+  };
 
-        <form id="jig-form" onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-6">
+  const FormContent = (
+    <form id="jig-form" onSubmit={handleSubmit} className="space-y-6">
+      <div className="space-y-6">
               {/* 생산 구분 */}
               <div className="space-y-2">
                 <Label htmlFor="requestType">생산 구분</Label>
@@ -396,9 +363,129 @@ export const JigListForm: React.FC<JigListFormProps> = ({
                   />
                 )}
               </div>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </form>
+  );
+
+  const FormFooter = (
+    <div className="flex justify-end gap-2">
+      <Button
+        type="button"
+        variant="outline"
+        onClick={handleReset}
+        disabled={isLoading}
+      >
+        초기화
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={onClose}
+        disabled={isLoading}
+      >
+        취소
+      </Button>
+      <Button
+        type="submit"
+        form="jig-form"
+        disabled={isLoading || !formData.orderNumber?.trim() || !formData.supplier?.trim() || !formData.productName?.trim() || !formData.partName?.trim()}
+      >
+        {isLoading ? (
+          <>
+            <Spinner className="mr-2 size-4 text-inherit" />
+            저장 중...
+          </>
+        ) : (
+          '등록'
+        )}
+      </Button>
+    </div>
+  );
+
+  return (
+    <>
+      {/* 데스크톱: Dialog */}
+      {!isMobileOrTablet && (
+        <Dialog open={isOpen} onOpenChange={handleDialogChange}>
+          <DialogContent 
+            className="max-w-2xl max-h-[90vh] overflow-hidden p-0" 
+            onOpenAutoFocus={(e: Event) => e.preventDefault()}
+            stickyHeader={
+              <DialogHeader>
+                <DialogTitle>새 지그 등록</DialogTitle>
+              </DialogHeader>
+            }
+            stickyFooter={FormFooter}
+          >
+            {FormContent}
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* 모바일/태블릿: Sheet */}
+      {isMobileOrTablet && (
+        <Sheet open={isOpen} onOpenChange={handleDialogChange}>
+          <SheetContent 
+            side="right"
+            fullscreen
+            animationVariant={isTablet ? 'tablet' : 'default'}
+            hideClose
+            className="w-full max-w-none overflow-hidden p-0 flex flex-col"
+          >
+            <div className="h-full flex flex-col max-h-[100dvh] pb-[env(safe-area-inset-bottom)]">
+              <SheetHeader className="sticky top-0 z-10 bg-background border-b p-4 text-left flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onClose}
+                    className="-ml-2"
+                    aria-label="뒤로가기"
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                  </Button>
+                  <SheetTitle className="ml-1">새 지그 등록</SheetTitle>
+                </div>
+              </SheetHeader>
+              <div className="flex-1 overflow-y-auto overscroll-contain p-4 min-h-0">
+                {FormContent}
+              </div>
+              <SheetFooter className="sticky bottom-0 bg-background border-t p-4 flex-row justify-end gap-2 flex-shrink-0 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleReset}
+                  disabled={isLoading}
+                >
+                  초기화
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onClose}
+                  disabled={isLoading}
+                >
+                  취소
+                </Button>
+                <Button
+                  type="submit"
+                  form="jig-form"
+                  disabled={isLoading || !formData.orderNumber?.trim() || !formData.supplier?.trim() || !formData.productName?.trim() || !formData.partName?.trim()}
+                >
+                  {isLoading ? (
+                    <>
+                      <Spinner className="mr-2 size-4 text-inherit" />
+                      저장 중...
+                    </>
+                  ) : (
+                    '등록'
+                  )}
+                </Button>
+              </SheetFooter>
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
+    </>
   );
 };

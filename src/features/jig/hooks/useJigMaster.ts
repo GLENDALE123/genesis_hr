@@ -28,15 +28,6 @@ export const useJigMaster = () => {
     fetchAutocompleteData,
   } = useJigMasterStore();
 
-  // 초기 구독은 제거하고, 컨테이너에서 날짜 필터 기반으로 구독하도록 변경
-  // useEffect(() => {
-  //   const unsubscribe = subscribeToMasters();
-  //   
-  //   return () => {
-  //     unsubscribe();
-  //   };
-  // }, [subscribeToMasters]);
-
   const handleCreateMasterItem = async (data: CreateJigMasterItemData, imageFiles: File[]) => {
     if (!user) throw new Error('User not authenticated');
     
