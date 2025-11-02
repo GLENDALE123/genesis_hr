@@ -109,7 +109,7 @@ const QualityInspectionTableComponent: React.FC<QualityInspectionTableProps> = (
                     <TableCell className="text-xs whitespace-nowrap">
                       {formatDate(group.latestDate)}
                     </TableCell>
-                    <TableCell className="font-mono text-xs whitespace-nowrap">
+                    <TableCell className="text-xs whitespace-nowrap">
                       {group.common?.orderNumber}
                     </TableCell>
                     <TableCell className="text-xs whitespace-nowrap">

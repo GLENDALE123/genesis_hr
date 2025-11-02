@@ -126,7 +126,7 @@ const QualityIssueRow = React.memo<{
         </Badge>
       </TableCell>
       {/* 발주번호 */}
-      <TableCell className="whitespace-nowrap font-mono">{issue.orderNumber}</TableCell>
+      <TableCell className="whitespace-nowrap">{issue.orderNumber}</TableCell>
       {/* 발주처 */}
       <TableCell className="whitespace-nowrap">{issue.supplier}</TableCell>
       {/* 제품명 */}

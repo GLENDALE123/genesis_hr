@@ -248,7 +248,7 @@ const ProductionManagementCenterComponent: React.FC = () => {
                         </span>
                       </TableCell>
                       <TableCell className={TABLE_CELL_STYLES.base}>{req.author.displayName}</TableCell>
-                      <TableCell className={TABLE_CELL_STYLES.mono}>
+                      <TableCell className={TABLE_CELL_STYLES.base}>
                         {formatOrderNumber(req.orderNumber, req.requestType)}
                       </TableCell>
                       <TableCell className={TABLE_CELL_STYLES.base}>{req.supplier}</TableCell>
