@@ -32,13 +32,6 @@ const createNotificationHttps = require('./https/createNotification');
 const registerMobileTokenHttps = require('./https/registerMobileToken');
 const getUnreadNotificationsHttps = require('./https/getUnreadNotifications');
 
-// 사용자 마이그레이션 함수들 (독립 피처)
-const userMigrationHttps = require('./user-migration/analyzeUserSync');
-const userMigrationMigrateHttps = require('./user-migration/migrateUserSync');
-const userMigrationDeleteHttps = require('./user-migration/deleteAuthUsers');
-const userMigrationGetInfoHttps = require('./user-migration/getUserAuthInfo');
-const userMigrationRemovePhoneHttps = require('./user-migration/removePhoneNumberFromFirestore');
-
 // 모든 함수들을 export
 module.exports = {
   // 트리거
@@ -51,12 +44,5 @@ module.exports = {
   ...createNotificationHttps,
   ...registerMobileTokenHttps,
   ...getUnreadNotificationsHttps,
-  
-  // 사용자 마이그레이션 함수들 (독립 피처 - 삭제 가능)
-  ...userMigrationHttps,
-  ...userMigrationMigrateHttps,
-  ...userMigrationDeleteHttps,
-  ...userMigrationGetInfoHttps,
-  ...userMigrationRemovePhoneHttps,
 };
 
