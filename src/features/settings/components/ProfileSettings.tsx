@@ -91,7 +91,7 @@ export const ProfileSettings: React.FC = () => {
       // 2. Firestore users/{userId} 문서 업데이트 (position, department만)
       await updateUserProfile(user.uid, {
         department: formData.department || undefined,
-      });
+        });
       
       // 3. Settings 문서 업데이트
       await updateProfileSettings({
@@ -479,7 +479,7 @@ export const ProfileSettings: React.FC = () => {
               부서
             </Label>
             <Select 
-              value={formData.department} 
+              value={formData.department}
               onValueChange={(value) => handleChange('department', value)}
               disabled={!isEditing || isSaving}
             >

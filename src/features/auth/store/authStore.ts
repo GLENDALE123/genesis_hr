@@ -192,9 +192,9 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           // auth.currentUser를 직접 확인하여 로그인 직후에도 빠르게 프로필 가져오기
           if (!auth?.currentUser) {
             // auth.currentUser가 없으면 store의 user 확인
-            const { user } = useAuthStore.getState();
-            if (!user) {
-              return;
+          const { user } = useAuthStore.getState();
+          if (!user) {
+            return;
             }
           }
           
@@ -205,7 +205,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             
             // 프로필을 가져왔으면 store 업데이트
             if (userProfile) {
-              set({ userProfile, isLoading: false });
+            set({ userProfile, isLoading: false });
             } else {
               // 프로필이 없으면 재시도 (최대 3번)
               let retries = 0;

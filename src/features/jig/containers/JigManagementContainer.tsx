@@ -23,7 +23,7 @@ export const JigManagementContainer: React.FC = () => {
     if (!user) return undefined;
     
     // userProfile이 아직 로드되지 않았어도 기본 정보는 제공
-    const displayName = getUserDisplayName(userProfile, user, '로딩 중...');
+    const displayName = getUserDisplayName(user, userProfile, '로딩 중...');
     
     return {
       uid: user.uid,
@@ -74,7 +74,7 @@ export const JigManagementContainer: React.FC = () => {
   const canAddNew = userRole === 'Admin' || userRole === 'Manager';
 
   const handleAddComment = useCallback(async (requestId: string, commentText: string, mentionedUserIds?: string[]) => {
-      if (!user || !getUserDisplayName(userProfile, user)) {
+      if (!user || !getUserDisplayName(user, userProfile)) {
       console.error('사용자 정보가 없습니다.');
       return;
     }
@@ -82,7 +82,7 @@ export const JigManagementContainer: React.FC = () => {
     try {
       await CommentsService.addComment('jig-requests', requestId, {
         text: commentText,
-            user: getUserDisplayName(userProfile, user),
+            user: getUserDisplayName(user, userProfile),
         uid: user.uid,
         mentionedUserIds: mentionedUserIds || []
       });
@@ -164,7 +164,7 @@ export const JigManagementContainer: React.FC = () => {
     
     try {
       // imageUrls가 이미 data에 포함되어 있으므로 그대로 사용
-        await createRequest(data, imageFiles, user.uid, getUserDisplayName(userProfile, user, 'Unknown User'));
+        await createRequest(data, imageFiles, user.uid, getUserDisplayName(user, userProfile, 'Unknown User'));
       setIsFormModalOpen(false);
     } catch (error) {
       console.error('새 요청 등록 실패:', error);
@@ -188,7 +188,7 @@ export const JigManagementContainer: React.FC = () => {
 
   const handleUpdateStatus = async (id: string, status: JigStatus, reason?: string) => {
     try {
-        await updateRequestStatus(id, status, (user && user.uid) || '', getUserDisplayName(userProfile, user, 'Unknown User'), reason);
+        await updateRequestStatus(id, status, (user && user.uid) || '', getUserDisplayName(user, userProfile, 'Unknown User'), reason);
     } catch (error) {
       console.error('상태 업데이트 실패:', error);
     }
@@ -196,7 +196,7 @@ export const JigManagementContainer: React.FC = () => {
 
   const handleReceiveItems = async (id: string, quantityChange: number) => {
     try {
-      await updateRequestQuantity(id, quantityChange, (user && user.uid) || '', getUserDisplayName(userProfile, user, 'Unknown User'));
+      await updateRequestQuantity(id, quantityChange, (user && user.uid) || '', getUserDisplayName(user, userProfile, 'Unknown User'));
     } catch (error) {
       console.error('입고 처리 실패:', error);
     }

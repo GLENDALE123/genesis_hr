@@ -65,7 +65,7 @@ export class PackagingReportsService {
         workDate: formData.workDate,
         author: {
           uid: user.uid,
-          displayName: getUserDisplayName(user.userProfile, user, '알 수 없음')
+          displayName: user.displayName || '알 수 없음'
         },
         productionLine: formData.productionLine,
         orderNumbers: formData.orderNumbers.filter(num => num.trim() !== ''),
@@ -120,7 +120,7 @@ export class PackagingReportsService {
           createdReport,
           {
             uid: user.uid,
-            displayName: getUserDisplayName(user.userProfile, user, 'Unknown User'),
+            displayName: user.displayName || 'Unknown User',
             photoURL: undefined
           }
         );
@@ -480,7 +480,7 @@ export class PackagingReportsService {
                 updatedReport,
                 {
                   uid: user.uid,
-                  displayName: getUserDisplayName(user.userProfile, user, 'Unknown User'),
+                  displayName: user.displayName || 'Unknown User',
                   photoURL: undefined
                 }
               );
@@ -537,7 +537,7 @@ export class PackagingReportsService {
           updatedReport,
           {
             uid: user.uid,
-            displayName: getUserDisplayName(user.userProfile, user, 'Unknown User'),
+            displayName: user.displayName || 'Unknown User',
             photoURL: undefined
           }
         );

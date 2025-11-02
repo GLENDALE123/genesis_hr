@@ -37,7 +37,7 @@ const ProductionManagementCenterComponent: React.FC = () => {
   const searchParams = useSearchParams();
   const [requestTypeFilter, setRequestTypeFilter] = useState<'all' | ProductionRequestType>('all');
   const { requests, isLoading, createRequest, updateRequestStatus, deleteRequest, addComment, editComment, deleteComment } = useProductionRequests();
-  const { userProfile } = useAuthStore();
+  const { user, userProfile } = useAuthStore();
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<ProductionRequest | null>(null);
 
@@ -282,7 +282,7 @@ const ProductionManagementCenterComponent: React.FC = () => {
         isOpen={isFormModalOpen}
         onClose={() => setIsFormModalOpen(false)}
         onSave={handleSaveRequest}
-        currentUserName={getUserDisplayName(userProfile, null)}
+        currentUserName={getUserDisplayName(user, userProfile)}
       />
 
       {/* 상세보기 모달 */}

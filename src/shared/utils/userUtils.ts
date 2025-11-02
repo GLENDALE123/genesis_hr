@@ -18,6 +18,7 @@ interface UserLike {
   displayName?: string | null;
   name?: string | null;
   email?: string | null;
+  position?: string | null;  // Firestore userProfile의 position
 }
 
 interface UserWithRole extends UserLike {
@@ -33,25 +34,30 @@ interface UserWithRole extends UserLike {
  * 
  * @description
  * 우선순위: user.displayName > user.email에서 이름 추출 > fallback
- * Firebase Auth가 Source of Truth이므로 user.displayName을 우선 사용
+ * Firebase Auth의 displayName과 Firestore의 position을 결합하여 표시
  * 
  * @param user - Firebase Auth 사용자 (우선순위 1)
- * @param userProfile - Firestore 사용자 프로필 (현재는 사용하지 않음, 호환성을 위해 유지)
+ * @param userProfile - Firestore 사용자 프로필 (position 정보 포함)
  * @param fallback - 기본값 (기본: 'Unknown')
- * @returns 표시할 사용자 이름
+ * @returns 표시할 사용자 이름 (예: "유호령 사원")
  * 
  * @example
- * const userName = getUserDisplayName(user, userProfile); // "홍길동"
- * const userName = getUserDisplayName(user, null, '알 수 없음'); // "알 수 없음"
+ * const userName = getUserDisplayName(user, userProfile); // "유호령 사원"
+ * const userName = getUserDisplayName(user, null, '알 수 없음'); // "유호령" (position 없음)
  */
 export const getUserDisplayName = (
   user: UserLike | null | undefined,
   userProfile: UserLike | null | undefined = null,
   fallback: string = 'Unknown'
 ): string => {
-  // 1순위: user.displayName (Firebase Auth에서 가져온 표시 이름)
+  // 1순위: user.displayName + userProfile.position
   if (user?.displayName) {
-    return user.displayName;
+    const baseName = user.displayName;
+    // position이 있으면 띄어쓰기로 결합
+    if (userProfile?.position) {
+      return `${baseName} ${userProfile.position}`;
+    }
+    return baseName;
   }
   
   // 2순위: 이메일에서 이름 추출
@@ -60,6 +66,10 @@ export const getUserDisplayName = (
     const emailName = email.split('@')[0];
     // 이메일이 의미있는 이름인지 확인 (숫자나 특수문자만 있는 경우 제외)
     if (emailName && /[a-zA-Z가-힣]/.test(emailName)) {
+      // position이 있으면 결합
+      if (userProfile?.position) {
+        return `${emailName} ${userProfile.position}`;
+      }
       return emailName;
     }
   }
@@ -86,8 +96,9 @@ export const getUserInitial = (
   user: UserLike | null | undefined,
   fallback: string = '?'
 ): string => {
-  const displayName = getUserDisplayName(user, null, fallback);
-  return displayName.charAt(0).toUpperCase();
+  // 이니셜은 이름만 사용 (직급 제외)
+  const baseName = user?.displayName || user?.email?.split('@')[0] || fallback;
+  return baseName.charAt(0).toUpperCase();
 };
 
 // ============================================================================

@@ -138,7 +138,7 @@ export const usePackagingForm = ({ report, isEditMode = false }: UseProductionFo
       // 새 생산일보 작성 시 로그인한 사용자 정보 자동 채우기
       setFormData({
         ...initialFormData,
-        authorName: getUserDisplayName(userProfile, user)
+        authorName: getUserDisplayName(user, userProfile)
       });
     }
   }, [report, isEditMode, user, userProfile]);

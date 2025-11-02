@@ -83,6 +83,14 @@ export const ProductionRequestForm: React.FC<ProductionRequestFormProps> = ({
     setIsSaving(false);
   }, []);
 
+  // defaultRequester가 변경되면 requester 업데이트
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      requester: defaultRequester
+    }));
+  }, [defaultRequester]);
+
   const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) {

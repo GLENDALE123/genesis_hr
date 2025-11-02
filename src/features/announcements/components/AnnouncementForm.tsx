@@ -16,6 +16,8 @@ import { Spinner } from '@/shared/components/ui/spinner';
 import { useImageUpload } from '@/shared/hooks';
 import { toast } from 'sonner';
 import { AnnouncementFormData } from '../types/announcement.types';
+import { getUserDisplayName } from '@/shared/utils/userUtils';
+import { useAuthStore } from '@/features/auth/store/authStore';
 
 const announcementSchema = z.object({
   title: z.string().min(1, '제목은 필수입니다.').max(100, '제목은 100자 이하여야 합니다.'),
@@ -45,6 +47,9 @@ export const AnnouncementForm: React.FC<AnnouncementFormProps> = ({
   isSubmitting = false,
   currentUser
 }) => {
+  // 사용자 정보 가져오기
+  const { user, userProfile } = useAuthStore();
+  
   // 이미지 업로드 훅 사용
   const imageUploadHook = useImageUpload();
   
@@ -160,7 +165,7 @@ export const AnnouncementForm: React.FC<AnnouncementFormProps> = ({
           <div className="space-y-2">
             <Label>작성자</Label>
             <Input
-              value={currentUser?.displayName || currentUser?.name || '관리자'}
+              value={getUserDisplayName(user, userProfile, '관리자')}
               disabled
               className="bg-muted"
             />

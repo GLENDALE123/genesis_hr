@@ -54,7 +54,7 @@ function QualityIssuesPageContent() {
     if (typeof issue.author === 'object' && issue.author) {
       return issue.author.uid === user.uid || 
              issue.author.email === user.email ||
-             issue.author.displayName === getUserDisplayName(userProfile, user);
+             issue.author.displayName === getUserDisplayName(user, userProfile);
     }
     
     return false;

@@ -114,7 +114,7 @@ export const createQualityIssue = async (
       createdAt: new Date().toISOString(),
       author: {
         uid: user.uid,
-        displayName: getUserDisplayName(userProfile, user),
+        displayName: getUserDisplayName(user, userProfile),
         email: user.email,
       },
       status: 'in-progress' as const,
@@ -150,7 +150,7 @@ export const createQualityIssue = async (
         qualityIssueData.partName,
         description,
         status,
-        getUserDisplayName(userProfile, user),
+        getUserDisplayName(user, userProfile),
         user.uid,
         docRef.id,
         (user as any).photoURL || undefined

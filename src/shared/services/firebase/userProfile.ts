@@ -265,7 +265,7 @@ export const getUserProfileByEmail = async (email: string): Promise<UserProfile 
   // 이는 Admin SDK가 필요하므로 클라이언트에서는 불가능
   // 따라서 이 함수는 사용하지 않도록 권장하거나, 로그인 시에는 signIn 후 getCurrentUserProfile 사용
   console.warn('⚠️ getUserProfileByEmail은 더 이상 지원되지 않습니다. signIn 후 getCurrentUserProfile을 사용하세요.');
-  return null;
+    return null;
 };
 
 // 로그인 아이디로 사용자 프로필 조회
@@ -324,7 +324,7 @@ export const checkLoginIdExists = async (loginId: string): Promise<boolean> => {
 // 하지만 클라이언트에서는 직접 확인 불가능 (signUp 시 Firebase Auth가 자동으로 체크)
 export const checkEmailExists = async (email: string): Promise<boolean> => {
   console.warn('⚠️ checkEmailExists는 더 이상 지원되지 않습니다. signUp 시 Firebase Auth가 자동으로 체크합니다.');
-  return false;
+    return false;
 };
 
 // 마지막 로그인 시간 업데이트 (문서가 없으면 생성)

@@ -18,7 +18,7 @@ export const usePackagingReports = () => {
   const { user, userProfile } = useAuthStore();
   const userInfo = useMemo(() => ({
     uid: user?.uid || '',
-    displayName: getUserDisplayName(userProfile, user),
+    displayName: getUserDisplayName(user, userProfile),
     email: user?.email || ''
   }), [user, userProfile]);
   const [mounted, setMounted] = useState(false);

@@ -117,7 +117,7 @@ export const JigRequestForm: React.FC<JigRequestFormProps> = ({
         }
       } else {
         // 신규 모드: 기본값으로 초기화
-        const currentUserDisplayName = getUserDisplayName(userProfile, user, '');
+        const currentUserDisplayName = getUserDisplayName(user, userProfile, '');
         
         setFormData({
           requestDate: new Date().toISOString().split('T')[0],

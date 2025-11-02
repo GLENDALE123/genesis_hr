@@ -18,6 +18,7 @@ import { AnnouncementDetailModal } from '../components/AnnouncementDetailModal';
 import { Announcement, AnnouncementFormData, ViewMode } from '../types/announcement.types';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { UnifiedNotificationService } from '@/shared/services/notificationService';
+import { getUserDisplayName } from '@/shared/utils/userUtils';
 
 interface AnnouncementContainerProps {
   className?: string;
@@ -121,7 +122,7 @@ export const AnnouncementContainer: React.FC<AnnouncementContainerProps> = ({
             ...data,
             imageUrls: finalImageUrls,
           },
-          userProfile?.displayName || userProfile?.name || '관리자'
+          getUserDisplayName(user, userProfile, '관리자')
         );
         
         // 알림 생성

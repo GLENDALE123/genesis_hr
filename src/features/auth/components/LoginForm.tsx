@@ -168,7 +168,7 @@ export function LoginForm() {
           console.warn('⚠️ [LoginForm] 프로필 로드 실패, 재시도 중...', profileError);
           // 프로필 로드 실패 시 약간 대기 후 재시도
           await new Promise(resolve => setTimeout(resolve, 200));
-          await refreshUserProfile();
+        await refreshUserProfile();
         }
         
         toast.success('회원가입이 완료되었습니다!', {
@@ -205,7 +205,7 @@ export function LoginForm() {
             console.warn('⚠️ [LoginForm] 프로필 로드 실패, 재시도 중...', profileError);
             // 프로필 로드 실패 시 약간 대기 후 재시도
             await new Promise(resolve => setTimeout(resolve, 200));
-            await refreshUserProfile();
+          await refreshUserProfile();
           }
           
           toast.success('로그인되었습니다!');
@@ -242,7 +242,7 @@ export function LoginForm() {
                   console.warn('⚠️ [LoginForm] 프로필 로드 실패, 재시도 중...', profileError);
                   // 프로필 로드 실패 시 약간 대기 후 재시도
                   await new Promise(resolve => setTimeout(resolve, 200));
-                  await refreshUserProfile();
+                await refreshUserProfile();
                 }
                 
                 toast.success('계정이 성공적으로 연결되었습니다!', {
