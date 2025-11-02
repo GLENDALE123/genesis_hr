@@ -118,7 +118,8 @@ export const useJigMaster = (
         (err) => {
           console.error('❌ 백그라운드 동기화 실패:', err);
           setFetching(false);
-        }
+        },
+        limitCount
       );
       
       return;
@@ -159,6 +160,7 @@ export const useJigMaster = (
               setError(null);
             }
           },
+          limitCount,
           (err) => {
             if (!isCancelled) {
               console.error('❌ 지그 마스터 데이터 로드 실패:', err);
@@ -187,7 +189,8 @@ export const useJigMaster = (
               setError(err);
               setLoading(false);
             }
-          }
+          },
+          limitCount
         );
       }
     };

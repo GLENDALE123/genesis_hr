@@ -12,7 +12,7 @@ import {
   onCollectionSnapshot,
   getCollectionRef
 } from '@/shared/services/firebase/firestore';
-import { query, orderBy, getDocs, onSnapshot, where } from 'firebase/firestore';
+import { query, orderBy, getDocs, onSnapshot, where, limit } from 'firebase/firestore';
 import { uploadImageFilesParallel, deleteFile } from '@/shared/services/firebase/storage';
 import { JigMasterItem, CreateJigMasterItemData, UpdateJigMasterItemData } from '../types';
 import { JIG_COLLECTIONS, JIG_STORAGE_PATHS } from '../constants';
@@ -30,7 +30,7 @@ export const getJigMasterItems = async (): Promise<JigMasterItem[]> => {
     // 문서 내부의 id 필드 제거 (실제 Firestore ID만 사용)
     const { id: _, ...cleanData } = data as any;
     return {
-      id: doc.id, // 실제 Firestore 문서 ID만 사용
+      id: doc.id, // 실제 Firestore ID만 사용
       ...cleanData
     } as JigMasterItem;
   });
@@ -44,7 +44,7 @@ export const getJigMasterItem = async (id: string): Promise<JigMasterItem | null
   // 문서 내부의 id 필드 제거 (실제 Firestore ID만 사용)
   const { id: _, ...cleanData } = doc as any;
   return {
-    id: doc.id, // 실제 Firestore 문서 ID만 사용
+    id: doc.id, // 실제 Firestore ID만 사용
     ...cleanData
   } as JigMasterItem;
 };
@@ -150,49 +150,44 @@ export const deleteJigMasterItem = async (id: string): Promise<void> => {
   }
 };
 
-// 지그 마스터 실시간 구독 (성능 최적화)
+// 지그 마스터 실시간 구독
 export const subscribeToJigMasters = (
-  onUpdate: (masters: JigMasterItem[]) => void,
-  onError: (error: Error) => void
+  callback: (masters: JigMasterItem[]) => void,
+  limitCount: number = 1000,
+  onError?: (error: Error) => void
 ): (() => void) => {
-  const q = query(
-    getCollectionRef(JIG_COLLECTIONS.MASTER),
-    orderBy('createdAt', 'desc') // 입력일자 최신순 정렬
-  );
-  
-  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-  let lastIds: string = ''; // 마지막 ID 문자열 저장 (메모리 효율적)
-  const DEBOUNCE_DELAY = 500; // 500ms로 증가 (불필요한 업데이트 방지)
-  
-  return onSnapshot(q, (snapshot) => {
-    // 디바운싱 적용
-    if (debounceTimer) {
-      clearTimeout(debounceTimer);
-    }
-    
-    debounceTimer = setTimeout(() => {
-      const masters = snapshot.docs.map(doc => {
-        const data = doc.data();
-        // 문서 내부의 id 필드 제거 (실제 Firestore ID만 사용)
-        const { id: _, ...cleanData } = data as any;
-        return {
-          id: doc.id, // 실제 Firestore 문서 ID만 사용
-          ...cleanData
-        } as JigMasterItem;
-      });
-      
-      // ID 문자열로 비교 (간단하고 빠름)
-      const currentIds = masters.map(m => m.id).join(',');
-      
-      // 변경사항이 없으면 콜백 호출하지 않음
-      if (lastIds === currentIds) {
-        return;
+  try {
+    const q = query(
+      getCollectionRef(JIG_COLLECTIONS.MASTER),
+      orderBy('createdAt', 'desc'),
+      limit(limitCount)
+    );
+
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        const masters = snapshot.docs.map(doc => {
+          const data = doc.data();
+          // 문서 내부의 id 필드 제거 (실제 Firestore ID만 사용)
+          const { id: _, ...cleanData } = data as any;
+          return {
+            id: doc.id,
+            ...cleanData
+          } as JigMasterItem;
+        });
+        
+        callback(masters);
+      },
+      (error) => {
+        console.error('Error subscribing to jig masters:', error);
+        onError?.(error);
       }
-      
-      lastIds = currentIds;
-      onUpdate(masters);
-    }, DEBOUNCE_DELAY);
-  }, onError);
+    );
+  } catch (error) {
+    console.error('Error setting up subscription:', error);
+    onError?.(error as Error);
+    return () => {}; // 빈 unsubscribe 함수 반환
+  }
 };
 
 // 지그 마스터 날짜 범위 조회
@@ -230,38 +225,33 @@ export const getJigMasterItemsByDateRange = async (
 export const subscribeToJigMastersByDateRange = (
   startDate: string,
   endDate: string,
-  onUpdate: (masters: JigMasterItem[]) => void,
-  onError: (error: Error) => void
+  callback: (masters: JigMasterItem[]) => void,
+  onError?: (error: Error) => void,
+  limitCount: number = 2000
 ): (() => void) => {
-  // 시작일의 시작 시간부터
-  const startDateObj = new Date(startDate);
-  startDateObj.setHours(0, 0, 0, 0);
-  
-  // 종료일의 끝 시간까지 포함
-  const endDateObj = new Date(endDate);
-  endDateObj.setHours(23, 59, 59, 999);
+  try {
+    // 시작일의 시작 시간부터
+    const startDateObj = new Date(startDate);
+    startDateObj.setHours(0, 0, 0, 0);
+    
+    // 종료일의 끝 시간까지 포함
+    const endDateObj = new Date(endDate);
+    endDateObj.setHours(23, 59, 59, 999);
 
-  const q = query(
-    getCollectionRef(JIG_COLLECTIONS.MASTER),
-    where('createdAt', '>=', startDateObj.toISOString()),
-    where('createdAt', '<=', endDateObj.toISOString()),
-    orderBy('createdAt', 'desc')
-  );
-  
-  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-  let lastIds: string = '';
-  const DEBOUNCE_DELAY = 500;
-  
-  return onSnapshot(
-    q, 
-    (snapshot) => {
-      if (debounceTimer) {
-        clearTimeout(debounceTimer);
-      }
-      
-      debounceTimer = setTimeout(() => {
+    const q = query(
+      getCollectionRef(JIG_COLLECTIONS.MASTER),
+      where('createdAt', '>=', startDateObj.toISOString()),
+      where('createdAt', '<=', endDateObj.toISOString()),
+      orderBy('createdAt', 'desc'),
+      limit(limitCount)
+    );
+
+    return onSnapshot(
+      q,
+      (snapshot) => {
         const masters = snapshot.docs.map(doc => {
           const data = doc.data();
+          // 문서 내부의 id 필드 제거 (실제 Firestore ID만 사용)
           const { id: _, ...cleanData } = data as any;
           return {
             id: doc.id,
@@ -269,21 +259,18 @@ export const subscribeToJigMastersByDateRange = (
           } as JigMasterItem;
         });
         
-        const currentIds = masters.map(m => m.id).join(',');
-        
-        if (lastIds === currentIds) {
-          return;
-        }
-        
-        lastIds = currentIds;
-        onUpdate(masters);
-      }, DEBOUNCE_DELAY);
-    }, 
-    (error) => {
-      console.error('❌ Firestore 구독 에러:', error);
-      onError(error);
-    }
-  );
+        callback(masters);
+      },
+      (error) => {
+        console.error('Error subscribing to jig masters by date range:', error);
+        onError?.(error);
+      }
+    );
+  } catch (error) {
+    console.error('Error setting up subscription:', error);
+    onError?.(error as Error);
+    return () => {}; // 빈 unsubscribe 함수 반환
+  }
 };
 
 // 자동완성 데이터 조회 (캐시 최적화)

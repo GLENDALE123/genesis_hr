@@ -81,6 +81,9 @@ export const getMessagingService = async () => {
 
 // FCM 토큰 가져오기
 export const getFCMToken = async (): Promise<string | null> => {
+  // Electron 환경에서는 FCM을 사용하지 않음
+  if (isElectronEnv) return null;
+  
   try {
     const messagingService = await getMessagingService();
     if (!messagingService) return null;
@@ -112,7 +115,8 @@ export const getFCMToken = async (): Promise<string | null> => {
     if (token) {
       return token;
     } else {
-      if (typeof window !== 'undefined') {
+      // Electron 환경에서는 경고 로그 출력 안 함
+      if (!isElectronEnv && typeof window !== 'undefined') {
         if (!('Notification' in window)) {
           console.warn('FCM 토큰을 가져올 수 없습니다. 이 브라우저는 알림을 지원하지 않습니다.');
         } else if (Notification.permission !== 'granted') {
@@ -120,17 +124,24 @@ export const getFCMToken = async (): Promise<string | null> => {
         } else {
           console.warn('FCM 토큰을 가져올 수 없습니다.');
         }
-      } else {
-        console.warn('FCM 토큰을 가져올 수 없습니다.');
       }
       return null;
     }
   } catch (error) {
+    // Electron 환경에서는 에러 로그 출력 안 함
+    if (isElectronEnv) return null;
+    
     // NotAllowedError는 조용히 처리 (사용자가 권한을 거부함)
     if (error instanceof Error && error.name === 'NotAllowedError') {
       // 권한 거부 에러는 로그 출력 안 함
       return null;
     }
+    
+    // "push service not available" 에러는 일렉트론 환경에서 발생할 수 있으므로 조용히 처리
+    if (error instanceof Error && error.message?.includes('push service not available')) {
+      return null;
+    }
+    
     console.error('❌ FCM 토큰 가져오기 실패:', error);
     return null;
   }
