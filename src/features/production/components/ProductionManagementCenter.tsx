@@ -237,7 +237,19 @@ const ProductionManagementCenterComponent: React.FC = () => {
                         </div>
                       </TableCell>
                       <TableCell className={TABLE_CELL_STYLES.text}>
-                        {new Date(req.createdAt).toLocaleString('ko-KR')}
+                        {(() => {
+                          const date = new Date(req.createdAt);
+                          const year = date.getFullYear();
+                          const month = String(date.getMonth() + 1).padStart(2, '0');
+                          const day = String(date.getDate()).padStart(2, '0');
+                          let hours = date.getHours();
+                          const ampm = hours >= 12 ? '오후' : '오전';
+                          hours = hours % 12;
+                          if (hours === 0) hours = 12;
+                          const minutes = String(date.getMinutes()).padStart(2, '0');
+                          const seconds = String(date.getSeconds()).padStart(2, '0');
+                          return `${year}. ${month}. ${day} ${ampm} ${String(hours).padStart(2, '0')}:${minutes}:${seconds}`;
+                        })()}
                       </TableCell>
                       <TableCell className={TABLE_CELL_STYLES.base}>
                         <Badge variant="secondary">{req.requestType}</Badge>

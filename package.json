@@ -136,10 +136,11 @@
       "allowElevation": true,
       "differentialPackage": false,
       "deleteAppDataOnUninstall": false,
-      "runAfterFinish": false,
+      "runAfterFinish": true,
       "unicode": true,
       "warningsAsErrors": false,
-      "artifactName": "TMS 통합관리시스템 Setup ${version}.${ext}"
+      "artifactName": "TMS 통합관리시스템 Setup ${version}.${ext}",
+      "menuCategory": false
     },
     "extraMetadata": {
       "main": "electron/main.js"

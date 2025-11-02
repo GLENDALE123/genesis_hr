@@ -26,6 +26,7 @@ interface MultiSelectFilterProps {
   selectedValues: Set<string>;
   onSelectionChange: (values: Set<string>) => void;
   className?: string;
+  optionColors?: Record<string, string>;
 }
 
 export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
@@ -35,6 +36,7 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
   selectedValues,
   onSelectionChange,
   className,
+  optionColors,
 }) => {
   const [open, setOpen] = useState(false);
 
@@ -83,7 +85,7 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
           </Button>
         </PopoverTrigger>
         
-        <PopoverContent className="w-full p-0" align="start">
+        <PopoverContent className="p-0" align="start">
           <Command>
             <CommandInput placeholder={`${label} 검색...`} className="h-8" />
             <CommandList>
@@ -126,7 +128,13 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
                         selectedValues.has(option) ? "opacity-100" : "opacity-0"
                       )}
                     />
-                    {option}
+                    {optionColors?.[option] ? (
+                      <Badge className={cn("text-xs", optionColors[option])}>
+                        {option}
+                      </Badge>
+                    ) : (
+                      option
+                    )}
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -142,7 +150,7 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
             <Badge
               key={value}
               variant="secondary"
-              className="text-xs px-1 py-0 h-4"
+              className={cn("text-xs px-1 py-0 h-4", optionColors?.[value])}
             >
               {value}
               <button

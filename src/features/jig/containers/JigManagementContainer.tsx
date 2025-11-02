@@ -13,7 +13,9 @@ import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent } from '@/shared/components/ui/card';
 import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
 import { ViewMode } from '../types';
-import { Plus } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
+import { Table, Grid3X3, Kanban } from 'lucide-react';
+import { Badge } from '@/shared/components/ui/badge';
 
 export const JigManagementContainer: React.FC = () => {
   const { requests, isLoading, error, updateRequestStatus, createRequest, updateRequestQuantity, deleteRequest } = useJigRequests();
@@ -72,6 +74,34 @@ export const JigManagementContainer: React.FC = () => {
 
   const canManage = userRole === 'Admin' || userRole === 'Manager';
   const canAddNew = userRole === 'Admin' || userRole === 'Manager';
+
+  // 전체 통계 계산
+  const totalStats = useMemo(() => {
+    const totalCount = filteredRequests.length;
+    // 발주수량 합계
+    const totalOrderQuantity = filteredRequests.reduce((sum, req) => sum + (req.quantity || 0), 0);
+    // 완료수량 합계
+    const totalReceivedQuantity = filteredRequests.reduce((sum, req) => sum + (req.receivedQuantity || 0), 0);
+    // 발주금액 = 발주수량 * 단가 + 코어비
+    const totalOrderAmount = filteredRequests.reduce((sum, req) => {
+      const unitPrice = req.unitPrice || 0;
+      const coreCost = req.coreCost || 0;
+      return sum + (req.quantity * unitPrice) + coreCost;
+    }, 0);
+    // 입고금액 = 완료수량 * 단가
+    const totalReceivedAmount = filteredRequests.reduce((sum, req) => {
+      const unitPrice = req.unitPrice || 0;
+      return sum + (req.receivedQuantity * unitPrice);
+    }, 0);
+
+    return {
+      totalCount,
+      totalOrderQuantity,
+      totalReceivedQuantity,
+      totalOrderAmount,
+      totalReceivedAmount
+    };
+  }, [filteredRequests]);
 
   const handleAddComment = useCallback(async (requestId: string, commentText: string, mentionedUserIds?: string[]) => {
       if (!user || !getUserDisplayName(user, userProfile)) {
@@ -238,45 +268,45 @@ export const JigManagementContainer: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      {/* 헤더 */}
-      <div className="flex flex-row justify-between items-center gap-2 md:gap-4 pb-4">
-        <div className="flex-1 min-w-0">
-          <h1 className="text-xl md:text-2xl font-bold text-foreground truncate">지그 요청/관리</h1>
-          <p className="hidden md:block text-muted-foreground text-sm">지그 요청을 관리하고 상태를 업데이트하세요</p>
-        </div>
-        <div className="flex-shrink-0">
-          {canAddNew && (
-            <Button onClick={handleNewRequest} className="h-8 px-2 md:h-9 md:px-4 text-xs md:text-sm">
-              <Plus className="h-4 w-4 mr-1 md:mr-2" />
-              <span>신규 요청</span>
-            </Button>
-          )}
-        </div>
-      </div>
-
       {/* 필터 및 검색 */}
       <JigRequestFilterSection
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
         selectedStatuses={selectedStatuses}
         onStatusChange={setSelectedStatuses}
-        selectedRequesters={selectedRequesters}
-        onRequesterChange={setSelectedRequesters}
-        selectedDestinations={selectedDestinations}
-        onDestinationChange={setSelectedDestinations}
         selectedMonths={selectedMonths}
         onMonthChange={setSelectedMonths}
-        requesters={requesters}
-        destinations={destinations}
         months={months}
-        viewMode={viewMode}
-        onViewModeChange={handleViewModeChange}
         onResetFilters={resetFilters}
         filterInfo={{
           ...filterInfo,
           activeFilters: filterInfo.activeFilters.filter(Boolean) as string[]
         }}
+        onCreateRequest={canAddNew ? handleNewRequest : undefined}
       />
+
+      {/* 통계 및 뷰 모드 */}
+      <div className="flex justify-between items-center mb-2">
+        <Badge variant="outline" className="text-xs px-2 py-1">
+          총 {totalStats.totalCount} 건 | 발주: {totalStats.totalOrderQuantity.toLocaleString()}/입고: {totalStats.totalReceivedQuantity.toLocaleString()}
+        </Badge>
+        <Tabs value={viewMode} onValueChange={(value) => handleViewModeChange(value as ViewMode)}>
+          <TabsList className="inline-flex h-8">
+            <TabsTrigger value="table" className="flex items-center gap-1 px-2 py-1 text-xs">
+              <Table className="h-3 w-3" />
+              <span>테이블</span>
+            </TabsTrigger>
+            <TabsTrigger value="card" className="flex items-center gap-1 px-2 py-1 text-xs">
+              <Grid3X3 className="h-3 w-3" />
+              <span>카드</span>
+            </TabsTrigger>
+            <TabsTrigger value="kanban" className="flex items-center gap-1 px-2 py-1 text-xs">
+              <Kanban className="h-3 w-3" />
+              <span>칸반</span>
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
 
       {/* 메인 콘텐츠 */}
       <div className="flex-1 pb-6 flex flex-col min-h-0">

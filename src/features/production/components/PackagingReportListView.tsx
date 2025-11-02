@@ -64,7 +64,7 @@ const ReportRow = React.memo<ReportRowProps>(({
       year: 'numeric',
       month: '2-digit',
       day: '2-digit'
-    });
+    }).replace(/\.$/, '');
   };
 
   const calculateYieldRate = (good: number, input: number) => {
@@ -263,7 +263,7 @@ const ReportRowWithPressState = React.memo<ReportRowProps>((props) => {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit'
-    });
+    }).replace(/\.$/, '');
   };
 
   const calculateYieldRate = (good: number, input: number) => {

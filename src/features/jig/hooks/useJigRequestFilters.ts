@@ -6,11 +6,15 @@
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useDebounce } from '@/shared/hooks/useDebounce';
-import type { JigRequest, JigStatus } from '../types';
+import type { JigRequest } from '../types';
+import { JigStatus } from '../types';
+import { STATUS_FILTERS } from '../constants';
 
 export const useJigRequestFilters = (requests: JigRequest[]) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedStatuses, setSelectedStatuses] = useState<Set<JigStatus>>(new Set());
+  const [selectedStatuses, setSelectedStatuses] = useState<Set<JigStatus>>(
+    new Set(STATUS_FILTERS.filter(status => status !== JigStatus.Completed))
+  );
   const [selectedRequesters, setSelectedRequesters] = useState<Set<string>>(new Set());
   const [selectedDestinations, setSelectedDestinations] = useState<Set<string>>(new Set());
   const [selectedMonths, setSelectedMonths] = useState<Set<string>>(new Set());
@@ -150,7 +154,7 @@ export const useJigRequestFilters = (requests: JigRequest[]) => {
   // 필터 초기화 함수 최적화
   const resetFilters = useCallback(() => {
     setSearchTerm('');
-    setSelectedStatuses(new Set());
+    setSelectedStatuses(new Set(STATUS_FILTERS.filter(status => status !== JigStatus.Completed)));
     setSelectedRequesters(new Set());
     setSelectedDestinations(new Set());
     setSelectedMonths(new Set());

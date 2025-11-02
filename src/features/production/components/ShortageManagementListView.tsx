@@ -52,7 +52,7 @@ export const ShortageManagementListView: React.FC<ShortageManagementListViewProp
       year: 'numeric',
       month: '2-digit',
       day: '2-digit'
-    });
+    }).replace(/\.$/, '');
   };
 
   const formatDateTime = (dateString: string) => {
@@ -62,7 +62,7 @@ export const ShortageManagementListView: React.FC<ShortageManagementListViewProp
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit'
-    });
+    }).replace(/\./g, '');
   };
 
   if (loading) {

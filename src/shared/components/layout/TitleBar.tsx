@@ -116,9 +116,11 @@ export const TitleBar: React.FC<TitleBarProps> = ({ className }) => {
     >
       {/* 왼쪽: 앱 아이콘 & 타이틀 */}
       <div className="flex items-center gap-3 text-xs px-3">
-        <div className="h-4 w-4 rounded-sm bg-primary flex items-center justify-center flex-shrink-0">
-          <span className="text-primary-foreground font-bold text-[10px]">TMS</span>
-        </div>
+        <img 
+          src="/tms-logo.png" 
+          alt="TMS Logo" 
+          className="h-4 w-4 flex-shrink-0 object-contain"
+        />
         <span className="font-medium text-foreground">TMS 통합관리시스템</span>
       </div>
 

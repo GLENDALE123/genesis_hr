@@ -147,23 +147,14 @@ function SampleRequestsContent() {
       <div className="h-full flex flex-col">
         {/* 필터 패널 */}
         <SampleFilterPanel
-          startDate={startDate}
-          endDate={endDate}
           searchTerm={searchTerm}
           selectedStatuses={selectedStatuses}
           selectedCoatingMethods={selectedCoatingMethods}
-          onStartDateChange={setStartDate}
-          onEndDateChange={setEndDate}
           onSearchTermChange={setSearchTerm}
           onToggleStatus={toggleStatusFilter}
           onToggleCoating={toggleCoatingMethodFilter}
-          onQuickDateFilter={handleQuickDateFilter}
           onReset={resetFilters}
-          today={today}
-          yesterday={yesterday}
-          totalCount={filteredRequests.length}
           isSearching={isSearching}
-          hasActiveFilters={hasActiveFilters}
           onCreateRequest={() => setShowForm(true)}
         />
 
