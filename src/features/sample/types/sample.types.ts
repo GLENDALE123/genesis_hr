@@ -121,4 +121,14 @@ export interface SampleFormItem {
   coatingMethod: string;
 }
 
+/**
+ * 샘플 요청 필터 옵션
+ */
+export interface SampleRequestFilter {
+  startDate?: string;
+  endDate?: string;
+  status?: string;
+  coatingMethod?: string;
+}
+
 

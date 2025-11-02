@@ -915,28 +915,6 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
   // 폼 내용 추출 (데스크톱용)
   const FormContentDesktop = (
     <div className="flex flex-col h-full">
-      <div className="flex-shrink-0 pb-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold">
-              {isCreateMode ? '품질검사 작성' : isEditMode ? '품질검사 수정' : '품질검사 상세'}
-            </h2>
-            <p className="text-muted-foreground">
-              {isViewMode ? `${INSPECTION_TYPE_LABELS[activeTab]} 정보를 확인하세요` :
-               `${INSPECTION_TYPE_LABELS[activeTab]} 정보를 ${isEditMode ? '수정' : '입력'}하세요`}
-            </p>
-          </div>
-          <Badge 
-            className={cn(
-              "text-sm font-medium",
-              INSPECTION_RESULT_COLORS[formData.result || '합격']
-            )}
-          >
-            {formData.result}
-          </Badge>
-        </div>
-      </div>
-
       <div className="flex-1 overflow-hidden">
         <Tabs value={activeTab} onValueChange={(value: string) => {
           // 수정 모드에서는 탭 변경을 허용하지 않음 (해당 검사 타입만 수정 가능)
@@ -1100,9 +1078,19 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
             className="w-[95vw] h-[95vh] max-w-[1400px] overflow-hidden pb-0"
             stickyHeader={
               <DialogHeader>
-                <DialogTitle>
-                  {isCreateMode ? '품질검사 작성' : isEditMode ? '품질검사 수정' : '품질검사 상세'}
-                </DialogTitle>
+                <div className="flex items-center justify-between gap-2">
+                  <DialogTitle>
+                    {isCreateMode ? '품질검사 작성' : isEditMode ? '품질검사 수정' : '품질검사 상세'}
+                  </DialogTitle>
+                  <Badge 
+                    className={cn(
+                      "text-sm font-medium",
+                      INSPECTION_RESULT_COLORS[formData.result || '합격']
+                    )}
+                  >
+                    {formData.result}
+                  </Badge>
+                </div>
                 <DialogDescription className="sr-only">
                   {isCreateMode ? '품질검사 정보를 입력하는 폼입니다.' : 
                    isEditMode ? '품질검사 정보를 수정하는 폼입니다.' : 

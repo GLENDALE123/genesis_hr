@@ -25,15 +25,12 @@ export default function SampleCenterPage() {
     updateWorkData,
   } = useSampleRequests();
 
-  const { applyQuickFilter } = useSampleFilters(requests);
-
   // 상세 보기 모달
   const [selectedRequest, setSelectedRequest] = useState<SampleRequest | null>(null);
 
   // 빠른 필터 적용 후 목록 페이지로 이동
   const handleQuickFilter = (status: SampleStatus, coatingMethod: string) => {
-    applyQuickFilter(status, coatingMethod);
-    router.push('/sample-center/requests');
+    router.push(`/sample-center/requests?status=${encodeURIComponent(status)}&coating=${encodeURIComponent(coatingMethod)}`);
   };
 
   // 로딩 상태

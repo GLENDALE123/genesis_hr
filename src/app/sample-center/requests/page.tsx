@@ -4,28 +4,30 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 import {
   SampleRequestTable,
   SampleRequestCard,
   SampleRequestDetail,
+  SampleFilterPanel,
 } from '@/features/sample';
 import { SampleRequestForm } from '@/features/sample/components/SampleRequestForm';
 import {
   useSampleRequests,
   useSampleFilters,
 } from '@/features/sample/hooks';
-import { SampleRequest, SampleFormData } from '@/features/sample/types';
+import { SampleRequest, SampleFormData, SampleStatus } from '@/features/sample/types';
 import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/shared/components/ui/alert';
-import { LayoutGrid, List, Plus, Search, AlertCircle } from 'lucide-react';
+import { LayoutGrid, List, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/store/authStore';
 
-export default function SampleRequestsPage() {
+function SampleRequestsContent() {
   const { user } = useAuthStore();
+  const searchParams = useSearchParams();
   const {
     requests,
     isLoading,
@@ -41,8 +43,22 @@ export default function SampleRequestsPage() {
     filteredRequests,
     searchTerm,
     setSearchTerm,
+    selectedStatuses,
+    selectedCoatingMethods,
     hasActiveFilters,
     resetFilters,
+    startDate,
+    endDate,
+    setStartDate,
+    setEndDate,
+    toggleStatusFilter,
+    toggleCoatingMethodFilter,
+    setStatusFilter,
+    setCoatingMethodFilter,
+    handleQuickDateFilter,
+    today,
+    yesterday,
+    isSearching,
   } = useSampleFilters(requests);
 
   // UI 상태
@@ -50,6 +66,32 @@ export default function SampleRequestsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingRequest, setEditingRequest] = useState<SampleRequest | null>(null);
   const [selectedRequest, setSelectedRequest] = useState<SampleRequest | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // URL 쿼리 파라미터에서 초기 필터 복원
+  useEffect(() => {
+    if (isInitialized) return;
+    
+    const status = searchParams.get('status');
+    const coating = searchParams.get('coating');
+    
+    if (status || coating) {
+      // URL 파라미터가 있으면 먼저 모든 필터 초기화
+      resetFilters();
+      
+      // 이후 URL 파라미터 직접 설정 (토글 아님)
+      if (status) {
+        setStatusFilter(status as SampleStatus);
+      }
+      if (coating) {
+        setCoatingMethodFilter(coating);
+      }
+      
+      setIsInitialized(true);
+    } else {
+      setIsInitialized(true);
+    }
+  }, [searchParams, setStatusFilter, setCoatingMethodFilter, resetFilters, isInitialized]);
 
   // 새 요청 등록
   const handleCreateRequest = async (data: SampleFormData, images: File[]) => {
@@ -103,58 +145,45 @@ export default function SampleRequestsPage() {
   return (
     <ProtectedRoute>
       <div className="h-full flex flex-col">
-        {/* 필터 및 검색 */}
-        <div className="border-b bg-muted/30 pb-4 mb-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="text-sm text-muted-foreground">
-              총 {filteredRequests.length}건의 샘플 요청
-            </div>
-            <div className="w-full sm:w-auto flex justify-end sm:justify-start">
-              <Button onClick={() => setShowForm(true)}>
-                <Plus className="h-4 w-4 mr-1" />
-                신규 요청
-              </Button>
-            </div>
-          </div>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mt-4">
-            {/* 검색 */}
-            <div className="w-full sm:w-72 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="ID, 고객사, 제품명 등으로 검색..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+        {/* 필터 패널 */}
+        <SampleFilterPanel
+          startDate={startDate}
+          endDate={endDate}
+          searchTerm={searchTerm}
+          selectedStatuses={selectedStatuses}
+          selectedCoatingMethods={selectedCoatingMethods}
+          onStartDateChange={setStartDate}
+          onEndDateChange={setEndDate}
+          onSearchTermChange={setSearchTerm}
+          onToggleStatus={toggleStatusFilter}
+          onToggleCoating={toggleCoatingMethodFilter}
+          onQuickDateFilter={handleQuickDateFilter}
+          onReset={resetFilters}
+          today={today}
+          yesterday={yesterday}
+          totalCount={filteredRequests.length}
+          isSearching={isSearching}
+          hasActiveFilters={hasActiveFilters}
+          onCreateRequest={() => setShowForm(true)}
+        />
 
-            <div className="flex items-center gap-2">
-              {/* 필터 초기화 */}
-              {hasActiveFilters && (
-                <Button variant="outline" size="sm" onClick={resetFilters}>
-                  필터 초기화
-                </Button>
-              )}
-
-              {/* 뷰 모드 전환 */}
-              <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
-                <Button
-                  variant={viewMode === 'card' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('card')}
-                >
-                  <LayoutGrid className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={viewMode === 'list' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('list')}
-                >
-                  <List className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
+        {/* 뷰 모드 전환 */}
+        <div className="flex justify-end items-center mb-4 mt-2">
+          <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
+            <Button
+              variant={viewMode === 'card' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('card')}
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+            >
+              <List className="h-4 w-4" />
+            </Button>
           </div>
         </div>
 
@@ -223,3 +252,15 @@ export default function SampleRequestsPage() {
   );
 }
 
+export default function SampleRequestsPage() {
+  return (
+    <Suspense fallback={
+      <div className="space-y-4">
+        <Skeleton className="h-12 w-64" />
+        <Skeleton className="h-96" />
+      </div>
+    }>
+      <SampleRequestsContent />
+    </Suspense>
+  );
+}

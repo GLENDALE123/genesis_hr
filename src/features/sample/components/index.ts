@@ -6,4 +6,5 @@ export * from './SimpleBarChart';
 export * from './SampleDashboard';
 export * from './SampleRequestForm';
 export * from './SampleRequestDetail';
+export * from './SampleFilterPanel';
 
