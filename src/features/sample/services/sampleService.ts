@@ -31,7 +31,7 @@ import { SampleStatusNotificationService } from '@/shared/services/notificationS
 
 interface RequestUser {
   uid: string;
-  displayName?: string | null;
+  displayName: string;  // 항상 들어옴 (useSampleRequests에서 getUserDisplayName으로 설정)
   email?: string | null;
 }
 
@@ -69,13 +69,13 @@ export class SampleService {
         },
         requesterInfo: {
           uid: user.uid,
-          displayName: getUserDisplayName(null, user, '알 수 없음')
+          displayName: user.displayName
         },
         history: [
           {
             status: SampleStatus.Received,
             date: new Date().toISOString(),
-            by: getUserDisplayName(null, user, '알 수 없음')
+            by: user.displayName
           }
         ],
         comments: [],
@@ -97,7 +97,7 @@ export class SampleService {
           'pending', // 기본 상태는 대기중
           createdRequest.clientName,
           createdRequest.productName,
-          getUserDisplayName(null, user, '알 수 없음'),
+          user.displayName,
           user.uid,
           createdRequest.id,
           (createdRequest.items && createdRequest.items.length > 0) ? createdRequest.items[0].partName : undefined
@@ -134,7 +134,7 @@ export class SampleService {
         updatedAt: new Date().toISOString(),
         updatedBy: {
           uid: user.uid,
-          displayName: getUserDisplayName(null, user, '알 수 없음')
+          displayName: user.displayName
         }
       });
     } catch (error) {
@@ -172,7 +172,7 @@ export class SampleService {
       const historyItem: SampleHistoryItem = {
         status,
         date: new Date().toISOString(),
-        by: getUserDisplayName(user, null, '알 수 없음'),
+        by: user.displayName,
         ...(reason && { reason })
       };
 
@@ -201,7 +201,7 @@ export class SampleService {
           status,
           updatedRequest.clientName,
           updatedRequest.productName,
-          getUserDisplayName(null, user, '알 수 없음'),
+          user.displayName,
           user.uid,
           updatedRequest.id,
           (updatedRequest.items && updatedRequest.items.length > 0) ? updatedRequest.items[0].partName : undefined
@@ -274,7 +274,7 @@ export class SampleService {
             'deleted',
             requestData.clientName,
             requestData.productName,
-            getUserDisplayName(null, user, '알 수 없음'),
+            user.displayName,
             user.uid,
             requestData.id,
             (requestData.items && requestData.items.length > 0) ? requestData.items[0].partName : undefined
@@ -319,10 +319,10 @@ export class SampleService {
         targetUsers,
         type: 'sample-request',
         title: '샘플 요청',
-        body: `${getUserDisplayName(null, user)}님이 샘플 요청을 등록했습니다.`,
+        body: `${user.displayName}님이 샘플 요청을 등록했습니다.`,
         requestId,
         subtitle: `${formData.productName}/${formData.items.length > 0 ? formData.items[0].partName : ''}`,
-        senderName: getUserDisplayName(null, user),
+        senderName: user.displayName,
         senderUid: user.uid,
         priority: 'normal'
       };

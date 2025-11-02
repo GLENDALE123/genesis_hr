@@ -10,12 +10,13 @@ import { waitForFirebaseInit } from '@/shared/services/firebase/config';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useSampleRequestsStore } from '../store';
 import { toast } from 'sonner';
+import { getUserDisplayName } from '@/shared/utils/userUtils';
 
 /**
  * 샘플 요청 데이터를 관리하는 커스텀 훅
  */
 export const useSampleRequests = () => {
-  const { user } = useAuthStore();
+  const { user, userProfile } = useAuthStore();
   const [mounted, setMounted] = useState(false);
   
   // 실시간 구독 관리용
@@ -118,7 +119,7 @@ export const useSampleRequests = () => {
     try {
       const requestId = await SampleService.createSampleRequest(
         formData,
-        user,
+        { uid: user.uid, displayName: getUserDisplayName(user, userProfile), email: user.email },
         imageFiles
       );
       
@@ -129,7 +130,7 @@ export const useSampleRequests = () => {
       toast.error('샘플 요청 생성에 실패했습니다.');
       throw error;
     }
-  }, [user]);
+  }, [user, userProfile]);
 
   /**
    * 샘플 요청 수정
@@ -144,14 +145,14 @@ export const useSampleRequests = () => {
     }
 
     try {
-      await SampleService.updateSampleRequest(id, formData, user);
+      await SampleService.updateSampleRequest(id, formData, { uid: user.uid, displayName: getUserDisplayName(user, userProfile), email: user.email });
       toast.success('샘플 요청이 수정되었습니다.');
     } catch (error) {
       console.error('❌ 샘플 요청 수정 실패:', error);
       toast.error('샘플 요청 수정에 실패했습니다.');
       throw error;
     }
-  }, [user]);
+  }, [user, userProfile]);
 
   /**
    * 샘플 요청 상태 변경
@@ -168,14 +169,14 @@ export const useSampleRequests = () => {
     }
 
     try {
-      await SampleService.updateSampleStatus(id, status, user, reason, workData);
+      await SampleService.updateSampleStatus(id, status, { uid: user.uid, displayName: getUserDisplayName(user, userProfile), email: user.email }, reason, workData);
       toast.success(`상태가 "${status}"로 변경되었습니다.`);
     } catch (error) {
       console.error('❌ 상태 변경 실패:', error);
       toast.error('상태 변경에 실패했습니다.');
       throw error;
     }
-  }, [user]);
+  }, [user, userProfile]);
 
   /**
    * 작업 데이터 수정

@@ -1,5 +1,4 @@
 import { db } from '@/shared/services/firebase/config';
-import { getUserDisplayName } from '@/shared/utils/userUtils';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '@/shared/services/firebase/config';
@@ -456,7 +455,7 @@ export class UnifiedNotificationService {
         body,
         requestId: report.id,
         subtitle,
-        senderName: getUserDisplayName(null, user),
+        senderName: user.displayName,
         senderUid: user.uid,
         senderAvatar: user.photoURL,
         priority: NotificationPriority.NORMAL,
@@ -495,10 +494,10 @@ export class UnifiedNotificationService {
       await UnifiedNotificationService.sendNotification({
         type: NotificationType.PRODUCTION_SCHEDULE,
         title: '생산일정',
-        body: `${getUserDisplayName(null, user)}님이 ${actionMessages[action]}`,
+        body: `${user.displayName}님이 ${actionMessages[action]}`,
         requestId: `SCHEDULE-${action.toUpperCase()}-${Date.now()}`,
         subtitle: `${scheduleData.productName}/${scheduleData.partName} (${scheduleData.productionLine})`,
-        senderName: getUserDisplayName(null, user),
+        senderName: user.displayName,
         senderUid: user.uid,
         senderAvatar: user.photoURL,
         priority: NotificationPriority.NORMAL,
@@ -539,10 +538,10 @@ export class UnifiedNotificationService {
       await UnifiedNotificationService.sendNotification({
         type: NotificationType.PRODUCTION_SCHEDULE,
         title: '생산일정',
-        body: `${getUserDisplayName(null, user)}님이 ${schedules.length}건의 생산일정을 일괄 등록했습니다.`,
+        body: `${user.displayName}님이 ${schedules.length}건의 생산일정을 일괄 등록했습니다.`,
         requestId: `SCHEDULE-BULK-${Date.now()}`,
         subtitle: `${dateRange} (${schedules.length}건)`,
-        senderName: getUserDisplayName(null, user),
+        senderName: user.displayName,
         senderUid: user.uid,
         senderAvatar: user.photoURL,
         priority: NotificationPriority.NORMAL,
@@ -1067,7 +1066,7 @@ export class UnifiedNotificationService {
       workDate: new Date().toISOString().split('T')[0],
       author: {
         uid: user.uid,
-        displayName: getUserDisplayName(null, user)
+        displayName: user.displayName
       },
       productionLine: '증착1',
       orderNumbers: ['PO-TEST-001'],
@@ -1106,7 +1105,7 @@ export class UnifiedNotificationService {
       newStatus,
       testSample.clientName,
       testSample.productName,
-      getUserDisplayName(null, user),
+      user.displayName,
       user.uid,
       testSample.id
     );
@@ -1131,7 +1130,7 @@ export class UnifiedNotificationService {
       testIssue.partName,
       testIssue.description,
       testIssue.status,
-      getUserDisplayName(null, user),
+      user.displayName,
       user.uid,
       testIssue.id
     );
@@ -1158,7 +1157,7 @@ export class UnifiedNotificationService {
       testIssue.description,
       testIssue.productName,
       testIssue.partName,
-      getUserDisplayName(null, user),
+      user.displayName,
       user.uid,
       testIssue.id
     );
