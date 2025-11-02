@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { createQualityIssue } from '../services/qualityIssueService';
 import { QualityIssueFormData } from '../types';
 import { useAuthStore } from '@/features/auth/store/authStore';
+import { getUserDisplayName } from '@/shared/utils/userUtils';
 import { toast } from 'sonner';
 
 export const useQualityIssueForm = () => {
@@ -21,7 +22,7 @@ export const useQualityIssueForm = () => {
 
       await createQualityIssue(formData, imageFiles, {
         uid: user.uid,
-        displayName: userProfile?.displayName || userProfile?.name || user.displayName || user.email?.split('@')[0] || '사용자',
+        displayName: getUserDisplayName(user, userProfile, '사용자'),
         email: user.email || '',
       });
       

@@ -7,6 +7,7 @@ import { ProductionScheduleListView } from '@/features/production/components/Pro
 import { ProductionScheduleUploadModal } from '@/features/production/components/ProductionScheduleUploadModal';
 import { useProductionSchedules } from '@/features/production/hooks/useProductionSchedules';
 import { useAuthStore } from '@/features/auth/store/authStore';
+import { getUserDisplayName } from '@/shared/utils/userUtils';
 import { toast } from 'sonner';
 
 // SSR 비활성화 (Zustand persist 미들웨어가 localStorage 사용)
@@ -26,7 +27,7 @@ const ProductionSchedulePageContent = () => {
       // 사용자 정보 구성
       const userInfo = {
         uid: user.uid,
-        displayName: userProfile.displayName,
+        displayName: getUserDisplayName(user, userProfile, '관리자'),
         photoURL: user.photoURL || undefined
       };
 

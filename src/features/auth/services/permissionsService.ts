@@ -9,7 +9,7 @@ import {
 } from 'firebase/firestore';
 import { toDate } from '@/shared/utils/dateUtils';
 import type { UserPermissions, PagePermissions, PageIdentifier, CrudPermission } from '../types/permissions';
-import type { UserProfile } from '../types';
+import type { UserProfile, ExtendedUserProfile } from '../types';
 
 const PERMISSIONS_COLLECTION = 'user-permissions';
 const USERS_COLLECTION = 'users';
@@ -221,7 +221,7 @@ export class PermissionsService {
   /**
    * 모든 사용자 프로필을 가져옵니다.
    */
-  static async getAllUserProfiles(): Promise<UserProfile[]> {
+  static async getAllUserProfiles(): Promise<ExtendedUserProfile[]> {
     try {
       // ✅ 공통 서비스 사용
       const docs = await getDocuments(USERS_COLLECTION);
@@ -235,7 +235,7 @@ export class PermissionsService {
           createdAt: toDate(data.createdAt),
           updatedAt: toDate(data.updatedAt),
           lastLoginAt: data.lastLoginAt ? toDate(data.lastLoginAt) : undefined,
-        } as UserProfile;
+        } as ExtendedUserProfile;
       });
 
       // 역할별 정렬 (Admin → Manager → Member)

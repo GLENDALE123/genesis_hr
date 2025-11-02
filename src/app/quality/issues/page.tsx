@@ -25,6 +25,7 @@ import { toast } from 'sonner';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
 import { ProtectedRoute } from '@/shared/components/auth';
+
 function QualityIssuesPageContent() {
   const { issues, isLoading, error, searchTerm, setSearchTerm, setStatusFilter, statusFilter, stats } = useQualityIssues();
   const { isFormModalOpen, isSaving, handleSaveIssue, handleCancelForm, openFormModal } = useQualityIssueForm();
@@ -47,7 +48,7 @@ function QualityIssuesPageContent() {
     
     // 작성자가 문자열인 경우
     if (typeof issue.author === 'string') {
-      return issue.author === (userProfile?.displayName || userProfile?.name || user.displayName || user.email);
+      return issue.author === getUserDisplayName(user, userProfile, '') || issue.author === user.email;
     }
     
     // 작성자가 객체인 경우
@@ -111,8 +112,8 @@ function QualityIssuesPageContent() {
       
       await addIssueItem(issueId, newIssue.trim(), newStatus, {
         uid: user!.uid,
-        displayName: userProfile?.displayName || userProfile?.name || user!.displayName || user!.email || 'Unknown User',
-        photoURL: userProfile?.photoURL || undefined
+        displayName: getUserDisplayName(user, userProfile, '알 수 없음'),
+        photoURL: user!.photoURL || undefined
       });
       toast.success('이슈사항이 성공적으로 추가되었습니다.');
     } catch (error) {

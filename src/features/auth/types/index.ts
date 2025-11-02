@@ -17,6 +17,14 @@ export interface UserProfile {
   // uid는 Firestore 문서 ID로만 사용 (users/{uid})
 }
 
+// 권한 관리용 확장 UserProfile (Firestore에서 가져올 때 문서 ID 포함)
+export interface ExtendedUserProfile extends UserProfile {
+  uid?: string;             // 문서 ID (Firestore 문서 ID, Firebase Auth uid와 동일)
+  email?: string;           // 이메일 (Firestore에 저장된 이메일, Firebase Auth와 동기화 필요)
+  displayName?: string;     // 표시 이름 (Firebase Auth에서 가져옴)
+  name?: string;            // 이름 (이메일에서 추출 또는 Firebase Auth)
+}
+
 // 회원가입 시 사용할 데이터
 export interface SignUpData {
   email: string;

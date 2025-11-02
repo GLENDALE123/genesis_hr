@@ -3,7 +3,7 @@
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 import { useUserRole, useIsAdmin, useIsManager } from '@/features/auth/hooks';
 import { useAuthStore } from '@/features/auth/store/authStore';
-import { isAdmin as checkIsAdmin } from '@/shared/utils/userUtils';
+import { isAdmin as checkIsAdmin, getUserDisplayName } from '@/shared/utils/userUtils';
 import { useDashboardStore } from '@/features/dashboard';
 import { useDevStore } from '@/app/store';
 import { useState, useEffect } from 'react';
@@ -271,7 +271,7 @@ export default function DashboardPage() {
             requestId: 'P-TEST-001',
             subtitle: '테스트제품A 외 2건',
             centerInfo: '물류이동 요청',
-            senderName: userProfile.displayName,
+            senderName: getUserDisplayName(user, userProfile, '관리자'),
             senderUid: user.uid,
             senderAvatar: user.photoURL || undefined
           };
@@ -284,7 +284,7 @@ export default function DashboardPage() {
             requestId: 'TEST-SHORTAGE-001',
             subtitle: '테스트크림 / 외용기',
             centerInfo: '부족분 신청',
-            senderName: userProfile.displayName,
+            senderName: getUserDisplayName(user, userProfile, '관리자'),
             senderUid: user.uid,
             senderAvatar: user.photoURL || undefined
           };
@@ -304,7 +304,7 @@ export default function DashboardPage() {
             requestId: 'P-TEST-001',
             subtitle: '테스트크림 / 외용기',
             centerInfo: '긴급건',
-            senderName: userProfile.displayName,
+            senderName: getUserDisplayName(user, userProfile, '관리자'),
             senderUid: user.uid,
             senderAvatar: user.photoURL || undefined
           };
@@ -324,7 +324,7 @@ export default function DashboardPage() {
             requestId: 'P-TEST-001',
             subtitle: '프리미엄로션 / 펌프',
             centerInfo: '영업부 긴급요청',
-            senderName: userProfile.displayName,
+            senderName: getUserDisplayName(user, userProfile, '관리자'),
             senderUid: user.uid,
             senderAvatar: user.photoURL || undefined
           };
@@ -333,10 +333,10 @@ export default function DashboardPage() {
             targetUsers: [user.uid], // 본인에게만
             type: 'production-schedule',
             title: '생산일정',
-            body: `${userProfile.displayName}님이 생산일정을 변경했습니다.`,
+            body: `${getUserDisplayName(user, userProfile, '관리자')}님이 생산일정을 변경했습니다.`,
             requestId: `TEST-SCHEDULE-${Date.now()}`,
             subtitle: '테스트제품A 생산일정',
-            senderName: userProfile.displayName,
+            senderName: getUserDisplayName(user, userProfile, '관리자'),
             senderUid: user.uid,
             priority: 'normal'
           };
@@ -348,7 +348,7 @@ export default function DashboardPage() {
             body: `증착1에서 PO-TEST-001/테스트공급사/테스트제품 테스트부속을 대기에서 작업중으로 변경하였습니다`,
             requestId: `TEST-DAILY-REPORT-STATUS-${Date.now()}`,
             subtitle: '테스트공급사/테스트제품 테스트부속',
-            senderName: userProfile.displayName,
+            senderName: getUserDisplayName(user, userProfile, '관리자'),
             senderUid: user.uid,
             priority: 'normal',
             centerInfo: '작업중'
@@ -361,7 +361,7 @@ export default function DashboardPage() {
             body: `"테스트제품" 샘플 요청 상태가 접수에서 진행중으로 변경되었습니다.`,
             requestId: `TEST-SAMPLE-STATUS-${Date.now()}`,
             subtitle: '테스트제품',
-            senderName: userProfile.displayName,
+            senderName: getUserDisplayName(user, userProfile, '관리자'),
             senderUid: user.uid,
             priority: 'normal',
             centerInfo: '진행중'
@@ -371,10 +371,10 @@ export default function DashboardPage() {
             targetUsers: [user.uid], // 본인에게만
             type: 'sample-request',
             title: '샘플 요청',
-            body: `${userProfile.displayName}님이 샘플 요청을 등록했습니다.`,
+            body: `${getUserDisplayName(user, userProfile, '관리자')}님이 샘플 요청을 등록했습니다.`,
             requestId: `TEST-SAMPLE-${Date.now()}`,
             subtitle: '테스트크림 / 외용기',
-            senderName: userProfile.displayName,
+            senderName: getUserDisplayName(user, userProfile, '관리자'),
             senderUid: user.uid,
             priority: 'normal'
           };
@@ -383,10 +383,10 @@ export default function DashboardPage() {
             targetUsers: [user.uid], // 본인에게만
             type: 'comment-mention',
             title: '생산관리부 요청사항',
-            body: `${userProfile.displayName}님이 생산관리부 요청사항에 댓글을 남겼습니다.`,
+            body: `${getUserDisplayName(user, userProfile, '관리자')}님이 생산관리부 요청사항에 댓글을 남겼습니다.`,
             requestId: `TEST-COMMENT-${Date.now()}`,
             subtitle: '테스트크림 / 외용기',
-            senderName: userProfile.displayName,
+            senderName: getUserDisplayName(user, userProfile, '관리자'),
             senderUid: user.uid,
             priority: 'normal'
           };
@@ -395,10 +395,10 @@ export default function DashboardPage() {
             targetUsers: [user.uid], // 본인에게만
             type: 'comment-mention',
             title: '샘플 요청',
-            body: `${userProfile.displayName}님이 샘플 요청에 댓글을 남겼습니다.`,
+            body: `${getUserDisplayName(user, userProfile, '관리자')}님이 샘플 요청에 댓글을 남겼습니다.`,
             requestId: `TEST-SAMPLE-COMMENT-${Date.now()}`,
             subtitle: '테스트샘플 / 내용기',
-            senderName: userProfile.displayName,
+            senderName: getUserDisplayName(user, userProfile, '관리자'),
             senderUid: user.uid,
             priority: 'normal'
           };
@@ -407,11 +407,11 @@ export default function DashboardPage() {
             targetUsers: [user.uid],
             type: 'quality-issue-created',
             title: '품질이슈 등록',
-            body: `${userProfile.displayName}님이 품질이슈를 등록했습니다.`,
+            body: `${getUserDisplayName(user, userProfile, '관리자')}님이 품질이슈를 등록했습니다.`,
             requestId: `TEST-QUALITY-${Date.now()}`,
             subtitle: '테스트제품 / 테스트부속',
             centerInfo: '미해결',
-            senderName: userProfile.displayName,
+            senderName: getUserDisplayName(user, userProfile, '관리자'),
             senderUid: user.uid,
             priority: 'normal'
           };
@@ -420,11 +420,11 @@ export default function DashboardPage() {
             targetUsers: [user.uid],
             type: 'quality-issue-status',
             title: '품질이슈 상태 변경',
-            body: `${userProfile.displayName}님이 품질이슈사항을 추가했습니다.`,
+            body: `${getUserDisplayName(user, userProfile, '관리자')}님이 품질이슈사항을 추가했습니다.`,
             requestId: `TEST-QUALITY-ITEM-${Date.now()}`,
             subtitle: '테스트제품 / 테스트부속',
             centerInfo: '진행중',
-            senderName: userProfile.displayName,
+            senderName: getUserDisplayName(user, userProfile, '관리자'),
             senderUid: user.uid,
             priority: 'normal'
           };
@@ -453,13 +453,13 @@ export default function DashboardPage() {
       } = await import('@/shared/services/notificationService');
 
       if (selectedRequestType === '물류이동') {
-        await createTestLogisticsNotification(userProfile.displayName, user.uid, user.photoURL || undefined);
+        await createTestLogisticsNotification(getUserDisplayName(user, userProfile, '관리자'), user.uid, user.photoURL || undefined);
       } else if (selectedRequestType === '부족분관리') {
-        await createTestShortageNotification(userProfile.displayName, user.uid, user.photoURL || undefined);
+        await createTestShortageNotification(getUserDisplayName(user, userProfile, '관리자'), user.uid, user.photoURL || undefined);
       } else if (selectedRequestType === '긴급건') {
-        await createTestProductionRequestNotification(userProfile.displayName, user.uid, user.photoURL || undefined, '긴급건');
+        await createTestProductionRequestNotification(getUserDisplayName(user, userProfile, '관리자'), user.uid, user.photoURL || undefined, '긴급건');
       } else if (selectedRequestType === '영업부 긴급요청') {
-        await createTestProductionRequestNotification(userProfile.displayName, user.uid, user.photoURL || undefined, '영업부 긴급요청');
+        await createTestProductionRequestNotification(getUserDisplayName(user, userProfile, '관리자'), user.uid, user.photoURL || undefined, '영업부 긴급요청');
       } else if (selectedRequestType === '생산일정') {
         // 생산일정 알림 테스트 - 실제 비즈니스 로직 호출
         const { sendProductionScheduleNotification } = await import('@/shared/services/notificationService');
@@ -474,7 +474,7 @@ export default function DashboardPage() {
           },
           {
             uid: user.uid,
-            displayName: userProfile.displayName,
+            displayName: getUserDisplayName(user, userProfile, '관리자'),
             photoURL: user.photoURL || undefined
           }
         );
@@ -487,7 +487,7 @@ export default function DashboardPage() {
           ProductionStatus.InProgress,
           {
             uid: user.uid,
-            displayName: userProfile.displayName,
+            displayName: getUserDisplayName(user, userProfile, '관리자'),
             photoURL: user.photoURL || undefined
           }
         );
@@ -500,7 +500,7 @@ export default function DashboardPage() {
           SampleStatus.InProgress,
           {
             uid: user.uid,
-            displayName: userProfile.displayName,
+            displayName: getUserDisplayName(user, userProfile, '관리자'),
             photoURL: user.photoURL || undefined
           }
         );
@@ -519,7 +519,7 @@ export default function DashboardPage() {
               coatingMethod: '스프레이'
             }],
             requestDate: new Date().toISOString().split('T')[0],
-            requesterName: userProfile.displayName,
+            requesterName: getUserDisplayName(user, userProfile, '관리자'),
             contact: '010-1234-5678',
             clientName: '테스트 고객사',
             dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -527,14 +527,14 @@ export default function DashboardPage() {
           },
           {
             uid: user.uid,
-            displayName: userProfile.displayName
+            displayName: getUserDisplayName(user, userProfile, '관리자')
           }
         );
       } else if (selectedRequestType === '생산관리부 댓글') {
         // 댓글 알림 테스트 - 실제 비즈니스 로직 호출
         const { CommentsService } = await import('@/shared/services/comments/commentsService');
         await CommentsService.sendTestCommentNotification(
-          userProfile.displayName,
+          getUserDisplayName(user, userProfile, '관리자'),
           user.uid,
           user.photoURL || undefined,
           '생산관리부'
@@ -543,7 +543,7 @@ export default function DashboardPage() {
         // 샘플요청 댓글 알림 테스트 - 실제 비즈니스 로직 호출
         const { CommentsService } = await import('@/shared/services/comments/commentsService');
         await CommentsService.sendTestCommentNotification(
-          userProfile.displayName,
+          getUserDisplayName(user, userProfile, '관리자'),
           user.uid,
           user.photoURL || undefined,
           '샘플요청'
@@ -553,7 +553,7 @@ export default function DashboardPage() {
         const { QualityIssueNotificationService } = await import('@/shared/services/notificationService');
         await QualityIssueNotificationService.sendTestQualityIssueNotification({
           uid: user.uid,
-          displayName: userProfile.displayName,
+          displayName: getUserDisplayName(user, userProfile, '관리자'),
           photoURL: user.photoURL || undefined
         });
       } else if (selectedRequestType === '품질이슈사항 추가') {
@@ -564,7 +564,7 @@ export default function DashboardPage() {
           '해결됨',
           {
             uid: user.uid,
-            displayName: userProfile.displayName,
+            displayName: getUserDisplayName(user, userProfile, '관리자'),
             photoURL: user.photoURL || undefined
           }
         );
@@ -706,7 +706,7 @@ export default function DashboardPage() {
               selectedRequestType === '품질이슈사항 추가' ? '품질이슈사항 추가' :
               '생산관리부 요청사항'
             }</li>
-                        <li><strong>발신자:</strong> {userProfile?.displayName || '테스트 사용자'}</li>
+                        <li><strong>발신자:</strong> {getUserDisplayName(user, userProfile, '관리자') || '테스트 사용자'}</li>
                         {(selectedRequestType === '생산관리부 댓글' || selectedRequestType === '샘플요청 댓글') ? (
                           <>
                             <li><strong>댓글 내용:</strong> {

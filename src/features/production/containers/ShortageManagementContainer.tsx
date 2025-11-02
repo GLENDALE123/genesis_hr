@@ -16,6 +16,7 @@ import { ShortageRequest } from '@/features/production/types';
 import { useAuthStore } from '@/features/auth';
 import { toast } from 'sonner';
 import { getFirebaseErrorMessage } from '@/shared/utils/firebaseErrorHandler';
+import { getUserDisplayName } from '@/shared/utils/userUtils';
 import {
   updateShortageStatus,
   deleteShortageRequest
@@ -81,7 +82,7 @@ const ShortageManagementContainerComponent: React.FC = () => {
       await updateShortageStatus(
         requestId, 
         newStatus,
-        { uid: user.uid, displayName: userProfile.displayName }
+        { uid: user.uid, displayName: getUserDisplayName(user, userProfile, '관리자') }
       );
       
       // 스토어 캐시도 업데이트 (실시간 구독이 자동으로 반영하지만 즉시 UI 업데이트)

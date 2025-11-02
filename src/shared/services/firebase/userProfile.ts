@@ -165,8 +165,8 @@ export const updateAuthProfile = async (
       }
     }
     
-    if (updates.photoURL !== undefined) {
-      authUpdates.photoURL = updates.photoURL || null;
+    if (updates.photoURL !== undefined && updates.photoURL) {
+      authUpdates.photoURL = updates.photoURL;
     }
     
     if (Object.keys(authUpdates).length > 0) {
@@ -377,7 +377,7 @@ export const updateUserProfile = async (
 };
 
 // 모든 사용자 목록 조회
-export const getAllUsers = async (): Promise<UserProfile[]> => {
+export const getAllUsers = async (): Promise<(UserProfile & { uid: string; displayName?: string; name?: string })[]> => {
   if (!db) throw new Error('Firestore is not initialized');
 
   try {
@@ -396,13 +396,14 @@ export const getAllUsers = async (): Promise<UserProfile[]> => {
       };
       
       return {
+        uid: doc.id,
         role: data.role || 'Member',
         position: data.position || undefined,
         department: data.department || undefined,
         createdAt: toDate(data.createdAt),
         updatedAt: toDate(data.updatedAt),
         lastLoginAt: data.lastLoginAt ? toDate(data.lastLoginAt) : undefined,
-      } as UserProfile;
+      } as UserProfile & { uid: string; displayName?: string; name?: string };
     });
   } catch (error) {
     console.error('사용자 목록 조회 실패:', error);

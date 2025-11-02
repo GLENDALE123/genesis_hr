@@ -18,6 +18,12 @@ import { ChatInput } from '@/shared/components/common/ChatInput';
 import type { UserProfile } from '@/features/auth/types';
 import type { Comment } from '@/shared/services/comments/commentsService';
 
+interface UserWithUid extends UserProfile {
+  uid: string;
+  displayName?: string;
+  name?: string;
+}
+
 interface CommentsSectionProps {
   comments: Comment[];
   onAddComment: (text: string, mentionedUserIds?: string[]) => void;
@@ -38,10 +44,10 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
   isAdmin = false,
 }) => {
   const [replyTo, setReplyTo] = useState<string | null>(null);
-  const [replyToUser, setReplyToUser] = useState<UserProfile | null>(null);
+  const [replyToUser, setReplyToUser] = useState<UserWithUid | null>(null);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
-  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [users, setUsers] = useState<UserWithUid[]>([]);
 
   // 사용자 목록 가져오기
   useEffect(() => {

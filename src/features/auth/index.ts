@@ -13,7 +13,6 @@ export { usePagePermissions, useHasPermission, useHasCustomPermission } from './
 
 // Services
 export { AuthService } from './services';
-export { MigrationService } from './services/migrationService';
 export { PermissionsService } from './services/permissionsService';
 
 // Store

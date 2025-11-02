@@ -24,7 +24,7 @@ import { Badge } from '@/shared/components/ui/badge';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { Switch } from '@/shared/components/ui/switch';
 import type { PageIdentifier, PagePermissions } from '@/features/auth/types/permissions';
-import type { UserProfile } from '@/features/auth/types';
+import type { ExtendedUserProfile } from '@/features/auth/types';
 import { PermissionsService } from '@/features/auth/services/permissionsService';
 import { toast } from 'sonner';
 import { getUserDisplayName, getUserRoleBadgeVariant, isAdmin as checkIsAdmin, hasRole } from '@/shared/utils/userUtils';
@@ -56,9 +56,9 @@ const PermissionSettingsButtonComponent: React.FC<PermissionSettingsButtonProps>
   const isAdmin = useIsAdmin();
   const { clearCache } = usePermissionsStore();
   const [open, setOpen] = useState(false);
-  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [users, setUsers] = useState<(ExtendedUserProfile & { uid: string })[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+  const [selectedUser, setSelectedUser] = useState<(ExtendedUserProfile & { uid: string }) | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [userPermissions, setUserPermissions] = useState<Record<string, PermissionState>>({});
   const [savingPermissions, setSavingPermissions] = useState<boolean>(false);
@@ -74,12 +74,13 @@ const PermissionSettingsButtonComponent: React.FC<PermissionSettingsButtonProps>
       try {
         // ✅ 공통 서비스 사용 (중복 제거)
         const usersList = await PermissionsService.getAllUserProfiles();
-
-        setUsers(usersList);
+        
+        // uid가 없는 사용자 제외
+        const validUsers = usersList.filter((user): user is ExtendedUserProfile & { uid: string } => !!user.uid);
+        setUsers(validUsers);
 
         // ✅ 병렬로 모든 사용자의 권한 가져오기
-        const permissionsPromises = usersList
-          .filter(user => user.uid)
+        const permissionsPromises = validUsers
           .map(async (user) => {
             const permissions = await PermissionsService.getUserPagePermissions(user.uid, pageId);
             
@@ -127,7 +128,7 @@ const PermissionSettingsButtonComponent: React.FC<PermissionSettingsButtonProps>
   }, [open, isAdmin, pageId]);
 
   // 권한 설정 Sheet 열기
-  const handleOpenPermissions = (user: UserProfile) => {
+  const handleOpenPermissions = (user: ExtendedUserProfile & { uid: string }) => {
     setSelectedUser(user);
     setSheetOpen(true);
   };
@@ -137,12 +138,14 @@ const PermissionSettingsButtonComponent: React.FC<PermissionSettingsButtonProps>
     permissionKey: keyof PermissionState,
     value: boolean
   ) => {
-    if (!selectedUser) return;
+    if (!selectedUser || !selectedUser.uid) return;
+    
+    const uid = selectedUser.uid;
 
     try {
       setSavingPermissions(true);
       
-      const currentPermissions = userPermissions[selectedUser.uid] || {
+      const currentPermissions = userPermissions[uid] || {
         canRead: true,
         canCreate: true,
         canUpdate: hasRole(selectedUser, 'Manager'), // Manager는 수정 권한 기본 허용
@@ -167,14 +170,14 @@ const PermissionSettingsButtonComponent: React.FC<PermissionSettingsButtonProps>
         customPermissions: updatedPermissions.custom,
       };
 
-      await PermissionsService.setUserPagePermissions(selectedUser.uid, pageId, pagePermissions);
+      await PermissionsService.setUserPagePermissions(uid, pageId, pagePermissions);
       
       // ✅ 권한 캐시 초기화 (변경사항 즉시 반영)
       clearCache();
       
       setUserPermissions((prev) => ({
         ...prev,
-        [selectedUser.uid]: updatedPermissions,
+        [uid]: updatedPermissions,
       }));
 
       toast.success('권한이 업데이트되었습니다. 페이지를 새로고침하면 반영됩니다.');
@@ -363,7 +366,7 @@ const PermissionSettingsButtonComponent: React.FC<PermissionSettingsButtonProps>
       {/* 권한 설정 Sheet */}
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent className="w-full sm:max-w-md overflow-y-auto">
-          {selectedUser && (
+          {selectedUser && selectedUser.uid && (
             <>
               <SheetHeader className="sticky top-0 bg-background pb-4 z-10">
                 <SheetTitle className="flex items-center gap-3">

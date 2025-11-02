@@ -6,14 +6,20 @@ import { Avatar, AvatarFallback } from '@/shared/components/ui/avatar';
 import { getUserDisplayName, getUserInitial } from '@/shared/utils/userUtils';
 import type { UserProfile } from '@/features/auth/types';
 
+interface UserWithUid extends UserProfile {
+  uid: string;
+  displayName?: string;
+  name?: string;
+}
+
 interface ChatInputProps {
   onSubmit: (text: string, mentionedUserIds?: string[]) => void;
   placeholder?: string;
   disabled?: boolean;
-  users: UserProfile[];
+  users: UserWithUid[];
   currentUserUid?: string;
   replyTo?: string | null;
-  replyToUser?: UserProfile | null;
+  replyToUser?: UserWithUid | null;
   onCancelReply?: () => void;
 }
 
@@ -167,7 +173,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   // 멘션 삽입
-  const insertMention = (user: UserProfile) => {
+  const insertMention = (user: UserWithUid) => {
     if (!editorRef.current) return;
 
     const selection = window.getSelection();
@@ -187,7 +193,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   // Selection을 이용한 멘션 삽입
-  const insertMentionWithSelection = (user: UserProfile, selection: Selection) => {
+  const insertMentionWithSelection = (user: UserWithUid, selection: Selection) => {
     if (!editorRef.current) return;
 
     const range = selection.getRangeAt(0);

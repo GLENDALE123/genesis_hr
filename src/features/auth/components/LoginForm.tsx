@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AuthService } from '@/features/auth/services';
-import { MigrationService } from '@/features/auth/services/migrationService';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -211,52 +210,6 @@ export function LoginForm() {
           toast.success('로그인되었습니다!');
           router.push('/dashboard');
         } catch (loginError: unknown) {
-          // 로그인 실패 시 Firestore 프로필 확인 (마이그레이션)
-          const error = loginError as { message?: string; code?: string };
-          if (error.message?.includes('사용자') || error.message?.includes('존재하지') || error.code === 'auth/user-not-found') {
-            const hasProfile = await MigrationService.checkFirestoreProfileExists(email.trim());
-            
-            if (hasProfile) {
-              // Firestore에 프로필이 있으면 Auth 계정 생성 시도
-              toast.info('기존 프로필을 찾았습니다. 계정을 연결하는 중...', {
-                description: '잠시만 기다려주세요.'
-              });
-              
-              const result = await MigrationService.createAuthFromFirestoreProfile(email.trim(), password);
-              
-              if (result.success) {
-                // 마이그레이션 성공 후 중복 문서 정리
-                try {
-                  const deletedCount = await MigrationService.cleanupDuplicateProfiles(email.trim());
-                  if (deletedCount > 0) {
-                  }
-                } catch (cleanupError) {
-                  console.warn('중복 문서 정리 중 에러 (무시):', cleanupError);
-                }
-                
-                // 마이그레이션 성공 후 사용자 프로필 강제 새로고침
-                // auth.currentUser가 즉시 설정되므로 빠르게 프로필 가져오기
-                try {
-                  await refreshUserProfile();
-                } catch (profileError) {
-                  console.warn('⚠️ [LoginForm] 프로필 로드 실패, 재시도 중...', profileError);
-                  // 프로필 로드 실패 시 약간 대기 후 재시도
-                  await new Promise(resolve => setTimeout(resolve, 200));
-                await refreshUserProfile();
-                }
-                
-                toast.success('계정이 성공적으로 연결되었습니다!', {
-                  description: '로그인되었습니다.'
-                });
-                router.push('/dashboard');
-                return;
-              } else {
-                throw new Error(result.error || '계정 연결에 실패했습니다.');
-              }
-            }
-          }
-          
-          // 마이그레이션도 실패하면 원래 에러 던지기
           throw loginError;
         }
       }

@@ -5,6 +5,7 @@ import { WorkScheduleService } from '../services/workScheduleService';
 import { WorkType, WORK_TYPES } from '../types';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/features/auth';
+import { getUserDisplayName } from '@/shared/utils/userUtils';
 
 export const useScheduleActions = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -55,7 +56,7 @@ export const useScheduleActions = () => {
         type, 
         dates, 
         scheduleData.description,
-        userProfile?.displayName || userProfile?.name || '관리자',
+        getUserDisplayName(user, userProfile, '관리자'),
         user?.uid || 'unknown'
       );
       
