@@ -15,7 +15,9 @@ import { useRouter } from 'next/navigation';
 import { Info, LogOut, Package, Calendar, Users, ExternalLink, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { useFirebaseRelease } from '@/shared/hooks/useFirebaseRelease';
+import { useFirebaseMobileRelease } from '@/shared/hooks/useFirebaseMobileRelease';
 import { WindowsIcon } from '@/shared/components/icons/WindowsIcon';
+import { AndroidIcon } from '@/shared/components/icons/AndroidIcon';
 import { isElectron, isMobileApp } from '@/shared/utils/platform';
 import { useDeviceType } from '@/shared/hooks/use-device';
 import {
@@ -38,13 +40,17 @@ export const AboutSettings: React.FC = () => {
   // 플랫폼 감지
   const isElectronEnv = isElectron();
   const isMobileAppEnv = isMobileApp();
-  const { isTablet } = useDeviceType();
+  const { isTablet, isSmartphone } = useDeviceType();
   
   // 웹 브라우저 데스크톱 환경에서만 표시
   const shouldShowDesktopApp = !isElectronEnv && !isMobileAppEnv && !isTablet;
   
+  // 모바일 브라우저 환경에서만 표시
+  const shouldShowMobileApp = !isElectronEnv && !isMobileAppEnv && (isSmartphone || isTablet);
+  
   // Firebase Storage 릴리스 정보
   const { latestRelease, installerAsset, isLoading: releaseLoading } = useFirebaseRelease();
+  const { latestRelease: mobileLatestRelease, installerAsset: mobileInstallerAsset, isLoading: mobileReleaseLoading } = useFirebaseMobileRelease();
 
   const handleLogout = async () => {
     try {
@@ -228,6 +234,56 @@ export const AboutSettings: React.FC = () => {
               </div>
             )}
             {!releaseLoading && !installerAsset && (
+              <p className="text-xs text-muted-foreground text-center pt-2">
+                릴리스 페이지에서 직접 다운로드하세요.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 모바일용 앱 다운로드 (웹 브라우저 모바일 환경에서만 표시) */}
+      {shouldShowMobileApp && (
+        <Card>
+          <CardHeader>
+            <CardTitle>모바일용 앱</CardTitle>
+            <CardDescription>
+              안드로이드 앱을 다운로드하여 더 나은 사용 경험을 누리세요.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button 
+              variant="default" 
+              className="w-full" 
+              size="lg"
+              disabled={mobileReleaseLoading}
+              onClick={() => {
+                if (mobileInstallerAsset?.browser_download_url) {
+                  // 설치 파일이 있으면 바로 다운로드
+                  window.open(mobileInstallerAsset.browser_download_url, '_blank', 'noopener,noreferrer');
+                  toast.success('다운로드가 시작되었습니다.');
+                } else {
+                  // 설치 파일이 없으면 에러 표시
+                  toast.error('설치 파일을 찾을 수 없습니다.');
+                }
+              }}
+            >
+              <AndroidIcon className="mr-2" size={20} />
+              {mobileReleaseLoading ? '로딩 중...' : 'Android'}
+            </Button>
+            {mobileReleaseLoading && (
+              <div className="flex items-center justify-center py-2">
+                <span className="text-xs text-muted-foreground">최신 버전 확인 중...</span>
+              </div>
+            )}
+            {mobileInstallerAsset && !mobileReleaseLoading && (
+              <div className="text-xs text-muted-foreground space-y-1 pt-2">
+                <p>• 파일 크기: {(mobileInstallerAsset.size / 1024 / 1024).toFixed(1)} MB</p>
+                <p>• 출시일: {mobileLatestRelease?.published_at ? new Date(mobileLatestRelease.published_at).toLocaleDateString('ko-KR') : '-'}</p>
+                <p>• 버전: {mobileLatestRelease?.tag_name.replace('v', '') || '-'}</p>
+              </div>
+            )}
+            {!mobileReleaseLoading && !mobileInstallerAsset && (
               <p className="text-xs text-muted-foreground text-center pt-2">
                 릴리스 페이지에서 직접 다운로드하세요.
               </p>

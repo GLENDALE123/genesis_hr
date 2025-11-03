@@ -106,6 +106,17 @@ android {
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
     }
+
+    // APK 파일 이름 변경
+    applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            if (variant.buildType.name == "release") {
+                outputFileName = "TMS-Mobile-latest.apk"
+            } else if (variant.buildType.name == "debug") {
+                outputFileName = "TMS-Mobile-latest-debug.apk"
+            }
+        }
+    }
 }
 
 dependencies {
