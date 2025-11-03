@@ -31,17 +31,13 @@ export const useUserManagement = () => {
       const userList = await getAllUsersWithAuthInfo();
       setUsers(userList);
       setFilteredUsers(userList);
-      // 편집 모드 해제 시 편집 데이터 초기화
-      if (!isEditMode) {
-        setEditedUsers({});
-      }
     } catch (error) {
       console.error('유저 목록 로드 실패:', error);
       toast.error('유저 목록을 불러오는데 실패했습니다.');
     } finally {
       setIsLoading(false);
     }
-  }, [isEditMode]);
+  }, []);
 
   // 초기 로드
   useEffect(() => {
@@ -109,7 +105,7 @@ export const useUserManagement = () => {
       // 편집 모드 해제 - 변경사항 취소
       setEditedUsers({});
     }
-    setIsEditMode(!isEditMode);
+    setIsEditMode(prev => !prev);
   }, [isEditMode]);
 
   // 유저 필드 변경

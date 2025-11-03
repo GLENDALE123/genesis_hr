@@ -12,7 +12,7 @@ import {
   arrayUnion
 } from 'firebase/firestore';
 import { db } from '@/shared/services/firebase/config';
-import { QualityIssue, QualityIssueFormData } from '../types';
+import { QualityIssue, QualityIssueFormData, isIssueItem } from '../types';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
 import { QualityIssueNotificationService } from '@/shared/services/notificationService';
 import { updateAutocompleteData } from './autocompleteService';
@@ -99,22 +99,11 @@ export const createQualityIssue = async (
     const currentTime = new Date().toISOString();
     const issuesWithTimestamp = formData.issues
       .filter(issue => issue.trim() !== '') // 빈 이슈 제거
-      .map((issue) => {
-        // 문자열 형식이면 객체로 변환, 이미 객체면 그대로 사용
-        if (typeof issue === 'string') {
-          return {
-            content: issue.trim(),
-            createdAt: currentTime,
-            status: 'in-progress'
-          };
-        }
-        // 이미 객체인 경우 createdAt이 없으면 추가
-        return {
-          ...issue,
-          createdAt: issue.createdAt || currentTime,
-          status: issue.status || 'in-progress'
-        };
-      });
+      .map((issue) => ({
+        content: issue.trim(),
+        createdAt: currentTime,
+        status: 'in-progress'
+      }));
 
     const qualityIssueData = {
       ...formData,
