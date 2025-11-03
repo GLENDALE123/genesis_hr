@@ -18,12 +18,14 @@ ShowInstDetails show
 ShowUnInstDetails show
 Unicode true
 
-; 아이콘
-!define MUI_ICON "..\dist\.icon-ico\icon.ico"
-!define MUI_UNICON "..\dist\.icon-ico\icon.ico"
-
 ; === MUI2 세팅 ===
 !include "MUI2.nsh"
+
+; 아이콘 (옵션 - electron-builder가 생성한 경우에만)
+!if /FileExists("..\dist\.icon-ico\icon.ico")
+  !define MUI_ICON "..\dist\.icon-ico\icon.ico"
+  !define MUI_UNICON "..\dist\.icon-ico\icon.ico"
+!endif
 
 ; 설치 마법사 페이지
 !insertmacro MUI_PAGE_WELCOME

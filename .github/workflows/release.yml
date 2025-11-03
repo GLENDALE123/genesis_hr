@@ -32,22 +32,17 @@ jobs:
       - name: Update versions
         run: |
           $version = "${{ steps.get_version.outputs.VERSION }}"
+          Write-Host "Updating version to: $version"
           
-          # 현재 디렉토리 확인
-          Write-Host "Current directory: $(Get-Location)"
-          Write-Host "Files in build directory:"
-          if (Test-Path "build") {
-            Get-ChildItem build | ForEach-Object { Write-Host $_.Name }
-          } else {
-            Write-Host "build directory does not exist"
-          }
-          
-          # package.json 버전 업데이트
+          # package.json 버전 업데이트 (더 안정적인 방법)
           if (Test-Path "package.json") {
-            $pkgJson = Get-Content package.json -Raw | ConvertFrom-Json
-            $pkgJson.version = $version
-            $pkgJson | ConvertTo-Json -Depth 10 | Set-Content package.json
+            $content = Get-Content package.json -Raw
+            $content = $content -replace '"version"\s*:\s*"[^"]*"', "`"version`": `"$version`""
+            $content | Set-Content package.json -NoNewline
             Write-Host "package.json version updated to $version"
+            # 확인
+            $pkgJson = Get-Content package.json -Raw | ConvertFrom-Json
+            Write-Host "Verified version: $($pkgJson.version)"
           } else {
             Write-Host "package.json not found"
             exit 1
@@ -86,12 +81,23 @@ jobs:
           NEXT_PUBLIC_FIREBASE_FIRESTORE_DATABASE_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_FIRESTORE_DATABASE_ID }}
           FIREBASE_FIRESTORE_DATABASE_ID: ${{ secrets.FIREBASE_FIRESTORE_DATABASE_ID }}
           
-      - name: Package Electron app
+      - name: Package Electron app (dir - for custom installer)
         run: |
-          # Electron 앱 패키징 (dir 타겟으로 - 커스텀 인스톨러용)
+          # Electron 앱 패키징 (dir 타겟으로 - 아이콘 생성 및 파일 준비)
           npx electron-builder --win --x64 --dir
-          # 커스텀 NSIS 인스톨러 빌드
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        continue-on-error: false
+        
+      - name: Build custom NSIS installer
+        run: |
+          # 커스텀 NSIS 인스톨러 빌드 (아이콘 파일이 생성된 후)
           npm run installer:build
+        continue-on-error: false
+        
+      - name: Package Electron app (portable - for delta updates)
+        run: |
           # Portable 버전 빌드 (delta 업데이트용)
           npx electron-builder --win --x64 --publish=never
         env:
