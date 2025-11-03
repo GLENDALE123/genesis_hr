@@ -1,8 +1,19 @@
 [build]
   command = "npm run build"
 
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
 [build.environment]
   NODE_VERSION = "20"
 
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
+# 정적 자산 캐시 설정
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/_next/image/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
