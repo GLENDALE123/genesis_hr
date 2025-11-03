@@ -152,6 +152,41 @@ export const getThumbnailURL = (imageUrl: string): string => {
 };
 
 /**
+ * 기존 Storage 버킷 URL을 새 버킷 URL로 변환
+ * hs-jig-b2093.firebasestorage.app -> hs-jig-b2093
+ * @param imageUrl 원본 이미지 URL (기존 버킷)
+ * @returns 새 버킷을 가리키는 URL
+ */
+export const convertStorageBucketURL = (imageUrl: string): string => {
+  try {
+    const url = new URL(imageUrl);
+    // 기존 버킷 이름 확인
+    if (url.hostname === 'firebasestorage.googleapis.com') {
+      const pathMatch = url.pathname.match(/\/v0\/b\/([^\/]+)\/o\/(.+)/);
+      if (pathMatch) {
+        const oldBucket = pathMatch[1];
+        const filePath = pathMatch[2];
+        
+        // 기존 버킷을 새 버킷으로 변환
+        if (oldBucket === 'hs-jig-b2093.firebasestorage.app') {
+          const newBucket = 'hs-jig-b2093';
+          // 새 URL 생성
+          const newUrl = new URL(`https://firebasestorage.googleapis.com/v0/b/${newBucket}/o/${filePath}`);
+          // 기존 쿼리 파라미터 유지 (token, alt 등)
+          url.searchParams.forEach((value, key) => {
+            newUrl.searchParams.set(key, value);
+          });
+          return newUrl.toString();
+        }
+      }
+    }
+    return imageUrl;
+  } catch {
+    return imageUrl;
+  }
+};
+
+/**
  * Firebase Storage 이미지 URL에 크기 제한 쿼리 추가
  * Firebase Storage URL에 w (width) 파라미터 추가하여 이미지 크기 제한
  * @param imageUrl 원본 이미지 URL
@@ -160,7 +195,9 @@ export const getThumbnailURL = (imageUrl: string): string => {
  */
 export const getResizedImageURL = (imageUrl: string, maxWidth: number = 300): string => {
   try {
-    const url = new URL(imageUrl);
+    // 먼저 버킷 URL 변환
+    const convertedUrl = convertStorageBucketURL(imageUrl);
+    const url = new URL(convertedUrl);
     // 기존 파라미터 유지하면서 w 파라미터 추가
     url.searchParams.set('w', maxWidth.toString());
     return url.toString();

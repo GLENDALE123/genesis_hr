@@ -5,7 +5,7 @@ import { Inter } from 'next/font/google';
 import { AuthProvider } from "@/features/auth";
 import { Toaster } from "@/shared/components/ui/sonner";
 import { ConditionalLayout } from "@/shared/components/layout";
-import { ClientThemeProvider, NetworkStatusProvider, NotificationContainer, NotificationProviderWrapper, ElectronNavigationHandler, FontSizeProvider } from "@/shared/components/common";
+import { ClientThemeProvider, NetworkStatusProvider, NotificationContainer, NotificationProviderWrapper, ElectronNavigationHandler, FontSizeProvider, UpdateNotificationContainer } from "@/shared/components/common";
 import { AppStateProvider } from "@/shared/components/layout/AppStateProvider";
 
 // 폰트 최적화 설정
@@ -92,6 +92,7 @@ export default function RootLayout({
                     </ConditionalLayout>
                     <Toaster />
                     <NotificationContainer position="bottom-right" />
+                    <UpdateNotificationContainer />
                   </AppStateProvider>
                 </NotificationProviderWrapper>
               </FontSizeProvider>

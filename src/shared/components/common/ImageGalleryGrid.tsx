@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ImageLightbox } from './ImageLightbox';
 import { LazyImage } from './LazyImage';
 import { ImageCache } from '@/shared/utils/imageUpload';
-import { getThumbnailURL, getResizedImageURL } from '@/shared/utils/imagePathMigration';
+import { getThumbnailURL, getResizedImageURL, convertStorageBucketURL } from '@/shared/utils/imagePathMigration';
 import { Spinner } from '../ui/spinner';
 
 interface ImageGalleryGridProps {
@@ -43,8 +43,10 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
   useEffect(() => {
     if (images.length === 0) return;
     
+    // 기존 버킷 URL을 새 버킷으로 변환 후 크기 조정
     // Firebase Storage w 파라미터로 이미지 크기 제한 (300px)
-    const resizedUrls = images.map(url => getResizedImageURL(url, 300));
+    const convertedUrls = images.map(url => convertStorageBucketURL(url));
+    const resizedUrls = convertedUrls.map(url => getResizedImageURL(url, 300));
     setCachedImages(resizedUrls);
   }, [images.length]);
 
@@ -316,7 +318,7 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
       </div>
 
       <ImageLightbox
-        images={images} // 원본 URL 사용 (모든 이미지 접근 가능)
+        images={images.map(url => convertStorageBucketURL(url))} // 버킷 URL 변환 후 전달
         initialIndex={selectedImageIndex}
         open={lightboxOpen}
         onClose={() => setLightboxOpen(false)}

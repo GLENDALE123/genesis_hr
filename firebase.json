@@ -1,9 +1,11 @@
 {
   "firestore": {
+    "database": "tms-production",
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
   "storage": {
+    "bucket": "hs-jig-b2093",
     "rules": "storage.rules"
   },
   "functions": {

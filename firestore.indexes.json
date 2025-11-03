@@ -33,41 +33,11 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "workDate",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "packaging-reports",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
           "fieldPath": "productionLine",
           "order": "ASCENDING"
         },
         {
           "fieldPath": "workDate",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "excel-production-reports",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "workDate",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "quality-inspections",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "inspectionDate",
           "order": "DESCENDING"
         }
       ]

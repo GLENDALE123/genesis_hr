@@ -5,6 +5,10 @@
   "main": "electron/main.js",
   "description": "TMS 통합관리시스템",
   "author": "HS-HR",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mir1102/HS-Jig.git"
+  },
   "scripts": {
     "dev": "next dev --turbo",
     "dev:external": "next dev --turbo -H 0.0.0.0 -p 3000",
@@ -55,6 +59,7 @@
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
     "electron-region-screenshot": "^2.0.1",
+    "electron-updater": "^6.6.2",
     "embla-carousel-react": "^8.6.0",
     "firebase": "^12.3.0",
     "html2canvas": "^1.4.1",
@@ -144,6 +149,11 @@
     },
     "extraMetadata": {
       "main": "electron/main.js"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "mir1102",
+      "repo": "HS-Jig"
     }
   }
 }

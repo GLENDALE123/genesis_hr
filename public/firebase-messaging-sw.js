@@ -23,7 +23,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyB4nSpGhucC0NR57Zpu_syg86sjdFtLtaU",
   authDomain: "hs-jig-b2093.firebaseapp.com",
   projectId: "hs-jig-b2093",
-  storageBucket: "hs-jig-b2093.firebasestorage.app",
+  storageBucket: "hs-jig-b2093",
   messagingSenderId: "117861579792",
   appId: "1:117861579792:web:93de9aeca7771940745e95",
 };

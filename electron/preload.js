@@ -99,6 +99,74 @@ contextBridge.exposeInMainWorld('electron', {
       ipcRenderer.removeListener('navigate-to', listener);
     };
   },
+
+  /**
+   * 업데이트 관련 API
+   */
+  updater: {
+    // 업데이트 체크
+    checkForUpdates: async () => {
+      try {
+        const result = await ipcRenderer.invoke('check-for-updates');
+        return result;
+      } catch (error) {
+        console.error('❌ [Preload] 업데이트 체크 실패:', error);
+        return { success: false, error: error.message };
+      }
+    },
+    
+    // 업데이트 다운로드 시작
+    downloadUpdate: async () => {
+      try {
+        const result = await ipcRenderer.invoke('download-update');
+        return result;
+      } catch (error) {
+        console.error('❌ [Preload] 업데이트 다운로드 실패:', error);
+        return { success: false, error: error.message };
+      }
+    },
+    
+    // 업데이트 설치 및 재시작
+    installUpdate: async () => {
+      try {
+        const result = await ipcRenderer.invoke('install-update');
+        return result;
+      } catch (error) {
+        console.error('❌ [Preload] 업데이트 설치 실패:', error);
+        return { success: false, error: error.message };
+      }
+    },
+    
+    // 업데이트 이벤트 리스너
+    onUpdateAvailable: (callback) => {
+      const listener = (event, data) => callback(data);
+      ipcRenderer.on('update-available', listener);
+      return () => ipcRenderer.removeListener('update-available', listener);
+    },
+    
+    onUpdateDownloadProgress: (callback) => {
+      const listener = (event, data) => callback(data);
+      ipcRenderer.on('update-download-progress', listener);
+      return () => ipcRenderer.removeListener('update-download-progress', listener);
+    },
+    
+    onUpdateDownloaded: (callback) => {
+      const listener = (event, data) => callback(data);
+      ipcRenderer.on('update-downloaded', listener);
+      return () => ipcRenderer.removeListener('update-downloaded', listener);
+    },
+    
+    onUpdateError: (callback) => {
+      const listener = (event, data) => callback(data);
+      ipcRenderer.on('update-error', listener);
+      return () => ipcRenderer.removeListener('update-error', listener);
+    },
+    
+    onUpdateNotAvailable: (callback) => {
+      ipcRenderer.on('update-not-available', () => callback());
+      return () => ipcRenderer.removeListener('update-not-available', () => {});
+    },
+  },
 });
 
 // Electron 환경임을 직접 window 객체에 추가 (contextBridge로는 불가능)

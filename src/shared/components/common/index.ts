@@ -13,3 +13,4 @@ export { NotificationProviderWrapper } from './NotificationProviderWrapper';
 export { ElectronNavigationHandler } from './ElectronNavigationHandler';
 export { InputSelect } from './InputSelect';
 export { FontSizeProvider } from './FontSizeProvider';
+export { UpdateNotificationContainer } from './UpdateNotificationContainer';

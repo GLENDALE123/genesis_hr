@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RadioGroup, RadioGroupItem } from '@/shared/components/ui/radio-group';
 import { Label } from '@/shared/components/ui/label';
 import { toast } from 'sonner';
-import { Shield, Lock, TestTube, Bell, Send, Users, User } from 'lucide-react';
+import { Shield, Lock, TestTube, Bell, Send, Users, User, RefreshCw } from 'lucide-react';
 // import { createTestShortageNotification } from '@/shared/services/notificationService';
 
 interface Todo {
@@ -1062,6 +1062,50 @@ export default function DashboardPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* 어드민 전용 업데이트 알림 테스트 */}
+          {isAdmin && (
+            <Card className="border-orange-500 bg-orange-50/50 dark:bg-orange-950/10">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TestTube className="h-5 w-5 text-orange-500" />
+                  업데이트 알림 테스트 (Admin Only)
+                </CardTitle>
+                <CardDescription>
+                  좌측 하단에 표시되는 업데이트 알림창을 테스트합니다.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <Button
+                    onClick={() => {
+                      if (typeof window !== 'undefined' && (window as any).__TEST_UPDATE_NOTIFICATION__) {
+                        (window as any).__TEST_UPDATE_NOTIFICATION__({
+                          version: '0.2.0',
+                          releaseNotes: '테스트용 업데이트 알림입니다.\n\n✨ 새로운 기능\n- 업데이트 알림 시스템 추가\n- 자동 업데이트 기능\n\n🐛 버그 수정\n- 성능 개선\n- 안정성 향상',
+                          releaseDate: new Date().toISOString(),
+                        });
+                        toast.success('업데이트 알림을 표시했습니다!');
+                      } else {
+                        toast.error('업데이트 알림 기능을 사용할 수 없습니다.');
+                      }
+                    }}
+                    variant="default"
+                    className="w-full"
+                    size="lg"
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    업데이트 알림 표시 테스트
+                  </Button>
+                  <div className="space-y-2 text-xs text-muted-foreground">
+                    <p>• 좌측 하단에 업데이트 알림창이 표시됩니다.</p>
+                    <p>• "지금 업데이트" 버튼과 "나중에 알림" 링크를 테스트할 수 있습니다.</p>
+                    <p>• 닫기 버튼(X)을 누르지 않으면 알림이 사라지지 않습니다.</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Sonner 토스트 테스트 */}
           <Card>

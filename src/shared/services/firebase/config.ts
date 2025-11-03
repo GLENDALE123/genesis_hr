@@ -1,6 +1,6 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getAnalytics } from 'firebase/analytics';
 import { getFunctions } from 'firebase/functions';
@@ -62,15 +62,20 @@ export const db = (() => {
     if (typeof window !== 'undefined') {
       // tms-production 데이터베이스만 사용 (default 데이터베이스 완전 배제)
       // 환경변수로 데이터베이스 ID 설정 가능, 없으면 tms-production 사용
-      // Firebase SDK 12.4.0: getFirestore(app, databaseId: string) 형식 사용
       const databaseId = FIREBASE_FIRESTORE_DATABASE_ID || 'tms-production';
-      const dbService = getFirestore(app, databaseId);
+      
+      // initializeFirestore를 사용하여 명시적으로 데이터베이스 지정
+      // 이 방법이 더 확실하게 특정 데이터베이스에 연결됩니다
+      console.log(`🔗 [Firebase Config] Firestore 초기화: 데이터베이스 ID = ${databaseId}`);
+      const dbService = initializeFirestore(app, {}, databaseId);
+      console.log('✅ [Firebase Config] Firestore 초기화 성공');
       return dbService;
     } else {
       return null;
     }
   } catch (error) {
     console.error('❌ [Firebase Config] Firestore 서비스 초기화 실패:', error);
+    console.error('Error details:', error);
     return null;
   }
 })();

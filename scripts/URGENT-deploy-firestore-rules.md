@@ -1,3 +1,27 @@
+# ⚠️ 긴급: Firestore 규칙 배포 필요
+
+현재 `tms-production` 데이터베이스에 Firestore 규칙이 배포되지 않아 권한 오류가 발생하고 있습니다.
+
+## 즉시 해결 방법
+
+### 1단계: Firebase Console 접속
+1. 브라우저에서 접속: https://console.firebase.google.com/project/hs-jig-b2093/firestore
+
+### 2단계: 데이터베이스 선택 (중요!)
+1. **Firestore Database** 페이지 상단에 **데이터베이스 선택 드롭다운**이 있습니다
+2. **반드시 `tms-production` 데이터베이스를 선택**하세요
+3. `(default)`가 선택되어 있으면 `tms-production`으로 변경하세요
+
+### 3단계: 규칙 배포
+1. **Rules** 탭 클릭
+2. 아래 전체 규칙 내용을 복사하여 붙여넣기
+3. **게시** 버튼 클릭
+
+## 배포할 규칙 내용
+
+아래 전체 내용을 복사하세요:
+
+```
 rules_version = '2';
 
 service cloud.firestore {
@@ -95,4 +119,18 @@ service cloud.firestore {
     }
   }
 }
+```
+
+## 확인 방법
+
+규칙 배포 후:
+1. 브라우저를 새로고침
+2. 로그인 후 알림, 설정 등이 정상적으로 로드되는지 확인
+3. 콘솔에 권한 오류가 더 이상 나타나지 않는지 확인
+
+## 중요 사항
+
+- ⚠️ **반드시 `tms-production` 데이터베이스를 선택**하고 규칙을 배포하세요
+- `(default)` 데이터베이스에 배포하면 안 됩니다!
+- 규칙은 즉시 적용됩니다 (몇 초 내)
 

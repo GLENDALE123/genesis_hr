@@ -1,4 +1,5 @@
 const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, Notification, shell } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const { exec } = require('child_process');
 const http = require('http');
@@ -12,6 +13,18 @@ const DEV_SERVER_URL = process.env.ELECTRON_DEV_SERVER_URL || 'https://cosmic-se
 const preferDevServer = process.env.ELECTRON_DEV !== 'false';
 const isDev = preferDevServer; // 개발자 도구/단축키 동작 기준
 const openDevToolsOnStart = process.env.ELECTRON_OPEN_DEVTOOLS === 'true';
+
+// 개발 모드에서는 autoUpdater 비활성화
+if (process.env.NODE_ENV === 'development' || preferDevServer) {
+  autoUpdater.updateConfigPath = null; // 개발 환경에서는 업데이트 체크 안 함
+}
+
+// autoUpdater 설정
+autoUpdater.setAutoDownload(false); // 자동 다운로드 비활성화 (사용자 승인 필요)
+autoUpdater.autoInstallOnAppQuit = true; // 앱 종료 시 자동 설치
+
+// 업데이트 체크 간격 (30분마다)
+const UPDATE_CHECK_INTERVAL = 30 * 60 * 1000;
 
 // Electron 환경에서는 Firestore 리스너 방식 사용 (FCM 미사용)
 let mainWindow;
@@ -458,6 +471,118 @@ ipcMain.handle('show-notification', async (event, options) => {
 });
 
 /**
+ * 업데이트 확인 및 다운로드
+ */
+function checkForUpdates(showNotification = false) {
+  if (process.env.NODE_ENV === 'development' || preferDevServer) {
+    console.log('[Updater] 개발 모드에서는 업데이트 체크를 건너뜁니다.');
+    return;
+  }
+
+  console.log('[Updater] 업데이트 확인 중...');
+  autoUpdater.checkForUpdates().catch(err => {
+    console.error('[Updater] 업데이트 확인 실패:', err);
+  });
+}
+
+/**
+ * 업데이트 이벤트 핸들러 등록
+ */
+function setupUpdater() {
+  if (process.env.NODE_ENV === 'development' || preferDevServer) {
+    return;
+  }
+
+  // 업데이트 사용 가능할 때
+  autoUpdater.on('update-available', (info) => {
+    console.log('[Updater] 새 버전 사용 가능:', info.version);
+    
+    // 메인 윈도우에 알림 전송
+    if (mainWindow) {
+      mainWindow.webContents.send('update-available', {
+        version: info.version,
+        releaseNotes: info.releaseNotes || '',
+        releaseDate: info.releaseDate
+      });
+    }
+  });
+
+  // 업데이트 다운로드 진행률
+  autoUpdater.on('download-progress', (progressObj) => {
+    const percent = Math.round(progressObj.percent);
+    console.log(`[Updater] 다운로드 진행률: ${percent}%`);
+    
+    if (mainWindow) {
+      mainWindow.webContents.send('update-download-progress', {
+        percent: percent,
+        transferred: progressObj.transferred,
+        total: progressObj.total
+      });
+    }
+  });
+
+  // 업데이트 다운로드 완료
+  autoUpdater.on('update-downloaded', (info) => {
+    console.log('[Updater] 다운로드 완료:', info.version);
+    
+    if (mainWindow) {
+      mainWindow.webContents.send('update-downloaded', {
+        version: info.version,
+        releaseNotes: info.releaseNotes || ''
+      });
+    }
+  });
+
+  // 업데이트 확인 중 에러
+  autoUpdater.on('error', (error) => {
+    console.error('[Updater] 오류:', error);
+    
+    if (mainWindow) {
+      mainWindow.webContents.send('update-error', {
+        message: error.message
+      });
+    }
+  });
+
+  // 업데이트 없음
+  autoUpdater.on('update-not-available', (info) => {
+    console.log('[Updater] 최신 버전입니다.');
+    
+    if (mainWindow) {
+      mainWindow.webContents.send('update-not-available');
+    }
+  });
+}
+
+// IPC 핸들러: 업데이트 체크 요청 (프론트엔드에서 호출)
+ipcMain.handle('check-for-updates', async (event) => {
+  checkForUpdates(true);
+  return { success: true };
+});
+
+// IPC 핸들러: 업데이트 다운로드 시작
+ipcMain.handle('download-update', async (event) => {
+  try {
+    await autoUpdater.downloadUpdate();
+    return { success: true };
+  } catch (error) {
+    console.error('[Updater] 다운로드 실패:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC 핸들러: 업데이트 설치 및 재시작
+ipcMain.handle('install-update', async (event) => {
+  try {
+    autoUpdater.quitAndInstall(false, true); // 앱 즉시 종료 후 설치
+    return { success: true };
+  } catch (error) {
+    console.error('[Updater] 설치 실패:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+/**
  * 단일 인스턴스 잠금 요청
  * 이미 실행 중인 인스턴스가 있으면 false 반환
  */
@@ -486,8 +611,21 @@ if (!gotTheLock) {
     // IPC 핸들러 등록 (윈도우 컨트롤용)
     registerIpcHandlers();
     
+    // 업데ater 설정
+    setupUpdater();
+    
     createWindow();
     createTray();
+    
+    // 앱 시작 후 10초 뒤에 첫 업데이트 체크
+    setTimeout(() => {
+      checkForUpdates();
+    }, 10000);
+    
+    // 주기적으로 업데이트 체크
+    setInterval(() => {
+      checkForUpdates();
+    }, UPDATE_CHECK_INTERVAL);
   });
 }
 
