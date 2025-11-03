@@ -40,13 +40,13 @@ export const AboutSettings: React.FC = () => {
   // 플랫폼 감지
   const isElectronEnv = isElectron();
   const isMobileAppEnv = isMobileApp();
-  const { isTablet, isSmartphone } = useDeviceType();
+  const { isTablet, isSmartphone, width } = useDeviceType();
   
-  // 웹 브라우저 데스크톱 환경에서만 표시
-  const shouldShowDesktopApp = !isElectronEnv && !isMobileAppEnv && !isTablet;
+  // 웹 브라우저 데스크톱 환경에서만 표시 (모바일/태블릿 제외)
+  const shouldShowDesktopApp = !isElectronEnv && !isMobileAppEnv && width >= 1440;
   
   // 모바일 브라우저 환경에서만 표시
-  const shouldShowMobileApp = !isElectronEnv && !isMobileAppEnv && (isSmartphone || isTablet);
+  const shouldShowMobileApp = !isElectronEnv && !isMobileAppEnv && width > 0 && width < 1440;
   
   // Firebase Storage 릴리스 정보
   const { latestRelease, installerAsset, isLoading: releaseLoading } = useFirebaseRelease();
