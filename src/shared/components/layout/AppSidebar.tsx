@@ -161,7 +161,6 @@ const AppSidebarComponent = ({
     checkItems(mainNavigationItems);
     checkItems(subNavigationItems);
     map.set('/settings', checkIsActive('/settings'));
-    map.set('/help', checkIsActive('/help'));
     
     return map;
   }, [checkIsActive]);
@@ -374,11 +373,11 @@ const AppSidebarComponent = ({
                 <span className="truncate whitespace-nowrap">설정</span>
               </button>
               <button
-                onClick={(event) => handleClick('/help', event)}
+                onClick={(event) => handleClick('/settings?tab=about', event)}
                 className={cn(
                   "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors text-left",
                   "min-h-[44px] px-2 py-2 md:px-2 md:py-2 w-full max-w-full overflow-hidden",
-                  activePathMap.get('/help')
+                  activePathMap.get('/settings')
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                 )}
@@ -412,11 +411,11 @@ const AppSidebarComponent = ({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
-                    onClick={(event) => handleClick('/help', event)}
+                    onClick={(event) => handleClick('/settings?tab=about', event)}
                     className={cn(
                       "flex items-center justify-center cursor-pointer rounded-md text-sm font-medium transition-colors",
                       "min-h-[44px] min-w-[44px] md:min-h-[40px] md:min-w-[40px]",
-                      checkIsActive('/help')
+                      checkIsActive('/settings')
                         ? "bg-primary text-primary-foreground"
                         : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                     )}
