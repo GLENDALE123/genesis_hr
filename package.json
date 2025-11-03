@@ -106,7 +106,7 @@
   },
   "build": {
     "appId": "com.hs.hr",
-    "productName": "TMS 통합관리시스템",
+    "productName": "TMS-Integrated-Management",
     "asarUnpack": [
       "*.exe",
       "node_modules/electron-region-screenshot/**/*",
