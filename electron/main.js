@@ -20,7 +20,7 @@ if (process.env.NODE_ENV === 'development' || preferDevServer) {
 }
 
 // autoUpdater 설정
-autoUpdater.setAutoDownload(false); // 자동 다운로드 비활성화 (사용자 승인 필요)
+autoUpdater.autoDownload = false; // 자동 다운로드 비활성화 (사용자 승인 필요)
 autoUpdater.autoInstallOnAppQuit = true; // 앱 종료 시 자동 설치
 
 // 업데이트 체크 간격 (30분마다)

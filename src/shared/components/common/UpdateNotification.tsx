@@ -7,7 +7,7 @@ import { cn } from '@/shared/lib/utils';
 import { Progress } from '@/shared/components/ui/progress';
 
 export interface UpdateNotificationData {
-  id: string;
+  id?: string;
   version: string;
   releaseNotes?: string;
   releaseDate?: string;

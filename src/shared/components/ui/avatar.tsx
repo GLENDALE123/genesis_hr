@@ -25,8 +25,8 @@ const AvatarImage = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Image>,
   React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image>
 >(({ className, src, ...props }, ref) => {
-  // Storage 버킷 URL 변환 적용
-  const convertedSrc = src ? convertStorageBucketURL(src) : src;
+  // Storage 버킷 URL 변환 적용 (string 타입만 처리)
+  const convertedSrc = src && typeof src === 'string' ? convertStorageBucketURL(src) : src;
   
   return (
     <AvatarPrimitive.Image

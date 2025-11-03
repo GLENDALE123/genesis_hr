@@ -25,7 +25,7 @@ export function useElectronUpdater() {
   const [showNotification, setShowNotification] = useState(false);
   
   // 30분 후 체크를 위한 타이머 ref
-  const remindLaterTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const remindLaterTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Electron 환경 확인
   useEffect(() => {
