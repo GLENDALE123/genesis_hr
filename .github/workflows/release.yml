@@ -131,7 +131,7 @@ jobs:
           python -m pip install gsutil
           
           Write-Host "gsutil 버전 확인"
-          python -m gsutil --version
+          gsutil --version
           
       - name: Setup Service Account Credentials
         run: |
@@ -165,7 +165,7 @@ jobs:
           
       - name: Upload to Firebase Storage
         run: |
-          # Firebase Storage에 업로드 (python -m gsutil 사용)
+          # Firebase Storage에 업로드 (gsutil 사용)
           # 설치 파일은 항상 같은 이름으로 업로드 (덮어쓰기)
           
           $BUCKET = "hs-jig-b2093.firebasestorage.app"
@@ -174,33 +174,33 @@ jobs:
           
           # latest.json 업로드
           Write-Host "업로드 중: latest.json"
-          python -m gsutil cp latest.json "gs://$BUCKET/electron-releases/latest.json" || Write-Host "latest.json 업로드 실패"
+          gsutil cp latest.json "gs://$BUCKET/electron-releases/latest.json" || Write-Host "latest.json 업로드 실패"
           
           # 설치 파일 업로드 (이름 변경하여 덮어쓰기)
           $INSTALLER_FILE = (Get-ChildItem dist -Filter "TMS-Setup-*.exe" | Select-Object -First 1).FullName
           if ($INSTALLER_FILE) {
             Write-Host "업로드 중: TMS-Setup-latest.exe"
-            python -m gsutil cp "$INSTALLER_FILE" "gs://$BUCKET/electron-releases/TMS-Setup-latest.exe" || Write-Host "설치 파일 업로드 실패"
+            gsutil cp "$INSTALLER_FILE" "gs://$BUCKET/electron-releases/TMS-Setup-latest.exe" || Write-Host "설치 파일 업로드 실패"
           }
           
           # portable 파일 업로드
           $PORTABLE_FILE = (Get-ChildItem dist -Filter "*Integrated-Management*.exe" | Select-Object -First 1).FullName
           if ($PORTABLE_FILE) {
             Write-Host "업로드 중: TMS-Integrated-Management-latest.exe"
-            python -m gsutil cp "$PORTABLE_FILE" "gs://$BUCKET/electron-releases/TMS-Integrated-Management-latest.exe" || Write-Host "portable 파일 업로드 실패"
+            gsutil cp "$PORTABLE_FILE" "gs://$BUCKET/electron-releases/TMS-Integrated-Management-latest.exe" || Write-Host "portable 파일 업로드 실패"
           }
           
           # latest.yml 업로드
           $LATEST_YML = (Get-ChildItem dist -Filter "*.yml" | Select-Object -First 1).FullName
           if ($LATEST_YML) {
             Write-Host "업로드 중: latest.yml"
-            python -m gsutil cp "$LATEST_YML" "gs://$BUCKET/electron-releases/latest.yml" || Write-Host "latest.yml 업로드 실패"
+            gsutil cp "$LATEST_YML" "gs://$BUCKET/electron-releases/latest.yml" || Write-Host "latest.yml 업로드 실패"
           }
           
           # blockmap 파일 업로드
           Get-ChildItem dist -Filter "*.blockmap" | ForEach-Object {
             Write-Host "업로드 중: $($_.Name)"
-            python -m gsutil cp $_.FullName "gs://$BUCKET/electron-releases/$($_.Name)" || Write-Host "$($_.Name) 업로드 실패"
+            gsutil cp $_.FullName "gs://$BUCKET/electron-releases/$($_.Name)" || Write-Host "$($_.Name) 업로드 실패"
           }
           
           Write-Host "=== Firebase Storage 업로드 완료 ==="
