@@ -109,19 +109,17 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
     };
   }, []);
 
-  // 개별 이미지 로드 (지연 로딩시) - 간단한 버전
+  // 개별 이미지 로드 (지연 로딩시) - 썸네일 우선, 실패시 원본 폴백
   const loadImage = useCallback(async (index: number) => {
     if (loadedImages[index]) return; // 이미 로드됨
     
-    const originalUrl = images[index];
+    // 버킷 URL 변환 적용
+    const originalUrl = convertStorageBucketURL(images[index]);
     
     try {
       // 캐시에서 먼저 확인 (가장 빠름)
       const cachedUrl = ImageCache.getImage(originalUrl);
       if (cachedUrl) {
-        // 캐시된 이미지가 압축된 이미지인지 확인 (WebP 확장자 또는 blob URL)
-        const isCompressed = cachedUrl.includes('.webp') || cachedUrl.startsWith('blob:');
-        
         setCachedImages(prev => {
           const newImages = [...prev];
           newImages[index] = cachedUrl;
@@ -135,15 +133,25 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
         return;
       }
       
-      // 간단한 접근: 썸네일 우선 시도, 실패시 onError에서 폴백
-      const thumbnailUrl = useThumbnails ? getThumbnailURL(originalUrl) : null;
-      const finalUrl = thumbnailUrl || originalUrl;
-      
+      // 썸네일 우선 시도 (useThumbnails가 true일 때만)
+      let finalUrl = originalUrl;
+      if (useThumbnails) {
+        const thumbnailUrl = getThumbnailURL(originalUrl);
+        // 썸네일 존재 여부 확인 (HEAD 요청)
+        try {
+          const thumbnailResponse = await fetch(thumbnailUrl, { method: 'HEAD' });
+          if (thumbnailResponse.ok) {
+            finalUrl = thumbnailUrl; // 썸네일 사용
+          }
+        } catch {
+          // 썸네일 확인 실패시 원본 사용 (finalUrl은 이미 originalUrl)
+        }
+      }
       
       // 캐시에 저장
       ImageCache.setImage(originalUrl, { 
         size: 0, 
-        type: thumbnailUrl ? 'image/webp' : 'image/jpeg' 
+        type: finalUrl !== originalUrl ? 'image/webp' : 'image/jpeg' 
       });
       
       setCachedImages(prev => {
@@ -274,8 +282,19 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
                   decoding="async"
                   draggable={false}
                   onDragStart={(e) => e.preventDefault()}
-                  onError={() => {
-                    // 이미지 로드 실패시 처리
+                  onError={(e) => {
+                    // 썸네일 로드 실패시 원본 이미지로 폴백
+                    const currentSrc = (e.target as HTMLImageElement).src;
+                    const originalUrl = convertStorageBucketURL(url);
+                    
+                    // 현재 썸네일을 시도 중이었다면 원본으로 전환
+                    if (currentSrc !== originalUrl && useThumbnails) {
+                      setCachedImages(prev => {
+                        const newImages = [...prev];
+                        newImages[index] = originalUrl;
+                        return newImages;
+                      });
+                    }
                   }}
                 />
               ) : isLoaded ? (
@@ -290,8 +309,19 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
                   onClick={(e) => handleImageClick(e, index)}
                   draggable={false}
                   onDragStart={(e) => e.preventDefault()}
-                  onError={() => {
-                    // 이미지 로드 실패시 처리
+                  onError={(e) => {
+                    // 썸네일 로드 실패시 원본 이미지로 폴백
+                    const currentSrc = (e.target as HTMLImageElement).src;
+                    const originalUrl = convertStorageBucketURL(url);
+                    
+                    // 현재 썸네일을 시도 중이었다면 원본으로 전환
+                    if (currentSrc !== originalUrl && useThumbnails) {
+                      setCachedImages(prev => {
+                        const newImages = [...prev];
+                        newImages[index] = originalUrl;
+                        return newImages;
+                      });
+                    }
                   }}
                 />
               ) : (
