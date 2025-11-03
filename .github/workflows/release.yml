@@ -135,7 +135,7 @@ jobs:
             - **업데이트**: `electron-updater`가 자동으로 delta 업데이트 파일을 사용합니다.
           files: |
             dist/TMS-Setup-*.exe
-            dist/TMS*.exe
+            dist/*-Integrated-Management*.exe
             dist/*.yml
             dist/*.blockmap
           draft: false
