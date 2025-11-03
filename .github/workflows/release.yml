@@ -32,25 +32,23 @@ jobs:
       - name: Update versions
         run: |
           $version = "${{ steps.get_version.outputs.VERSION }}"
-          Write-Host "Updating version to: $version"
+          Write-Host "=== Updating version to: $version ==="
           
-          # package.json 버전 업데이트 (node.js 스크립트 파일 사용)
-          $updateScript = @"
-          const fs = require('fs');
-          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-          pkg.version = '$version';
-          fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
-          console.log('Updated version to:', pkg.version);
-          "@
-          $updateScript | Out-File -FilePath update-version.js -Encoding utf8
-          node update-version.js
-          Remove-Item update-version.js
+          # package.json 내용 확인
+          Write-Host "Current package.json content (first 20 lines):"
+          Get-Content package.json -Head 20
+          
+          # package.json 버전 업데이트 (npm version 사용 - 가장 확실한 방법)
+          npm version $version --no-git-tag-version --allow-same-version
           
           # 확인
+          Write-Host "=== Verification ==="
           $pkgJson = Get-Content package.json -Raw | ConvertFrom-Json
-          Write-Host "Verified package.json version: $($pkgJson.version)"
+          Write-Host "Updated package.json version: $($pkgJson.version)"
+          Write-Host "Expected version: $version"
+          
           if ($pkgJson.version -ne $version) {
-            Write-Host "ERROR: Version mismatch! Expected: $version, Got: $($pkgJson.version)"
+            Write-Host "ERROR: Version mismatch!"
             exit 1
           }
           
@@ -65,6 +63,10 @@ jobs:
             Write-Host "installer.nsi not found at: $installerNsiPath"
             exit 1
           }
+          
+          # 최종 확인
+          Write-Host "=== Final package.json check ==="
+          Get-Content package.json -Head 5
           
       - name: Install NSIS
         run: |
