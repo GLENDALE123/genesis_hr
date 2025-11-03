@@ -33,15 +33,37 @@ jobs:
         run: |
           $version = "${{ steps.get_version.outputs.VERSION }}"
           
+          # 현재 디렉토리 확인
+          Write-Host "Current directory: $(Get-Location)"
+          Write-Host "Files in build directory:"
+          if (Test-Path "build") {
+            Get-ChildItem build | ForEach-Object { Write-Host $_.Name }
+          } else {
+            Write-Host "build directory does not exist"
+          }
+          
           # package.json 버전 업데이트
-          $pkgJson = Get-Content package.json -Raw | ConvertFrom-Json
-          $pkgJson.version = $version
-          $pkgJson | ConvertTo-Json -Depth 10 | Set-Content package.json
+          if (Test-Path "package.json") {
+            $pkgJson = Get-Content package.json -Raw | ConvertFrom-Json
+            $pkgJson.version = $version
+            $pkgJson | ConvertTo-Json -Depth 10 | Set-Content package.json
+            Write-Host "package.json version updated to $version"
+          } else {
+            Write-Host "package.json not found"
+            exit 1
+          }
           
           # installer.nsi 버전 업데이트
-          $installerNsi = Get-Content build\installer.nsi -Raw -Encoding UTF8
-          $installerNsi = $installerNsi -replace '!define APP_VERSION ".*"', "!define APP_VERSION `"$version`""
-          [System.IO.File]::WriteAllText("build\installer.nsi", $installerNsi, [System.Text.Encoding]::UTF8)
+          $installerNsiPath = Join-Path (Get-Location) "build" "installer.nsi"
+          if (Test-Path $installerNsiPath) {
+            $installerNsi = Get-Content $installerNsiPath -Raw -Encoding UTF8
+            $installerNsi = $installerNsi -replace '!define APP_VERSION ".*"', "!define APP_VERSION `"$version`""
+            [System.IO.File]::WriteAllText($installerNsiPath, $installerNsi, [System.Text.Encoding]::UTF8)
+            Write-Host "installer.nsi version updated to $version"
+          } else {
+            Write-Host "installer.nsi not found at: $installerNsiPath"
+            exit 1
+          }
           
       - name: Install NSIS
         run: |
