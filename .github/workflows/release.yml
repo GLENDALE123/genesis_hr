@@ -160,8 +160,8 @@ jobs:
           echo "  \"publishedAt\": \"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\"" >> latest.json
           echo "}" >> latest.json
           
-          Write-Host "=== latest.json ==="
-          Get-Content latest.json
+          echo "=== latest.json ==="
+          cat latest.json
           
       - name: Upload to Firebase Storage
         run: |
