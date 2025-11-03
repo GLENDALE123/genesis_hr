@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Badge } from '@/shared/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
@@ -102,6 +102,7 @@ const AppSidebarComponent = ({
   onMobileClose?: () => void;
 }) => {
   const pathname = usePathname();
+  const router = useRouter();
   const [isHovered, setIsHovered] = React.useState(false);
   const { updatePreferences } = useGlobalStore();
   
@@ -175,8 +176,15 @@ const AppSidebarComponent = ({
       return;
     }
     
-    // 모바일: 네비게이션 시작 후 사이드바 닫기 (Link가 네비게이션 처리)
-    if (onMobileClose) {
+    // 모바일: Link 네비게이션 사용하지 않고 router.push로 직접 이동
+    if (onMobileClose && isMobile) {
+      event.preventDefault();
+      router.push(href);
+      // 네비게이션 후 사이드바 닫기
+      setTimeout(() => {
+        onMobileClose();
+      }, 0);
+    } else if (onMobileClose) {
       // requestAnimationFrame을 사용하여 다음 프레임에 실행 (더 부드러움)
       requestAnimationFrame(() => {
         onMobileClose();
@@ -187,7 +195,7 @@ const AppSidebarComponent = ({
         updatePreferences({ sidebarCollapsed: true });
       }, 100);
     }
-  }, [pathname, isMobile, isDesktop, onMobileClose, updatePreferences]);
+  }, [pathname, isMobile, isDesktop, onMobileClose, updatePreferences, router]);
 
   // 성능 최적화: 자식 메뉴 확인 함수 메모이제이션
   const checkChildActive = React.useCallback((children: NavItem[] | undefined) => {
