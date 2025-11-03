@@ -55,3 +55,6 @@ firestore-debug.log
 
 # firebase emulator data (로컬 데이터 보존용, 커밋하지 않음)
 emulator-data/
+
+# Mobile app (React Native/Expo)
+HS-Mobile/

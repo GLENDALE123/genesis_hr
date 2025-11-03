@@ -41,9 +41,15 @@ const nextConfig: NextConfig = {
   
   // webpack 설정 (Turbopack 미사용 시 폴백)
   webpack: (config, { isServer }) => {
+    // HS-Mobile 디렉토리 제외
+    config.watchOptions = {
+      ignored: ['**/HS-Mobile/**', '**/node_modules/**'],
+    };
+    
     if (!isServer) {
       // Fast Refresh를 위한 설정
       config.watchOptions = {
+        ...config.watchOptions,
         poll: 1000,
         aggregateTimeout: 300,
       };
