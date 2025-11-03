@@ -34,12 +34,25 @@ jobs:
           $version = "${{ steps.get_version.outputs.VERSION }}"
           Write-Host "Updating version to: $version"
           
-          # package.json 버전 업데이트 (node.js 사용)
-          node -e "const fs = require('fs'); const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8')); pkg.version = '$version'; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n'); console.log('Updated version to:', pkg.version);"
+          # package.json 버전 업데이트 (node.js 스크립트 파일 사용)
+          $updateScript = @"
+          const fs = require('fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          pkg.version = '$version';
+          fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          console.log('Updated version to:', pkg.version);
+          "@
+          $updateScript | Out-File -FilePath update-version.js -Encoding utf8
+          node update-version.js
+          Remove-Item update-version.js
           
           # 확인
           $pkgJson = Get-Content package.json -Raw | ConvertFrom-Json
           Write-Host "Verified package.json version: $($pkgJson.version)"
+          if ($pkgJson.version -ne $version) {
+            Write-Host "ERROR: Version mismatch! Expected: $version, Got: $($pkgJson.version)"
+            exit 1
+          }
           
           # installer.nsi 버전 업데이트
           $installerNsiPath = Join-Path (Get-Location) "build" "installer.nsi"
