@@ -102,8 +102,9 @@ jobs:
         
       - name: Package Electron app (portable - for delta updates)
         run: |
-          # Portable 버전 빌드 (delta 업데이트용)
-          npx electron-builder --win --x64 --publish=never
+          # Portable 버전만 빌드 (delta 업데이트용)
+          # portable 타겟만 지정하여 NSIS 빌드 건너뛰기
+          npx electron-builder --win portable --x64 --publish=never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false

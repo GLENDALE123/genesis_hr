@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "private": true,
   "main": "electron/main.js",
-  "description": "TMS 통합관리시스템",
+  "description": "TMS Integrated Management System",
   "author": "HS-HR",
   "repository": {
     "type": "git",
