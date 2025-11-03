@@ -54,8 +54,6 @@ export const UpdateNotification: React.FC<UpdateNotificationProps> = ({
     onUpdateNow();
   };
 
-  console.log('[UpdateNotification] 렌더링, isVisible:', isVisible, 'showUpdateModal:', showUpdateModal);
-
   return (
     <>
       {/* 초기 알림창 (좌측 하단) - 업데이트 시작 전에만 표시 */}

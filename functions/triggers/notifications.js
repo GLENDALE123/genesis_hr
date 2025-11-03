@@ -20,6 +20,7 @@ const { logNotificationEvent, logError, logNotificationStats } = require('../lib
 // 새 알림 문서 생성 시 FCM 발송
 exports.onNotificationCreated = onDocumentCreated({
   document: 'notifications/{notificationId}',
+  database: process.env.FIREBASE_FIRESTORE_DATABASE_ID || 'tms-production',
   region: 'asia-northeast3'
 }, async (event) => {
   const { messaging } = initializeFirebase();
@@ -30,16 +31,27 @@ exports.onNotificationCreated = onDocumentCreated({
   const targetUsers = Array.isArray(n.targetUsers) ? n.targetUsers : [];
   const notifId = event.params.notificationId;
 
+  // relatedData에서 메타데이터 추출 (NotificationPanel 참고)
+  const relatedData = n.relatedData || {};
+  const metadata = n.metadata || {};
+  
   const data = {
     type: String(n.type || ''),
     subType: String(n.subType || ''),
     requestId: String(n.requestId || ''),
     priority: String(n.priority || ''),
     actionRequired: String(Boolean(n.actionRequired)),
-    url: mapUrlByType(n.type, n.requestId),
+    url: mapUrlByType(n.type, n.requestId, n.subType),
     inboxId: String(notifId || ''),
     title: String(title || ''),
     body: String(body || ''),
+    // NotificationPanel 및 Electron 커스텀 알림 스타일을 위한 메타데이터 추가
+    centerInfo: String(metadata.centerInfo || n.centerInfo || n.subType || ''),
+    subtitle: String(metadata.subtitle || n.subtitle || relatedData.productName || ''),
+    senderName: String(relatedData.senderName || metadata.senderName || '시스템'),
+    senderAvatar: String(relatedData.senderAvatar || metadata.senderAvatar || ''),
+    category: String(metadata.category || ''),
+    requestType: String(metadata.requestType || n.requestType || ''),
   };
 
   const tokenDocs = await collectTokensForTargets(targetUsers);

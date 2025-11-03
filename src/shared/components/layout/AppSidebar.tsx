@@ -1,8 +1,7 @@
 'use client';
 
 import React from 'react';
-import { usePathname, useRouter } from 'next/navigation';
-import { Button } from '@/shared/components/ui/button';
+import { usePathname } from 'next/navigation';
 import { Badge } from '@/shared/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
@@ -103,7 +102,6 @@ const AppSidebarComponent = ({
   onMobileClose?: () => void;
 }) => {
   const pathname = usePathname();
-  const router = useRouter();
   const [isHovered, setIsHovered] = React.useState(false);
   const { updatePreferences } = useGlobalStore();
   
@@ -164,46 +162,39 @@ const AppSidebarComponent = ({
     return map;
   }, [checkIsActive]);
 
-  // 클릭/탭 네비게이션 핸들러
-  const handleClick = React.useCallback((href: string, event?: React.MouseEvent) => {
-    // 이벤트 전파 중지
-    if (event) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
+  // Link 클릭 핸들러 (사이드바 닫기/접기 로직만 처리, 네비게이션은 Link가 자동 처리)
+  const handleLinkClick = React.useCallback((href: string, event: React.MouseEvent) => {
     const isTablet = !isMobile && !isDesktop;
     
-    // 같은 페이지여도 태블릿에서는 사이드바 접기만 실행
+    // 같은 페이지 클릭 시 태블릿에서는 사이드바 접기만 실행
     if (pathname === href) {
       if (isTablet && !onMobileClose) {
-        // 태블릿에서 같은 메뉴를 다시 선택하면 사이드바 접기
+        event.preventDefault();
         updatePreferences({ sidebarCollapsed: true });
       }
       return;
     }
     
-    // 모바일 Sheet에서 메뉴 클릭 후 사이드바 닫기 (페이지 이동 전에)
+    // 모바일: 네비게이션 시작 후 사이드바 닫기 (Link가 네비게이션 처리)
     if (onMobileClose) {
-      onMobileClose();
-      setTimeout(() => {
-        router.push(href);
-      }, 200);
+      // requestAnimationFrame을 사용하여 다음 프레임에 실행 (더 부드러움)
+      requestAnimationFrame(() => {
+        onMobileClose();
+      });
     } else if (isTablet) {
-      // 태블릿: 먼저 네비게이션 후 사이드바 접기
-      router.push(href);
-      // 네비게이션 후 약간의 딜레이 후 사이드바 접기 (애니메이션 고려)
+      // 태블릿: 네비게이션 후 사이드바 접기 (애니메이션 고려)
       setTimeout(() => {
         updatePreferences({ sidebarCollapsed: true });
       }, 100);
-    } else {
-      // 데스크톱
-      router.push(href);
     }
-  }, [pathname, router, isMobile, isDesktop, onMobileClose, updatePreferences]);
+  }, [pathname, isMobile, isDesktop, onMobileClose, updatePreferences]);
 
   // 성능 최적화: 자식 메뉴 확인 함수 메모이제이션
   const checkChildActive = React.useCallback((children: NavItem[] | undefined) => {
-    return children?.some(child => pathname === child.href || pathname.startsWith(child.href + '/')) ?? false;
+    if (!children) return false;
+    return children.some(child => {
+      return pathname === child.href || pathname.startsWith(child.href + '/');
+    });
   }, [pathname]);
 
   const renderNavItem = React.useCallback((item: NavItem, level = 0) => {
@@ -218,8 +209,10 @@ const AppSidebarComponent = ({
     }
 
     const navItemContent = (
-      <button
-        onClick={(event) => handleClick(item.href, event)}
+      <Link
+        href={item.href}
+        onClick={(event) => handleLinkClick(item.href, event)}
+        prefetch={true}
         className={cn(
           "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors",
           // 태블릿 최적화: 터치 영역 최소 44px 보장
@@ -255,7 +248,7 @@ const AppSidebarComponent = ({
             </>
           )}
         </div>
-      </button>
+      </Link>
     );
 
     return (
@@ -283,7 +276,7 @@ const AppSidebarComponent = ({
         )}
       </div>
     );
-  }, [activePathMap, checkChildActive, handleClick, isExpanded]);
+  }, [activePathMap, checkChildActive, handleLinkClick, isExpanded]);
 
   // 모바일에서는 Sheet 내에서 확장된 상태로 표시
 
@@ -357,8 +350,10 @@ const AppSidebarComponent = ({
       <div className="border-t p-3">
         <div className="space-y-2">
           {isExpanded && (
-            <button
-              onClick={(event) => handleClick('/settings', event)}
+            <Link
+              href="/settings"
+              onClick={(event) => handleLinkClick('/settings', event)}
+              prefetch={true}
               className={cn(
                 "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors text-left",
                 "min-h-[44px] px-2 py-2 md:px-2 md:py-2 w-full max-w-full overflow-hidden",
@@ -369,13 +364,15 @@ const AppSidebarComponent = ({
             >
               <Settings className="mr-2 h-5 w-5 md:h-4 md:w-4 flex-shrink-0" />
               <span className="truncate whitespace-nowrap">설정</span>
-            </button>
+            </Link>
           )}
           {!isExpanded && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <button
-                  onClick={(event) => handleClick('/settings', event)}
+                <Link
+                  href="/settings"
+                  onClick={(event) => handleLinkClick('/settings', event)}
+                  prefetch={true}
                   className={cn(
                     "flex items-center justify-center cursor-pointer rounded-md text-sm font-medium transition-colors",
                     "min-h-[44px] min-w-[44px] md:min-h-[40px] md:min-w-[40px]",
@@ -385,7 +382,7 @@ const AppSidebarComponent = ({
                   )}
                 >
                   <Settings className="h-5 w-5 md:h-4 md:w-4" />
-                </button>
+                </Link>
               </TooltipTrigger>
               <TooltipContent side="right" className="ml-2">
                 <p>설정</p>

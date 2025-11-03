@@ -5,11 +5,12 @@
     "indexes": "firestore.indexes.json"
   },
   "storage": {
-    "bucket": "hs-jig-b2093",
+    "bucket": "hs-jig-b2093.firebasestorage.app",
     "rules": "storage.rules"
   },
   "functions": {
-    "source": "functions"
+    "source": "functions",
+    "predeploy": []
   },
   "hosting": {
     "public": "out",

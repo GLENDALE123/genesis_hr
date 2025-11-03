@@ -46,7 +46,6 @@ export function useElectronUpdater() {
   // 전역 상태 동기화
   useEffect(() => {
     const syncState = () => {
-      console.log('[useElectronUpdater] 상태 동기화:', globalUpdateState);
       setUpdateAvailable(globalUpdateState.updateAvailable);
       setDownloading(globalUpdateState.downloading);
       setDownloadProgress(globalUpdateState.downloadProgress);
@@ -55,19 +54,25 @@ export function useElectronUpdater() {
     };
 
     stateListeners.add(syncState);
-    console.log('[useElectronUpdater] 리스너 등록, 현재 리스너 수:', stateListeners.size);
     syncState(); // 초기 동기화
 
     return () => {
       stateListeners.delete(syncState);
-      console.log('[useElectronUpdater] 리스너 제거');
     };
   }, []);
 
   // Electron 환경 확인
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setIsElectron((window as any).__ELECTRON__ === true);
+      const electronFlag = (window as any).__ELECTRON__;
+      const isElectronEnv = electronFlag === true;
+      setIsElectron(isElectronEnv);
+      
+      // 추가 확인: window.electron 객체 존재 여부로도 판단
+      if (!isElectronEnv && (window as any).electron) {
+        (window as any).__ELECTRON__ = true;
+        setIsElectron(true);
+      }
     }
   }, []);
 
@@ -101,7 +106,6 @@ export function useElectronUpdater() {
 
     // 다운로드 완료 - 자동으로 설치 및 재시작
     const removeDownloaded = updater.onUpdateDownloaded?.((data: UpdateInfo) => {
-      console.log('다운로드 완료:', data);
       globalUpdateState.downloading = false;
       globalUpdateState.downloaded = true;
       globalUpdateState.downloadProgress = 100;
@@ -111,11 +115,7 @@ export function useElectronUpdater() {
       setTimeout(async () => {
         if ((window as any).electron?.updater) {
           try {
-            console.log('[Updater] 자동 설치 및 재시작 시작');
-            const result = await (window as any).electron.updater.installUpdate();
-            if (!result.success) {
-              console.error('[Updater] 자동 설치 실패:', result.error);
-            }
+            await (window as any).electron.updater.installUpdate();
           } catch (error: any) {
             console.error('[Updater] 자동 설치 오류:', error);
           }
@@ -125,7 +125,6 @@ export function useElectronUpdater() {
 
     // 에러
     const removeError = updater.onUpdateError?.((data: { message: string }) => {
-      console.error('업데이트 오류:', data);
       globalUpdateState.downloading = false;
       notifyStateChange();
     });
@@ -216,8 +215,6 @@ export function useElectronUpdater() {
       checkForUpdates();
       remindLaterTimerRef.current = null;
     }, 30 * 60 * 1000);
-    
-    console.log('[Updater] 30분 후 자동 업데이트 체크 예약됨');
   }, [checkForUpdates]);
 
   // 알림 닫기
@@ -230,7 +227,6 @@ export function useElectronUpdater() {
   const handleUpdateNow = useCallback(async () => {
     // Electron 환경에서만 실제 업데이트 기능 사용
     if (!isElectron || !(window as any).electron?.updater) {
-      console.warn('[Updater] Electron 환경이 아니므로 업데이트를 실행할 수 없습니다.');
       return;
     }
 
@@ -251,19 +247,13 @@ export function useElectronUpdater() {
       releaseDate: new Date().toISOString(),
     };
     
-    console.log('[Updater] 테스트 업데이트 알림 표시 시작:', mockUpdateInfo);
-    console.log('[Updater] 현재 전역 상태:', globalUpdateState);
-    console.log('[Updater] 리스너 수:', stateListeners.size);
-    
     globalUpdateState.updateAvailable = mockUpdateInfo;
     globalUpdateState.showNotification = true;
     globalUpdateState.downloading = false;
     globalUpdateState.downloadProgress = 0;
     globalUpdateState.downloaded = false;
     
-    console.log('[Updater] 업데이트 후 전역 상태:', globalUpdateState);
     notifyStateChange();
-    console.log('[Updater] 상태 변경 알림 전송 완료');
   }, []);
 
   // 테스트용 함수를 전역에 노출

@@ -29,11 +29,14 @@ import {
   Sun,
   Moon,
   Settings,
-  Shield
+  Shield,
+  Palette,
+  Info,
+  Users
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { logout } from '@/shared/services/firebase';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { cn } from '@/shared/lib/utils';
 import { getUserDisplayName, getUserInitial, getUserRoleBadgeVariant, getUserRoleText } from '@/shared/utils/userUtils';
 import { useDevStore } from '@/app/store';
@@ -55,6 +58,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const { user, userProfile } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const { dummyRole, setDummyRole, clearDummyRole } = useDevStore();
   
@@ -68,9 +72,38 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
     setMounted(true);
   }, []);
   
-  // 현재 페이지 제목 및 아이콘 가져오기
-  const pageTitle = getRouteTitle(pathname);
-  const PageIcon = getRouteIcon(pathname);
+  // 현재 페이지 제목 및 아이콘 가져오기 (설정 페이지의 탭에 따라 동적으로 변경)
+  const pageTitle = React.useMemo(() => {
+    // 설정 페이지인 경우 탭에 따라 다른 제목 표시
+    if (pathname === '/settings') {
+      const tab = searchParams?.get('tab');
+      const tabTitles: Record<string, string> = {
+        'profile': '프로필',
+        'notifications': '알림',
+        'appearance': '화면',
+        'about': '정보',
+        'users': '유저 관리'
+      };
+      return tab && tabTitles[tab] ? tabTitles[tab] : '설정';
+    }
+    return getRouteTitle(pathname);
+  }, [pathname, searchParams]);
+  
+  const PageIcon = React.useMemo(() => {
+    // 설정 페이지인 경우 탭에 따라 다른 아이콘 표시
+    if (pathname === '/settings') {
+      const tab = searchParams?.get('tab');
+      const tabIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+        'profile': User,
+        'notifications': Bell,
+        'appearance': Palette,
+        'about': Info,
+        'users': Users
+      };
+      return tab && tabIcons[tab] ? tabIcons[tab] : Settings;
+    }
+    return getRouteIcon(pathname);
+  }, [pathname, searchParams]);
 
   // 알림 읽음 처리 핸들러
   const handleMarkAllRead = async () => {

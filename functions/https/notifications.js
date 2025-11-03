@@ -219,3 +219,97 @@ exports.registerMobileToken = onRequest({
     return res.status(500).json({ ok: false, error: e && e.message ? e.message : String(e) });
   }
 });
+
+// 사용자 설정 조회 (모바일 앱용)
+exports.getUserSettings = onRequest({
+  memory: '256MiB',
+  timeoutSeconds: 30,
+  region: 'asia-northeast3'
+}, async (req, res) => {
+  try {
+    // CORS 설정
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    res.set('Access-Control-Max-Age', '3600');
+    
+    if (req.method === 'OPTIONS') {
+      return res.status(204).send('');
+    }
+
+    const uid = String(req.query?.uid || req.body?.uid || '');
+    if (!uid) {
+      return res.status(400).json({ ok: false, error: 'uid required' });
+    }
+
+    const { db } = initializeFirebase();
+    const settingsRef = db.collection('users').doc(uid).collection('settings').doc('preferences');
+    const settingsDoc = await settingsRef.get();
+
+    if (settingsDoc.exists) {
+      return res.json({ ok: true, ...settingsDoc.data() });
+    } else {
+      // 기본 설정 반환
+      return res.json({
+        ok: true,
+        notifications: {
+          enabled: true,
+          channels: {},
+          schedule: {
+            enabled: false,
+            weekdays: { enabled: true, startTime: '09:00', endTime: '18:00' },
+            weekends: { enabled: true, startTime: '09:00', endTime: '17:00' },
+          },
+          sound: true,
+          vibration: true,
+        },
+        profile: {},
+        appearance: {},
+      });
+    }
+  } catch (e) {
+    console.error('getUserSettings error', e);
+    return res.status(500).json({ ok: false, error: e && e.message ? e.message : String(e) });
+  }
+});
+
+// 모바일 알림 권한 상태 동기화
+exports.syncNotificationPermission = onRequest({
+  memory: '256MiB',
+  timeoutSeconds: 30,
+  region: 'asia-northeast3'
+}, async (req, res) => {
+  try {
+    // CORS 설정
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    res.set('Access-Control-Max-Age', '3600');
+    
+    if (req.method === 'OPTIONS') {
+      return res.status(204).send('');
+    }
+
+    if (req.method !== 'POST') {
+      return res.status(405).json({ ok: false, error: 'Method not allowed' });
+    }
+
+    const { uid, authorized, platform } = req.body || {};
+    if (!uid) {
+      return res.status(400).json({ ok: false, error: 'uid required' });
+    }
+
+    const { db } = initializeFirebase();
+    const permissionRef = db.collection('users').doc(uid).collection('settings').doc('notificationPermission');
+    await permissionRef.set({
+      authorized: Boolean(authorized),
+      platform: String(platform || 'unknown'),
+      updatedAt: new Date(),
+    }, { merge: true });
+
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error('syncNotificationPermission error', e);
+    return res.status(500).json({ ok: false, error: e && e.message ? e.message : String(e) });
+  }
+});

@@ -137,24 +137,26 @@ ${issue.keywordPairs.map((pair, index) => `${index + 1}. ${pair.process} - ${pai
       <DialogContent 
         className="max-w-5xl max-h-[90vh] p-0"
         stickyHeader={
-          <div className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5" />
-            <div className="flex-1">
-              <DialogTitle className="text-xl font-bold">
+          <div className="flex flex-col gap-2">
+            {/* 1열: 헤더 제목 */}
+            <div className="flex items-center gap-2 min-w-0">
+              <AlertCircle className="h-5 w-5 flex-shrink-0" />
+              <DialogTitle className="text-xl font-bold whitespace-nowrap overflow-hidden text-ellipsis min-w-0 flex-1">
                 {issue.productName} ({issue.partName})
               </DialogTitle>
-              <DialogDescription className="text-sm text-muted-foreground">
-                {issue.supplier} • {issue.orderNumber}
-              </DialogDescription>
             </div>
-            <div className="flex gap-2">
+            {/* 2열: 부서, 키워드 뱃지 */}
+            <div className="flex gap-2 flex-wrap">
               <Badge 
                 variant="outline" 
-                className={cn("text-xs", DEPARTMENT_COLORS[issue.department as keyof typeof DEPARTMENT_COLORS] || 'bg-gray-100 dark:bg-gray-900/30 text-gray-800 dark:text-gray-200')}
+                className={cn("text-xs whitespace-nowrap flex-shrink-0", DEPARTMENT_COLORS[issue.department as keyof typeof DEPARTMENT_COLORS] || 'bg-gray-100 dark:bg-gray-900/30 text-gray-800 dark:text-gray-200')}
               >
                 부서: {issue.department || '미지정'}
               </Badge>
-              <Badge variant="outline" className="text-xs bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200">
+              <Badge 
+                variant="outline" 
+                className="text-xs bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 whitespace-nowrap flex-shrink-0"
+              >
                 키워드: {issue.registrationKeyword || '미지정'}
               </Badge>
             </div>

@@ -327,6 +327,21 @@ export class NotificationManager {
       if (!response.ok) {
         throw new Error(`읽음 처리 실패: ${response.status}`);
       }
+      
+      // 모바일 앱에 배지 카운트 업데이트 알림 (React Native WebView)
+      if (typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
+        try {
+          (window as any).ReactNativeWebView.postMessage(
+            JSON.stringify({
+              type: 'notification-badge-update',
+              action: 'mark-read',
+              notificationId: notificationId
+            })
+          );
+        } catch (e) {
+          // ReactNativeWebView가 없으면 무시 (일반 웹 환경)
+        }
+      }
     } catch (error) {
       console.error('❌ [NotificationManager] 읽음 처리 실패:', error);
       throw error;
@@ -373,6 +388,21 @@ export class NotificationManager {
       
       const result = await response.json();
       const duration = Date.now() - startTime;
+      
+      // 모바일 앱에 배지 카운트 업데이트 알림 (React Native WebView)
+      if (typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
+        try {
+          (window as any).ReactNativeWebView.postMessage(
+            JSON.stringify({
+              type: 'notification-badge-update',
+              action: 'mark-all-read'
+            })
+          );
+        } catch (e) {
+          // ReactNativeWebView가 없으면 무시 (일반 웹 환경)
+        }
+      }
+      
       return {
         marked: result.marked,
         duration,

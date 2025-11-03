@@ -13,8 +13,15 @@ let db, messaging, FieldValue;
 function initializeFirebase() {
   if (!db) {
     // tms-production 데이터베이스만 사용 (default 데이터베이스 완전 배제)
-    // 환경변수로 데이터베이스 ID 설정 가능, 없으면 tms-production 사용
+    // 명시적으로 tms-production 데이터베이스 사용
     const databaseId = process.env.FIREBASE_FIRESTORE_DATABASE_ID || 'tms-production';
+    
+    // 환경변수가 있더라도 tms-production이 아닌 경우 경고
+    if (databaseId !== 'tms-production') {
+      console.warn(`[WARNING] Database ID is set to "${databaseId}" instead of "tms-production". Using "${databaseId}".`);
+    }
+    
+    console.log(`[initializeFirebase] Initializing Firestore with database ID: ${databaseId}`);
     db = getFirestore(admin.app(), databaseId);
     messaging = getMessaging();
     FieldValue = FirestoreFieldValue;
@@ -46,6 +53,18 @@ function selectTitleByType(type, subType) {
     case 'sample-request':
       return '샘플 요청';
     
+    // ==================== 지그 관리 ====================
+    case 'jig-request':
+      return '지그 요청 등록';
+    case 'jig-receive':
+      return '지그 입고 처리';
+    
+    // ==================== 품질 관리 ====================
+    case 'quality-issue':
+      return '품질이슈';
+    case 'quality-issue-status':
+      return '품질이슈 상태 변경';
+    
     // ==================== 댓글/멘션 ====================
     case 'comment-mention':
       return '댓글';
@@ -53,6 +72,8 @@ function selectTitleByType(type, subType) {
     // ==================== 시스템 ====================
     case 'announcement':
       return '공지사항';
+    case 'work-schedule':
+      return '근무계획';
     
     default:
       return '알림';
@@ -66,15 +87,15 @@ function selectTitleByType(type, subType) {
  * @returns {string} Android 채널 ID
  */
 function getAndroidChannelIdByTypeAndPriority(type, priority) {
-  const p = String(priority || 'normal').toLowerCase();
   const t = String(type || '').toLowerCase();
-
-  if (p === 'urgent') return 'urgent';
-  if (t === 'announcement') return 'announcements';
-  if (t.includes('production') || t.includes('shortage')) return 'operations';
-  if (t.includes('comment') || t.includes('mention')) return 'operations';
   
-  return 'system';
+  // 타입 매핑: Functions 타입 → 설정 채널 이름
+  const typeMapping = {
+    'quality-issue': 'quality-issue-created', // Functions 타입 → 설정 채널
+  };
+  
+  // 매핑된 타입 또는 원본 타입을 채널 ID로 사용
+  return typeMapping[t] || t;
 }
 
 /**
@@ -152,6 +173,11 @@ function mapUrlByType(type, requestId, subType) {
     case 'sample-status':
     case 'sample-request':
       return `/sample?requestId=${id}`;
+    
+    // ==================== 지그센터 ====================
+    case 'jig-request':
+    case 'jig-receive':
+      return `/jig/management?requestId=${id}`;
     
     // ==================== 댓글/멘션 ====================
     case 'comment-mention':

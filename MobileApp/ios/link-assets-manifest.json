@@ -1,0 +1,25 @@
+{
+  "migIndex": 1,
+  "data": [
+    {
+      "path": "assets/adaptive-icon.png",
+      "sha1": "b3e1de6fa4eab911862d912b994a50252cb38eb3"
+    },
+    {
+      "path": "assets/favicon.png",
+      "sha1": "7e502d1f8fd37feb9acdf90c3334d5004d1886ee"
+    },
+    {
+      "path": "assets/icon.png",
+      "sha1": "4797ffedd2ebc575f200528a9e8bbfffe74a9acf"
+    },
+    {
+      "path": "assets/notification-icon.png",
+      "sha1": "0cd68e36bef4553fc66a743b3376aa53bf69cd87"
+    },
+    {
+      "path": "assets/web-icon.png",
+      "sha1": "b7ee53ca268b2be24d206875b4d31ddcb028a1b6"
+    }
+  ]
+}

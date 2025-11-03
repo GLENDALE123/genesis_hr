@@ -14,8 +14,10 @@ import { logout } from '@/shared/services/firebase';
 import { useRouter } from 'next/navigation';
 import { Info, LogOut, Package, Calendar, Users, ExternalLink, Download } from 'lucide-react';
 import { toast } from 'sonner';
-import { useGitHubRelease } from '@/shared/hooks/useGitHubRelease';
+import { useFirebaseRelease } from '@/shared/hooks/useFirebaseRelease';
 import { WindowsIcon } from '@/shared/components/icons/WindowsIcon';
+import { isElectron, isMobileApp } from '@/shared/utils/platform';
+import { useDeviceType } from '@/shared/hooks/use-device';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,12 +35,16 @@ export const AboutSettings: React.FC = () => {
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   
-  // Electron 환경 확인
-  const isElectron = typeof window !== 'undefined' && 
-    (window as unknown as Record<string, unknown>).__ELECTRON__ === true;
+  // 플랫폼 감지
+  const isElectronEnv = isElectron();
+  const isMobileAppEnv = isMobileApp();
+  const { isTablet } = useDeviceType();
   
-  // GitHub 릴리스 정보
-  const { latestRelease, installerAsset, isLoading: releaseLoading } = useGitHubRelease();
+  // 웹 브라우저 데스크톱 환경에서만 표시
+  const shouldShowDesktopApp = !isElectronEnv && !isMobileAppEnv && !isTablet;
+  
+  // Firebase Storage 릴리스 정보
+  const { latestRelease, installerAsset, isLoading: releaseLoading } = useFirebaseRelease();
 
   const handleLogout = async () => {
     try {
@@ -53,7 +59,7 @@ export const AboutSettings: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 md:space-y-6">
       {/* 앱 정보 */}
       <Card>
         <CardHeader>
@@ -179,8 +185,8 @@ export const AboutSettings: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* 데스크탑용 앱 다운로드 (웹 브라우저 환경에서만 표시) */}
-      {!isElectron && (
+      {/* 데스크탑용 앱 다운로드 (웹 브라우저 데스크톱 환경에서만 표시) */}
+      {shouldShowDesktopApp && (
         <Card>
           <CardHeader>
             <CardTitle>데스크탑용 앱</CardTitle>
@@ -189,46 +195,42 @@ export const AboutSettings: React.FC = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {releaseLoading ? (
-              <div className="flex items-center justify-center py-4">
-                <span className="text-sm text-muted-foreground">최신 버전 확인 중...</span>
+            <Button 
+              variant="default" 
+              className="w-full" 
+              size="lg"
+              disabled={releaseLoading}
+              onClick={() => {
+                if (installerAsset?.browser_download_url) {
+                  // 설치 파일이 있으면 바로 다운로드
+                  // GitHub의 직접 다운로드 URL을 새 창에서 열면 브라우저가 자동으로 다운로드 처리
+                  window.open(installerAsset.browser_download_url, '_blank', 'noopener,noreferrer');
+                  toast.success('다운로드가 시작되었습니다.');
+                } else {
+                  // 설치 파일이 없으면 에러 표시
+                  toast.error('설치 파일을 찾을 수 없습니다.');
+                }
+              }}
+            >
+              <WindowsIcon className="mr-2" size={20} />
+              {releaseLoading ? '로딩 중...' : 'Windows'}
+            </Button>
+            {releaseLoading && (
+              <div className="flex items-center justify-center py-2">
+                <span className="text-xs text-muted-foreground">최신 버전 확인 중...</span>
               </div>
-            ) : (
-              <>
-                <Button 
-                  variant="default" 
-                  className="w-full" 
-                  size="lg"
-                  onClick={() => {
-                    if (installerAsset?.browser_download_url) {
-                      // 설치 파일이 있으면 다운로드
-                      const link = document.createElement('a');
-                      link.href = installerAsset.browser_download_url;
-                      link.download = installerAsset.name;
-                      link.target = '_blank';
-                      link.rel = 'noopener noreferrer';
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                      toast.success('다운로드가 시작되었습니다.');
-                    } else {
-                      // 설치 파일이 없으면 GitHub 릴리스 페이지로 이동
-                      window.open('https://github.com/mir1102/HS-Jig/releases', '_blank', 'noopener,noreferrer');
-                      toast.info('GitHub 릴리스 페이지로 이동합니다.');
-                    }
-                  }}
-                >
-                  <WindowsIcon className="mr-2" size={20} />
-                  Windows
-                </Button>
-                {installerAsset && (
-                  <div className="text-xs text-muted-foreground space-y-1 pt-2">
-                    <p>• 파일 크기: {(installerAsset.size / 1024 / 1024).toFixed(1)} MB</p>
-                    <p>• 출시일: {latestRelease?.published_at ? new Date(latestRelease.published_at).toLocaleDateString('ko-KR') : '-'}</p>
-                    <p>• 버전: {latestRelease?.tag_name.replace('v', '') || '-'}</p>
-                  </div>
-                )}
-              </>
+            )}
+            {installerAsset && !releaseLoading && (
+              <div className="text-xs text-muted-foreground space-y-1 pt-2">
+                <p>• 파일 크기: {(installerAsset.size / 1024 / 1024).toFixed(1)} MB</p>
+                <p>• 출시일: {latestRelease?.published_at ? new Date(latestRelease.published_at).toLocaleDateString('ko-KR') : '-'}</p>
+                <p>• 버전: {latestRelease?.tag_name.replace('v', '') || '-'}</p>
+              </div>
+            )}
+            {!releaseLoading && !installerAsset && (
+              <p className="text-xs text-muted-foreground text-center pt-2">
+                릴리스 페이지에서 직접 다운로드하세요.
+              </p>
             )}
           </CardContent>
         </Card>

@@ -12,20 +12,27 @@ service firebase.storage {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
-    // 직원 프로필 이미지 (인증된 사용자만 읽기, 관리자만 쓰기)
-    // 주의: Storage 규칙은 환경변수를 직접 사용할 수 없으므로 하드코딩 필요
-    // 데이터베이스 ID를 변경하려면 이 파일을 수정하고 재배포해야 함
-    // 현재 설정: tms-production 데이터베이스 참조
+    // 직원 프로필 이미지 (인증된 사용자만 읽기, 인증된 사용자만 쓰기)
+    // 주의: Storage 규칙에서는 Firestore 데이터에 직접 접근할 수 없습니다.
+    // 관리자 권한 체크가 필요하다면 Cloud Functions를 통해 처리하거나
+    // Firebase Auth의 Custom Claims를 사용해야 합니다.
     match /employees/{employeeId}/profile.jpg {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && 
-        exists(/databases/tms-production/documents/users/$(request.auth.uid)) &&
-        get(/databases/tms-production/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow write: if request.auth != null;
     }
     
     // 공개 파일 (모든 사용자 읽기 가능)
     match /public/{allPaths=**} {
       allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    // Electron 릴리스 파일 (모든 사용자 읽기 가능, 인증된 사용자만 쓰기)
+    // 주의: Storage 규칙에서는 Firestore 데이터에 직접 접근할 수 없습니다.
+    // 관리자 권한 체크가 필요하다면 Cloud Functions를 통해 처리하거나
+    // Firebase Auth의 Custom Claims를 사용해야 합니다.
+    match /electron-releases/{allPaths=**} {
+      allow read: if true; // 공개 읽기 (설치 파일 다운로드용)
       allow write: if request.auth != null;
     }
     

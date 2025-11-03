@@ -120,7 +120,7 @@ export const UserManagementSettings: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 md:space-y-6">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">

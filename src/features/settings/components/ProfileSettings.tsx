@@ -216,7 +216,6 @@ export const ProfileSettings: React.FC = () => {
 
     try {
       setIsUploadingPhoto(true);
-      setCropModalOpen(false);
       toast.info('이미지를 처리하는 중...');
 
       // 크롭된 이미지 생성
@@ -246,13 +245,9 @@ export const ProfileSettings: React.FC = () => {
       await updateProfileSettings({ photoURL });
 
       toast.success('프로필 사진이 변경되었습니다.');
-
-      // 상태 초기화
-      setSelectedImage(null);
-      setSelectedFile(null);
-      setCroppedAreaPixels(null);
-      setCrop({ x: 0, y: 0 });
-      setZoom(1);
+      
+      // 모달 닫기 (handleDialogOpenChange에서 상태 초기화됨)
+      setCropModalOpen(false);
     } catch (error) {
       console.error('프로필 사진 업로드 실패:', error);
       const errorMessage = error instanceof Error ? error.message : '프로필 사진 업로드에 실패했습니다.';
@@ -262,14 +257,23 @@ export const ProfileSettings: React.FC = () => {
     }
   };
 
-  // 크롭 모달 취소
+  // 크롭 모달 닫기
   const handleCropCancel = () => {
+    if (isUploadingPhoto) return; // 업로드 중에는 닫기 금지
     setCropModalOpen(false);
-    setSelectedImage(null);
-    setSelectedFile(null);
-    setCroppedAreaPixels(null);
-    setCrop({ x: 0, y: 0 });
-    setZoom(1);
+  };
+
+  // 모달이 실제로 닫힐 때 상태 초기화
+  const handleDialogOpenChange = (open: boolean) => {
+    if (!open && !isUploadingPhoto) {
+      // 모달이 닫히고 업로드 중이 아닐 때만 상태 초기화
+      setSelectedImage(null);
+      setSelectedFile(null);
+      setCroppedAreaPixels(null);
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
+    }
+    setCropModalOpen(open);
   };
 
   // 파일 선택 대화상자 열기
@@ -294,20 +298,6 @@ export const ProfileSettings: React.FC = () => {
     }
   }, [userProfile, user, settings.profile, isEditing]);
 
-  // 크롭 모달이 닫힐 때 상태 초기화
-  React.useEffect(() => {
-    if (!cropModalOpen) {
-      // 모달이 닫히고 저장 중이 아닐 때만 초기화
-      if (!isUploadingPhoto) {
-        setSelectedImage(null);
-        setSelectedFile(null);
-        setCroppedAreaPixels(null);
-        setCrop({ x: 0, y: 0 });
-        setZoom(1);
-      }
-    }
-  }, [cropModalOpen, isUploadingPhoto]);
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -317,7 +307,7 @@ export const ProfileSettings: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 md:space-y-6">
       {/* 프로필 사진 */}
       <Card>
         <CardHeader>
@@ -547,7 +537,7 @@ export const ProfileSettings: React.FC = () => {
       </Card>
 
       {/* 이미지 크롭 모달 */}
-      <Dialog open={cropModalOpen} onOpenChange={setCropModalOpen}>
+      <Dialog open={cropModalOpen} onOpenChange={handleDialogOpenChange}>
         <DialogContent className="max-w-3xl w-[95vw] sm:w-full">
           <DialogHeader>
             <DialogTitle>프로필 사진 편집</DialogTitle>

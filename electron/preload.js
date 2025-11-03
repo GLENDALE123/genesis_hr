@@ -171,4 +171,6 @@ contextBridge.exposeInMainWorld('electron', {
 
 // Electron 환경임을 직접 window 객체에 추가 (contextBridge로는 불가능)
 // eslint-disable-next-line no-undef
-window.__ELECTRON__ = true;
+if (typeof window !== 'undefined') {
+  window.__ELECTRON__ = true;
+}

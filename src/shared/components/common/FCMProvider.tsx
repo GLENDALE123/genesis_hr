@@ -45,6 +45,23 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
     error: null as string | null,
   });
 
+  // React Native WebView에 uid 전송 (모바일 앱 동기화)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).ReactNativeWebView && user?.uid) {
+      try {
+        (window as any).ReactNativeWebView.postMessage(
+          JSON.stringify({
+            type: 'auth',
+            uid: user.uid,
+          })
+        );
+        console.log('📱 모바일 앱에 uid 전송:', user.uid);
+      } catch (error) {
+        console.error('❌ 모바일 앱에 uid 전송 실패:', error);
+      }
+    }
+  }, [user?.uid]);
+
   // FCM 초기화 (로그인 후에만)
   useEffect(() => {
     if (!user) {
@@ -133,7 +150,7 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
         window.electron.showNotification({
           title,
           body,
-          data: payload.data || {},
+          link: payload.data?.url || null,  // FCM에서 url로 전송됨
         });
         return;
       }
@@ -154,8 +171,9 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
           notification.onclick = () => {
             window.focus();
             notification.close();
-            if (payload.data?.link) {
-              window.location.href = payload.data.link;
+            // FCM data에서 url 사용 (서버에서 url로 전송)
+            if (payload.data?.url) {
+              window.location.href = payload.data.url;
             }
           };
         } catch (error) {

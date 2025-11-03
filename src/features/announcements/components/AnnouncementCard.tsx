@@ -1,12 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, User, Image as ImageIcon, Edit, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/shared/components/ui/card';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { Announcement } from '../types/announcement.types';
 import type { UserRole } from '@/features/auth/types';
+import { getThumbnailURL, convertStorageBucketURL } from '@/shared/utils/imagePathMigration';
 
 interface AnnouncementCardProps {
   announcement: Announcement;
@@ -44,6 +45,29 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
   const planDate = formatPlanDate(announcement.planStartDate, announcement.planEndDate);
   const hasImages = announcement.imageUrls && announcement.imageUrls.length > 0;
   const imageCount = announcement.imageUrls?.length || 0;
+  
+  // 썸네일 우선 로드
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+  
+  useEffect(() => {
+    if (!hasImages || !announcement.imageUrls?.[0]) return;
+    
+    const originalUrl = convertStorageBucketURL(announcement.imageUrls[0]);
+    const thumbUrl = getThumbnailURL(originalUrl);
+    
+    // 썸네일 존재 여부 확인
+    fetch(thumbUrl, { method: 'HEAD' })
+      .then(response => {
+        if (response.ok) {
+          setThumbnailUrl(thumbUrl);
+        } else {
+          setThumbnailUrl(originalUrl);
+        }
+      })
+      .catch(() => {
+        setThumbnailUrl(originalUrl);
+      });
+  }, [hasImages, announcement.imageUrls]);
 
   return (
     <Card 
@@ -54,10 +78,16 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
       {hasImages && (
         <div className="relative">
           <img
-            src={announcement.imageUrls![0]}
+            src={thumbnailUrl || convertStorageBucketURL(announcement.imageUrls![0])}
             alt={announcement.title}
             className="w-full h-40 object-cover rounded-t-lg"
             loading="lazy"
+            onError={(e) => {
+              // 썸네일 로드 실패 시 원본으로 폴백
+              if (thumbnailUrl && (e.target as HTMLImageElement).src === thumbnailUrl) {
+                setThumbnailUrl(convertStorageBucketURL(announcement.imageUrls![0]));
+              }
+            }}
           />
           {imageCount > 1 && (
             <Badge 

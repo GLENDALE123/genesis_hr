@@ -12,6 +12,7 @@ import {
 } from '@/shared/components/ui/dialog';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { ProcessingHistory } from '@/shared/components/common/ProcessingHistory';
+import { ImageGalleryGrid } from '@/shared/components/common/ImageGalleryGrid';
 import dynamic from 'next/dynamic';
 
 // 무거운 컴포넌트들을 동적 임포트로 분할
@@ -271,17 +272,13 @@ const ProductionRequestDetailModalComponent: React.FC<ProductionRequestDetailMod
             {request.imageUrls && request.imageUrls.length > 0 && (
               <div className="space-y-1.5">
                 <Label>첨부 이미지</Label>
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2">
-                  {request.imageUrls.map((url, index) => (
-                    <img
-                      key={index}
-                      src={url}
-                      alt={`첨부 이미지 ${index + 1}`}
-                      className="w-full h-32 object-cover rounded border cursor-pointer hover:opacity-80"
-                      onClick={() => window.open(url, '_blank')}
-                    />
-                  ))}
-                </div>
+                <ImageGalleryGrid
+                  images={request.imageUrls}
+                  gridClassName="grid-cols-[repeat(auto-fill,minmax(150px,1fr))]"
+                  imageClassName="h-32"
+                  useThumbnails={true}
+                  enableLazyLoading={true}
+                />
               </div>
             )}
 

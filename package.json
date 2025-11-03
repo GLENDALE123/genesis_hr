@@ -1,6 +1,6 @@
 {
   "name": "hs-next",
-  "version": "0.2.0",
+  "version": "0.1.1",
   "private": true,
   "main": "electron/main.js",
   "description": "TMS Integrated Management System",
@@ -20,6 +20,10 @@
     "build:electron": "cross-env ELECTRON_BUILD=true CSC_IDENTITY_AUTO_DISCOVERY=false next build && electron-builder && npm run installer:build",
     "electron:build:win7": "cross-env ELECTRON_BUILD=true next build && electron-builder --win --x64 && npm run installer:build",
     "installer:build": "powershell -Command \"$makensis = (Get-Command makensis -ErrorAction SilentlyContinue).Source; if (!$makensis) { $makensis = 'C:\\Program Files (x86)\\NSIS\\makensis.exe' }; if (Test-Path $makensis) { & $makensis build\\installer.nsi } else { Write-Error 'NSIS not found. Please install NSIS or add it to PATH.' }\"",
+    "deploy": "npm run build && firebase deploy --only hosting",
+    "deploy:all": "npm run build && firebase deploy",
+    "deploy:functions": "firebase deploy --only functions",
+    "deploy:firestore": "firebase deploy --only firestore",
     "lint": "eslint",
     "format": "prettier --write .",
     "test": "vitest",
@@ -156,10 +160,6 @@
     "extraMetadata": {
       "main": "electron/main.js"
     },
-    "publish": {
-      "provider": "github",
-      "owner": "mir1102",
-      "repo": "HS-Jig"
-    }
+    "publish": null
   }
 }

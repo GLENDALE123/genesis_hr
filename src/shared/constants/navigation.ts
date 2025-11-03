@@ -17,7 +17,10 @@ import {
   HelpCircle,
   User,
   Wrench,
-  Megaphone
+  Megaphone,
+  Palette,
+  Info,
+  Users
 } from 'lucide-react';
 
 // 경로별 아이콘 매핑
@@ -66,27 +69,39 @@ export const ROUTE_TITLES: Record<string, string> = {
   '/profile': '프로필',
 };
 
+// 경로 정규화 함수 (쿼리 파라미터 및 끝 슬래시 제거)
+const normalizePath = (pathname: string): string => {
+  // 쿼리 파라미터 제거
+  const pathWithoutQuery = pathname.split('?')[0];
+  // 끝 슬래시 제거 (단, 루트 경로 '/'는 유지)
+  const normalized = pathWithoutQuery === '/' ? '/' : pathWithoutQuery.replace(/\/$/, '');
+  return normalized;
+};
+
 // 경로에서 아이콘을 가져오는 함수
 export const getRouteIcon = (pathname: string): React.ComponentType<{ className?: string }> => {
+  // 경로 정규화
+  const normalizedPath = normalizePath(pathname);
+  
   // 정확히 일치하는 경로가 있으면 반환
-  if (ROUTE_ICONS[pathname]) {
-    return ROUTE_ICONS[pathname];
+  if (ROUTE_ICONS[normalizedPath]) {
+    return ROUTE_ICONS[normalizedPath];
   }
 
   // 부분 매칭 (상위 경로 확인)
-  if (pathname.startsWith('/production/daily-report')) {
+  if (normalizedPath.startsWith('/production/daily-report')) {
     return FileText;
   }
-  if (pathname.startsWith('/production')) {
+  if (normalizedPath.startsWith('/production')) {
     return Factory;
   }
-  if (pathname.startsWith('/quality')) {
+  if (normalizedPath.startsWith('/quality')) {
     return Shield;
   }
-  if (pathname.startsWith('/sample-center')) {
+  if (normalizedPath.startsWith('/sample-center')) {
     return TestTube;
   }
-  if (pathname.startsWith('/jig')) {
+  if (normalizedPath.startsWith('/jig')) {
     return Wrench;
   }
 
@@ -95,25 +110,28 @@ export const getRouteIcon = (pathname: string): React.ComponentType<{ className?
 
 // 경로에서 페이지 제목을 가져오는 함수
 export const getRouteTitle = (pathname: string): string => {
+  // 경로 정규화
+  const normalizedPath = normalizePath(pathname);
+  
   // 정확히 일치하는 경로가 있으면 반환
-  if (ROUTE_TITLES[pathname]) {
-    return ROUTE_TITLES[pathname];
+  if (ROUTE_TITLES[normalizedPath]) {
+    return ROUTE_TITLES[normalizedPath];
   }
 
   // 부분 매칭 (상위 경로 확인)
-  if (pathname.startsWith('/production/daily-report')) {
+  if (normalizedPath.startsWith('/production/daily-report')) {
     return '생산일보';
   }
-  if (pathname.startsWith('/production')) {
+  if (normalizedPath.startsWith('/production')) {
     return '생산센터';
   }
-  if (pathname.startsWith('/quality')) {
+  if (normalizedPath.startsWith('/quality')) {
     return '품질관리';
   }
-  if (pathname.startsWith('/sample-center')) {
+  if (normalizedPath.startsWith('/sample-center')) {
     return '샘플센터';
   }
-  if (pathname.startsWith('/jig')) {
+  if (normalizedPath.startsWith('/jig')) {
     return '지그센터';
   }
 

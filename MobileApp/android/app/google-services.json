@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "117861579792",
+    "project_id": "hs-jig-b2093",
+    "storage_bucket": "hs-jig-b2093.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:117861579792:android:b147aad5948b96fe745e95",
+        "android_client_info": {
+          "package_name": "com.taesung.android.tms"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAGB6dZ5aeK_6ENlBKFaSSoBe9p8NtJUXQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

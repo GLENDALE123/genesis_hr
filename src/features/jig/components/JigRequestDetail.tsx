@@ -15,6 +15,7 @@ import { Input } from '@/shared/components/ui/input';
 import { JigRequest, JigStatus, UserProfile } from '../types';
 import { STATUS_COLORS } from '../constants';
 import { ImageLightbox } from '@/shared/components/common/ImageLightbox';
+import { ImageGalleryGrid } from '@/shared/components/common/ImageGalleryGrid';
 import { CommentsSection } from '@/shared/components/common/CommentsSection';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Separator } from '@/shared/components/ui/separator';
@@ -325,22 +326,13 @@ export const JigRequestDetail: React.FC<JigRequestDetailProps> = ({
                     <Separator />
                     <div>
                       <h4 className="font-semibold text-sm mb-3">첨부 이미지 ({request.imageUrls.length}개)</h4>
-                      <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2">
-                        {request.imageUrls.map((url, index) => (
-                          <img 
-                            key={index} 
-                            src={url} 
-                            alt=""
-                            aria-label={`첨부 이미지 ${index + 1}`}
-                            width={120}
-                            height={96}
-                            loading="lazy"
-                            decoding="async"
-                            className="w-full h-24 object-cover rounded-lg cursor-pointer transition-transform hover:scale-105"
-                            onClick={() => openLightbox(request.imageUrls || [], index)}
-                          />
-                        ))}
-                      </div>
+                      <ImageGalleryGrid
+                        images={request.imageUrls}
+                        gridClassName="grid-cols-[repeat(auto-fill,minmax(120px,1fr))]"
+                        imageClassName="h-24"
+                        useThumbnails={true}
+                        enableLazyLoading={true}
+                      />
                     </div>
                   </>
                 )}

@@ -1,4 +1,5 @@
 import * as React from "react"
+import { isTabletDevice } from "@/shared/utils/platform"
 
 // Breakpoints (대형 태블릿 지원)
 // smartphone: < 768
@@ -21,9 +22,17 @@ export function useDeviceType() {
     return { isSmartphone: false, isTablet: false, isDesktop: false, width: 0 }
   }
 
-  const isSmartphone = width < 768
-  const isTablet = width >= 768 && width < 1440
-  const isDesktop = width >= 1440
+  // User-Agent 기반 태블릿 감지
+  const isTabletDeviceDetected = isTabletDevice();
+  
+  // 화면 크기 기반 감지
+  const isTabletByWidth = width >= 768 && width < 1440;
+  
+  // 실제 태블릿 기기이거나 태블릿 크기 화면인 경우
+  const isTablet = isTabletDeviceDetected || isTabletByWidth;
+  const isSmartphone = !isTablet && width < 768;
+  const isDesktop = !isTablet && width >= 1440;
+  
   return { isSmartphone, isTablet, isDesktop, width }
 }
 

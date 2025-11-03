@@ -52,9 +52,28 @@ export const getAllUsersWithAuthInfo = async (): Promise<UserManagementInfo[]> =
         return isNaN(date.getTime()) ? null : date;
       })() : null,
     }));
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('유저 목록 조회 실패:', error);
-    throw error;
+    
+    // Firebase Functions 에러 처리
+    if (error && typeof error === 'object' && 'code' in error) {
+      const firebaseError = error as { code: string; message?: string; details?: unknown };
+      
+      // 권한 관련 에러인 경우 더 명확한 메시지 제공
+      if (firebaseError.code === 'functions/permission-denied' || 
+          firebaseError.code === 'unauthenticated' ||
+          (firebaseError.message?.includes('Unauthorized') || firebaseError.message?.includes('not found'))) {
+        const errorMessage = firebaseError.message || '권한이 없거나 사용자 프로필을 찾을 수 없습니다.';
+        throw new Error(`유저 목록 조회 실패: ${errorMessage} 계정 설정을 확인해주세요.`);
+      }
+      
+      // 기타 에러
+      throw new Error(`유저 목록 조회 실패: ${firebaseError.message || firebaseError.code}`);
+    }
+    
+    // 일반 에러
+    const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.';
+    throw new Error(`유저 목록 조회 실패: ${errorMessage}`);
   }
 };
 

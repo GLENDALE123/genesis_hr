@@ -153,8 +153,8 @@ export const getThumbnailURL = (imageUrl: string): string => {
 
 /**
  * 기존 Storage 버킷 URL을 새 버킷 URL로 변환
- * hs-jig-b2093.firebasestorage.app -> hs-jig-b2093
- * @param imageUrl 원본 이미지 URL (기존 버킷)
+ * hs-jig-b2093 -> hs-jig-b2093.firebasestorage.app
+ * @param imageUrl 원본 이미지 URL (이전 버킷)
  * @returns 새 버킷을 가리키는 URL
  */
 export const convertStorageBucketURL = (imageUrl: string): string => {
@@ -167,9 +167,9 @@ export const convertStorageBucketURL = (imageUrl: string): string => {
         const oldBucket = pathMatch[1];
         const filePath = pathMatch[2];
         
-        // 기존 버킷을 새 버킷으로 변환
-        if (oldBucket === 'hs-jig-b2093.firebasestorage.app') {
-          const newBucket = 'hs-jig-b2093';
+        // 이전 버킷을 새 버킷으로 변환
+        if (oldBucket === 'hs-jig-b2093') {
+          const newBucket = 'hs-jig-b2093.firebasestorage.app';
           // 새 URL 생성
           const newUrl = new URL(`https://firebasestorage.googleapis.com/v0/b/${newBucket}/o/${filePath}`);
           // 기존 쿼리 파라미터 유지 (token, alt 등)
