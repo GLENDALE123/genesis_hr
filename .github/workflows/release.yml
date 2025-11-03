@@ -115,9 +115,9 @@ jobs:
           Write-Host "=== 설치 파일 ==="
           Get-ChildItem dist -Filter "TMS-Setup-*.exe" | ForEach-Object { Write-Host $_.FullName }
           Write-Host "`n=== Portable 파일 ==="
-          Get-ChildItem dist -Filter "*.exe" -Exclude "TMS-Setup-*","*.exe.blockmap" | ForEach-Object { Write-Host $_.FullName }
+          Get-ChildItem dist -Filter "*.exe" -Exclude "TMS-Setup-*" | Where-Object { $_.Name -notlike "*.blockmap" } | ForEach-Object { Write-Host $_.FullName }
           Write-Host "`n=== 메타데이터 파일 ==="
-          Get-ChildItem dist -Filter "*.yml","*.blockmap" | ForEach-Object { Write-Host $_.FullName }
+          Get-ChildItem dist -Include "*.yml","*.blockmap" | ForEach-Object { Write-Host $_.FullName }
           
       - name: Create Release
         uses: softprops/action-gh-release@v2
