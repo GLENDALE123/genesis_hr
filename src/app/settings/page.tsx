@@ -11,15 +11,18 @@ import { NotificationSettings } from '@/features/settings/components/Notificatio
 import { ProfileSettings } from '@/features/settings/components/ProfileSettings';
 import { AppearanceSettings } from '@/features/settings/components/AppearanceSettings';
 import { AboutSettings } from '@/features/settings/components/AboutSettings';
-import { User, Bell, Palette, Info } from 'lucide-react';
+import { User, Bell, Palette, Info, Users } from 'lucide-react';
 import { ProtectedRoute } from '@/shared/components/auth';
+import { useIsAdmin } from '@/features/auth/hooks/useUserRole';
+import { UserManagementSettings } from '@/features/settings/components/UserManagementSettings';
 
 function SettingsContent() {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get('tab');
+  const isAdmin = useIsAdmin();
   const [activeTab, setActiveTab] = useState('profile');
 
-  const validTabs = ['profile', 'notifications', 'appearance', 'about'];
+  const validTabs = ['profile', 'notifications', 'appearance', 'about', ...(isAdmin ? ['users'] : [])];
 
   // URL 쿼리 파라미터에서 탭 설정 읽기
   useEffect(() => {
@@ -29,8 +32,9 @@ function SettingsContent() {
   }, [tabParam, validTabs]);
 
   return (
-    <div className="container mx-auto py-6 px-4 md:px-6 max-w-5xl">
-      <div className="mb-6">
+    <div className="py-6 px-4 md:px-6">
+      {/* 탭 영역만 max-w-5xl 적용 */}
+      <div className="container mx-auto max-w-5xl mb-6">
         <h1 className="text-3xl font-bold">설정</h1>
         <p className="text-muted-foreground mt-2">
           계정, 알림, 화면 설정을 관리합니다.
@@ -38,40 +42,62 @@ function SettingsContent() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full h-auto grid-cols-4">
-          <TabsTrigger value="profile" className="flex flex-col gap-1 py-3">
-            <User className="h-4 w-4" />
-            <span className="text-xs">프로필</span>
-          </TabsTrigger>
-          <TabsTrigger value="notifications" className="flex flex-col gap-1 py-3">
-            <Bell className="h-4 w-4" />
-            <span className="text-xs">알림</span>
-          </TabsTrigger>
-          <TabsTrigger value="appearance" className="flex flex-col gap-1 py-3">
-            <Palette className="h-4 w-4" />
-            <span className="text-xs">화면</span>
-          </TabsTrigger>
-          <TabsTrigger value="about" className="flex flex-col gap-1 py-3">
-            <Info className="h-4 w-4" />
-            <span className="text-xs">정보</span>
-          </TabsTrigger>
-        </TabsList>
+        <div className="container mx-auto max-w-5xl">
+          <TabsList className={`grid w-full h-auto ${isAdmin ? 'grid-cols-5' : 'grid-cols-4'}`}>
+            <TabsTrigger value="profile" className="flex flex-col gap-1 py-3">
+              <User className="h-4 w-4" />
+              <span className="text-xs">프로필</span>
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="flex flex-col gap-1 py-3">
+              <Bell className="h-4 w-4" />
+              <span className="text-xs">알림</span>
+            </TabsTrigger>
+            <TabsTrigger value="appearance" className="flex flex-col gap-1 py-3">
+              <Palette className="h-4 w-4" />
+              <span className="text-xs">화면</span>
+            </TabsTrigger>
+            <TabsTrigger value="about" className="flex flex-col gap-1 py-3">
+              <Info className="h-4 w-4" />
+              <span className="text-xs">정보</span>
+            </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="users" className="flex flex-col gap-1 py-3">
+                <Users className="h-4 w-4" />
+                <span className="text-xs">유저 관리</span>
+              </TabsTrigger>
+            )}
+          </TabsList>
+        </div>
 
         <TabsContent value="profile" className="space-y-4">
-          <ProfileSettings />
+          <div className="container mx-auto max-w-5xl">
+            <ProfileSettings />
+          </div>
         </TabsContent>
 
         <TabsContent value="notifications" className="space-y-4">
-          <NotificationSettings />
+          <div className="container mx-auto max-w-5xl">
+            <NotificationSettings />
+          </div>
         </TabsContent>
 
         <TabsContent value="appearance" className="space-y-4">
-          <AppearanceSettings />
+          <div className="container mx-auto max-w-5xl">
+            <AppearanceSettings />
+          </div>
         </TabsContent>
 
         <TabsContent value="about" className="space-y-4">
-          <AboutSettings />
+          <div className="container mx-auto max-w-5xl">
+            <AboutSettings />
+          </div>
         </TabsContent>
+
+        {isAdmin && (
+          <TabsContent value="users" className="space-y-4">
+            <UserManagementSettings />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

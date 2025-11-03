@@ -25,6 +25,13 @@ export {
   subscribeToUsers
 } from './userProfile';
 
+// UserManagement 서비스
+export {
+  getAllUsersWithAuthInfo,
+  updateUserManagementInfo,
+  deleteUserAccount
+} from './userManagement';
+
 // Firestore 서비스
 export {
   getCollectionRef,

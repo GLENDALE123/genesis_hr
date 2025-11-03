@@ -12,9 +12,10 @@ import { Button } from '@/shared/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/shared/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { useSettings } from '../hooks/useSettings';
 import { useAuthStore } from '@/features/auth/store/authStore';
-import { User, Mail, Phone, Building2, Upload, Edit, X, Check } from 'lucide-react';
+import { User, Mail, Phone, Building2, Upload, Edit, X, Check, Info } from 'lucide-react';
 import { Spinner } from '@/shared/components/ui/spinner';
 import { toast } from 'sonner';
 import { getUserInitial } from '@/shared/utils/userUtils';
@@ -422,20 +423,48 @@ export const ProfileSettings: React.FC = () => {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* 이름 */}
-          <div className="space-y-2">
-            <Label htmlFor="displayName" className="flex items-center gap-2">
-              <User className="h-4 w-4" />
-              이름
-            </Label>
-            <Input
-              id="displayName"
-              value={formData.displayName}
-              onChange={(e) => handleChange('displayName', e.target.value)}
-              placeholder="이름을 입력하세요"
-              disabled={!isEditing || isSaving}
-              className={!isEditing ? 'bg-muted' : ''}
-            />
+          {/* 이름과 직급 - 2열 그리드 */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* 이름 */}
+            <div className="space-y-2">
+              <Label htmlFor="displayName" className="flex items-center gap-2">
+                <User className="h-4 w-4" />
+                이름
+              </Label>
+              <Input
+                id="displayName"
+                value={formData.displayName}
+                onChange={(e) => handleChange('displayName', e.target.value)}
+                placeholder="이름을 입력하세요"
+                disabled={!isEditing || isSaving}
+                className={!isEditing ? 'bg-muted' : ''}
+              />
+            </div>
+
+            {/* 직급 */}
+            <div className="space-y-2">
+              <Label htmlFor="position" className="flex items-center gap-2">
+                <User className="h-4 w-4" />
+                직급
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>수정이 필요할 시 관리자에게 문의하세요</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </Label>
+              <Input
+                id="position"
+                value={userProfile?.position || ''}
+                disabled
+                className="bg-muted"
+                placeholder="직급"
+              />
+            </div>
           </div>
 
           {/* 이메일 (읽기 전용) */}

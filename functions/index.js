@@ -31,6 +31,8 @@ const notificationHttps = require('./https/notifications');
 const createNotificationHttps = require('./https/createNotification');
 const registerMobileTokenHttps = require('./https/registerMobileToken');
 const getUnreadNotificationsHttps = require('./https/getUnreadNotifications');
+const deleteUserHttps = require('./https/deleteUser');
+const getAllUsersWithAuthInfoHttps = require('./https/getAllUsersWithAuthInfo');
 
 // 모든 함수들을 export
 module.exports = {
@@ -44,5 +46,7 @@ module.exports = {
   ...createNotificationHttps,
   ...registerMobileTokenHttps,
   ...getUnreadNotificationsHttps,
+  ...deleteUserHttps,
+  ...getAllUsersWithAuthInfoHttps,
 };
 
