@@ -12,10 +12,10 @@
     "start": "next start",
     "start:external": "next start -H 0.0.0.0 -p 3000",
     "electron:dev": "concurrently \"cross-env NODE_ENV=development next dev --turbo\" \"wait-on http://localhost:3000 && cross-env NODE_ENV=development electron .\"",
-    "electron:build": "cross-env ELECTRON_BUILD=true next build && electron-builder",
-    "electron:build:win7": "cross-env ELECTRON_BUILD=true next build && electron-builder --win --x64",
-    "installer:build": "makensis build/installer.nsi",
-    "electron:build:nsi": "cross-env ELECTRON_BUILD=true next build && electron-builder && npm run installer:build",
+    "electron:build": "cross-env ELECTRON_BUILD=true CSC_IDENTITY_AUTO_DISCOVERY=false next build && electron-builder && npm run installer:build",
+    "build:electron": "cross-env ELECTRON_BUILD=true CSC_IDENTITY_AUTO_DISCOVERY=false next build && electron-builder && npm run installer:build",
+    "electron:build:win7": "cross-env ELECTRON_BUILD=true next build && electron-builder --win --x64 && npm run installer:build",
+    "installer:build": "powershell -Command \"$makensis = (Get-Command makensis -ErrorAction SilentlyContinue).Source; if (!$makensis) { $makensis = 'C:\\Program Files (x86)\\NSIS\\makensis.exe' }; if (Test-Path $makensis) { & $makensis build\\installer.nsi } else { Write-Error 'NSIS not found. Please install NSIS or add it to PATH.' }\"",
     "lint": "eslint",
     "format": "prettier --write .",
     "test": "vitest",
@@ -113,7 +113,7 @@
       "output": "dist"
     },
     "files": [
-      "out/**/*",
+      "electron-out/**/*",
       "electron/**/*",
       "public/**/*",
       "package.json"
@@ -127,7 +127,9 @@
           ]
         }
       ],
-      "icon": "public/tms-logo.png"
+      "icon": "public/tms-logo.png",
+      "sign": false,
+      "signingHashAlgorithms": []
     },
     "nsis": {
       "include": "build/installer.nsh",

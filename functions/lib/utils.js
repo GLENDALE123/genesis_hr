@@ -12,7 +12,10 @@ let db, messaging, FieldValue;
 // 지연 초기화 함수
 function initializeFirebase() {
   if (!db) {
-    db = getFirestore();
+    // tms-production 데이터베이스만 사용 (default 데이터베이스 완전 배제)
+    // 환경변수로 데이터베이스 ID 설정 가능, 없으면 tms-production 사용
+    const databaseId = process.env.FIREBASE_FIRESTORE_DATABASE_ID || 'tms-production';
+    db = getFirestore(admin.app(), databaseId);
     messaging = getMessaging();
     FieldValue = FirestoreFieldValue;
   }

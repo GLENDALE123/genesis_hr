@@ -180,7 +180,10 @@ async function processImageSize(tempFilePath, sizeKey, format, config, originalI
  * 이미지 메타데이터를 Firestore에 저장
  */
 async function saveImageMetadata(originalPath, imageInfo, processedImages) {
-  const db = admin.firestore();
+  // tms-production 데이터베이스만 사용 (default 데이터베이스 완전 배제)
+  // 환경변수로 데이터베이스 ID 설정 가능, 없으면 tms-production 사용
+  const databaseId = process.env.FIREBASE_FIRESTORE_DATABASE_ID || 'tms-production';
+  const db = admin.firestore(databaseId);
   const imageId = path.basename(originalPath, path.extname(originalPath));
   
   const imageMetadata = {

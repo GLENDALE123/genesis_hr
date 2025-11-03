@@ -1,0 +1,13 @@
+(globalThis.TURBOPACK||(globalThis.TURBOPACK=[])).push(["object"==typeof document?document.currentScript:void 0,8146,t=>{"use strict";var e=t.i(52158);t.i(36180);var r=t.i(98925),o=t.i(57326),a=t.i(60910);let i=async(t,i,n)=>{if(!e.db)throw Error("Firebase가 초기화되지 않았습니다.");if(!n)throw Error("사용자 정보가 없습니다.");if(0===t.length)throw Error("선택된 리포트가 없습니다.");let s=t.reduce((t,e)=>t+(e.goodQuantity||0),0),u=[...new Set(t.map(t=>t.productName))],d=[...new Set(t.map(t=>t.partName))],c=[...new Set(t.map(t=>t.supplier))],p=[...new Set(t.flatMap(t=>t.orderNumbers||[]))],l=`통합 물류 이동 요청 (${t.length}건):
+`+t.map(t=>{let e=i.find(e=>e.reportId===t.id),r=e&&e.details||"없음",o=e&&e.destination||"미지정";return`
+---------------------
+- 제품: ${t.productName} / ${t.partName}
+- 발주번호: ${t.orderNumbers&&t.orderNumbers.join(", ")||"-"}
+- 발주처: ${t.supplier}
+- 사양: ${t.specification||"-"}
+- 양품수량: ${t.goodQuantity&&t.goodQuantity.toLocaleString()||"0"} EA
+- 포장단위: ${t.packagingUnit&&t.packagingUnit.toLocaleString()||"0"}
+- 박스수량: ${t.boxCount&&t.boxCount.toLocaleString()||"0"}
+- 잔량: ${t.remainder&&t.remainder.toLocaleString()||"0"}
+- 도착처: ${o}
+- 추가 요청: ${r}`}).join(""),g=e.db,m=(0,r.doc)(g,"counters","production-requests-counter"),S=new Date,$=`${S.getFullYear().toString().slice(-2)}${(S.getMonth()+1).toString().padStart(2,"0")}${S.getDate().toString().padStart(2,"0")}`,y=await (0,r.runTransaction)(g,async e=>{let a=(await e.get(m)).data(),i=(a&&a.count||0)+1,S=`P-${$}-${i.toString().padStart(3,"0")}`,y=(0,r.doc)(g,"production-requests",S),h={createdAt:new Date().toISOString(),author:{uid:n.uid,displayName:n.displayName},status:o.ProductionRequestStatus.Requested,history:[{status:o.ProductionRequestStatus.Requested,date:new Date().toISOString(),user:n.displayName,reason:"물류 이동 요청으로 생성됨"}],requestType:o.ProductionRequestType.LogisticsTransfer,requester:n.displayName,orderNumber:p.join(", "),productName:u.length>1?`${u[0]} 외 ${u.length-1}건`:u[0]||"",partName:d.join(", "),supplier:c.join(", "),quantity:s,content:l,sourceReportIds:t.map(t=>t.id)};return e.set(y,h),e.set(m,{count:i}),S});return(0,a.createProductionRequestNotification)(y,o.ProductionRequestType.LogisticsTransfer,n.displayName,u.length>1?`${u[0]} 외 ${u.length-1}건`:u[0]||"","물류이동",l,n.uid,n.avatar||n.photoURL||void 0).catch(t=>{console.error("알림 발송 실패 (무시됨):",t)}),y},n=async()=>{if(!e.db)throw Error("Firebase가 초기화되지 않았습니다.");let t=e.db,o=(0,r.query)((0,r.collection)(t,"production-requests"),(0,r.orderBy)("createdAt","desc"),(0,r.limit)(100));return(await (0,r.getDocs)(o)).docs.map(t=>({id:t.id,...t.data()}))};t.s(["createLogisticsRequest",0,i,"getLogisticsRequests",0,n])}]);

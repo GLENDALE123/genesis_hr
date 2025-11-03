@@ -357,12 +357,13 @@
         const isAnnouncement = data.title?.includes('공지사항');
         const isWorkSchedule = data.title?.includes('근무계획');
         const isCommentNotification = (data.title && (data.title.indexOf('댓글 :') !== -1 || data.title.indexOf('멘션 :') !== -1));
+        const isSystemNotification = data.senderName && data.senderName.toLowerCase() === '시스템';
         
         // 발신자 이름 설정 (생산일정/생산일보/샘플 요청 알림이 아닐 때만)
-        if (!isScheduleNotification && !isDailyReport && !isSampleRequest && !isAnnouncement && !isWorkSchedule && data.senderName) {
+        if (!isScheduleNotification && !isDailyReport && !isSampleRequest && !isAnnouncement && !isWorkSchedule && !isSystemNotification && data.senderName) {
           
           document.getElementById('senderName').textContent = data.senderName;
-        } else if (isScheduleNotification || isDailyReport || isSampleRequest || isAnnouncement || isWorkSchedule) {
+        } else if (isScheduleNotification || isDailyReport || isSampleRequest || isAnnouncement || isWorkSchedule || isSystemNotification) {
           
           document.getElementById('senderName').textContent = '';
         } else {
@@ -371,9 +372,14 @@
         
         // 아바타 설정
         const avatarElement = document.getElementById('avatar');
-        if (isScheduleNotification || isDailyReport || isSampleRequest || isAnnouncement || isWorkSchedule) {
-          // 생산일정/생산일보/샘플 요청/공지/근무계획 - TMS 로고 표시
-          avatarElement.innerHTML = '<div style="width: 100%; height: 100%; border-radius: 50%; background: hsl(217 91% 59%); display: flex; align-items: center; justify-content: center;"><span style="color: white; font-weight: bold; font-size: 10px;">TMS</span></div>';
+        if (isScheduleNotification || isDailyReport || isSampleRequest || isAnnouncement || isWorkSchedule || isSystemNotification) {
+          // 생산일정/생산일보/샘플 요청/공지/근무계획/시스템 알림 - TMS 로고 이미지 표시
+          if (data.tmsLogoBase64) {
+            avatarElement.innerHTML = `<img src="${data.tmsLogoBase64}" alt="TMS" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />`;
+          } else {
+            // Fallback: 파란색 배경 + TMS 텍스트
+            avatarElement.innerHTML = '<div style="width: 100%; height: 100%; border-radius: 50%; background: hsl(217 91% 59%); display: flex; align-items: center; justify-content: center;"><span style="color: white; font-weight: bold; font-size: 10px;">TMS</span></div>';
+          }
         } else if (data.senderAvatar) {
           if (typeof data.senderAvatar === 'string' && data.senderAvatar.startsWith('data:')) {
             // Base64 이미지

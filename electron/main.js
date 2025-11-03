@@ -7,7 +7,7 @@ const registerIpcHandlers = require('./ipc-handlers');
 const notificationWindow = require('./notification-window');
 
 // 개발 서버 사용 여부를 명시적으로 제어 (패키지 여부와 무관)
-const DEV_SERVER_URL = process.env.ELECTRON_DEV_SERVER_URL || 'https://tms-ten-beta.vercel.app';
+const DEV_SERVER_URL = process.env.ELECTRON_DEV_SERVER_URL || 'https://cosmic-semifreddo-3e0a4a.netlify.app/production/daily-report';
 // 기본값: dev 서버 우선 연결. 명시적으로 ELECTRON_DEV=false 설정 시 비활성화
 const preferDevServer = process.env.ELECTRON_DEV !== 'false';
 const isDev = preferDevServer; // 개발자 도구/단축키 동작 기준
@@ -57,7 +57,7 @@ function ensureInside(baseDir, targetPath) {
 
 function startStaticOutServer() {
   return new Promise((resolve) => {
-    const outDir = path.join(__dirname, '../out');
+    const outDir = path.join(__dirname, '../electron-out');
     const server = http.createServer((req, res) => {
       try {
         const url = new URL(req.url, 'http://127.0.0.1');

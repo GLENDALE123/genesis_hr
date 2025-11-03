@@ -2,19 +2,20 @@ import type { NextConfig } from "next";
 import path from 'path';
 
 const nextConfig: NextConfig = {
-  // Electron용 정적 빌드 설정
-  output: process.env.ELECTRON_BUILD === 'true' ? 'export' : undefined,
-  distDir: process.env.ELECTRON_BUILD === 'true' ? 'out' : '.next',
-  // 파일 프로토콜에서 정적 자산 상대 경로 사용
+  // 웹용과 Electron용 모두 정적 내보내기 사용
+  output: 'export',
+  // Electron은 별도 폴더(electron-out), 웹은 out 사용
+  distDir: process.env.ELECTRON_BUILD === 'true' ? 'electron-out' : 'out',
+  // Electron만 상대 경로 사용, 웹은 절대 경로 (기본값)
   assetPrefix: process.env.ELECTRON_BUILD === 'true' ? './' : undefined,
   
-  // 이미지 최적화 설정
+  // 이미지 최적화 설정 (정적 내보내기 시 항상 unoptimized)
   images: {
-    unoptimized: process.env.ELECTRON_BUILD === 'true',
+    unoptimized: true,
   },
   
-  // 후행 슬래시 추가 (Electron 라우팅 호환성)
-  trailingSlash: process.env.ELECTRON_BUILD === 'true',
+  // 후행 슬래시 추가 (정적 호스팅 호환성)
+  trailingSlash: true,
   
   // 워크스페이스 루트 설정 (경고 제거)
   outputFileTracingRoot: path.join(__dirname),

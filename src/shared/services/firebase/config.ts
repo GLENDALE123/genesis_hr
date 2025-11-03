@@ -13,7 +13,7 @@ const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyB4nSpGhucC0NR57Zpu_syg86sjdFtLtaU',
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'hs-jig-b2093.firebaseapp.com',
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'hs-jig-b2093',
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'hs-jig-b2093.firebasestorage.app',
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'hs-jig-b2093',
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '117861579792',
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '1:117861579792:web:93de9aeca7771940745e95',
 };
@@ -21,6 +21,11 @@ const firebaseConfig = {
 // Firebase Cloud Messaging VAPID Key
 // Firebase Console > Project Settings > Cloud Messaging > Web Push certificates에서 생성
 export const FIREBASE_VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || 'BJJPTFCxIgh2ddhl1vUAzQ-Cj_0RvUCx9xuxRdM9pb061G9YkCWqe9561VQDTnrPVm8j4SldzEl_2h0NPNlh_tE';
+
+// Firestore 데이터베이스 ID (환경변수로 설정 가능)
+// 기본값: tms-production (seoul 리전)
+// 주의: default 데이터베이스는 사용하지 않음 (완전 배제)
+export const FIREBASE_FIRESTORE_DATABASE_ID = process.env.NEXT_PUBLIC_FIREBASE_FIRESTORE_DATABASE_ID || 'tms-production';
 
 // Firebase 앱이 이미 초기화되어 있는지 확인
 let app: FirebaseApp;
@@ -55,7 +60,11 @@ export const auth = (() => {
 export const db = (() => {
   try {
     if (typeof window !== 'undefined') {
-      const dbService = getFirestore(app);
+      // tms-production 데이터베이스만 사용 (default 데이터베이스 완전 배제)
+      // 환경변수로 데이터베이스 ID 설정 가능, 없으면 tms-production 사용
+      // Firebase SDK 12.4.0: getFirestore(app, databaseId: string) 형식 사용
+      const databaseId = FIREBASE_FIRESTORE_DATABASE_ID || 'tms-production';
+      const dbService = getFirestore(app, databaseId);
       return dbService;
     } else {
       return null;

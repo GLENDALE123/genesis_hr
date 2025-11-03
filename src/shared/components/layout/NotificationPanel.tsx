@@ -289,9 +289,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                     <div className="flex items-start gap-2">
                       <Avatar className="h-8 w-8 flex-shrink-0">
                         {senderName.toLowerCase() === '시스템' || isScheduleNotification || isDailyReport || isSampleRequest || isAnnouncement || isWorkSchedule ? (
-                          <div className="h-full w-full rounded-full bg-primary flex items-center justify-center">
-                            <span className="text-white font-bold text-xs">TMS</span>
-                          </div>
+                          <AvatarImage src="/tms-logo.png" alt="TMS" />
                         ) : (
                           <>
                             <AvatarImage src={(senderAvatar as string) || ''} alt={senderName as string} />

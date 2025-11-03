@@ -20,6 +20,25 @@ class NotificationWindow {
   }
 
   /**
+   * TMS 로고 이미지를 Base64로 읽기
+   */
+  getTmsLogoBase64() {
+    try {
+      const logoPath = path.join(__dirname, '../public/tms-logo.png');
+      if (!fs.existsSync(logoPath)) {
+        console.warn('⚠️ [NotificationWindow] TMS 로고 파일을 찾을 수 없습니다:', logoPath);
+        return null;
+      }
+      const imageBuffer = fs.readFileSync(logoPath);
+      const base64 = imageBuffer.toString('base64');
+      return `data:image/png;base64,${base64}`;
+    } catch (error) {
+      console.error('❌ [NotificationWindow] TMS 로고 읽기 실패:', error);
+      return null;
+    }
+  }
+
+  /**
    * 이미지를 다운로드하여 Base64로 변환 (캐시 사용)
    */
   async downloadImage(url) {
@@ -151,6 +170,8 @@ class NotificationWindow {
       // 현재 윈도우 및 onClick 콜백 설정
       this.currentWindow = notificationWindow;
       this.currentOnClick = onClick;
+      // TMS 로고 이미지를 Base64로 읽기
+      const tmsLogoBase64 = this.getTmsLogoBase64();
       // HTML 로드 (URL에 데이터 전달)
       // 소리는 main.js에서 재생되므로 soundEnabled는 전달하지 않아도 됨
       const dataToSend = {
@@ -162,7 +183,8 @@ class NotificationWindow {
         senderAvatar: processedSenderAvatar,  // ✅ 처리된 아바타 사용
         timestamp: options.timestamp || new Date().toISOString(),
         centerInfo: options.centerInfo,  // ✅ 중앙 정보 추가
-        metadata: options.metadata || {}  // ✅ metadata 추가
+        metadata: options.metadata || {},  // ✅ metadata 추가
+        tmsLogoBase64: tmsLogoBase64  // ✅ TMS 로고 Base64 추가
       };
       const notificationData = encodeURIComponent(JSON.stringify(dataToSend));
 
