@@ -163,6 +163,16 @@ const AppSidebarComponent = ({
     return map;
   }, [checkIsActive]);
 
+  // 경로 변경 감지하여 모바일 사이드바 닫기
+  const prevPathname = React.useRef(pathname);
+  React.useEffect(() => {
+    // 경로가 변경되었고 모바일 사이드바가 열려있으면 닫기
+    if (pathname !== prevPathname.current && onMobileClose && isMobile) {
+      onMobileClose();
+    }
+    prevPathname.current = pathname;
+  }, [pathname, onMobileClose, isMobile]);
+
   // Link 클릭 핸들러 (사이드바 닫기/접기 로직만 처리, 네비게이션은 Link가 자동 처리)
   const handleLinkClick = React.useCallback((href: string, event: React.MouseEvent) => {
     const isTablet = !isMobile && !isDesktop;
@@ -173,18 +183,17 @@ const AppSidebarComponent = ({
         event.preventDefault();
         updatePreferences({ sidebarCollapsed: true });
       }
+      // 모바일에서 같은 페이지 클릭 시 사이드바만 닫기
+      if (onMobileClose && isMobile) {
+        event.preventDefault();
+        onMobileClose();
+      }
       return;
     }
     
-    // 모바일: Link 네비게이션 사용하지 않고 router.push로 직접 이동
-    if (onMobileClose && isMobile) {
-      event.preventDefault();
-      router.push(href);
-      // 네비게이션 후 사이드바 닫기
-      setTimeout(() => {
-        onMobileClose();
-      }, 0);
-    } else if (onMobileClose) {
+    // 모바일: Link의 기본 네비게이션을 사용 (경로 변경 감지로 사이드바 자동 닫힘)
+    // 태블릿/데스크톱: 사이드바 닫기 또는 접기 처리
+    if (onMobileClose && !isMobile) {
       // requestAnimationFrame을 사용하여 다음 프레임에 실행 (더 부드러움)
       requestAnimationFrame(() => {
         onMobileClose();
@@ -195,7 +204,8 @@ const AppSidebarComponent = ({
         updatePreferences({ sidebarCollapsed: true });
       }, 100);
     }
-  }, [pathname, isMobile, isDesktop, onMobileClose, updatePreferences, router]);
+    // 모바일은 useEffect에서 경로 변경 감지하여 자동으로 닫힘
+  }, [pathname, isMobile, isDesktop, onMobileClose, updatePreferences]);
 
   // 성능 최적화: 자식 메뉴 확인 함수 메모이제이션
   const checkChildActive = React.useCallback((children: NavItem[] | undefined) => {
