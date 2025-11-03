@@ -41,9 +41,9 @@ const nextConfig: NextConfig = {
   
   // webpack 설정 (Turbopack 미사용 시 폴백)
   webpack: (config, { isServer }) => {
-    // HS-Mobile 디렉토리 제외
+    // MobileApp 및 HS-Mobile 디렉토리 제외
     config.watchOptions = {
-      ignored: ['**/HS-Mobile/**', '**/node_modules/**'],
+      ignored: ['**/MobileApp/**', '**/HS-Mobile/**', '**/node_modules/**'],
     };
     
     if (!isServer) {
