@@ -4,7 +4,7 @@
 
 'use client';
 
-import React from 'react';
+import React, { useTransition, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Input } from '@/shared/components/ui/input';
 import { Button } from '@/shared/components/ui/button';
@@ -31,9 +31,13 @@ import { Spinner } from '@/shared/components/ui/spinner';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useUserManagement } from '../hooks/useUserManagement';
 import { UserTableRow } from './UserTableRow';
+import { SelectItem } from '@/shared/components/ui/select';
+import { ROLE_LABELS, ROLE_BADGE_COLORS, ROLE_OPTIONS } from '@/shared/constants/userRoles';
 
 export const UserManagementSettings: React.FC = () => {
-  const { user: currentUser } = useAuthStore();
+  const { user: currentUser, userProfile } = useAuthStore();
+  const [isPending, startTransition] = useTransition();
+  
   const {
     users,
     filteredUsers,
@@ -50,7 +54,7 @@ export const UserManagementSettings: React.FC = () => {
     allDepartments,
     setSearchQuery,
     setDeleteDialogOpen,
-    handleEditModeToggle,
+    handleEditModeToggle: originalHandleEditModeToggle,
     handleUserFieldChange,
     handleSaveAll,
     handleDeleteClick,
@@ -58,9 +62,51 @@ export const UserManagementSettings: React.FC = () => {
     getUserData,
   } = useUserManagement();
 
+  // 수정 모드 토글을 startTransition으로 감싸서 UI 블로킹 방지
+  const handleEditModeToggle = React.useCallback(() => {
+    startTransition(() => {
+      originalHandleEditModeToggle();
+    });
+  }, [originalHandleEditModeToggle, startTransition]);
+
   const handleConfirmDeleteWithUserId = () => {
     handleConfirmDelete(currentUser?.uid);
   };
+
+  // 공통 SelectItem 리스트 생성 (한 번만 생성하여 모든 행에서 재사용)
+  const positionItems = useMemo(() => (
+    <>
+      <SelectItem value="none">없음</SelectItem>
+      {allPositions.map((position) => (
+        <SelectItem key={position} value={position}>
+          {position}
+        </SelectItem>
+      ))}
+    </>
+  ), [allPositions]);
+
+  const departmentItems = useMemo(() => (
+    <>
+      <SelectItem value="none">없음</SelectItem>
+      {allDepartments.map((dept) => (
+        <SelectItem key={dept} value={dept}>
+          {dept}
+        </SelectItem>
+      ))}
+    </>
+  ), [allDepartments]);
+
+  const roleItems = useMemo(() => (
+    <>
+      {ROLE_OPTIONS.map((option) => (
+        <SelectItem key={option.value} value={option.value}>
+          <span className={`px-2 py-1 rounded-md text-xs font-medium ${ROLE_BADGE_COLORS[option.value]}`}>
+            {option.label}
+          </span>
+        </SelectItem>
+      ))}
+    </>
+  ), []);
 
   if (isLoading) {
     return (
@@ -115,6 +161,7 @@ export const UserManagementSettings: React.FC = () => {
               ) : (
                 <Button
                   onClick={handleEditModeToggle}
+                  disabled={isPending}
                 >
                   <Edit className="mr-2 h-4 w-4" />
                   전체 수정
@@ -142,9 +189,9 @@ export const UserManagementSettings: React.FC = () => {
                 <TableRow>
                   <TableHead className="whitespace-nowrap">이메일</TableHead>
                   <TableHead className="whitespace-nowrap">이름</TableHead>
+                  <TableHead className="whitespace-nowrap">직책</TableHead>
                   <TableHead className="whitespace-nowrap">전화번호</TableHead>
                   <TableHead className="whitespace-nowrap">역할</TableHead>
-                  <TableHead className="whitespace-nowrap">직책</TableHead>
                   <TableHead className="whitespace-nowrap">부서</TableHead>
                   <TableHead className="whitespace-nowrap">최종 로그인</TableHead>
                   <TableHead className="text-right whitespace-nowrap">작업</TableHead>
@@ -165,11 +212,13 @@ export const UserManagementSettings: React.FC = () => {
                       isEditMode={isEditMode}
                       userData={getUserData(user)}
                       isEdited={!!editedUsers[user.uid || '']}
-                      allPositions={allPositions}
-                      allDepartments={allDepartments}
+                      positionItems={positionItems}
+                      departmentItems={departmentItems}
+                      roleItems={roleItems}
                       onFieldChange={handleUserFieldChange}
                       onDelete={handleDeleteClick}
                       currentUserId={currentUser?.uid}
+                      currentUserRole={userProfile?.role}
                     />
                   ))
                 )}

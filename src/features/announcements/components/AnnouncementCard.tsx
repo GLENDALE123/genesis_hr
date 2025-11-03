@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader } from '@/shared/components/ui/card';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { Announcement } from '../types/announcement.types';
+import type { UserRole } from '@/features/auth/types';
 
 interface AnnouncementCardProps {
   announcement: Announcement;
@@ -13,6 +14,7 @@ interface AnnouncementCardProps {
   onEdit?: () => void;
   onDelete?: () => void;
   canManage?: boolean;
+  currentUserRole?: UserRole;
 }
 
 export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
@@ -20,7 +22,8 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
   onClick,
   onEdit,
   onDelete,
-  canManage = false
+  canManage = false,
+  currentUserRole
 }) => {
   const formatPlanDate = (startDate?: string, endDate?: string) => {
     if (!startDate) return null;
@@ -127,7 +130,7 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
                 수정
               </Button>
             )}
-            {onDelete && (
+            {onDelete && currentUserRole !== 'Manager' && (
               <Button
                 variant="destructive"
                 size="sm"

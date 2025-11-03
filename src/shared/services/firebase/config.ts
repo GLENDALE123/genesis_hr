@@ -98,7 +98,7 @@ export const analytics = (() => {
 export const functions = (() => {
   try {
     if (typeof window !== 'undefined') {
-      const functionsService = getFunctions(app);
+      const functionsService = getFunctions(app, 'asia-northeast3');
       return functionsService;
     } else {
       return null;

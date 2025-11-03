@@ -13,6 +13,7 @@ import {
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { Announcement } from '../types/announcement.types';
+import type { UserRole } from '@/features/auth/types';
 
 interface AnnouncementListProps {
   announcements: Announcement[];
@@ -20,6 +21,7 @@ interface AnnouncementListProps {
   onEdit?: (announcement: Announcement) => void;
   onDelete?: (announcement: Announcement) => void;
   canManage?: boolean;
+  currentUserRole?: UserRole;
 }
 
 export const AnnouncementList: React.FC<AnnouncementListProps> = ({
@@ -27,7 +29,8 @@ export const AnnouncementList: React.FC<AnnouncementListProps> = ({
   onRowClick,
   onEdit,
   onDelete,
-  canManage = false
+  canManage = false,
+  currentUserRole
 }) => {
   const formatPlanDate = (startDate?: string, endDate?: string) => {
     if (!startDate) return '해당 없음';
@@ -134,7 +137,7 @@ export const AnnouncementList: React.FC<AnnouncementListProps> = ({
                         <Edit className="h-3 w-3" />
                       </Button>
                     )}
-                    {onDelete && (
+                    {onDelete && currentUserRole !== 'Manager' && (
                       <Button
                         size="sm"
                         onClick={() => onDelete(announcement)}

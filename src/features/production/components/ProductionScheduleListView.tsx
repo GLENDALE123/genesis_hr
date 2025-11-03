@@ -558,7 +558,7 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
                         <TableCell className="whitespace-nowrap text-right py-1">
                           {schedule.shortageQuantity.toLocaleString()}
                         </TableCell>
-                        {canManage && (
+                        {canManage && isAdmin && (
                           <TableCell className="whitespace-nowrap py-1">
                             <Button
                               variant="destructive"

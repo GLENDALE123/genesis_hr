@@ -11,7 +11,8 @@ const { initializeFirebase } = require('../lib/utils');
 exports.getAllUsersWithAuthInfo = onCall({
   memory: '512MiB',
   timeoutSeconds: 60,
-  region: 'asia-northeast3'
+  region: 'asia-northeast3',
+  cors: true
 }, async (request) => {
   try {
     const admin = require('firebase-admin');
@@ -42,49 +43,49 @@ exports.getAllUsersWithAuthInfo = onCall({
     
     // Firestore에서 모든 유저 프로필 가져오기
     const usersSnapshot = await db.collection('users').get();
-    const userProfiles = [];
     
-    // Firebase Auth에서 각 유저 정보 가져오기
+    // Firebase Auth에서 모든 유저 정보를 한 번에 가져오기 (최대 1000명)
+    let authUsersList = [];
+    let nextPageToken;
+    
+    do {
+      const listUsersResult = await admin.auth().listUsers(1000, nextPageToken);
+      authUsersList = authUsersList.concat(listUsersResult.users);
+      nextPageToken = listUsersResult.pageToken;
+    } while (nextPageToken);
+    
+    // Auth 유저를 UID로 매핑
+    const authUsersMap = new Map();
+    authUsersList.forEach(authUser => {
+      authUsersMap.set(authUser.uid, authUser);
+    });
+    
+    // Firestore 데이터와 Auth 데이터 병합
+    const userProfiles = [];
     for (const docSnapshot of usersSnapshot.docs) {
       const uid = docSnapshot.id;
       const profileData = docSnapshot.data();
+      const authUser = authUsersMap.get(uid);
       
-      try {
-        // Firebase Auth에서 유저 정보 가져오기
-        const authUser = await admin.auth().getUser(uid);
-        
-        // Firebase Auth에서 가져온 정보만 사용 (email, displayName, phoneNumber)
-        // Firestore에는 role, position, department, 날짜 정보만 저장됨
-        userProfiles.push({
-          uid: uid,
-          email: authUser.email || null,
-          displayName: authUser.displayName || null,
-          phoneNumber: authUser.phoneNumber || null,
-          // Firestore에서 가져오는 정보 (role, position, department, 날짜)
-          role: profileData.role || 'Member',
-          position: profileData.position || null,
-          department: profileData.department || null,
-          createdAt: profileData.createdAt?.toDate ? profileData.createdAt.toDate() : null,
-          updatedAt: profileData.updatedAt?.toDate ? profileData.updatedAt.toDate() : null,
-          lastLoginAt: profileData.lastLoginAt?.toDate ? profileData.lastLoginAt.toDate() : null,
-        });
-      } catch (authError) {
-        // Auth에서 유저를 찾을 수 없는 경우 (삭제된 유저 등)
-        console.warn(`User ${uid} not found in Auth:`, authError.message);
-        // Firestore 데이터만 포함
-        userProfiles.push({
-          uid: uid,
-          email: null,
-          displayName: null,
-          phoneNumber: null,
-          role: profileData.role || 'Member',
-          position: profileData.position || null,
-          department: profileData.department || null,
-          createdAt: profileData.createdAt?.toDate ? profileData.createdAt.toDate() : null,
-          updatedAt: profileData.updatedAt?.toDate ? profileData.updatedAt.toDate() : null,
-          lastLoginAt: profileData.lastLoginAt?.toDate ? profileData.lastLoginAt.toDate() : null,
-        });
-      }
+      // Firebase Auth에서 가져온 정보만 사용 (email, displayName, phoneNumber)
+      // Firestore에는 role, position, department, 날짜 정보만 저장됨
+      const createdAt = profileData.createdAt?.toDate ? profileData.createdAt.toDate() : null;
+      const updatedAt = profileData.updatedAt?.toDate ? profileData.updatedAt.toDate() : null;
+      const lastLoginAt = profileData.lastLoginAt?.toDate ? profileData.lastLoginAt.toDate() : null;
+      
+      userProfiles.push({
+        uid: uid,
+        email: authUser?.email || null,
+        displayName: authUser?.displayName || null,
+        phoneNumber: authUser?.phoneNumber || null,
+        // Firestore에서 가져오는 정보 (role, position, department, 날짜)
+        role: profileData.role || 'Member',
+        position: profileData.position || null,
+        department: profileData.department || null,
+        createdAt: createdAt ? createdAt.toISOString() : null,
+        updatedAt: updatedAt ? updatedAt.toISOString() : null,
+        lastLoginAt: lastLoginAt ? lastLoginAt.toISOString() : null,
+      });
     }
     
     // 역할별 정렬 (Admin → Manager → Member)

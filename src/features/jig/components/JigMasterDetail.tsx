@@ -328,16 +328,18 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
                         수정
                       </Button>
                       
-                      <Button 
-                        type="button" 
-                        variant="destructive"
-                        onClick={() => {
-                          setIsDeleteDialogOpen(true);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        삭제
-                      </Button>
+                      {currentUserProfile?.role !== 'Manager' && (
+                        <Button 
+                          type="button" 
+                          variant="destructive"
+                          onClick={() => {
+                            setIsDeleteDialogOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          삭제
+                        </Button>
+                      )}
                     </div>
                   )}
                 </>

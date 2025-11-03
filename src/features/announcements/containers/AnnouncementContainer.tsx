@@ -259,6 +259,7 @@ export const AnnouncementContainer: React.FC<AnnouncementContainerProps> = ({
                   onEdit={canManage ? () => handleEditAnnouncement(announcement) : undefined}
                   onDelete={canManage ? () => handleDeleteAnnouncement(announcement) : undefined}
                   canManage={canManage}
+                  currentUserRole={userProfile?.role}
                 />
               ))}
             </div>
@@ -269,6 +270,7 @@ export const AnnouncementContainer: React.FC<AnnouncementContainerProps> = ({
               onEdit={canManage ? handleEditAnnouncement : undefined}
               onDelete={canManage ? handleDeleteAnnouncement : undefined}
               canManage={canManage}
+              currentUserRole={userProfile?.role}
             />
           )}
         </>

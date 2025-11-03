@@ -92,7 +92,7 @@ const ReportRow = React.memo<ReportRowProps>(({
   return (
     <TableRow
       key={report.id}
-      className={`border-b transition-colors select-none ${isHighlighted ? 'bg-accent/80 dark:bg-accent/80 xl:bg-transparent' : ''} ${isSmallScreen ? 'cursor-pointer active:bg-accent dark:active:bg-accent/70' : ''}`}
+      className={`border-b transition-colors select-none md:select-text ${isHighlighted ? 'bg-accent/80 dark:bg-accent/80 xl:bg-transparent' : ''} ${isSmallScreen ? 'cursor-pointer active:bg-accent dark:active:bg-accent/70' : ''}`}
       onClick={handleRowClick}
     >
       {/* 작업일자 */}
@@ -285,7 +285,7 @@ const ReportRowWithPressState = React.memo<ReportRowProps>((props) => {
   return (
     <TableRow
       key={report.id}
-      className={`border-b transition-colors select-none ${isPressed ? 'bg-accent/40 dark:bg-accent/20 xl:bg-transparent' : ''} active:bg-accent/30 xl:active:bg-transparent`}
+      className={`border-b transition-colors select-none md:select-text ${isPressed ? 'bg-accent/40 dark:bg-accent/20 xl:bg-transparent' : ''} active:bg-accent/30 xl:active:bg-transparent`}
       onPointerDown={handlePointerDown}
       onPointerUp={clearPressed}
       onPointerCancel={clearPressed}

@@ -114,6 +114,12 @@ export const useUserManagement = () => {
     if (!user) return;
 
     const currentData: EditableUserData = {
+      displayName: user.displayName || undefined,
+      phoneNumber: user.phoneNumber ? (() => {
+        // Firebase Auth 형식 (+821012345678)을 한국 형식으로 변환하여 저장
+        const phone = user.phoneNumber.replace(/^\+82/, '0');
+        return phone;
+      })() : undefined,
       role: user.role || 'Member',
       position: user.position || undefined,
       department: user.department || undefined,
@@ -129,6 +135,8 @@ export const useUserManagement = () => {
     };
 
     const isSameAsOriginal =
+      updatedData.displayName === currentData.displayName &&
+      updatedData.phoneNumber === currentData.phoneNumber &&
       updatedData.role === currentData.role &&
       updatedData.position === currentData.position &&
       updatedData.department === currentData.department;
@@ -159,6 +167,8 @@ export const useUserManagement = () => {
       setIsSaving(true);
       const updatePromises = Object.entries(editedUsers).map(async ([uid, data]) => {
         await updateUserManagementInfo(uid, {
+          displayName: data.displayName,
+          phoneNumber: data.phoneNumber,
           role: data.role,
           position: data.position || undefined,
           department: data.department || undefined,
@@ -219,6 +229,12 @@ export const useUserManagement = () => {
       return editedUsers[user.uid || ''];
     }
     return {
+      displayName: user.displayName || undefined,
+      phoneNumber: user.phoneNumber ? (() => {
+        // Firebase Auth 형식 (+821012345678)을 한국 형식으로 변환
+        const phone = user.phoneNumber.replace(/^\+82/, '0');
+        return phone;
+      })() : undefined,
       role: user.role || 'Member',
       position: user.position || undefined,
       department: user.department || undefined,
