@@ -1,0 +1,112 @@
+name: Build and Release Electron App
+
+on:
+  push:
+    tags:
+      - 'v*'  # v0.1.0, v0.2.0 같은 태그가 푸시될 때 실행
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        
+      - name: Update versions
+        run: |
+          $version = "${{ steps.get_version.outputs.VERSION }}"
+          
+          # package.json 버전 업데이트
+          $pkgJson = Get-Content package.json -Raw | ConvertFrom-Json
+          $pkgJson.version = $version
+          $pkgJson | ConvertTo-Json -Depth 10 | Set-Content package.json
+          
+          # installer.nsi 버전 업데이트
+          $installerNsi = Get-Content build\installer.nsi -Raw -Encoding UTF8
+          $installerNsi = $installerNsi -replace '!define APP_VERSION ".*"', "!define APP_VERSION `"$version`""
+          [System.IO.File]::WriteAllText("build\installer.nsi", $installerNsi, [System.Text.Encoding]::UTF8)
+          
+      - name: Install NSIS
+        run: |
+          choco install nsis -y || echo "NSIS installation skipped (may already be installed)"
+        continue-on-error: true
+          
+      - name: Build Next.js (Electron)
+        run: npm run build
+        env:
+          ELECTRON_BUILD: true
+          NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+          NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
+          NEXT_PUBLIC_FIREBASE_PROJECT_NUMBER: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_NUMBER }}
+          NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID }}
+          NEXT_PUBLIC_FIREBASE_VAPID_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_VAPID_KEY }}
+          NEXT_PUBLIC_FIREBASE_FIRESTORE_DATABASE_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_FIRESTORE_DATABASE_ID }}
+          FIREBASE_FIRESTORE_DATABASE_ID: ${{ secrets.FIREBASE_FIRESTORE_DATABASE_ID }}
+          
+      - name: Package Electron app
+        run: |
+          # Electron 앱 패키징 (dir 타겟으로 - 커스텀 인스톨러용)
+          npx electron-builder --win --x64 --dir
+          # 커스텀 NSIS 인스톨러 빌드
+          npm run installer:build
+          # Portable 버전 빌드 (delta 업데이트용)
+          npx electron-builder --win --x64 --publish=never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        continue-on-error: false
+          
+      - name: List build artifacts
+        run: |
+          Write-Host "=== 설치 파일 ==="
+          Get-ChildItem dist -Filter "TMS-Setup-*.exe" | ForEach-Object { Write-Host $_.FullName }
+          Write-Host "`n=== Portable 파일 ==="
+          Get-ChildItem dist -Filter "*.exe" -Exclude "TMS-Setup-*","*.exe.blockmap" | ForEach-Object { Write-Host $_.FullName }
+          Write-Host "`n=== 메타데이터 파일 ==="
+          Get-ChildItem dist -Filter "*.yml","*.blockmap" | ForEach-Object { Write-Host $_.FullName }
+          
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: TMS 통합관리시스템 v${{ steps.get_version.outputs.VERSION }}
+          body: |
+            ## 변경 사항
+            
+            자동으로 생성된 릴리스입니다.
+            
+            ## 설치 파일
+            
+            - **전체 설치**: `TMS-Setup-*.exe` (새로 설치하는 경우)
+            - **업데이트**: `electron-updater`가 자동으로 delta 업데이트 파일을 사용합니다.
+          files: |
+            dist/TMS-Setup-*.exe
+            dist/TMS*.exe
+            dist/*.yml
+            dist/*.blockmap
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

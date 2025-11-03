@@ -22,6 +22,9 @@ if (process.env.NODE_ENV === 'development' || preferDevServer) {
 // autoUpdater 설정
 autoUpdater.autoDownload = false; // 자동 다운로드 비활성화 (사용자 승인 필요)
 autoUpdater.autoInstallOnAppQuit = true; // 앱 종료 시 자동 설치
+autoUpdater.allowPrerelease = false; // 프리릴리스 비활성화
+// delta 업데이트: electron-updater가 자동으로 latest.yml을 확인하여
+// blockmap을 사용한 delta 업데이트를 지원 (변경된 부분만 다운로드)
 
 // 업데이트 체크 간격 (30분마다)
 const UPDATE_CHECK_INTERVAL = 30 * 60 * 1000;
@@ -574,7 +577,13 @@ ipcMain.handle('download-update', async (event) => {
 // IPC 핸들러: 업데이트 설치 및 재시작
 ipcMain.handle('install-update', async (event) => {
   try {
-    autoUpdater.quitAndInstall(false, true); // 앱 즉시 종료 후 설치
+    // quitAndInstall의 첫 번째 인자:
+    // - false: 설치 프로그램 창 표시 안 함 (조용히 설치)
+    // - true: 설치 프로그램 창 표시
+    // 두 번째 인자:
+    // - true: 설치 후 자동 재시작
+    // 이렇게 하면 백그라운드에서 조용히 설치되고 별도 창이 뜨지 않음
+    autoUpdater.quitAndInstall(false, true); 
     return { success: true };
   } catch (error) {
     console.error('[Updater] 설치 실패:', error);

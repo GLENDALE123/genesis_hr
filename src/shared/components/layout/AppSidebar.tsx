@@ -16,7 +16,6 @@ import {
   Shield,
   LayoutDashboard,
   Settings,
-  HelpCircle,
   Wrench
 } from 'lucide-react';
 
@@ -358,76 +357,40 @@ const AppSidebarComponent = ({
       <div className="border-t p-3">
         <div className="space-y-2">
           {isExpanded && (
-            <>
-              <button
-                onClick={(event) => handleClick('/settings', event)}
-                className={cn(
-                  "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors text-left",
-                  "min-h-[44px] px-2 py-2 md:px-2 md:py-2 w-full max-w-full overflow-hidden",
-                  activePathMap.get('/settings')
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                )}
-              >
-                <Settings className="mr-2 h-5 w-5 md:h-4 md:w-4 flex-shrink-0" />
-                <span className="truncate whitespace-nowrap">설정</span>
-              </button>
-              <button
-                onClick={(event) => handleClick('/settings?tab=about', event)}
-                className={cn(
-                  "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors text-left",
-                  "min-h-[44px] px-2 py-2 md:px-2 md:py-2 w-full max-w-full overflow-hidden",
-                  activePathMap.get('/settings')
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                )}
-              >
-                <HelpCircle className="mr-2 h-5 w-5 md:h-4 md:w-4 flex-shrink-0" />
-                <span className="truncate whitespace-nowrap">도움말</span>
-              </button>
-            </>
+            <button
+              onClick={(event) => handleClick('/settings', event)}
+              className={cn(
+                "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors text-left",
+                "min-h-[44px] px-2 py-2 md:px-2 md:py-2 w-full max-w-full overflow-hidden",
+                checkIsActive('/settings')
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              )}
+            >
+              <Settings className="mr-2 h-5 w-5 md:h-4 md:w-4 flex-shrink-0" />
+              <span className="truncate whitespace-nowrap">설정</span>
+            </button>
           )}
           {!isExpanded && (
-            <div className="flex flex-col gap-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={(event) => handleClick('/settings', event)}
-                    className={cn(
-                      "flex items-center justify-center cursor-pointer rounded-md text-sm font-medium transition-colors",
-                      "min-h-[44px] min-w-[44px] md:min-h-[40px] md:min-w-[40px]",
-                      checkIsActive('/settings')
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                    )}
-                  >
-                    <Settings className="h-5 w-5 md:h-4 md:w-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="ml-2">
-                  <p>설정</p>
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={(event) => handleClick('/settings?tab=about', event)}
-                    className={cn(
-                      "flex items-center justify-center cursor-pointer rounded-md text-sm font-medium transition-colors",
-                      "min-h-[44px] min-w-[44px] md:min-h-[40px] md:min-w-[40px]",
-                      checkIsActive('/settings')
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                    )}
-                  >
-                    <HelpCircle className="h-5 w-5 md:h-4 md:w-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="ml-2">
-                  <p>도움말</p>
-                </TooltipContent>
-              </Tooltip>
-            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={(event) => handleClick('/settings', event)}
+                  className={cn(
+                    "flex items-center justify-center cursor-pointer rounded-md text-sm font-medium transition-colors",
+                    "min-h-[44px] min-w-[44px] md:min-h-[40px] md:min-w-[40px]",
+                    checkIsActive('/settings')
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  )}
+                >
+                  <Settings className="h-5 w-5 md:h-4 md:w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="ml-2">
+                <p>설정</p>
+              </TooltipContent>
+            </Tooltip>
           )}
         </div>
       </div>

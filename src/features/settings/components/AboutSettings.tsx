@@ -12,8 +12,10 @@ import { Badge } from '@/shared/components/ui/badge';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { logout } from '@/shared/services/firebase';
 import { useRouter } from 'next/navigation';
-import { Info, LogOut, Package, Calendar, Users, ExternalLink } from 'lucide-react';
+import { Info, LogOut, Package, Calendar, Users, ExternalLink, Download } from 'lucide-react';
 import { toast } from 'sonner';
+import { useGitHubRelease } from '@/shared/hooks/useGitHubRelease';
+import { WindowsIcon } from '@/shared/components/icons/WindowsIcon';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +32,13 @@ export const AboutSettings: React.FC = () => {
   const { user } = useAuthStore();
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  
+  // Electron 환경 확인
+  const isElectron = typeof window !== 'undefined' && 
+    (window as unknown as Record<string, unknown>).__ELECTRON__ === true;
+  
+  // GitHub 릴리스 정보
+  const { latestRelease, installerAsset, isLoading: releaseLoading } = useGitHubRelease();
 
   const handleLogout = async () => {
     try {
@@ -62,7 +71,11 @@ export const AboutSettings: React.FC = () => {
               <Package className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium">버전</span>
             </div>
-            <Badge variant="secondary">1.0.0</Badge>
+            <Badge variant="secondary">
+              {releaseLoading 
+                ? '...' 
+                : latestRelease?.tag_name.replace('v', '') || '0.1.0'}
+            </Badge>
           </div>
 
           <Separator />
@@ -72,7 +85,16 @@ export const AboutSettings: React.FC = () => {
               <Calendar className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium">최종 업데이트</span>
             </div>
-            <span className="text-sm text-muted-foreground">2025년 1월</span>
+            <span className="text-sm text-muted-foreground">
+              {releaseLoading 
+                ? '...' 
+                : latestRelease?.published_at 
+                  ? new Date(latestRelease.published_at).toLocaleDateString('ko-KR', { 
+                      year: 'numeric', 
+                      month: 'long' 
+                    })
+                  : '-'}
+            </span>
           </div>
 
           <Separator />
@@ -157,30 +179,60 @@ export const AboutSettings: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* 도움말 및 링크 */}
-      <Card>
-        <CardHeader>
-          <CardTitle>도움말 및 지원</CardTitle>
-          <CardDescription>
-            문제가 있으신가요? 도움을 받으세요.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Button variant="outline" className="w-full justify-start" asChild>
-            <a href="https://github.com/yourusername/hs-next" target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="mr-2 h-4 w-4" />
-              GitHub 저장소
-            </a>
-          </Button>
-
-          <Button variant="outline" className="w-full justify-start" onClick={() => {
-            toast.info('문의사항은 관리자에게 연락해주세요.');
-          }}>
-            <ExternalLink className="mr-2 h-4 w-4" />
-            문의하기
-          </Button>
-        </CardContent>
-      </Card>
+      {/* 데스크탑용 앱 다운로드 (웹 브라우저 환경에서만 표시) */}
+      {!isElectron && (
+        <Card>
+          <CardHeader>
+            <CardTitle>데스크탑용 앱</CardTitle>
+            <CardDescription>
+              데스크톱 앱을 다운로드하여 더 나은 사용 경험을 누리세요.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {releaseLoading ? (
+              <div className="flex items-center justify-center py-4">
+                <span className="text-sm text-muted-foreground">최신 버전 확인 중...</span>
+              </div>
+            ) : (
+              <>
+                <Button 
+                  variant="default" 
+                  className="w-full" 
+                  size="lg"
+                  onClick={() => {
+                    if (installerAsset?.browser_download_url) {
+                      // 설치 파일이 있으면 다운로드
+                      const link = document.createElement('a');
+                      link.href = installerAsset.browser_download_url;
+                      link.download = installerAsset.name;
+                      link.target = '_blank';
+                      link.rel = 'noopener noreferrer';
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      toast.success('다운로드가 시작되었습니다.');
+                    } else {
+                      // 설치 파일이 없으면 GitHub 릴리스 페이지로 이동
+                      window.open('https://github.com/mir1102/HS-Jig/releases', '_blank', 'noopener,noreferrer');
+                      toast.info('GitHub 릴리스 페이지로 이동합니다.');
+                    }
+                  }}
+                >
+                  <WindowsIcon className="mr-2" size={20} />
+                  Windows
+                </Button>
+                {installerAsset && (
+                  <div className="text-xs text-muted-foreground space-y-1 pt-2">
+                    <p>• 파일 크기: {(installerAsset.size / 1024 / 1024).toFixed(1)} MB</p>
+                    <p>• 출시일: {latestRelease?.published_at ? new Date(latestRelease.published_at).toLocaleDateString('ko-KR') : '-'}</p>
+                    <p>• 버전: {latestRelease?.tag_name.replace('v', '') || '-'}</p>
+                  </div>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* 로그아웃 */}
       <Card className="border-destructive/50">
