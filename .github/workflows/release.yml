@@ -25,48 +25,44 @@ jobs:
       - name: Install dependencies
         run: npm ci
         
-      - name: Get version from tag
-        id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-        
-      - name: Update versions
+      - name: Get version from tag and update files
+        shell: bash
         run: |
-          $version = "${{ steps.get_version.outputs.VERSION }}"
-          Write-Host "=== Updating version to: $version ==="
+          # 태그에서 버전 추출 (v0.2.0 -> 0.2.0)
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "=== Updating version to: $VERSION ==="
           
-          # package.json 내용 확인
-          Write-Host "Current package.json content (first 20 lines):"
-          Get-Content package.json -Head 20
-          
-          # package.json 버전 업데이트 (npm version 사용 - 가장 확실한 방법)
-          npm version $version --no-git-tag-version --allow-same-version
+          # package.json 버전 업데이트
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
           
           # 확인
-          Write-Host "=== Verification ==="
-          $pkgJson = Get-Content package.json -Raw | ConvertFrom-Json
-          Write-Host "Updated package.json version: $($pkgJson.version)"
-          Write-Host "Expected version: $version"
+          echo "=== Verification ==="
+          UPDATED_VERSION=$(node -p "require('./package.json').version")
+          echo "Updated package.json version: $UPDATED_VERSION"
+          echo "Expected version: $VERSION"
           
-          if ($pkgJson.version -ne $version) {
-            Write-Host "ERROR: Version mismatch!"
+          if [ "$UPDATED_VERSION" != "$VERSION" ]; then
+            echo "ERROR: Version mismatch!"
             exit 1
-          }
+          fi
           
           # installer.nsi 버전 업데이트
-          $installerNsiPath = Join-Path (Get-Location) "build" "installer.nsi"
-          if (Test-Path $installerNsiPath) {
-            $installerNsi = Get-Content $installerNsiPath -Raw -Encoding UTF8
-            $installerNsi = $installerNsi -replace '!define APP_VERSION ".*"', "!define APP_VERSION `"$version`""
-            [System.IO.File]::WriteAllText($installerNsiPath, $installerNsi, [System.Text.Encoding]::UTF8)
-            Write-Host "installer.nsi version updated to $version"
-          } else {
-            Write-Host "installer.nsi not found at: $installerNsiPath"
+          if [ -f "build/installer.nsi" ]; then
+            if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
+              # Windows 환경에서 sed 대신 PowerShell 사용
+              powershell -Command "(Get-Content build/installer.nsi -Raw -Encoding UTF8) -replace '!define APP_VERSION \"[^\"]*\"', \"!define APP_VERSION \`\"$VERSION\`\"\" | Set-Content build/installer.nsi -Encoding UTF8"
+            else
+              sed -i "s/!define APP_VERSION \".*\"/!define APP_VERSION \"$VERSION\"/" build/installer.nsi
+            fi
+            echo "installer.nsi version updated to $VERSION"
+          else
+            echo "ERROR: installer.nsi not found"
             exit 1
-          }
+          fi
           
           # 최종 확인
-          Write-Host "=== Final package.json check ==="
-          Get-Content package.json -Head 5
+          echo "=== Final package.json check ==="
+          head -5 package.json
           
       - name: Install NSIS
         run: |
