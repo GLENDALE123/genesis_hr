@@ -3,7 +3,7 @@ import app from './config';
 
 // VAPID 키 (Firebase Console에서 생성)
 // Firebase Console > Project Settings > Cloud Messaging > Web Push certificates에서 생성
-const VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
+const VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || '';
 
 // Electron 환경 감지
 const isElectronEnv = typeof window !== 'undefined' && (window as any).__ELECTRON__;
