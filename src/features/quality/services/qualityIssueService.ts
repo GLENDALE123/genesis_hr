@@ -95,17 +95,26 @@ export const createQualityIssue = async (
     }
 
     // Firestore에 저장할 데이터 준비
-    // 첫 이슈에 작성시간 추가
-    const issuesWithTimestamp = formData.issues.map((issue, index) => {
-      if (index === 0 && issue.trim()) {
+    // 모든 이슈에 작성시간 추가
+    const currentTime = new Date().toISOString();
+    const issuesWithTimestamp = formData.issues
+      .filter(issue => issue.trim() !== '') // 빈 이슈 제거
+      .map((issue) => {
+        // 문자열 형식이면 객체로 변환, 이미 객체면 그대로 사용
+        if (typeof issue === 'string') {
+          return {
+            content: issue.trim(),
+            createdAt: currentTime,
+            status: 'in-progress'
+          };
+        }
+        // 이미 객체인 경우 createdAt이 없으면 추가
         return {
-          content: issue.trim(),
-          createdAt: new Date().toISOString(),
-          status: 'in-progress'
+          ...issue,
+          createdAt: issue.createdAt || currentTime,
+          status: issue.status || 'in-progress'
         };
-      }
-      return issue; // 기존 문자열 형식 유지 (빈 문자열인 경우)
-    }).filter(issue => issue !== ''); // 빈 이슈 제거
+      });
 
     const qualityIssueData = {
       ...formData,

@@ -14,6 +14,8 @@
     "electron:dev": "concurrently \"cross-env NODE_ENV=development next dev --turbo\" \"wait-on http://localhost:3000 && cross-env NODE_ENV=development electron .\"",
     "electron:build": "cross-env ELECTRON_BUILD=true next build && electron-builder",
     "electron:build:win7": "cross-env ELECTRON_BUILD=true next build && electron-builder --win --x64",
+    "installer:build": "makensis build/installer.nsi",
+    "electron:build:nsi": "cross-env ELECTRON_BUILD=true next build && electron-builder && npm run installer:build",
     "lint": "eslint",
     "format": "prettier --write .",
     "test": "vitest",
@@ -134,13 +136,9 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "allowElevation": true,
-      "differentialPackage": false,
       "deleteAppDataOnUninstall": false,
       "runAfterFinish": true,
-      "unicode": true,
-      "warningsAsErrors": false,
-      "artifactName": "TMS 통합관리시스템 Setup ${version}.${ext}",
-      "menuCategory": false
+      "artifactName": "TMS 통합관리시스템 Setup ${version}.${ext}"
     },
     "extraMetadata": {
       "main": "electron/main.js"

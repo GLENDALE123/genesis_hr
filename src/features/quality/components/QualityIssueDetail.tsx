@@ -321,21 +321,27 @@ ${issue.keywordPairs.map((pair, index) => `${index + 1}. ${pair.process} - ${pai
                   // 기존 문자열 형식과 새로운 객체 형식 모두 지원
                   const isString = typeof item === 'string';
                   const content = isString ? item : item.content;
-                  const createdAt = isString ? null : item.createdAt;
+                  // 기존 이슈는 issue.createdAt 사용, 추가 이슈는 item.createdAt 사용
+                  const createdAt = isString ? issue.createdAt : item.createdAt;
                   const status = isString ? null : item.status;
                   
                   return (
                     <li key={index} className="flex justify-between items-start">
                       <div className="flex-1">
                         {createdAt && (
-                          <span className="text-xs text-gray-400 mr-2">
-                            {new Date(createdAt).toLocaleString('ko-KR', {
-                              month: '2-digit',
-                              day: '2-digit',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </span>
+                          <>
+                            <span className="text-xs text-gray-400 mr-2">
+                              {new Date(createdAt).toLocaleString('ko-KR', {
+                                month: '2-digit',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                            <span className="text-xl font-bold text-gray-700 dark:text-slate-200 mr-2">
+                              ·
+                            </span>
+                          </>
                         )}
                         <span>{content}</span>
                       </div>
