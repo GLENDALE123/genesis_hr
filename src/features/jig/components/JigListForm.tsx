@@ -168,6 +168,11 @@ export const JigListForm: React.FC<JigListFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // 중복 제출 방지
+    if (isLoading || imageUploadHook.isUploading) {
+      return;
+    }
+    
     if (!formData.orderNumber?.trim()) {
       alert('발주번호를 입력해주세요.');
       return;

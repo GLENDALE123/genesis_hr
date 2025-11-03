@@ -73,6 +73,7 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
   const [selectedReport, setSelectedReport] = useState<PackagingReport | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   
   // 삭제 확인 대화상자 상태
   const [deleteConfirmState, setDeleteConfirmState] = useState<{
@@ -218,6 +219,12 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
   }, []);
 
   const handleFormSubmit = useCallback(async (formData: PackagingFormData) => {
+    // 중복 제출 방지
+    if (isSaving) {
+      return;
+    }
+
+    setIsSaving(true);
     try {
       if (isEditMode && selectedReport) {
         // PackagingFormData를 Partial<PackagingReport>로 변환
@@ -270,7 +277,9 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
       setIsFormOpen(false);
       setSelectedReport(null);
       setIsEditMode(false);
+      setIsSaving(false);
     } catch (error) {
+      setIsSaving(false);
       
       // Firebase 에러 분석
       const errorInfo = getFirebaseErrorMessage(error);
@@ -627,6 +636,7 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
                   type="button"
                   variant="outline"
                   onClick={handleFormCancel}
+                  disabled={isSaving}
                 >
                   <X className="h-4 w-4 mr-2" />
                   취소
@@ -635,9 +645,10 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
                   type="submit"
                   form="packaging-report-form"
                   className="min-w-[120px]"
+                  disabled={isSaving}
                 >
                   <Save className="h-4 w-4 mr-2" />
-                  {isEditMode ? '수정 저장' : '저장하기'}
+                  {isSaving ? '저장 중...' : (isEditMode ? '수정 저장' : '저장하기')}
                 </Button>
               </div>
             }
@@ -694,6 +705,7 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
                   type="button"
                   variant="outline"
                   onClick={handleFormCancel}
+                  disabled={isSaving}
                 >
                   <X className="h-4 w-4 mr-2" />
                   취소
@@ -702,9 +714,10 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
                   type="submit"
                   form="packaging-report-form"
                   className="min-w-[120px]"
+                  disabled={isSaving}
                 >
                   <Save className="h-4 w-4 mr-2" />
-                  {isEditMode ? '수정 저장' : '저장하기'}
+                  {isSaving ? '저장 중...' : (isEditMode ? '수정 저장' : '저장하기')}
                 </Button>
               </SheetFooter>
             </div>

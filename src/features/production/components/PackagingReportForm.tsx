@@ -39,6 +39,7 @@ export const PackagingReportForm: React.FC<PackagingReportFormProps> = ({
   // 커스텀 훅으로 폼 로직 분리
   const {
     formData,
+    isSaving,
     isCalendarOpen,
     setIsSaving,
     setIsCalendarOpen,
@@ -53,18 +54,29 @@ export const PackagingReportForm: React.FC<PackagingReportFormProps> = ({
   } = usePackagingForm({ report, isEditMode });
 
   // 폼 제출
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSaving(true);
-
-    const submitData = validateAndPrepareSubmit();
-    if (!submitData) {
-      setIsSaving(false);
+    
+    // 중복 제출 방지
+    if (isSaving) {
       return;
     }
 
-    onSubmit(submitData);
-    setIsSaving(false);
+    const submitData = validateAndPrepareSubmit();
+    if (!submitData) {
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      // onSubmit이 Promise를 반환하는 경우를 대비해 await 처리
+      await Promise.resolve(onSubmit(submitData));
+    } catch (error) {
+      console.error('폼 제출 오류:', error);
+      throw error; // 에러를 상위로 전달하여 Container에서 처리
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (

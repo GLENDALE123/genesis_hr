@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { PackagingReport, ProductionReportFilter } from '@/features/production/types';
+import { getLocalDateString } from '@/shared/utils/dateUtils';
 
 /**
  * 생산일보 필터링, 검색, 요약 계산 훅
@@ -17,12 +18,12 @@ export const usePackagingReportFilters = (
   reports: PackagingReport[],
   onDateRangeChange?: (startDate: string, endDate: string) => void
 ) => {
-  // 날짜 유틸리티
+  // 날짜 유틸리티 (로컬 시간대 사용, 한국 시간 기준)
   const formatDateForInput = (date: Date) => {
-    return date.toISOString().split('T')[0];
+    return getLocalDateString(date);
   };
 
-  const today = formatDateForInput(new Date());
+  const today = getLocalDateString(new Date());
   
   // 초기 날짜 범위 계산 (오늘)
   const getInitialDateRange = () => {
@@ -77,11 +78,11 @@ export const usePackagingReportFilters = (
     // 검색어가 있는 경우: 전체 데이터에서 검색 (날짜 제한 없음)
     if (searchTerm && searchTerm.trim() !== '') {
       // 날짜 범위를 매우 넓게 설정 (사실상 전체 조회)
-      const today = new Date();
+      const todayDate = new Date();
       const tenYearsAgo = new Date();
-      tenYearsAgo.setFullYear(today.getFullYear() - 10);
+      tenYearsAgo.setFullYear(todayDate.getFullYear() - 10);
       
-      const endDate = formatDateForInput(today);
+      const endDate = formatDateForInput(todayDate);
       const startDate = formatDateForInput(tenYearsAgo);
       
       onDateRangeChange(startDate, endDate);

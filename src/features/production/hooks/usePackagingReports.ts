@@ -5,6 +5,7 @@ import { waitForFirebaseInit } from '@/shared/services/firebase/config';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
 import { usePackagingReportsStore } from '@/features/production/store/packagingReportsStore';
 import { useAuthStore } from '@/features/auth/store/authStore';
+import { getLocalDateString } from '@/shared/utils/dateUtils';
 
 /**
  * Packaging Reports 데이터를 관리하는 커스텀 훅
@@ -47,11 +48,11 @@ export const usePackagingReports = () => {
     setMounted(true);
   }, []);
 
-  // ✅ 초기 마운트 시 오늘 날짜로 실시간 구독 시작
+  // ✅ 초기 마운트 시 오늘 날짜로 실시간 구독 시작 (한국 시간 기준)
   useEffect(() => {
     if (!mounted) return;
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString(new Date());
     setCurrentDateRange({ startDate: today, endDate: today });
   }, [mounted]);
 

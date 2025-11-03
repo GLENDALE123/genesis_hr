@@ -114,6 +114,12 @@ export const ProductionRequestForm: React.FC<ProductionRequestFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // 중복 제출 방지
+    if (isSaving || imageUploadHook.isUploading) {
+      return;
+    }
+
     setIsSaving(true);
     try {
       const imageFiles = imageUploadHook.uploadingImages

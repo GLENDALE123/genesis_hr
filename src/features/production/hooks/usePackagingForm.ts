@@ -4,9 +4,10 @@ import { useAuthStore } from '@/features/auth/store/authStore';
 import { useOrderNumberFormatter } from '@/shared/hooks/useOrderNumberFormatter';
 import { usePackagingCalculations } from './usePackagingCalculations';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
+import { getLocalDateString } from '@/shared/utils/dateUtils';
 
 const initialFormData: PackagingFormData = {
-  workDate: new Date().toISOString().split('T')[0],
+  workDate: getLocalDateString(new Date()),
   authorName: '',
   productionLine: '',
   orderNumbers: [''],

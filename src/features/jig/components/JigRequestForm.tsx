@@ -173,6 +173,11 @@ export const JigRequestForm: React.FC<JigRequestFormProps> = ({
 
   // 폼 제출
   const handleSubmit = async () => {
+    // 중복 제출 방지
+    if (isLoading || imageUploadHook.isUploading) {
+      return;
+    }
+
     if (!user) {
       toast.error('로그인이 필요합니다.');
       return;
