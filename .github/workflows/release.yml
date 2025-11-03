@@ -34,19 +34,12 @@ jobs:
           $version = "${{ steps.get_version.outputs.VERSION }}"
           Write-Host "Updating version to: $version"
           
-          # package.json 버전 업데이트 (더 안정적인 방법)
-          if (Test-Path "package.json") {
-            $content = Get-Content package.json -Raw
-            $content = $content -replace '"version"\s*:\s*"[^"]*"', "`"version`": `"$version`""
-            $content | Set-Content package.json -NoNewline
-            Write-Host "package.json version updated to $version"
-            # 확인
-            $pkgJson = Get-Content package.json -Raw | ConvertFrom-Json
-            Write-Host "Verified version: $($pkgJson.version)"
-          } else {
-            Write-Host "package.json not found"
-            exit 1
-          }
+          # package.json 버전 업데이트 (node.js 사용)
+          node -e "const fs = require('fs'); const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8')); pkg.version = '$version'; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n'); console.log('Updated version to:', pkg.version);"
+          
+          # 확인
+          $pkgJson = Get-Content package.json -Raw | ConvertFrom-Json
+          Write-Host "Verified package.json version: $($pkgJson.version)"
           
           # installer.nsi 버전 업데이트
           $installerNsiPath = Join-Path (Get-Location) "build" "installer.nsi"
