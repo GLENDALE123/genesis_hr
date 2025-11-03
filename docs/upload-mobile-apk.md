@@ -51,3 +51,13 @@ mobile-releases/{allPaths=**}
   allow read: if true  ← 공개 읽기 허용
 ```
 
+## CORS 설정 확인
+
+Firebase Storage CORS가 이미 설정되었습니다:
+
+```
+[{"maxAgeSeconds": 3600, "method": ["GET"], "origin": ["*"]}]
+```
+
+모든 출처에서 GET 요청 허용되어 웹 브라우저에서 정상 다운로드 가능합니다.
+
