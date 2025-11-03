@@ -3,6 +3,7 @@ import { ProductionSchedule } from '@/features/production/types';
 import * as ProductionScheduleService from '@/features/production/services/productionScheduleService';
 import { waitForFirebaseInit } from '@/shared/services/firebase/config';
 import { useProductionSchedulesStore } from '@/features/production/store/productionSchedulesStore';
+import { getLocalDateString } from '@/shared/utils/dateUtils';
 
 // 생산라인 정렬 순서 (HS-Jig과 동일)
 const productionLineSortOrder = [
@@ -60,7 +61,7 @@ export const useProductionSchedules = () => {
   useEffect(() => {
     if (!mounted) return;
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString(new Date());
     setCurrentDateRange({ startDate: today, endDate: today });
   }, [mounted]);
 

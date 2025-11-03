@@ -3,6 +3,7 @@ import { collection, query, where, getDocs, doc, setDoc, deleteDoc, writeBatch, 
 import { WorkSchedule, WorkType } from '../types';
 import { getMonthRange, getYearRange } from '../utils/scheduleUtils';
 import { UnifiedNotificationService } from '@/shared/services/notificationService';
+import { getLocalDateString } from '@/shared/utils/dateUtils';
 
 export class WorkScheduleService {
   /**
@@ -85,7 +86,7 @@ export class WorkScheduleService {
     // 근무계획 변경 알림 생성
     if (author && authorId) {
       try {
-        const today = new Date().toISOString().split('T')[0];
+        const today = getLocalDateString(new Date());
         const futureDates = Array.from(dates).filter(date => date >= today);
         
         if (futureDates.length > 0) {
@@ -128,7 +129,7 @@ export class WorkScheduleService {
       return 0;
     }
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString(new Date());
     let totalDeleted = 0;
     let hasMore = true;
 

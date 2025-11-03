@@ -12,6 +12,7 @@ import {
 } from '../services/jigMasterService';
 import { useJigMasterStore } from '../store/jigMasterStore';
 import { waitForFirebaseInit } from '@/shared/services/firebase/config';
+import { getLocalDateString } from '@/shared/utils/dateUtils';
 
 interface UseJigMasterReturn {
   masterItems: JigMasterItem[];
@@ -84,7 +85,7 @@ export const useJigMaster = (
     if (options.startDate && options.endDate) {
       setCurrentDateRange({ startDate: options.startDate, endDate: options.endDate });
     } else {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getLocalDateString(new Date());
       setCurrentDateRange({ startDate: today, endDate: today });
     }
   }, [mounted, options.startDate, options.endDate]);

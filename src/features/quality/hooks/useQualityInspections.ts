@@ -6,6 +6,7 @@ import {
   groupInspectionsByOrder
 } from '../services/qualityInspectionService';
 import { useQualityInspectionStore } from '../store/qualityInspectionStore';
+import { getLocalDateString } from '@/shared/utils/dateUtils';
 
 interface UseQualityInspectionsReturn {
   inspections: QualityInspection[];
@@ -76,7 +77,7 @@ export const useQualityInspections = (
   useEffect(() => {
     if (!mounted) return;
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString(new Date());
     setCurrentDateRange({ startDate: today, endDate: today });
   }, [mounted]);
 
