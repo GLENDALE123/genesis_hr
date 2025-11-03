@@ -123,27 +123,32 @@ jobs:
         run: |
           Write-Host "=== Google Cloud SDK 다운로드 및 설치 ==="
           
-          # Windows용 Cloud SDK 다운로드
-          $DOWNLOAD_URL = "https://dl.google.com/dl/cloudsdk/channels/rapid/GoogleCloudSDKInstaller.exe"
-          $INSTALLER_PATH = "$env:TEMP\GoogleCloudSDKInstaller.exe"
+          # ZIP 아카이브 직접 다운로드 및 압축 해제 (Installer 대신)
+          $ZIP_URL = "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-latest-windows-x86_64.zip"
+          $ZIP_PATH = "$env:TEMP\gcloud-sdk.zip"
+          $INSTALL_DIR = "$env:ProgramFiles\Google"
           
           Write-Host "다운로드 중..."
-          Invoke-WebRequest -Uri $DOWNLOAD_URL -OutFile $INSTALLER_PATH
+          Invoke-WebRequest -Uri $ZIP_URL -OutFile $ZIP_PATH
           
-          Write-Host "설치 중..."
-          # /S = 자동 설치, /NCRC = 체크섬 확인 건너뛰기
-          Start-Process -FilePath $INSTALLER_PATH -ArgumentList "/S /NCRC" -Wait -NoNewWindow
+          Write-Host "압축 해제 중..."
+          # Install 디렉토리 생성
+          New-Item -ItemType Directory -Force -Path $INSTALL_DIR | Out-Null
           
-          # PATH 확인 (기본 설치 경로)
-          $GCLOUD_PATH = "$env:ProgramFiles\Google\Cloud SDK\google-cloud-sdk\bin"
+          # ZIP 압축 해제
+          Expand-Archive -Path $ZIP_PATH -DestinationPath $INSTALL_DIR -Force
+          
+          # 설치 경로
+          $GCLOUD_PATH = "$INSTALL_DIR\google-cloud-sdk\bin"
           Write-Host "설치 경로: $GCLOUD_PATH"
           
-          # gsutil 직접 실행 (전체 경로 사용)
+          # 설치 확인
           if (Test-Path "$GCLOUD_PATH\gsutil.cmd") {
             Write-Host "gsutil 설치 확인됨"
             & "$GCLOUD_PATH\gsutil.cmd" --version
           } else {
             Write-Host "ERROR: gsutil을 찾을 수 없습니다"
+            Get-ChildItem $INSTALL_DIR -Recurse -ErrorAction SilentlyContinue | Select-Object -First 20 FullName
             exit 1
           }
           
