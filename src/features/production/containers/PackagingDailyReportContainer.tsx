@@ -49,7 +49,7 @@ import {
 import { PackagingReport, PackagingFormData, ShortageRequest } from '@/features/production/types';
 import { toast } from 'sonner';
 import { getFirebaseErrorMessage } from '@/shared/utils/firebaseErrorHandler';
-import { getUserDisplayName } from '@/shared/utils/userUtils';
+import { getUserDisplayName, isAdmin } from '@/shared/utils/userUtils';
 import {
   createShortageRequest,
   updateShortageRequest,
@@ -184,6 +184,13 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
   const confirmDelete = useCallback(async () => {
     if (!deleteConfirmState.reportId) return;
 
+    // Admin 권한 체크
+    if (!isAdmin(userProfile)) {
+      toast.error('삭제 권한이 없습니다. 관리자만 삭제할 수 있습니다.');
+      setDeleteConfirmState({ isOpen: false, reportId: null });
+      return;
+    }
+
     // 삭제할 보고서 정보 찾기
     const reportToDelete = reports.find(r => r.id === deleteConfirmState.reportId);
     
@@ -204,7 +211,7 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
       toast.error(errorInfo.message);
       setDeleteConfirmState({ isOpen: false, reportId: null });
     }
-  }, [deleteConfirmState.reportId, reports, deleteReport]);
+  }, [deleteConfirmState.reportId, reports, deleteReport, userProfile]);
 
   const cancelDelete = useCallback(() => {
     setDeleteConfirmState({ isOpen: false, reportId: null });
@@ -597,7 +604,7 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
             shortageRequestsMap={shortageRequestsMap}
             canManage={true}
             canUpdate={true}
-            canDelete={true}
+            canDelete={isAdmin(userProfile)}
           />
         </div>
       </div>

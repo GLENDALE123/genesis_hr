@@ -269,6 +269,13 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
   const confirmDelete = async () => {
     if (!itemToDelete) return;
     
+    // Admin 권한 체크
+    if (!isAdmin) {
+      toast.error('삭제 권한이 없습니다. 관리자만 삭제할 수 있습니다.');
+      setItemToDelete(null);
+      return;
+    }
+    
     try {
       await deleteSchedule(itemToDelete.id);
       toast.success('일정이 삭제되었습니다.');
@@ -281,6 +288,13 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
   // 날짜별 전체 삭제 확인 핸들러
   const confirmDeleteByDate = async () => {
     if (!dateToDelete) return;
+    
+    // Admin 권한 체크
+    if (!isAdmin) {
+      toast.error('삭제 권한이 없습니다. 관리자만 삭제할 수 있습니다.');
+      setDateToDelete(null);
+      return;
+    }
     
     try {
       await deleteSchedulesByDate(dateToDelete);

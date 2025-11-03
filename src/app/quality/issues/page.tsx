@@ -171,6 +171,13 @@ function QualityIssuesPageContent() {
   const handleDeleteIssue = async () => {
     if (!issueToDelete) return;
     
+    // Admin 권한 체크
+    if (!isAdmin) {
+      toast.error('삭제 권한이 없습니다. 관리자만 삭제할 수 있습니다.');
+      setIssueToDelete(null);
+      return;
+    }
+    
     try {
       await deleteQualityIssue(issueToDelete.id);
       toast.success('품질이슈가 성공적으로 삭제되었습니다.');

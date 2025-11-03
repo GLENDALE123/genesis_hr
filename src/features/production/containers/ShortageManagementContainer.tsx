@@ -16,7 +16,7 @@ import { ShortageRequest } from '@/features/production/types';
 import { useAuthStore } from '@/features/auth';
 import { toast } from 'sonner';
 import { getFirebaseErrorMessage } from '@/shared/utils/firebaseErrorHandler';
-import { getUserDisplayName } from '@/shared/utils/userUtils';
+import { getUserDisplayName, isAdmin } from '@/shared/utils/userUtils';
 import {
   updateShortageStatus,
   deleteShortageRequest
@@ -108,6 +108,13 @@ const ShortageManagementContainerComponent: React.FC = () => {
   const confirmDelete = useCallback(async () => {
     if (!deleteConfirmState.request) return;
 
+    // Admin 권한 체크
+    if (!isAdmin(userProfile)) {
+      toast.error('삭제 권한이 없습니다. 관리자만 삭제할 수 있습니다.');
+      setDeleteConfirmState({ isOpen: false, request: null });
+      return;
+    }
+
     try {
       await deleteShortageRequest(deleteConfirmState.request.id);
       
@@ -127,7 +134,7 @@ const ShortageManagementContainerComponent: React.FC = () => {
       toast.error(errorInfo.message);
       setDeleteConfirmState({ isOpen: false, request: null });
     }
-  }, [deleteConfirmState.request, selectedRequest, deleteCachedRequest]);
+  }, [deleteConfirmState.request, selectedRequest, deleteCachedRequest, userProfile]);
 
   const cancelDelete = useCallback(() => {
     setDeleteConfirmState({ isOpen: false, request: null });
@@ -168,7 +175,7 @@ const ShortageManagementContainerComponent: React.FC = () => {
             searchTerm={searchTerm}
             selectedRequest={selectedRequest}
             canManage={true}
-            canDelete={true}
+            canDelete={isAdmin(userProfile)}
             onStatusFilterChange={setStatusFilter}
             onSearchChange={setSearchTerm}
             onSelectRequest={(request) => {

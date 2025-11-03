@@ -6,7 +6,7 @@ import { JigMasterItem, CreateJigMasterItemData } from '../types';
 import { useJigMaster } from '../hooks/useJigMaster';
 import { useJigMasterFilters } from '../hooks/useJigMasterFilters';
 import { useUserRole } from '@/features/auth/hooks/useUserRole';
-import { getUserDisplayName } from '@/shared/utils/userUtils';
+import { getUserDisplayName, isAdmin } from '@/shared/utils/userUtils';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/shared/components/ui/alert';
@@ -85,13 +85,18 @@ export const JigMasterContainer: React.FC = () => {
   }, []);
 
   const handleDeleteJig = useCallback(async (id: string) => {
+    // Admin 권한 체크
+    if (!isAdmin(userProfile)) {
+      throw new Error('삭제 권한이 없습니다. 관리자만 삭제할 수 있습니다.');
+    }
+
     try {
       await deleteJigMasterItem(id);
     } catch (error) {
       console.error('지그 삭제 실패:', error);
       throw error;
     }
-  }, []);
+  }, [userProfile]);
 
   const handleCreateJig = useCallback(async (data: CreateJigMasterItemData, imageFiles: File[]) => {
     if (!user) throw new Error('User not authenticated');

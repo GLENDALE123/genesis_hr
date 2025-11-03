@@ -18,7 +18,7 @@ import { AnnouncementDetailModal } from '../components/AnnouncementDetailModal';
 import { Announcement, AnnouncementFormData, ViewMode } from '../types/announcement.types';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { UnifiedNotificationService } from '@/shared/services/notificationService';
-import { getUserDisplayName } from '@/shared/utils/userUtils';
+import { getUserDisplayName, isAdmin } from '@/shared/utils/userUtils';
 
 interface AnnouncementContainerProps {
   className?: string;
@@ -152,6 +152,13 @@ export const AnnouncementContainer: React.FC<AnnouncementContainerProps> = ({
 
   const handleConfirmDelete = async () => {
     if (!deletingAnnouncement) return;
+
+    // Admin 권한 체크
+    if (!isAdmin(userProfile)) {
+      toast.error('삭제 권한이 없습니다. 관리자만 삭제할 수 있습니다.');
+      setDeletingAnnouncement(null);
+      return;
+    }
 
     try {
       await AnnouncementService.deleteAnnouncement(deletingAnnouncement.id);
