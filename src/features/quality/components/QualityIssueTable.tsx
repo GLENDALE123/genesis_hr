@@ -65,7 +65,12 @@ const QualityIssueRow = React.memo<{
   onSelectIssue?: (issue: QualityIssue) => void;
   showShippingWaitColumns?: boolean;
 }) => {
-  const handleClick = useCallback(() => {
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    // 이벤트가 버튼이나 다른 클릭 가능한 요소에서 발생한 경우 무시
+    const target = e.target as HTMLElement;
+    if (target.closest('button, a, input, select, textarea')) {
+      return;
+    }
     onSelectIssue?.(issue);
   }, [issue, onSelectIssue]);
 
@@ -104,7 +109,7 @@ const QualityIssueRow = React.memo<{
 
   return (
     <TableRow 
-      className="xl:hover:bg-muted/50"
+      className="cursor-pointer xl:hover:bg-muted/50 transition-colors"
       onClick={handleClick}
     >
       {/* 작성일 */}

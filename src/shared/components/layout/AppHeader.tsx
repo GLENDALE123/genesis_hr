@@ -182,7 +182,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       style={{
         backgroundColor: 'hsl(var(--header-background))',
         color: 'hsl(var(--header-foreground))',
-      }}
+        WebkitAppRegion: 'no-drag', // Electron: 헤더는 드래그 불가능하도록 설정
+      } as React.CSSProperties}
     >
       <div className="container max-w-none flex h-12 items-center justify-between px-3">
         {/* Left Section */}

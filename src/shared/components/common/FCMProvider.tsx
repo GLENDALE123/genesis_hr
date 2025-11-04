@@ -55,7 +55,6 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
             uid: user.uid,
           })
         );
-        console.log('📱 모바일 앱에 uid 전송:', user.uid);
       } catch (error) {
         console.error('❌ 모바일 앱에 uid 전송 실패:', error);
       }

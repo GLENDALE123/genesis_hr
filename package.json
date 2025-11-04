@@ -149,7 +149,9 @@
       "allowElevation": true,
       "deleteAppDataOnUninstall": false,
       "runAfterFinish": true,
-      "artifactName": "TMS-Setup-${version}.${ext}"
+      "artifactName": "TMS-Setup-${version}.${ext}",
+      "installerIcon": "public/icon.ico",
+      "uninstallerIcon": "public/icon.ico"
     },
     "extraMetadata": {
       "main": "electron/main.js"

@@ -152,7 +152,12 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         )}
         
         {/* Right Area (Header + Main Content) */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <div 
+          className="flex-1 flex flex-col min-w-0 overflow-hidden"
+          style={{
+            WebkitAppRegion: 'no-drag', // Electron: 콘텐츠 영역은 드래그 불가능하도록 설정
+          } as React.CSSProperties}
+        >
           {/* Header */}
           <div className="flex-shrink-0">
             <AppHeader onMenuClick={handleMenuClick} />

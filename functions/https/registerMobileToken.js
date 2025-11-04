@@ -36,20 +36,22 @@ exports.registerMobileToken = onRequest(async (req, res) => {
     // Firebase 초기화
     const { db, FieldValue } = initializeFirebase();
 
-    // 토큰 정보 생성
-    const tokenData = {
-      uid,
-      platform,
-      token,
+    const normalizedPlatform = String(platform).toLowerCase();
+    
+    // 올바른 경로에 토큰 저장: users/{uid}/fcmTokens/{token}
+    // collectTokensForTargets가 이 경로에서 토큰을 찾기 때문
+    const tokenRef = db.collection('users').doc(String(uid)).collection('fcmTokens').doc(String(token));
+    await tokenRef.set({
+      token: String(token),
+      platform: normalizedPlatform,
+      enabled: true,
+      userAgent: req.get('User-Agent') || 'rn-app',
+      language: 'ko',
       deviceInfo: deviceInfo || {},
-      createdAt: FieldValue ? FieldValue.serverTimestamp() : new Date(),
       updatedAt: FieldValue ? FieldValue.serverTimestamp() : new Date(),
-      isActive: true
-    };
-
-    // Firestore에 토큰 저장
-    const tokenRef = db.collection('mobileTokens').doc(`${uid}_${platform}`);
-    await tokenRef.set(tokenData, { merge: true });
+      createdAt: FieldValue ? FieldValue.serverTimestamp() : new Date(),
+    }, { merge: true });
+    
     res.status(200).json({
       ok: true,
       message: 'Token registered successfully',

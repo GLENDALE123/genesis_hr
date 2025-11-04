@@ -5,7 +5,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Badge } from '@/shared/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
-import Link from 'next/link';
 import Image from 'next/image';
 import { ROUTE_ICONS } from '@/shared/constants/navigation';
 import { useGlobalStore } from '@/app/store';
@@ -163,46 +162,48 @@ const AppSidebarComponent = ({
     return map;
   }, [checkIsActive]);
 
-  // Link 클릭 핸들러 (사이드바 닫기/접기 로직만 처리, 네비게이션은 Link가 자동 처리)
+  // 클릭 핸들러 (router.push로 명시적 네비게이션)
   const handleLinkClick = React.useCallback((href: string, event: React.MouseEvent) => {
     const isTablet = !isMobile && !isDesktop;
+    
+    // 항상 기본 동작 방지하고 router.push로 명시적 네비게이션
+    event.preventDefault();
+    event.stopPropagation();
     
     // 같은 페이지 클릭 시 태블릿에서는 사이드바 접기만 실행
     if (pathname === href) {
       if (isTablet && !onMobileClose) {
-        event.preventDefault();
         updatePreferences({ sidebarCollapsed: true });
       }
       // 모바일에서 같은 페이지 클릭 시 사이드바만 닫기
       if (onMobileClose && isMobile) {
-        event.preventDefault();
         onMobileClose();
       }
       return;
     }
     
-    // 모바일: Sheet 내부에서 Link가 제대로 작동하지 않으므로 router.push로 명시적 네비게이션
+    // 모바일: 사이드바 먼저 닫기
     if (onMobileClose && isMobile) {
-      event.preventDefault();
-      event.stopPropagation();
-      // 사이드바 먼저 닫기
       onMobileClose();
-      // 네비게이션 시작 (약간의 지연을 주어 사이드바가 먼저 닫히도록)
       setTimeout(() => {
         router.push(href);
       }, 50);
     } else if (onMobileClose && !isMobile) {
-      // requestAnimationFrame을 사용하여 다음 프레임에 실행 (더 부드러움)
+      // 태블릿/데스크톱: 사이드바 닫기와 네비게이션 동시 처리
       requestAnimationFrame(() => {
         onMobileClose();
+        router.push(href);
       });
     } else if (isTablet) {
-      // 태블릿: 네비게이션 후 사이드바 접기 (애니메이션 고려)
+      // 태블릿: 네비게이션 후 사이드바 접기
+      router.push(href);
       setTimeout(() => {
         updatePreferences({ sidebarCollapsed: true });
       }, 100);
+    } else {
+      // 데스크톱: 네비게이션만 처리
+      router.push(href);
     }
-    // 데스크톱은 Link의 기본 네비게이션 사용
   }, [pathname, isMobile, isDesktop, onMobileClose, updatePreferences, router]);
 
   // 성능 최적화: 자식 메뉴 확인 함수 메모이제이션
@@ -225,12 +226,10 @@ const AppSidebarComponent = ({
     }
 
     const navItemContent = (
-      <Link
-        href={item.href}
+      <div
         onClick={(event) => handleLinkClick(item.href, event)}
-        prefetch={true}
         className={cn(
-          "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors",
+          "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors relative z-20",
           // 태블릿 최적화: 터치 영역 최소 44px 보장
           "min-h-[44px]",
           // 접힌 상태와 확장 상태에 따른 스타일 분기
@@ -243,6 +242,11 @@ const AppSidebarComponent = ({
             ? "bg-primary text-primary-foreground"
             : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
         )}
+        style={{
+          pointerEvents: 'auto',
+          WebkitAppRegion: 'no-drag',
+          cursor: 'pointer',
+        } as React.CSSProperties}
       >
         <div className={cn(
           "flex items-center min-w-0 overflow-hidden",
@@ -264,7 +268,7 @@ const AppSidebarComponent = ({
             </>
           )}
         </div>
-      </Link>
+      </div>
     );
 
     return (
@@ -300,7 +304,7 @@ const AppSidebarComponent = ({
     <TooltipProvider delayDuration={200}>
       <div 
         className={cn(
-          "flex h-full flex-col border-r transition-all duration-300 flex-shrink-0 overflow-x-hidden overflow-y-hidden",
+          "flex h-full flex-col border-r transition-all duration-300 flex-shrink-0 overflow-x-hidden overflow-y-hidden relative z-10",
           // 접힘 시 아이콘 폭 유지 (태블릿/데스크톱 동일 정책)
           isExpanded ? "w-56 md:w-52" : "w-16 md:w-16",
           className
@@ -308,7 +312,9 @@ const AppSidebarComponent = ({
         style={{
           backgroundColor: 'hsl(var(--sidebar-background))',
           color: 'hsl(var(--sidebar-foreground))',
-        }}
+          pointerEvents: 'auto',
+          WebkitAppRegion: 'no-drag', // Electron: 사이드바는 드래그 불가능하도록 설정
+        } as React.CSSProperties}
         onMouseEnter={() => isDesktop && collapsed && setIsHovered(true)}
         onMouseLeave={() => isDesktop && collapsed && setIsHovered(false)}
       >
@@ -366,39 +372,45 @@ const AppSidebarComponent = ({
       <div className="border-t p-3">
         <div className="space-y-2">
           {isExpanded && (
-            <Link
-              href="/settings"
+            <div
               onClick={(event) => handleLinkClick('/settings', event)}
-              prefetch={true}
               className={cn(
-                "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors text-left",
+                "flex items-center group cursor-pointer rounded-md text-sm font-medium transition-colors text-left relative z-20",
                 "min-h-[44px] px-2 py-2 md:px-2 md:py-2 w-full max-w-full overflow-hidden",
                 checkIsActive('/settings')
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
               )}
+              style={{
+                pointerEvents: 'auto',
+                WebkitAppRegion: 'no-drag',
+                cursor: 'pointer',
+              } as React.CSSProperties}
             >
               <Settings className="mr-2 h-5 w-5 md:h-4 md:w-4 flex-shrink-0" />
               <span className="truncate whitespace-nowrap">설정</span>
-            </Link>
+            </div>
           )}
           {!isExpanded && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Link
-                  href="/settings"
+                <div
                   onClick={(event) => handleLinkClick('/settings', event)}
-                  prefetch={true}
                   className={cn(
-                    "flex items-center justify-center cursor-pointer rounded-md text-sm font-medium transition-colors",
+                    "flex items-center justify-center cursor-pointer rounded-md text-sm font-medium transition-colors relative z-20",
                     "min-h-[44px] min-w-[44px] md:min-h-[40px] md:min-w-[40px]",
                     checkIsActive('/settings')
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                   )}
+                  style={{
+                    pointerEvents: 'auto',
+                    WebkitAppRegion: 'no-drag',
+                    cursor: 'pointer',
+                  } as React.CSSProperties}
                 >
                   <Settings className="h-5 w-5 md:h-4 md:w-4" />
-                </Link>
+                </div>
               </TooltipTrigger>
               <TooltipContent side="right" className="ml-2">
                 <p>설정</p>

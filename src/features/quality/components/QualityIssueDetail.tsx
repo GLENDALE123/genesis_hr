@@ -53,9 +53,8 @@ export const QualityIssueDetail: React.FC<QualityIssueDetailProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingQuantity, setProcessingQuantity] = useState('');
 
-  if (!issue) return null;
-
   const handleAddNewIssue = () => {
+    if (!issue) return;
     if (newIssue.trim() && onAddIssueItem) {
       onAddIssueItem(issue.id, newIssue.trim(), selectedStatus);
       setNewIssue('');
@@ -108,6 +107,7 @@ export const QualityIssueDetail: React.FC<QualityIssueDetailProps> = ({
   };
 
   const handleCopy = () => {
+    if (!issue) return;
     const text = `
 품질이슈 정보
 발주번호: ${issue.orderNumber}
@@ -135,35 +135,42 @@ ${issue.keywordPairs.map((pair, index) => `${index + 1}. ${pair.process} - ${pai
       <DialogContent 
         className="max-w-5xl max-h-[90vh] p-0"
         stickyHeader={
-          <div className="flex flex-col gap-2">
-            {/* 1열: 헤더 제목 */}
-            <div className="flex items-center gap-2 min-w-0">
-              <AlertCircle className="h-5 w-5 flex-shrink-0" />
-              <DialogTitle className="text-xl font-bold whitespace-nowrap overflow-hidden text-ellipsis min-w-0 flex-1">
-                {issue.productName} ({issue.partName})
-              </DialogTitle>
+          issue ? (
+            <div className="flex flex-col gap-2">
+              {/* 1열: 헤더 제목 */}
+              <div className="flex items-center gap-2 min-w-0">
+                <AlertCircle className="h-5 w-5 flex-shrink-0" />
+                <DialogTitle className="text-xl font-bold whitespace-nowrap overflow-hidden text-ellipsis min-w-0 flex-1">
+                  {issue.productName} ({issue.partName})
+                </DialogTitle>
+              </div>
+              {/* 2열: 부서, 키워드 뱃지 */}
+              <div className="flex gap-2 flex-wrap">
+                <Badge 
+                  variant="outline" 
+                  className={cn("text-xs whitespace-nowrap flex-shrink-0", DEPARTMENT_COLORS[issue.department as keyof typeof DEPARTMENT_COLORS] || 'bg-gray-100 dark:bg-gray-900/30 text-gray-800 dark:text-gray-200')}
+                >
+                  부서: {issue.department || '미지정'}
+                </Badge>
+                <Badge 
+                  variant="outline" 
+                  className="text-xs bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 whitespace-nowrap flex-shrink-0"
+                >
+                  키워드: {issue.registrationKeyword || '미지정'}
+                </Badge>
+              </div>
             </div>
-            {/* 2열: 부서, 키워드 뱃지 */}
-            <div className="flex gap-2 flex-wrap">
-              <Badge 
-                variant="outline" 
-                className={cn("text-xs whitespace-nowrap flex-shrink-0", DEPARTMENT_COLORS[issue.department as keyof typeof DEPARTMENT_COLORS] || 'bg-gray-100 dark:bg-gray-900/30 text-gray-800 dark:text-gray-200')}
-              >
-                부서: {issue.department || '미지정'}
-              </Badge>
-              <Badge 
-                variant="outline" 
-                className="text-xs bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 whitespace-nowrap flex-shrink-0"
-              >
-                키워드: {issue.registrationKeyword || '미지정'}
-              </Badge>
-            </div>
-          </div>
+          ) : (
+            <DialogHeader>
+              <DialogTitle>품질이슈 상세</DialogTitle>
+            </DialogHeader>
+          )
         }
         stickyFooter={
-          <div className="flex justify-between items-center">
-            {/* 출하대기 처리 완료 버튼 */}
-            {issue.registrationKeyword === '출하대기' && canManage && onUpdateProcessedQuantity && (
+          issue ? (
+            <div className="flex justify-between items-center">
+              {/* 출하대기 처리 완료 버튼 */}
+              {issue.registrationKeyword === '출하대기' && canManage && onUpdateProcessedQuantity && (
               <div className="flex items-center gap-2">
                 {isProcessing ? (
                   <div className="flex items-center gap-2 p-2 border rounded-lg bg-muted animate-in slide-in-from-top-2 duration-300">
@@ -231,11 +238,13 @@ ${issue.keywordPairs.map((pair, index) => `${index + 1}. ${pair.process} - ${pai
               )}
             </div>
           </div>
+          ) : null
         }
       >
-        <div className="space-y-6">
-          {/* 공정/불량 키워드 */}
-          {issue.keywordPairs && issue.keywordPairs.length > 0 && (
+        {issue ? (
+          <div className="space-y-6">
+            {/* 공정/불량 키워드 */}
+            {issue.keywordPairs && issue.keywordPairs.length > 0 && (
             <div>
               <h4 className="font-semibold text-md text-gray-800 dark:text-slate-200 mb-2">공정/불량 키워드:</h4>
               <div className="flex flex-wrap gap-2">
@@ -444,6 +453,11 @@ ${issue.keywordPairs.map((pair, index) => `${index + 1}. ${pair.process} - ${pai
             } / {formatDate(issue.createdAt)}
           </div>
         </div>
+        ) : (
+          <div className="p-6 text-center text-muted-foreground">
+            이슈 정보를 불러올 수 없습니다.
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

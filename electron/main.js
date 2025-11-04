@@ -79,9 +79,29 @@ function startStaticOutServer() {
       try {
         const url = new URL(req.url, 'http://127.0.0.1');
         let pathname = decodeURIComponent(url.pathname);
-        if (pathname === '/') pathname = '/index.html';
+        
+        // Next.js 정적 파일 경로 정규화: /_next/는 항상 루트에 있음
+        // /production/_next/ -> /_next/, /dashboard/_next/ -> /_next/ 등
+        if (pathname.includes('/_next/')) {
+          const nextIndex = pathname.indexOf('/_next/');
+          pathname = pathname.substring(nextIndex); // /_next/부터 시작
+        }
+        
+        // Windows 경로 구분자 처리: URL 경로를 파일 시스템 경로로 변환
+        pathname = pathname.replace(/\//g, path.sep);
+        // 선행 구분자 제거 (Windows 경로는 절대 경로가 아니므로)
+        if (pathname.startsWith(path.sep)) {
+          pathname = pathname.substring(1);
+        }
+        
+        if (pathname === '' || pathname === 'index.html') {
+          pathname = 'index.html';
+        }
         // 디렉토리 요청은 index.html 제공
-        if (pathname.endsWith('/')) pathname = pathname + 'index.html';
+        if (pathname.endsWith(path.sep)) {
+          pathname = pathname + 'index.html';
+        }
+        
         let filePath = path.join(outDir, pathname);
         if (!ensureInside(outDir, filePath)) {
           res.statusCode = 403;
@@ -101,25 +121,39 @@ function startStaticOutServer() {
             });
           };
 
-          if (!err) {
-            if (stat.isFile()) {
-              return serveFile(filePath);
-            }
-            if (stat.isDirectory()) {
-              const indexPath = path.join(filePath, 'index.html');
-              return serveFile(indexPath);
-            }
+          if (!err && stat.isFile()) {
+            // 파일이 존재하면 바로 서빙
+            return serveFile(filePath);
           }
 
-          // 파일이 아니고, 디렉토리인지 알 수 없을 때 디렉토리 인덱스 시도
-          const possibleDirIndex = path.join(filePath, 'index.html');
-          fs.stat(possibleDirIndex, (dirErr, dirStat) => {
-            if (!dirErr && dirStat.isFile()) {
-              return serveFile(possibleDirIndex);
+          if (!err && stat.isDirectory()) {
+            // 디렉토리인 경우 index.html 시도
+            const indexPath = path.join(filePath, 'index.html');
+            return serveFile(indexPath);
+          }
+
+          // 파일이 없는 경우
+          // 원본 URL pathname 사용 (Windows 경로 변환 전)
+          const originalPathname = decodeURIComponent(new URL(req.url, 'http://127.0.0.1').pathname);
+          const ext = path.extname(originalPathname).toLowerCase();
+          const isStaticResource = ['.js', '.css', '.json', '.png', '.jpg', '.jpeg', '.svg', '.ico', '.woff', '.woff2', '.ttf', '.eot', '.map'].includes(ext);
+          
+          if (isStaticResource || originalPathname.startsWith('/_next/')) {
+            // 정적 리소스나 _next 파일은 404 반환 (폴백 없음)
+            res.statusCode = 404;
+            res.end('Not Found');
+            return;
+          }
+
+          // HTML 파일이나 경로인 경우에만 index.html 폴백 (SPA 라우팅)
+          // 최종 폴백: 루트 index.html (SPA 라우팅)
+          const rootIndex = path.join(outDir, 'index.html');
+          fs.stat(rootIndex, (rootErr, rootStat) => {
+            if (!rootErr && rootStat.isFile()) {
+              return serveFile(rootIndex);
             }
-            // 최종 폴백: 루트 index.html (SPA 라우팅)
-            const rootIndex = path.join(outDir, 'index.html');
-            return serveFile(rootIndex);
+            res.statusCode = 404;
+            res.end('Not Found');
           });
         });
       } catch (e) {

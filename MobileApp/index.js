@@ -110,8 +110,9 @@ messaging().setBackgroundMessageHandler(async remoteMessage => {
     const data = remoteMessage?.data || {};
     const notification = remoteMessage?.notification || {};
     
-    // Data-only 메시지 처리 (베스트 프랙티스)
-    // notification 필드가 없으므로 data 필드에서 모든 정보 추출
+    // Notification + Data 메시지 처리 (하이브리드 전략)
+    // notification 필드가 있으면 시스템 알림이 자동으로 표시됨
+    // data 필드가 있으면 백그라운드 핸들러가 호출되어 notifee로 커스텀 알림도 추가 표시 가능
     const title = notification?.title || data?.title || '알림';
     const body = notification?.body || data?.body || '';
     const type = String(data?.type || '');
@@ -137,9 +138,13 @@ messaging().setBackgroundMessageHandler(async remoteMessage => {
     bigTextBody += body;
     
     console.log('📤 백그라운드 notifee 알림 표시 시도:', { title, body, channelId });
+    console.log('📤 notification 필드 존재:', !!notification);
+    console.log('📤 data 필드 존재:', !!data && Object.keys(data).length > 0);
     
-    // Data-only 메시지이므로 notifee로 커스텀 알림 표시
-    // 이렇게 하면 모든 상황(종료, 백그라운드, 포그라운드)에서 일관된 알림 표시 가능
+    // Notification + Data 필드가 모두 있으면:
+    // - 시스템 알림이 이미 표시되었을 수 있음
+    // - notifee로 커스텀 알림을 추가 표시하여 더 풍부한 정보 제공
+    // - 시스템 알림은 자동으로 사라지고 notifee 알림만 남게 됨
     const notificationId = await notifee.displayNotification({
       title: title,
       subtitle: subtitle || undefined,
