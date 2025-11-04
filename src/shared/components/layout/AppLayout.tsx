@@ -16,7 +16,7 @@ interface AppLayoutProps {
   noContentPadding?: boolean; // 모바일 풀스크린 페이지 등에서 본문 패딩 제거
 }
 
-export const AppLayout: React.FC<AppLayoutProps> = ({ 
+const AppLayoutComponent: React.FC<AppLayoutProps> = ({ 
   children, 
   className,
   noContentPadding = false
@@ -56,13 +56,13 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
     }
   }, [isMobile]);
   
-  const handleMenuClick = () => {
+  const handleMenuClick = React.useCallback(() => {
     if (isMobile) {
       setMobileSidebarOpen(true);
     } else {
       toggleSidebarCollapsed();
     }
-  };
+  }, [isMobile, toggleSidebarCollapsed]);
 
   // 마운트되지 않은 상태에서는 기본 레이아웃만 렌더링
   if (!mounted) {
@@ -192,3 +192,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
     </div>
   );
 };
+
+AppLayoutComponent.displayName = 'AppLayout';
+
+export const AppLayout = React.memo(AppLayoutComponent);

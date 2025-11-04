@@ -51,7 +51,7 @@ interface AppHeaderProps {
 }
 
 
-export const AppHeader: React.FC<AppHeaderProps> = ({ 
+const AppHeaderComponent: React.FC<AppHeaderProps> = ({ 
   className,
   onMenuClick 
 }) => {
@@ -387,3 +387,9 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
     </header>
   );
 };
+
+AppHeaderComponent.displayName = 'AppHeader';
+
+// AppHeader는 pathname과 searchParams 변경에 따라 리렌더링되어야 하므로
+// React.memo를 사용하지 않고 내부에서 최적화
+export const AppHeader = AppHeaderComponent;

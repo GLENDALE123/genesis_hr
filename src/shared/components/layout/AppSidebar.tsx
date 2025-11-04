@@ -426,4 +426,11 @@ const AppSidebarComponent = ({
 
 AppSidebarComponent.displayName = 'AppSidebar';
 
-export const AppSidebar = React.memo(AppSidebarComponent);
+// AppSidebar는 pathname 변경에 따라 리렌더링되어야 하므로
+// React.memo를 사용하되 pathname은 props가 아니므로 내부에서 처리
+export const AppSidebar = React.memo(AppSidebarComponent, (prevProps, nextProps) => {
+  // collapsed와 className, onMobileClose만 비교
+  return prevProps.collapsed === nextProps.collapsed &&
+         prevProps.className === nextProps.className &&
+         prevProps.onMobileClose === nextProps.onMobileClose;
+});

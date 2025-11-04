@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useSettings } from '@/features/settings/hooks/useSettings';
 
 // 폰트 크기 배율 매핑
@@ -17,17 +17,25 @@ const FONT_SIZE_SCALE = {
 
 export const useFontSize = () => {
   const { settings } = useSettings();
+  
+  // fontSize만 추출하여 불필요한 리렌더링 방지
+  const fontSize = React.useMemo(() => settings.appearance.fontSize, [settings.appearance.fontSize]);
+  const scale = React.useMemo(() => FONT_SIZE_SCALE[fontSize], [fontSize]);
 
   useEffect(() => {
     // CSS 변수 업데이트
     const root = document.documentElement;
-    const scale = FONT_SIZE_SCALE[settings.appearance.fontSize];
+    const currentScale = root.style.getPropertyValue('--font-size-scale');
+    const newScale = scale.toString();
     
-    root.style.setProperty('--font-size-scale', scale.toString());
-  }, [settings.appearance.fontSize]);
+    // 값이 실제로 변경된 경우에만 업데이트 (불필요한 DOM 조작 방지)
+    if (currentScale !== newScale) {
+      root.style.setProperty('--font-size-scale', newScale);
+    }
+  }, [scale]);
 
   return {
-    fontSize: settings.appearance.fontSize,
-    scale: FONT_SIZE_SCALE[settings.appearance.fontSize],
+    fontSize,
+    scale,
   };
 };

@@ -72,7 +72,16 @@ export const useSettings = (): UseSettingsReturn => {
     const unsubscribe = settingsService.subscribeToSettings(
       user.uid,
       (updatedSettings) => {
-        setSettings(updatedSettings);
+        // 설정이 실제로 변경된 경우에만 업데이트 (불필요한 리렌더링 방지)
+        setSettings(prevSettings => {
+          // JSON 비교로 실제 변경 여부 확인
+          const prevJson = JSON.stringify(prevSettings);
+          const newJson = JSON.stringify(updatedSettings);
+          if (prevJson === newJson) {
+            return prevSettings; // 동일하면 이전 객체 반환
+          }
+          return updatedSettings;
+        });
         setIsLoading(false);
       }
     );
