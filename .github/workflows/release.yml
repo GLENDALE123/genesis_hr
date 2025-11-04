@@ -123,10 +123,11 @@ jobs:
         run: |
           # 서비스 계정 키 파일 생성
           $CREDENTIALS_PATH = "${{ github.workspace }}\firebase-service-account.json"
-          $JSON_CONTENT = "${{ secrets.FIREBASE_SERVICE_ACCOUNT_HS_JIG_B2093 }}"
           
-          # UTF-8 인코딩으로 JSON 파일 저장 (BOM 없이)
-          [System.IO.File]::WriteAllText($CREDENTIALS_PATH, $JSON_CONTENT, [System.Text.Encoding]::UTF8)
+          # GitHub Secrets에서 JSON을 직접 파일로 저장 (변수 할당 없이)
+          # PowerShell의 따옴표 이스케이프 문제를 피하기 위해 환경 변수를 통해 전달
+          # UTF-8 인코딩으로 저장 (BOM 없이)
+          [System.IO.File]::WriteAllText($CREDENTIALS_PATH, $env:FIREBASE_SERVICE_ACCOUNT_KEY, [System.Text.Encoding]::UTF8)
           
           Write-Host "서비스 계정 키 파일 생성됨: $CREDENTIALS_PATH"
           
@@ -134,9 +135,17 @@ jobs:
           if (Test-Path $CREDENTIALS_PATH) {
             Write-Host "서비스 계정 키 파일 확인 완료"
             
+            # 파일 크기 확인
+            $fileSize = (Get-Item $CREDENTIALS_PATH).Length
+            Write-Host "파일 크기: $fileSize bytes"
+            
             # JSON 유효성 검사 (첫 100자만 출력)
-            $firstLine = (Get-Content $CREDENTIALS_PATH -TotalCount 1)
-            Write-Host "JSON 파일 첫 줄 (처음 100자): $($firstLine.Substring(0, [Math]::Min(100, $firstLine.Length)))"
+            $content = Get-Content $CREDENTIALS_PATH -Raw
+            if ($content.Length -gt 100) {
+              Write-Host "JSON 파일 시작 부분 (처음 100자): $($content.Substring(0, 100))"
+            } else {
+              Write-Host "JSON 파일 내용: $content"
+            }
           } else {
             Write-Host "ERROR: 서비스 계정 키 파일을 찾을 수 없습니다"
             exit 1
@@ -145,6 +154,8 @@ jobs:
           # 환경 변수 설정
           echo "GOOGLE_APPLICATION_CREDENTIALS=$CREDENTIALS_PATH" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           Write-Host "GOOGLE_APPLICATION_CREDENTIALS 환경 변수 설정 완료"
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HS_JIG_B2093 }}
           
       - name: Install Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
