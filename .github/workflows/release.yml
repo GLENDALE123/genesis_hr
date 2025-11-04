@@ -119,35 +119,18 @@ jobs:
           Write-Host "`n=== 메타데이터 파일 ==="
           Get-ChildItem dist -Include "*.yml","*.blockmap" | ForEach-Object { Write-Host $_.FullName }
           
-      - name: Setup Python (for gsutil)
-        uses: actions/setup-python@v5
+      - name: Install Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
         with:
-          python-version: '3.11'
+          service_account_key: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HS_JIG_B2093 }}
+          project_id: hs-jig-b2093
+          install_components: gsutil
           
-      - name: Install gsutil
+      - name: Authenticate with Google Cloud
         run: |
-          Write-Host "=== gsutil 설치 ==="
-          python -m pip install --upgrade pip
-          python -m pip install gsutil
-          
-          Write-Host "gsutil 버전 확인"
+          Write-Host "=== Google Cloud 인증 확인 ==="
+          gcloud auth list
           gsutil --version
-          
-      - name: Setup Service Account Credentials
-        run: |
-          # 서비스 계정 키 파일 생성
-          $CREDENTIALS_PATH = "${{ github.workspace }}\firebase-service-account.json"
-          echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT_HS_JIG_B2093 }}" | Out-File -FilePath $CREDENTIALS_PATH -Encoding utf8
-          
-          # 환경 변수 설정 (절대 경로 사용)
-          Write-Host "서비스 계정 키 파일 생성됨: $CREDENTIALS_PATH"
-          echo "GOOGLE_APPLICATION_CREDENTIALS=$CREDENTIALS_PATH" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          
-          # 확인
-          Write-Host "GOOGLE_APPLICATION_CREDENTIALS 환경 변수 설정됨"
-          Get-Content $env:GITHUB_ENV | Select-String "GOOGLE_APPLICATION_CREDENTIALS"
-        env:
-          FIREBASE_SERVICE_ACCOUNT_HS_JIG_B2093: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HS_JIG_B2093 }}
           
       - name: Create latest.json
         shell: bash
@@ -174,25 +157,13 @@ jobs:
           # 설치 파일은 항상 같은 이름으로 업로드 (덮어쓰기)
           
           $BUCKET = "hs-jig-b2093.firebasestorage.app"
-          $CREDENTIALS_PATH = "${{ github.workspace }}\firebase-service-account.json"
           
           Write-Host "=== Firebase Storage 업로드 시작 ==="
-          Write-Host "서비스 계정 키 파일 경로: $CREDENTIALS_PATH"
-          
-          # 서비스 계정 키 파일 확인
-          if (Test-Path $CREDENTIALS_PATH) {
-            Write-Host "서비스 계정 키 파일 존재 확인됨"
-          } else {
-            Write-Host "ERROR: 서비스 계정 키 파일을 찾을 수 없습니다: $CREDENTIALS_PATH"
-            exit 1
-          }
-          
-          # gsutil 인증 옵션 설정
-          $GSUTIL_OPTS = "-o Credentials:gs_service_key_file=$CREDENTIALS_PATH"
+          Write-Host "버킷: $BUCKET"
           
           # latest.json 업로드
           Write-Host "업로드 중: latest.json"
-          gsutil $GSUTIL_OPTS cp latest.json "gs://$BUCKET/electron-releases/latest.json"
+          gsutil cp latest.json "gs://$BUCKET/electron-releases/latest.json"
           if ($LASTEXITCODE -ne 0) {
             Write-Host "latest.json 업로드 실패"
             exit 1
@@ -202,7 +173,7 @@ jobs:
           $INSTALLER_FILE = (Get-ChildItem dist -Filter "TMS-Setup-*.exe" | Select-Object -First 1).FullName
           if ($INSTALLER_FILE) {
             Write-Host "업로드 중: TMS-Setup-latest.exe"
-            gsutil $GSUTIL_OPTS cp "$INSTALLER_FILE" "gs://$BUCKET/electron-releases/TMS-Setup-latest.exe"
+            gsutil cp "$INSTALLER_FILE" "gs://$BUCKET/electron-releases/TMS-Setup-latest.exe"
             if ($LASTEXITCODE -ne 0) {
               Write-Host "설치 파일 업로드 실패"
               exit 1
@@ -213,7 +184,7 @@ jobs:
           $PORTABLE_FILE = (Get-ChildItem dist -Filter "*Integrated-Management*.exe" | Select-Object -First 1).FullName
           if ($PORTABLE_FILE) {
             Write-Host "업로드 중: TMS-Integrated-Management-latest.exe"
-            gsutil $GSUTIL_OPTS cp "$PORTABLE_FILE" "gs://$BUCKET/electron-releases/TMS-Integrated-Management-latest.exe"
+            gsutil cp "$PORTABLE_FILE" "gs://$BUCKET/electron-releases/TMS-Integrated-Management-latest.exe"
             if ($LASTEXITCODE -ne 0) {
               Write-Host "portable 파일 업로드 실패"
               exit 1
@@ -224,7 +195,7 @@ jobs:
           $LATEST_YML = (Get-ChildItem dist -Filter "*.yml" | Select-Object -First 1).FullName
           if ($LATEST_YML) {
             Write-Host "업로드 중: latest.yml"
-            gsutil $GSUTIL_OPTS cp "$LATEST_YML" "gs://$BUCKET/electron-releases/latest.yml"
+            gsutil cp "$LATEST_YML" "gs://$BUCKET/electron-releases/latest.yml"
             if ($LASTEXITCODE -ne 0) {
               Write-Host "latest.yml 업로드 실패"
               exit 1
@@ -234,7 +205,7 @@ jobs:
           # blockmap 파일 업로드
           Get-ChildItem dist -Filter "*.blockmap" | ForEach-Object {
             Write-Host "업로드 중: $($_.Name)"
-            gsutil $GSUTIL_OPTS cp $_.FullName "gs://$BUCKET/electron-releases/$($_.Name)"
+            gsutil cp $_.FullName "gs://$BUCKET/electron-releases/$($_.Name)"
             if ($LASTEXITCODE -ne 0) {
               Write-Host "$($_.Name) 업로드 실패"
               exit 1
