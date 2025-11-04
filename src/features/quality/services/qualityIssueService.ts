@@ -11,13 +11,27 @@ import {
   onSnapshot,
   arrayUnion
 } from 'firebase/firestore';
-import { db } from '@/shared/services/firebase/config';
+import { db, auth } from '@/shared/services/firebase/config';
 import { QualityIssue, QualityIssueFormData, isIssueItem } from '../types';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
 import { QualityIssueNotificationService } from '@/shared/services/notificationService';
 import { updateAutocompleteData } from './autocompleteService';
 
 const COLLECTION_NAME = 'quality-issues';
+
+/**
+ * 객체에서 undefined 값을 제거하는 헬퍼 함수
+ * Firestore는 undefined 값을 허용하지 않으므로 저장 전에 제거해야 함
+ */
+const removeUndefinedValues = <T extends Record<string, any>>(obj: T): Partial<T> => {
+  const cleaned: any = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      cleaned[key] = value;
+    }
+  }
+  return cleaned;
+};
 
 /**
  * Firestore에서 가져온 createdAt 값을 ISO 문자열로 변환
@@ -120,8 +134,10 @@ export const createQualityIssue = async (
       processedQuantity: 0, // 초기 처리 수량은 0
     };
 
+    // undefined 값 제거 (Firestore는 undefined를 허용하지 않음)
+    const cleanedData = removeUndefinedValues(qualityIssueData);
 
-    const docRef = await addDoc(getCollectionRef(), qualityIssueData);
+    const docRef = await addDoc(getCollectionRef(), cleanedData);
 
     // 출하대기 타입이 있으면 autocomplete 데이터 업데이트
     if (formData.shippingWaitType) {
@@ -143,15 +159,30 @@ export const createQualityIssue = async (
         ? String((firstIssue as any).status)
         : String(qualityIssueData.status || 'in-progress');
 
+      // FirebaseAuth를 먼저 사용하여 사용자 정보 가져오기
+      let senderName = '사용자';
+      let senderAvatar: string | undefined = undefined;
+      
+      if (auth?.currentUser) {
+        senderName = auth.currentUser.displayName || 
+                     auth.currentUser.email?.split('@')[0] || 
+                     getUserDisplayName(user, userProfile) || 
+                     '사용자';
+        senderAvatar = auth.currentUser.photoURL || (user as any).photoURL || undefined;
+      } else {
+        senderName = getUserDisplayName(user, userProfile);
+        senderAvatar = (user as any).photoURL || undefined;
+      }
+
       await QualityIssueNotificationService.sendQualityIssueNotification(
         qualityIssueData.productName,
         qualityIssueData.partName,
         description,
         status,
-        getUserDisplayName(user, userProfile),
+        senderName,
         user.uid,
         docRef.id,
-        (user as any).photoURL || undefined
+        senderAvatar
       );
     } catch (error) {
       console.error('알림 발송 실패:', error);
@@ -172,10 +203,12 @@ export const updateQualityIssue = async (
 ): Promise<void> => {
   try {
     const docRef = getDocRef(docId);
-    await updateDoc(docRef, {
+    // undefined 값 제거 (Firestore는 undefined를 허용하지 않음)
+    const cleanedData = removeUndefinedValues({
       ...updateData,
       updatedAt: new Date().toISOString(),
     });
+    await updateDoc(docRef, cleanedData);
   } catch (error) {
     throw error;
   }
@@ -361,16 +394,31 @@ export const addIssueItem = async (
             ? (typeof lastIssue === 'string' ? lastIssue : (lastIssue && lastIssue.content) || '')
             : '';
 
+          // FirebaseAuth를 먼저 사용하여 사용자 정보 가져오기
+          let senderName = '사용자';
+          let senderAvatar: string | undefined = undefined;
+          
+          if (auth?.currentUser) {
+            senderName = auth.currentUser.displayName || 
+                         auth.currentUser.email?.split('@')[0] || 
+                         getUserDisplayName(null, currentUser) || 
+                         '사용자';
+            senderAvatar = auth.currentUser.photoURL || (currentUser as any).photoURL || undefined;
+          } else {
+            senderName = getUserDisplayName(null, currentUser);
+            senderAvatar = (currentUser as any).photoURL || undefined;
+          }
+
           await QualityIssueNotificationService.sendQualityIssueStatusChangeNotification(
             issueData.status,
             newStatus || '해결완료',
             description,
             (issueData as any).productName || '',
             (issueData as any).partName || '',
-            getUserDisplayName(null, currentUser),
+            senderName,
             currentUser.uid,
             issueId,
-            (currentUser as any).photoURL || undefined
+            senderAvatar
           );
         }
       } catch (error) {
