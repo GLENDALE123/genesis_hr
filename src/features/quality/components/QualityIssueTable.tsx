@@ -211,6 +211,11 @@ const QualityIssueRow = React.memo<{
 
 QualityIssueRow.displayName = 'QualityIssueRow';
 
+// 커스텀 비교 함수 추가 - 프로덕션 빌드에서 props 비교 안정성 확보
+QualityIssueRow.defaultProps = {
+  showShippingWaitColumns: false,
+};
+
 export const QualityIssueTable: React.FC<QualityIssueTableProps> = ({
   issues,
   isLoading,

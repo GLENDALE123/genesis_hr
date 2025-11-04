@@ -139,110 +139,125 @@ ${issue.keywordPairs.map((pair, index) => `${index + 1}. ${pair.process} - ${pai
       <DialogContent 
         className="max-w-5xl max-h-[90vh] p-0"
         stickyHeader={
-          issue ? (
-            <div className="flex flex-col gap-2">
-              {/* 1열: 헤더 제목 */}
-              <div className="flex items-center gap-2 min-w-0">
-                <AlertCircle className="h-5 w-5 flex-shrink-0" />
-                <DialogTitle className="text-xl font-bold whitespace-nowrap overflow-hidden text-ellipsis min-w-0 flex-1">
-                  {issue.productName} ({issue.partName})
-                </DialogTitle>
-              </div>
-              {/* 2열: 부서, 키워드 뱃지 */}
-              <div className="flex gap-2 flex-wrap">
-                <Badge 
-                  variant="outline" 
-                  className={cn("text-xs whitespace-nowrap flex-shrink-0", DEPARTMENT_COLORS[issue.department as keyof typeof DEPARTMENT_COLORS] || 'bg-gray-100 dark:bg-gray-900/30 text-gray-800 dark:text-gray-200')}
-                >
-                  부서: {issue.department || '미지정'}
-                </Badge>
-                <Badge 
-                  variant="outline" 
-                  className="text-xs bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 whitespace-nowrap flex-shrink-0"
-                >
-                  키워드: {issue.registrationKeyword || '미지정'}
-                </Badge>
-              </div>
-            </div>
-          ) : (
-            <DialogHeader>
-              <DialogTitle>품질이슈 상세</DialogTitle>
-            </DialogHeader>
-          )
+          <div className="flex flex-col gap-2">
+            {issue ? (
+              <>
+                {/* 1열: 헤더 제목 */}
+                <div className="flex items-center gap-2 min-w-0">
+                  <AlertCircle className="h-5 w-5 flex-shrink-0" />
+                  <DialogTitle className="text-xl font-bold whitespace-nowrap overflow-hidden text-ellipsis min-w-0 flex-1">
+                    {issue.productName} ({issue.partName})
+                  </DialogTitle>
+                </div>
+                {/* 2열: 부서, 키워드 뱃지 */}
+                <div className="flex gap-2 flex-wrap">
+                  <Badge 
+                    variant="outline" 
+                    className={cn("text-xs whitespace-nowrap flex-shrink-0", DEPARTMENT_COLORS[issue.department as keyof typeof DEPARTMENT_COLORS] || 'bg-gray-100 dark:bg-gray-900/30 text-gray-800 dark:text-gray-200')}
+                  >
+                    부서: {issue.department || '미지정'}
+                  </Badge>
+                  <Badge 
+                    variant="outline" 
+                    className="text-xs bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 whitespace-nowrap flex-shrink-0"
+                  >
+                    키워드: {issue.registrationKeyword || '미지정'}
+                  </Badge>
+                </div>
+              </>
+            ) : (
+              <DialogHeader>
+                <DialogTitle>품질이슈 상세</DialogTitle>
+              </DialogHeader>
+            )}
+          </div>
         }
         stickyFooter={
-          issue ? (
-            <div className="flex justify-between items-center">
-              {/* 출하대기 처리 완료 버튼 */}
-              {issue.registrationKeyword === '출하대기' && canManage && onUpdateProcessedQuantity && (
-              <div className="flex items-center gap-2">
-                {isProcessing ? (
-                  <div className="flex items-center gap-2 p-2 border rounded-lg bg-muted animate-in slide-in-from-top-2 duration-300">
-                    <Input 
-                      type="number" 
-                      value={processingQuantity}
-                      onChange={e => setProcessingQuantity(e.target.value)}
-                      placeholder="처리 완료 수량"
-                      min="1"
-                      max={issue.shippingWaitQuantity ? issue.shippingWaitQuantity - (issue.processedQuantity || 0) : undefined}
-                      className="w-28"
-                      autoFocus
-                    />
-                    <Button onClick={handleConfirmProcessing} size="sm" className="bg-green-500 hover:bg-green-600">
-                      확인
-                    </Button>
-                    <Button onClick={handleCancelProcessing} variant="outline" size="sm">
-                      취소
-                    </Button>
+          <div className="flex justify-between items-center">
+            {issue ? (
+              <>
+                {/* 출하대기 처리 완료 버튼 */}
+                {issue.registrationKeyword === '출하대기' && canManage && onUpdateProcessedQuantity && (
+                  <div className="flex items-center gap-2">
+                    {isProcessing ? (
+                      <div className="flex items-center gap-2 p-2 border rounded-lg bg-muted animate-in slide-in-from-top-2 duration-300">
+                        <Input 
+                          type="number" 
+                          value={processingQuantity}
+                          onChange={e => setProcessingQuantity(e.target.value)}
+                          placeholder="처리 완료 수량"
+                          min="1"
+                          max={issue.shippingWaitQuantity ? issue.shippingWaitQuantity - (issue.processedQuantity || 0) : undefined}
+                          className="w-28"
+                          autoFocus
+                        />
+                        <Button onClick={handleConfirmProcessing} size="sm" className="bg-green-500 hover:bg-green-600">
+                          확인
+                        </Button>
+                        <Button onClick={handleCancelProcessing} variant="outline" size="sm">
+                          취소
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button 
+                        onClick={() => setIsProcessing(true)} 
+                        className="bg-blue-500 hover:bg-blue-600"
+                        disabled={
+                          issue.status === '해결완료' || 
+                          (issue.shippingWaitQuantity != null && issue.processedQuantity != null && issue.processedQuantity >= issue.shippingWaitQuantity)
+                        }
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        처리수량입력
+                      </Button>
+                    )}
                   </div>
-                ) : (
-                  <Button 
-                    onClick={() => setIsProcessing(true)} 
-                    className="bg-blue-500 hover:bg-blue-600"
-                    disabled={
-                      issue.status === '해결완료' || 
-                      (issue.shippingWaitQuantity != null && issue.processedQuantity != null && issue.processedQuantity >= issue.shippingWaitQuantity)
-                    }
-                  >
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    처리수량입력
-                  </Button>
                 )}
-              </div>
-            )}
-            
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={handleCopy}
-                className="flex items-center gap-2"
-              >
-                <Copy className="h-4 w-4" />
-                복사
-              </Button>
-              {canDelete && onDelete && (
-                <Button
-                  variant="destructive"
-                  onClick={() => onDelete(issue)}
-                  className="flex items-center gap-2"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  삭제
-                </Button>
-              )}
-              {canEdit && onEdit && (
+                
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={handleCopy}
+                    className="flex items-center gap-2"
+                    disabled={!issue}
+                  >
+                    <Copy className="h-4 w-4" />
+                    복사
+                  </Button>
+                  {canDelete && onDelete && issue && (
+                    <Button
+                      variant="destructive"
+                      onClick={() => onDelete(issue)}
+                      className="flex items-center gap-2"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      삭제
+                    </Button>
+                  )}
+                  {canEdit && onEdit && issue && (
+                    <Button
+                      variant="outline"
+                      onClick={() => onEdit(issue)}
+                      className="flex items-center gap-2"
+                    >
+                      <Edit className="h-4 w-4" />
+                      수정
+                    </Button>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  onClick={() => onEdit(issue)}
+                  onClick={onClose}
                   className="flex items-center gap-2"
                 >
-                  <Edit className="h-4 w-4" />
-                  수정
+                  닫기
                 </Button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
-          ) : null
         }
       >
         {issue ? (
