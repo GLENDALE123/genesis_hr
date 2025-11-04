@@ -71,6 +71,10 @@ export const QualityIssueDetail: React.FC<QualityIssueDetailProps> = ({
       return;
     }
 
+    if (!issue) {
+      return;
+    }
+
     if (issue.shippingWaitQuantity && quantity > (issue.shippingWaitQuantity - (issue.processedQuantity || 0))) {
       return;
     }
