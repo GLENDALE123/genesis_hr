@@ -119,17 +119,49 @@ jobs:
           Write-Host "`n=== 메타데이터 파일 ==="
           Get-ChildItem dist -Include "*.yml","*.blockmap" | ForEach-Object { Write-Host $_.FullName }
           
+      - name: Setup Service Account Credentials
+        run: |
+          # 서비스 계정 키 파일 생성
+          $CREDENTIALS_PATH = "${{ github.workspace }}\firebase-service-account.json"
+          echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT_HS_JIG_B2093 }}" | Out-File -FilePath $CREDENTIALS_PATH -Encoding utf8 -NoNewline
+          
+          Write-Host "서비스 계정 키 파일 생성됨: $CREDENTIALS_PATH"
+          
+          # 파일 존재 확인
+          if (Test-Path $CREDENTIALS_PATH) {
+            Write-Host "서비스 계정 키 파일 확인 완료"
+          } else {
+            Write-Host "ERROR: 서비스 계정 키 파일을 찾을 수 없습니다"
+            exit 1
+          }
+          
+          # 환경 변수 설정
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$CREDENTIALS_PATH" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "GOOGLE_APPLICATION_CREDENTIALS 환경 변수 설정 완료"
+          
       - name: Install Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
         with:
           service_account_key: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HS_JIG_B2093 }}
           project_id: hs-jig-b2093
-          install_components: gsutil
+          export_default_credentials: true
           
       - name: Authenticate with Google Cloud
         run: |
           Write-Host "=== Google Cloud 인증 확인 ==="
+          $CREDENTIALS_PATH = "${{ github.workspace }}\firebase-service-account.json"
+          
+          # gcloud 인증 설정
+          gcloud auth activate-service-account --key-file="$CREDENTIALS_PATH"
+          
+          # 인증 확인
+          Write-Host "인증된 계정:"
           gcloud auth list
+          
+          # 프로젝트 설정
+          gcloud config set project hs-jig-b2093
+          
+          # gsutil 버전 확인
           gsutil --version
           
       - name: Create latest.json
