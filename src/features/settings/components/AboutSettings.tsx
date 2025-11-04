@@ -12,14 +12,13 @@ import { Badge } from '@/shared/components/ui/badge';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { logout } from '@/shared/services/firebase';
 import { useRouter } from 'next/navigation';
-import { Info, LogOut, Package, Calendar, Users, ExternalLink, Download } from 'lucide-react';
+import { Info, LogOut, Package, Calendar, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { useFirebaseRelease } from '@/shared/hooks/useFirebaseRelease';
 import { useFirebaseMobileRelease } from '@/shared/hooks/useFirebaseMobileRelease';
 import { WindowsIcon } from '@/shared/components/icons/WindowsIcon';
 import { AndroidIcon } from '@/shared/components/icons/AndroidIcon';
 import { isElectron, isMobileApp } from '@/shared/utils/platform';
-import { useDeviceType } from '@/shared/hooks/use-device';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,13 +39,10 @@ export const AboutSettings: React.FC = () => {
   // 플랫폼 감지
   const isElectronEnv = isElectron();
   const isMobileAppEnv = isMobileApp();
-  const { isTablet, isSmartphone, width } = useDeviceType();
   
-  // 웹 브라우저 데스크톱 환경에서만 표시 (모바일/태블릿 제외)
-  const shouldShowDesktopApp = !isElectronEnv && !isMobileAppEnv && width >= 1440;
-  
-  // 모바일 브라우저 환경에서만 표시
-  const shouldShowMobileApp = !isElectronEnv && !isMobileAppEnv && width > 0 && width < 1440;
+  // 환경에 상관없이 모든 다운로드 옵션 표시
+  const shouldShowDesktopApp = !isElectronEnv && !isMobileAppEnv;
+  const shouldShowMobileApp = !isElectronEnv && !isMobileAppEnv;
   
   // Firebase Storage 릴리스 정보
   const { latestRelease, installerAsset, isLoading: releaseLoading } = useFirebaseRelease();
@@ -191,7 +187,7 @@ export const AboutSettings: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* 데스크탑용 앱 다운로드 (웹 브라우저 데스크톱 환경에서만 표시) */}
+      {/* 데스크탑용 앱 다운로드 */}
       {shouldShowDesktopApp && (
         <Card>
           <CardHeader>
@@ -242,7 +238,7 @@ export const AboutSettings: React.FC = () => {
         </Card>
       )}
 
-      {/* 모바일용 앱 다운로드 (웹 브라우저 모바일 환경에서만 표시) */}
+      {/* 모바일용 앱 다운로드 */}
       {shouldShowMobileApp && (
         <Card>
           <CardHeader>

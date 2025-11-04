@@ -1,4 +1,4 @@
-import { db } from '@/shared/services/firebase/config';
+import { db, auth } from '@/shared/services/firebase/config';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '@/shared/services/firebase/config';
@@ -302,6 +302,21 @@ export class UnifiedNotificationService {
     requesterUid: string,
     requesterAvatar?: string
   ): Promise<void> {
+    // FirebaseAuth를 먼저 사용하여 사용자 정보 가져오기
+    let senderName = '사용자';
+    let senderAvatar: string | undefined = undefined;
+    
+    if (auth?.currentUser && auth.currentUser.uid === requesterUid) {
+      senderName = auth.currentUser.displayName || 
+                   auth.currentUser.email?.split('@')[0] || 
+                   requester || 
+                   '사용자';
+      senderAvatar = auth.currentUser.photoURL || requesterAvatar || undefined;
+    } else if (requester) {
+      senderName = requester;
+      senderAvatar = requesterAvatar || undefined;
+    }
+
     await UnifiedNotificationService.sendNotification({
       type: NotificationType.PRODUCTION_REQUEST,
       title: '생산관리부 요청사항',
@@ -309,9 +324,9 @@ export class UnifiedNotificationService {
       requestId,
       subtitle: content,
       centerInfo: '물류이동 요청',
-      senderName: requester,
+      senderName,
       senderUid: requesterUid,
-      senderAvatar: requesterAvatar,
+      senderAvatar,
       priority: NotificationPriority.NORMAL
     }, requesterUid);
   }
@@ -327,6 +342,21 @@ export class UnifiedNotificationService {
     requester: string,
     requesterAvatar?: string
   ): Promise<void> {
+    // FirebaseAuth를 먼저 사용하여 사용자 정보 가져오기
+    let senderName = '사용자';
+    let senderAvatar: string | undefined = undefined;
+    
+    if (auth?.currentUser && auth.currentUser.uid === requesterUid) {
+      senderName = auth.currentUser.displayName || 
+                   auth.currentUser.email?.split('@')[0] || 
+                   requester || 
+                   '사용자';
+      senderAvatar = auth.currentUser.photoURL || requesterAvatar || undefined;
+    } else if (requester) {
+      senderName = requester;
+      senderAvatar = requesterAvatar || undefined;
+    }
+
     await UnifiedNotificationService.sendNotification({
       type: NotificationType.SHORTAGE_REQUEST,
       title: '부족분 신청',
@@ -334,9 +364,9 @@ export class UnifiedNotificationService {
       requestId,
       subtitle: productName,
       centerInfo: '부족분 신청',
-      senderName: requester,
+      senderName,
       senderUid: requesterUid,
-      senderAvatar: requesterAvatar,
+      senderAvatar,
       priority: NotificationPriority.NORMAL
     }, requesterUid);
   }
@@ -354,6 +384,21 @@ export class UnifiedNotificationService {
     requesterUid: string,
     requesterAvatar?: string
   ): Promise<void> {
+    // FirebaseAuth를 먼저 사용하여 사용자 정보 가져오기
+    let senderName = '사용자';
+    let senderAvatar: string | undefined = undefined;
+    
+    if (auth?.currentUser && auth.currentUser.uid === requesterUid) {
+      senderName = auth.currentUser.displayName || 
+                   auth.currentUser.email?.split('@')[0] || 
+                   requester || 
+                   '사용자';
+      senderAvatar = auth.currentUser.photoURL || requesterAvatar || undefined;
+    } else if (requester) {
+      senderName = requester;
+      senderAvatar = requesterAvatar || undefined;
+    }
+
     await UnifiedNotificationService.sendNotification({
       type: NotificationType.PRODUCTION_REQUEST,
       centerInfo: requestType,
@@ -361,9 +406,9 @@ export class UnifiedNotificationService {
       body: content,
       requestId,
       subtitle: `${productName} / ${partName}`,
-      senderName: requester,
+      senderName,
       senderUid: requesterUid,
-      senderAvatar: requesterAvatar,
+      senderAvatar,
       priority: NotificationPriority.NORMAL
     }, requesterUid);
   }
@@ -449,15 +494,30 @@ export class UnifiedNotificationService {
         }
       }
 
+      // FirebaseAuth를 먼저 사용하여 사용자 정보 가져오기
+      let senderName = '사용자';
+      let senderAvatar: string | undefined = undefined;
+      
+      if (auth?.currentUser) {
+        senderName = auth.currentUser.displayName || 
+                     auth.currentUser.email?.split('@')[0] || 
+                     user.displayName || 
+                     '사용자';
+        senderAvatar = auth.currentUser.photoURL || user.photoURL || undefined;
+      } else if (user.displayName) {
+        senderName = user.displayName;
+        senderAvatar = user.photoURL || undefined;
+      }
+
       await UnifiedNotificationService.sendNotification({
         type: NotificationType.DAILY_REPORT,
         title,
         body,
         requestId: report.id,
         subtitle,
-        senderName: user.displayName,
+        senderName,
         senderUid: user.uid,
-        senderAvatar: user.photoURL,
+        senderAvatar,
         priority: NotificationPriority.NORMAL,
         centerInfo
       }, user.uid, true); // httpsCallable 방식 사용
@@ -491,15 +551,30 @@ export class UnifiedNotificationService {
         deleted: '생산일정을 삭제했습니다.'
       };
       
+      // FirebaseAuth를 먼저 사용하여 사용자 정보 가져오기
+      let senderName = '사용자';
+      let senderAvatar: string | undefined = undefined;
+      
+      if (auth?.currentUser) {
+        senderName = auth.currentUser.displayName || 
+                     auth.currentUser.email?.split('@')[0] || 
+                     user.displayName || 
+                     '사용자';
+        senderAvatar = auth.currentUser.photoURL || user.photoURL || undefined;
+      } else if (user.displayName) {
+        senderName = user.displayName;
+        senderAvatar = user.photoURL || undefined;
+      }
+
       await UnifiedNotificationService.sendNotification({
         type: NotificationType.PRODUCTION_SCHEDULE,
         title: '생산일정',
-        body: `${user.displayName}님이 ${actionMessages[action]}`,
+        body: `${senderName}님이 ${actionMessages[action]}`,
         requestId: `SCHEDULE-${action.toUpperCase()}-${Date.now()}`,
         subtitle: `${scheduleData.productName}/${scheduleData.partName} (${scheduleData.productionLine})`,
-        senderName: user.displayName,
+        senderName,
         senderUid: user.uid,
-        senderAvatar: user.photoURL,
+        senderAvatar,
         priority: NotificationPriority.NORMAL,
         metadata: {
           action,
@@ -535,15 +610,30 @@ export class UnifiedNotificationService {
         ? formatDateRangeKorean(uniqueDates[0], uniqueDates[0])
         : formatDateRangeKorean(uniqueDates[0], uniqueDates[uniqueDates.length - 1]);
       
+      // FirebaseAuth를 먼저 사용하여 사용자 정보 가져오기
+      let senderName = '사용자';
+      let senderAvatar: string | undefined = undefined;
+      
+      if (auth?.currentUser) {
+        senderName = auth.currentUser.displayName || 
+                     auth.currentUser.email?.split('@')[0] || 
+                     user.displayName || 
+                     '사용자';
+        senderAvatar = auth.currentUser.photoURL || user.photoURL || undefined;
+      } else if (user.displayName) {
+        senderName = user.displayName;
+        senderAvatar = user.photoURL || undefined;
+      }
+
       await UnifiedNotificationService.sendNotification({
         type: NotificationType.PRODUCTION_SCHEDULE,
         title: '생산일정',
-        body: `${user.displayName}님이 ${schedules.length}건의 생산일정을 일괄 등록했습니다.`,
+        body: `${senderName}님이 ${schedules.length}건의 생산일정을 일괄 등록했습니다.`,
         requestId: `SCHEDULE-BULK-${Date.now()}`,
         subtitle: `${dateRange} (${schedules.length}건)`,
-        senderName: user.displayName,
+        senderName,
         senderUid: user.uid,
-        senderAvatar: user.photoURL,
+        senderAvatar,
         priority: NotificationPriority.NORMAL,
         metadata: {
           action: 'bulk_created',
@@ -662,6 +752,21 @@ export class UnifiedNotificationService {
     senderAvatar?: string
   ): Promise<void> {
     try {
+      // FirebaseAuth를 먼저 사용하여 사용자 정보 가져오기
+      let senderName = '사용자';
+      let senderAvatarUrl: string | undefined = undefined;
+      
+      if (auth?.currentUser && auth.currentUser.uid === authorId) {
+        senderName = auth.currentUser.displayName || 
+                     auth.currentUser.email?.split('@')[0] || 
+                     author || 
+                     '사용자';
+        senderAvatarUrl = auth.currentUser.photoURL || senderAvatar || undefined;
+      } else if (author) {
+        senderName = author;
+        senderAvatarUrl = senderAvatar || undefined;
+      }
+
       const subtitle = `${productName} ${partName}`;
       await UnifiedNotificationService.sendNotification({
         type: NotificationType.QUALITY_ISSUE,
@@ -669,9 +774,9 @@ export class UnifiedNotificationService {
         body: description,
         requestId: issueId || `QUALITY-ISSUE-${Date.now()}`,
         subtitle,
-        senderName: author,
+        senderName,
         senderUid: authorId,
-        senderAvatar: senderAvatar,
+        senderAvatar: senderAvatarUrl,
         priority: NotificationPriority.HIGH,
         centerInfo: getStatusMessage('quality', status),
         metadata: {
@@ -701,6 +806,21 @@ export class UnifiedNotificationService {
     senderAvatar?: string
   ): Promise<{ success: boolean; targetCount: number; error?: string }> {
     try {
+      // FirebaseAuth를 먼저 사용하여 사용자 정보 가져오기
+      let senderName = '사용자';
+      let senderAvatarUrl: string | undefined = undefined;
+      
+      if (auth?.currentUser && auth.currentUser.uid === authorId) {
+        senderName = auth.currentUser.displayName || 
+                     auth.currentUser.email?.split('@')[0] || 
+                     author || 
+                     '사용자';
+        senderAvatarUrl = auth.currentUser.photoURL || senderAvatar || undefined;
+      } else if (author) {
+        senderName = author;
+        senderAvatarUrl = senderAvatar || undefined;
+      }
+
       const subtitle = `${productName} ${partName}`;
       const result = await UnifiedNotificationService.sendNotification({
         type: NotificationType.QUALITY_ISSUE_STATUS,
@@ -708,9 +828,9 @@ export class UnifiedNotificationService {
         body: description,
         requestId: issueId || `QUALITY-STATUS-${Date.now()}`,
         subtitle: subtitle,
-        senderName: author,
+        senderName,
         senderUid: authorId,
-        senderAvatar: senderAvatar,
+        senderAvatar: senderAvatarUrl,
         priority: NotificationPriority.NORMAL,
         centerInfo: getStatusMessage('quality', newStatus),
         metadata: {
@@ -759,10 +879,25 @@ export class UnifiedNotificationService {
       jigNumber,
       requestType,
       status,
-      senderName,
+      senderName: paramSenderName,
       senderUid,
       senderAvatar
     } = params;
+
+    // FirebaseAuth를 먼저 사용하여 사용자 정보 가져오기
+    let senderName = '사용자';
+    let senderAvatarUrl: string | undefined = undefined;
+    
+    if (auth?.currentUser && auth.currentUser.uid === senderUid) {
+      senderName = auth.currentUser.displayName || 
+                   auth.currentUser.email?.split('@')[0] || 
+                   paramSenderName || 
+                   '사용자';
+      senderAvatarUrl = auth.currentUser.photoURL || senderAvatar || undefined;
+    } else if (paramSenderName) {
+      senderName = paramSenderName;
+      senderAvatarUrl = senderAvatar || undefined;
+    }
 
     const subtitle = `${productName} ${partName}`;
     const body = `${senderName}님이 "${productName} ${partName}" (지그번호: ${jigNumber})의 ${requestType} 요청을 등록하였습니다.`;
@@ -775,7 +910,7 @@ export class UnifiedNotificationService {
       subtitle,
       senderName,
       senderUid,
-      senderAvatar,
+      senderAvatar: senderAvatarUrl,
       priority: NotificationPriority.NORMAL,
       centerInfo: getStatusMessage('jig', status),
       metadata: {
@@ -811,10 +946,25 @@ export class UnifiedNotificationService {
       currentReceivedQuantity,
       totalQuantity,
       status,
-      senderName,
+      senderName: paramSenderName,
       senderUid,
       senderAvatar
     } = params;
+
+    // FirebaseAuth를 먼저 사용하여 사용자 정보 가져오기
+    let senderName = '사용자';
+    let senderAvatarUrl: string | undefined = undefined;
+    
+    if (auth?.currentUser && auth.currentUser.uid === senderUid) {
+      senderName = auth.currentUser.displayName || 
+                   auth.currentUser.email?.split('@')[0] || 
+                   paramSenderName || 
+                   '사용자';
+      senderAvatarUrl = auth.currentUser.photoURL || senderAvatar || undefined;
+    } else if (paramSenderName) {
+      senderName = paramSenderName;
+      senderAvatarUrl = senderAvatar || undefined;
+    }
 
     const subtitle = `${productName} ${partName}`;
     const body = `${senderName}님이 ${productName} ${partName} ${receivedQuantity.toLocaleString()}개를 입고 처리하였습니다.\n입고현황: ${currentReceivedQuantity.toLocaleString()}/${totalQuantity.toLocaleString()}`;
@@ -827,7 +977,7 @@ export class UnifiedNotificationService {
       subtitle,
       senderName,
       senderUid,
-      senderAvatar,
+      senderAvatar: senderAvatarUrl,
       priority: NotificationPriority.NORMAL,
       centerInfo: getStatusMessage('jig', status),
       metadata: {
@@ -877,13 +1027,24 @@ export class UnifiedNotificationService {
         body = `"${productAndPart}" 샘플 요청 상태가 ${oldStatusText}에서 ${newStatusText}로 변경되었습니다.`;
       }
       
+      // FirebaseAuth를 먼저 사용하여 사용자 정보 가져오기
+      let senderName = '사용자';
+      if (auth?.currentUser && auth.currentUser.uid === authorId) {
+        senderName = auth.currentUser.displayName || 
+                     auth.currentUser.email?.split('@')[0] || 
+                     author || 
+                     '사용자';
+      } else if (author) {
+        senderName = author;
+      }
+
       const result = await UnifiedNotificationService.sendNotification({
         type: NotificationType.SAMPLE_STATUS,
         title,
         body,
         requestId: sampleId || `SAMPLE-STATUS-${Date.now()}`,
         subtitle,
-        senderName: author,
+        senderName,
         senderUid: authorId,
         priority: NotificationPriority.NORMAL,
         centerInfo,

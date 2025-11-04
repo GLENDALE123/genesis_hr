@@ -233,8 +233,27 @@ exports.createNotification = onRequest({
 
         // Platform-specific sending (토큰은 이미 수집된 상태)
         const webDocs = tokenDocs.filter((d) => (String((d.data() || {}).platform || 'web').toLowerCase()) === 'web');
-        const androidDocs = tokenDocs.filter((d) => (String((d.data() || {}).platform || '').toLowerCase()) === 'android');
+        const androidDocs = tokenDocs.filter((d) => {
+          const platform = String((d.data() || {}).platform || '').toLowerCase();
+          const isAndroid = platform === 'android';
+          if (isAndroid) {
+            console.log('[Android Token]', {
+              token: d.id.substring(0, 20) + '...',
+              platform: platform,
+              enabled: d.data()?.enabled,
+              uid: d.ref.parent?.parent?.id
+            });
+          }
+          return isAndroid;
+        });
         const iosDocs = tokenDocs.filter((d) => (String((d.data() || {}).platform || '').toLowerCase()) === 'ios');
+        
+        console.log('[Token Filtering]', {
+          total: tokenDocs.length,
+          web: webDocs.length,
+          android: androidDocs.length,
+          ios: iosDocs.length
+        });
 
         // Collect recipient UIDs
         const recipientUidsSet = new Set();
@@ -257,15 +276,73 @@ exports.createNotification = onRequest({
             const categoryKey = getCategoryKey(type, priority, subType);
             let successCount = 0;
             let failureCount = 0;
+            
+            // Android 알림 전송 전략 (베스트 프랙티스):
+            // React Native Firebase 공식 권장사항: data-only 메시지 사용
+            // 
+            // 동작 방식:
+            // - 앱이 종료된 상태: data-only 메시지도 백그라운드 핸들러를 호출할 수 있음 (React Native Firebase의 특성)
+            // - 앱이 백그라운드에 있을 때: data-only 메시지로 백그라운드 핸들러 호출됨
+            // - 앱이 포그라운드에 있을 때: onMessage 핸들러에서 처리
+            //
+            // 장점:
+            // - 모든 상황에서 백그라운드 핸들러가 호출되어 notifee로 커스텀 알림 표시 가능
+            // - 풍부한 스타일(BigText, 이미지 등) 적용 가능
+            // - 일관된 사용자 경험 제공
+            //
+            // 주의: notification 필드를 포함하면 앱이 종료된 상태에서 백그라운드 핸들러가 호출되지 않음
+            console.log('[Android FCM Send]', {
+              tokenCount: androidDocs.length,
+              channelId: channelId,
+              title: title.substring(0, 30),
+              strategy: 'data-only (best practice)'
+            });
+            
             for (const tokens of chunkArray(androidDocs.map((d) => d.id), 500)) {
               const response = await messaging.sendEachForMulticast({
                 tokens,
-                notification: { title: String(title), body: String(bodyText) },
-                data: { ...data, tag: categoryKey, title: String(title), body: String(bodyText), channelId: String(channelId) },
-                android: { priority: 'high', notification: { channelId: String(channelId), icon: 'ic_notification', color: '#FF3B30' } },
+                // notification 필드 제거 - data-only 메시지로 전송하여 백그라운드 핸들러가 항상 호출되도록 함
+                data: { 
+                  ...data, 
+                  tag: categoryKey, 
+                  title: String(title), 
+                  body: String(bodyText), 
+                  channelId: String(channelId) 
+                },
+                android: { 
+                  priority: 'high',
+                  // data-only 메시지는 앱이 백그라운드 핸들러에서 notifee로 알림을 표시함
+                },
               });
+              
+              console.log('[Android FCM Response]', {
+                successCount: response.successCount,
+                failureCount: response.failureCount,
+                batchSize: tokens.length
+              });
+              
               successCount += response.successCount;
               failureCount += response.failureCount;
+              
+              // 실패한 토큰 처리
+              if (response.failureCount > 0) {
+                const failedTokens = [];
+                response.responses.forEach((res, idx) => {
+                  if (!res.success) {
+                    const err = res.error;
+                    if (err && err.code && (
+                      err.code.includes('registration-token-not-registered') ||
+                      err.code.includes('invalid-registration-token')
+                    )) {
+                      failedTokens.push(tokens[idx]);
+                    }
+                  }
+                });
+                if (failedTokens.length > 0) {
+                  const { disableFailedTokens } = require('../lib/notifications');
+                  await disableFailedTokens(failedTokens);
+                }
+              }
             }
             return { successCount, failureCount };
           })(),

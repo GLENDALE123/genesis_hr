@@ -7,10 +7,11 @@ const fs = require('fs');
 const registerIpcHandlers = require('./ipc-handlers');
 const notificationWindow = require('./notification-window');
 
-// 개발 서버 사용 여부를 명시적으로 제어 (패키지 여부와 무관)
+// 개발 서버 사용 여부를 명시적으로 제어
+// 패키지된 앱(설치본)에서는 무조건 로컬 정적 서버 사용
 const DEV_SERVER_URL = process.env.ELECTRON_DEV_SERVER_URL || 'https://hs-jig-b2093.web.app';
-// 기본값: dev 서버 우선 연결. 명시적으로 ELECTRON_DEV=false 설정 시 비활성화
-const preferDevServer = process.env.ELECTRON_DEV !== 'false';
+// 패키지된 앱이면 웹 서버 사용 안 함, 아니면 환경 변수로 제어
+const preferDevServer = !app.isPackaged && process.env.ELECTRON_DEV !== 'false';
 const isDev = preferDevServer; // 개발자 도구/단축키 동작 기준
 const openDevToolsOnStart = process.env.ELECTRON_OPEN_DEVTOOLS === 'true';
 
@@ -202,8 +203,10 @@ function createWindow() {
   });
 
   // 개발: dev 서버가 살아있으면 우선 연결, 아니면 내장 정적 서버로 폴백
+  // 패키지된 앱(설치본)에서는 무조건 로컬 정적 서버 사용
   const load = async () => {
-    const useDev = preferDevServer && await isUrlReachable(DEV_SERVER_URL);
+    // 패키지된 앱이면 무조건 로컬 서버 사용
+    const useDev = !app.isPackaged && preferDevServer && await isUrlReachable(DEV_SERVER_URL);
     devServerInUse = useDev;
     const startUrl = useDev
       ? DEV_SERVER_URL

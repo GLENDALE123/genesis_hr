@@ -1,15 +1,15 @@
-﻿; NSIS Custom Installer Script for TMS 통합관리시스템
+; NSIS Custom Installer Script for TMS
 
-; === 설치 전 프로세스 종료 함수 ===
+; === Close running app function ===
 Function CloseRunningApp
-  DetailPrint "기존 TMS 인스턴스 확인 중..."
+  DetailPrint "Checking for running TMS instances..."
   
-  ; 간단한 방법: tasklist로 모든 electron 프로세스 찾기
+  ; Find all electron processes
   nsExec::ExecToStack 'tasklist /FI "IMAGENAME eq electron.exe" /NH /FO CSV'
-  Pop $0 ; 에러 코드
-  Pop $1 ; 출력
+  Pop $0 ; error code
+  Pop $1 ; output
   
-  ; 출력에서 TMS 찾기 (대소문자 구분 안함)
+  ; Find TMS in output
   Push $1
   Push "TMS"
   Call StrStr
@@ -18,20 +18,20 @@ Function CloseRunningApp
   StrCmp $2 "" done found
   
   found:
-    ; TMS 프로세스 발견
-    DetailPrint "TMS 통합관리시스템이 실행 중입니다."
-    MessageBox MB_YESNO|MB_ICONQUESTION "TMS 통합관리시스템이 실행 중입니다.$\n$\n자동으로 종료하고 설치를 계속하시겠습니까?" IDYES kill IDNO abort
+    ; TMS process found
+    DetailPrint "TMS is running."
+    MessageBox MB_YESNO|MB_ICONQUESTION "TMS is running.$\n$\nClose it automatically and continue installation?" IDYES kill IDNO abort
   
   kill:
-    DetailPrint "TMS 프로그램 종료 중..."
+    DetailPrint "Closing TMS process..."
     
-    ; wmic으로 TMS electron 프로세스만 종료
+    ; Close TMS electron process only
     nsExec::Exec 'wmic process where "name=''electron.exe'' and commandline like ''%TMS%''' delete'
     Pop $0
     
     Sleep 2000
     
-    ; 종료 확인 - TMS가 commandline에 있는 electron만 확인
+    ; Verify close - check electron with TMS in commandline
     nsExec::ExecToStack 'wmic process where "name=''electron.exe'' and commandline like ''%TMS%''' get processid /format:list'
     Pop $0
     Pop $4
@@ -40,21 +40,21 @@ Function CloseRunningApp
     IntCmp $R0 0 success failure
     
     success:
-      DetailPrint "프로그램이 성공적으로 종료되었습니다."
+      DetailPrint "Process closed successfully."
       Goto done
     
     failure:
-      MessageBox MB_OK|MB_ICONEXCLAMATION "프로그램을 종료할 수 없습니다.$\n$\n수동으로 종료한 후 다시 시도해주세요."
+      MessageBox MB_OK|MB_ICONEXCLAMATION "Cannot close process.$\n$\nPlease close manually and try again."
       Abort
   
   abort:
-    DetailPrint "사용자가 설치를 취소했습니다."
+    DetailPrint "User cancelled installation."
     Abort
   
   done:
 FunctionEnd
 
-; === 문자열 검색 함수 ===
+; === String search function ===
 Function StrStr
   Exch $R1
   Exch
@@ -79,16 +79,16 @@ Function StrStr
     Exch $R1
 FunctionEnd
 
-; === 제거용 프로세스 종료 함수 ===
+; === Uninstall process close function ===
 Function un.CloseRunningApp
-  DetailPrint "기존 TMS 프로그램 종료 중..."
+  DetailPrint "Closing TMS process..."
   
-  ; wmic으로 TMS electron 프로세스만 종료
+  ; Close TMS electron process only
   nsExec::Exec 'wmic process where "name=''electron.exe'' and commandline like ''%TMS%''' delete'
   Sleep 1000
 FunctionEnd
 
-; === electron-builder가 호출하는 매크로 ===
+; === electron-builder macros ===
 !macro customInit
   Call CloseRunningApp
 !macroend
@@ -98,5 +98,5 @@ FunctionEnd
 !macroend
 
 !macro customHeader
-  ; MUI2 이후에 다시 상세 로그 활성화
+  ; Enable detailed logging after MUI2
 !macroend

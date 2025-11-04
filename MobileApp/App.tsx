@@ -293,7 +293,12 @@ async function registerForPushNotificationsAsync(uid?: string): Promise<string |
     
     // FCM 토큰 요청
     const token = await messaging().getToken();
-    console.log('🔑 FCM 토큰:', token ? '등록됨' : '등록 실패');
+    if (token) {
+      console.log('🔑 FCM 토큰 등록 성공:', token.substring(0, 20) + '...');
+      console.log('🔑 FCM 토큰 전체 길이:', token.length);
+    } else {
+      console.error('❌ FCM 토큰 등록 실패: 토큰이 null입니다');
+    }
     
     return token;
   } catch (error) {
@@ -308,9 +313,11 @@ async function registerTokenToServer(token: string, uid?: string) {
     const payload: any = { token, platform };
     if (uid) payload.uid = uid;
     
-    console.log('Registering token:', token);
-    console.log('Functions URL:', `${FUNCTIONS_BASE}/registerMobileToken`);
-    console.log('Payload:', payload);
+    console.log('📤 토큰 서버 등록 시작');
+    console.log('📤 토큰 (처음 20자):', token.substring(0, 20) + '...');
+    console.log('📤 플랫폼:', platform);
+    console.log('📤 UID:', uid || '없음');
+    console.log('📤 Functions URL:', `${FUNCTIONS_BASE}/registerMobileToken`);
     
     const res = await fetch(`${FUNCTIONS_BASE}/registerMobileToken`, {
       method: 'POST',
@@ -318,27 +325,33 @@ async function registerTokenToServer(token: string, uid?: string) {
       body: JSON.stringify(payload),
     });
     
-    console.log('Response status:', res.status);
-    console.log('Response headers:', res.headers);
+    console.log('📥 응답 상태:', res.status);
     
     // 응답 텍스트를 먼저 확인
     const responseText = await res.text();
-    console.log('Response text:', responseText);
     
     // JSON 파싱 시도
     if (responseText) {
       try {
         const json = JSON.parse(responseText);
-        console.log('registerMobileToken success:', json);
+        if (json.ok) {
+          console.log('✅ 토큰 서버 등록 성공:', json);
+        } else {
+          console.error('❌ 토큰 서버 등록 실패:', json);
+        }
       } catch (parseError) {
-        console.error('JSON parse error:', parseError);
-        console.log('Raw response:', responseText);
+        console.error('❌ JSON 파싱 실패:', parseError);
+        console.log('📥 원본 응답:', responseText);
       }
     } else {
-      console.log('Empty response received');
+      console.warn('⚠️ 빈 응답 수신');
+    }
+    
+    if (!res.ok) {
+      console.error('❌ HTTP 오류:', res.status, res.statusText);
     }
   } catch (e) {
-    console.log('registerMobileToken error', e);
+    console.error('❌ 토큰 서버 등록 에러:', e);
   }
 }
 
@@ -374,7 +387,13 @@ const App: React.FC = () => {
         console.log('✅ FCM Device Token 성공:', token);
         console.log('✅ 토큰 길이:', token.length);
         setDeviceToken(token);
-        registerTokenToServer(token, currentUid || undefined);
+        // UID가 있을 때만 서버에 등록 (없으면 나중에 uid가 설정되면 자동으로 등록됨)
+        if (currentUid) {
+          console.log('📤 초기 토큰 등록 (UID 있음):', currentUid);
+          registerTokenToServer(token, currentUid);
+        } else {
+          console.log('⏳ UID가 없어서 토큰 등록 대기 (UID 설정되면 자동 등록)');
+        }
       } else if (!isMounted) {
         console.log('❌ FCM token not available (unmounted)');
       }
@@ -457,27 +476,45 @@ const App: React.FC = () => {
 
     // 포그라운드 수신 리스너
     unsubscribe = messaging().onMessage(async (remoteMessage: FirebaseMessagingTypes.RemoteMessage) => {
-      if (!isMounted) return;
+      console.log('🔔 ========== 포그라운드 메시지 핸들러 호출됨 ==========');
+      console.log('🔔 포그라운드 메시지 수신:', JSON.stringify(remoteMessage, null, 2));
+      
+      if (!isMounted) {
+        console.log('⚠️ 컴포넌트가 마운트되지 않음, 알림 처리 중단');
+        return;
+      }
       
       try {
         const data: any = remoteMessage?.data || {};
-        const title = String(data.title || '알림');
-        const body = String(data.body || '');
+        const notification = remoteMessage?.notification || {};
+        
+        console.log('📦 데이터:', data);
+        console.log('📦 알림:', notification);
+        
+        // notification 필드가 있으면 그것을 사용, 없으면 data에서 추출
+        const title = String(notification?.title || data?.title || '알림');
+        const body = String(notification?.body || data?.body || '');
         const type = String(data.type || '');
         const inboxId = typeof data.inboxId === 'string' ? data.inboxId : null;
+        
+        console.log('📝 추출된 정보:', { title, body, type, inboxId });
 
         // 설정 기반 알림 필터링 (캐싱 사용)
         const messageUid = currentUid; // 클로저로 안전하게 캡처
+        console.log('👤 현재 UID:', messageUid);
         if (messageUid) {
           const settings = await getUserSettings(messageUid);
+          console.log('⚙️ 사용자 설정:', settings);
           if (settings && !isNotificationAllowed(settings, type, new Date())) {
             console.log('⚠️ 알림 필터링됨 (설정에서 차단):', type);
             return;
           }
+        } else {
+          console.log('⚠️ UID가 없어서 설정 필터링 스킵');
         }
         
-        // 알림 타입에 맞는 채널 ID 매핑
-        const channelId = mapNotificationTypeToChannel(type);
+        // 알림 타입에 맞는 채널 ID 매핑 (Functions에서 보낸 channelId 우선 사용)
+        const channelId = String(data.channelId || mapNotificationTypeToChannel(type));
         
         // centerInfo 추출 (배지 정보)
         const centerInfo = String(data.centerInfo || data.requestType || data.category || '');
@@ -624,7 +661,7 @@ const App: React.FC = () => {
         bigTextBody += body;
         
         // BigText 스타일 적용하여 긴 텍스트 표시
-        await notifee.displayNotification({
+        const notificationPayload = {
           title: title, // 이모지 제거, 깨끗한 제목만 표시
           subtitle: subtitle || undefined, // 서브타이틀 별도 표시
           body: body, // 접힌 상태에서는 짧은 본문만
@@ -632,7 +669,7 @@ const App: React.FC = () => {
             channelId: channelId,
             importance: AndroidImportance.HIGH,
             style: {
-              type: AndroidStyle.BIGTEXT,
+              type: AndroidStyle.BIGTEXT as AndroidStyle.BIGTEXT,
               text: bigTextBody, // 확장 상태에서는 전체 정보 표시
             },
             pressAction: { id: 'default' },
@@ -656,11 +693,18 @@ const App: React.FC = () => {
             senderAvatar: senderAvatar,
             url: data.url || '',
           },
-        });
+        };
+        
+        console.log('📤 notifee 알림 표시 시도:', JSON.stringify(notificationPayload, null, 2));
+        
+        await notifee.displayNotification(notificationPayload);
+        
+        console.log('✅ 포그라운드 알림 표시 완료:', title);
 
         // 포그라운드 알림은 자동 읽음 처리하지 않음 (웹 프로젝트와 동일하게 사용자 클릭 시에만 읽음 처리)
       } catch (error) {
         console.error('❌ 알림 표시 실패:', error);
+        console.error('❌ 에러 상세:', error instanceof Error ? error.stack : error);
       }
     });
 
@@ -720,14 +764,15 @@ const App: React.FC = () => {
     return () => clearInterval(interval);
   }, [uid]);
 
-  // deviceToken 등록 (중복 방지)
+  // deviceToken 등록 (중복 방지) - UID가 설정되면 자동으로 토큰 등록
   useEffect(() => {
     if (deviceToken && uid) {
+      console.log('📤 UID 설정됨, 토큰 서버 등록:', uid);
       registerTokenToServer(deviceToken, uid);
     }
   }, [deviceToken, uid]);
 
-  // uid 변경 시 권한 재확인 및 토큰 등록 (최적화)
+  // uid 변경 시 권한 재확인 (토큰 등록은 위의 useEffect에서 처리)
   useEffect(() => {
     if (!uid) return;
     
@@ -738,20 +783,15 @@ const App: React.FC = () => {
       console.log('✅ uid 변경 시 권한 동기화:', isAuthorized ? '허용됨' : '거부됨');
     });
     
-    // 이미 토큰이 있고 같은 uid면 재등록 불필요
-    if (deviceToken) {
-      // 기존 토큰을 새로운 uid로 서버에 등록
-      registerTokenToServer(deviceToken, uid);
-      return;
+    // 토큰이 없으면 새로 등록 (토큰이 있으면 위의 useEffect에서 자동으로 등록됨)
+    if (!deviceToken) {
+      registerForPushNotificationsAsync(uid).then((token) => {
+        if (token) {
+          setDeviceToken(token);
+          // setDeviceToken이 호출되면 위의 useEffect에서 자동으로 서버 등록됨
+        }
+      });
     }
-    
-    // 토큰이 없으면 등록
-    registerForPushNotificationsAsync(uid).then((token) => {
-      if (token) {
-        setDeviceToken(token);
-        registerTokenToServer(token, uid);
-      }
-    });
   }, [uid]); // deviceToken 제거 (무한 루프 방지)
 
   // Android 뒤로가기 버튼 처리

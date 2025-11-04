@@ -15,7 +15,7 @@ import {
   where,
   Timestamp,
 } from 'firebase/firestore';
-import { db } from '@/shared/services/firebase/config';
+import { db, auth } from '@/shared/services/firebase/config';
 
 // ============================================================================
 // 타입 정의
@@ -357,17 +357,16 @@ export class CommentsService {
     const body = commentData.text;  // ✅ 댓글 원문 그대로 (멘션 포함)
     
     // 사용자 프로필 이미지 가져오기
-    // 프로필 사진 우선순위: Firestore(users.photoURL) → Firebase Auth.currentUser.photoURL → undefined
-    let senderAvatar = await this.getUserAvatar(commentData.uid);
+    // FirebaseAuth를 먼저 사용하여 사용자 정보 가져오기
+    // 프로필 사진 우선순위: Firebase Auth.currentUser.photoURL → Firestore(users.photoURL) → undefined
+    let senderAvatar: string | undefined = undefined;
+    
+    if (auth?.currentUser && auth.currentUser.uid === commentData.uid) {
+      senderAvatar = auth.currentUser.photoURL || undefined;
+    }
+    
     if (!senderAvatar) {
-      try {
-        const { auth } = await import('@/shared/services/firebase/config');
-        if (auth && auth.currentUser && auth.currentUser.uid === commentData.uid) {
-          senderAvatar = auth.currentUser.photoURL || undefined;
-        }
-      } catch (e) {
-        // 무시: fallback 불가 시 undefined 유지
-      }
+      senderAvatar = await this.getUserAvatar(commentData.uid);
     }
     
     // Firebase Functions URL 설정
@@ -375,6 +374,17 @@ export class CommentsService {
     
     const subType = collectionName === 'jig-requests' ? 'jig'
       : (collectionName === 'sample-requests' ? 'sample' : 'production');
+
+    // FirebaseAuth를 먼저 사용하여 사용자 정보 가져오기
+    let senderName = '사용자';
+    if (auth?.currentUser && auth.currentUser.uid === commentData.uid) {
+      senderName = auth.currentUser.displayName || 
+                   auth.currentUser.email?.split('@')[0] || 
+                   commentData.user || 
+                   '사용자';
+    } else if (commentData.user) {
+      senderName = commentData.user;
+    }
 
     const payload = {
       targetUsers: [userId],
@@ -384,7 +394,7 @@ export class CommentsService {
       body: body,
       requestId: documentId,
       subtitle: productInfo,
-      senderName: commentData.user,
+      senderName,
       senderUid: commentData.uid,
       senderAvatar: senderAvatar,
       priority: 'normal'

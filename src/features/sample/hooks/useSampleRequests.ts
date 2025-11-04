@@ -6,7 +6,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { SampleRequest, SampleFormData, SampleStatus } from '../types';
 import { SampleService } from '../services';
-import { waitForFirebaseInit } from '@/shared/services/firebase/config';
+import { waitForFirebaseInit, auth } from '@/shared/services/firebase/config';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useSampleRequestsStore } from '../store';
 import { toast } from 'sonner';
@@ -117,9 +117,20 @@ export const useSampleRequests = () => {
     }
 
     try {
+      // FirebaseAuth를 먼저 사용하여 사용자 정보 가져오기
+      let displayName = '사용자';
+      if (auth?.currentUser) {
+        displayName = auth.currentUser.displayName || 
+                     auth.currentUser.email?.split('@')[0] || 
+                     getUserDisplayName(user, userProfile) || 
+                     '사용자';
+      } else {
+        displayName = getUserDisplayName(user, userProfile);
+      }
+      
       const requestId = await SampleService.createSampleRequest(
         formData,
-        { uid: user.uid, displayName: getUserDisplayName(user, userProfile), email: user.email },
+        { uid: user.uid, displayName, email: user.email },
         imageFiles
       );
       
@@ -145,7 +156,18 @@ export const useSampleRequests = () => {
     }
 
     try {
-      await SampleService.updateSampleRequest(id, formData, { uid: user.uid, displayName: getUserDisplayName(user, userProfile), email: user.email });
+      // FirebaseAuth를 먼저 사용하여 사용자 정보 가져오기
+      let displayName = '사용자';
+      if (auth?.currentUser) {
+        displayName = auth.currentUser.displayName || 
+                     auth.currentUser.email?.split('@')[0] || 
+                     getUserDisplayName(user, userProfile) || 
+                     '사용자';
+      } else {
+        displayName = getUserDisplayName(user, userProfile);
+      }
+      
+      await SampleService.updateSampleRequest(id, formData, { uid: user.uid, displayName, email: user.email });
       toast.success('샘플 요청이 수정되었습니다.');
     } catch (error) {
       console.error('❌ 샘플 요청 수정 실패:', error);
@@ -169,7 +191,18 @@ export const useSampleRequests = () => {
     }
 
     try {
-      await SampleService.updateSampleStatus(id, status, { uid: user.uid, displayName: getUserDisplayName(user, userProfile), email: user.email }, reason, workData);
+      // FirebaseAuth를 먼저 사용하여 사용자 정보 가져오기
+      let displayName = '사용자';
+      if (auth?.currentUser) {
+        displayName = auth.currentUser.displayName || 
+                     auth.currentUser.email?.split('@')[0] || 
+                     getUserDisplayName(user, userProfile) || 
+                     '사용자';
+      } else {
+        displayName = getUserDisplayName(user, userProfile);
+      }
+      
+      await SampleService.updateSampleStatus(id, status, { uid: user.uid, displayName, email: user.email }, reason, workData);
       toast.success(`상태가 "${status}"로 변경되었습니다.`);
     } catch (error) {
       console.error('❌ 상태 변경 실패:', error);

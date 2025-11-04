@@ -20,6 +20,7 @@ import {
 } from 'firebase/firestore';
 import { uploadImageFilesParallel } from '@/shared/services/firebase/storage';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
+import { auth } from '@/shared/services/firebase/config';
 import {
   SampleRequest,
   SampleFormData,
@@ -92,12 +93,24 @@ export class SampleService {
           id: docRef.id,
           ...requestData
         };
+        
+        // FirebaseAuth를 먼저 사용하여 사용자 정보 가져오기
+        let senderName = '사용자';
+        if (auth?.currentUser) {
+          senderName = auth.currentUser.displayName || 
+                       auth.currentUser.email?.split('@')[0] || 
+                       user.displayName || 
+                       '사용자';
+        } else if (user.displayName) {
+          senderName = user.displayName;
+        }
+        
         await SampleStatusNotificationService.sendSampleStatusChangeNotification(
           undefined, // 이전 상태 없음
           'pending', // 기본 상태는 대기중
           createdRequest.clientName,
           createdRequest.productName,
-          user.displayName,
+          senderName,
           user.uid,
           createdRequest.id,
           (createdRequest.items && createdRequest.items.length > 0) ? createdRequest.items[0].partName : undefined
@@ -196,12 +209,23 @@ export class SampleService {
           workData: workData || currentData.workData
         };
         
+        // FirebaseAuth를 먼저 사용하여 사용자 정보 가져오기
+        let senderName = '사용자';
+        if (auth?.currentUser) {
+          senderName = auth.currentUser.displayName || 
+                       auth.currentUser.email?.split('@')[0] || 
+                       user.displayName || 
+                       '사용자';
+        } else if (user.displayName) {
+          senderName = user.displayName;
+        }
+        
         await SampleStatusNotificationService.sendSampleStatusChangeNotification(
           oldStatus,
           status,
           updatedRequest.clientName,
           updatedRequest.productName,
-          user.displayName,
+          senderName,
           user.uid,
           updatedRequest.id,
           (updatedRequest.items && updatedRequest.items.length > 0) ? updatedRequest.items[0].partName : undefined
@@ -268,13 +292,22 @@ export class SampleService {
       // 삭제 알림 전송
       if (requestData && user) {
         try {
+          // FirebaseAuth에서 직접 사용자 정보 가져오기 (fallback)
+          let senderName = user.displayName;
+          if (!senderName && auth?.currentUser) {
+            senderName = auth.currentUser.displayName || 
+                         auth.currentUser.email?.split('@')[0] || 
+                         user.displayName || 
+                         '사용자';
+          }
+          
           // 삭제 알림은 별도 함수가 없으므로 상태 변경 알림으로 대체
           await SampleStatusNotificationService.sendSampleStatusChangeNotification(
             requestData.status,
             'deleted',
             requestData.clientName,
             requestData.productName,
-            user.displayName,
+            senderName,
             user.uid,
             requestData.id,
             (requestData.items && requestData.items.length > 0) ? requestData.items[0].partName : undefined

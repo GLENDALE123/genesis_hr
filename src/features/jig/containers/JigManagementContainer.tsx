@@ -18,7 +18,7 @@ import { Table, Grid3X3, Kanban } from 'lucide-react';
 import { Badge } from '@/shared/components/ui/badge';
 
 export const JigManagementContainer: React.FC = () => {
-  const { requests, isLoading, error, updateRequestStatus, createRequest, updateRequestQuantity, deleteRequest } = useJigRequests();
+  const { requests, isLoading, error, updateRequestStatus, createRequest, updateRequest, updateRequestQuantity, deleteRequest } = useJigRequests();
   const userRole = useUserRole() || 'Member';
   const { user, userProfile } = useAuthStore();
   const currentUserProfile = useMemo(() => {
@@ -208,11 +208,19 @@ export const JigManagementContainer: React.FC = () => {
     }
     
     try {
-      // TODO: 수정 API 호출 구현 필요
+      // updateRequest 호출 - data에 이미 imageUrls가 포함되어 있음
+      await updateRequest(
+        editingRequest.id,
+        data,
+        user.uid,
+        getUserDisplayName(user, userProfile, 'Unknown User')
+      );
+      
       setIsEditModalOpen(false);
       setEditingRequest(null);
     } catch (error) {
       console.error('요청 수정 실패:', error);
+      throw error; // 에러를 다시 throw하여 폼에서 처리할 수 있도록 함
     }
   };
 

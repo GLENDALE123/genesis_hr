@@ -60,11 +60,18 @@ Section -Main
   ; dist/win-unpacked의 모든 파일 복사
   File /r "..\dist\win-unpacked\*.*"
   
-  ; 아이콘 파일 복사 (있는 경우)
+  ; 아이콘 파일 복사 (있는 경우) - 반드시 먼저 복사
   !if /FileExists("..\dist\.icon-ico\icon.ico")
     DetailPrint "아이콘 파일 복사 중..."
     SetOutPath "$INSTDIR"
-    File "..\dist\.icon-ico\icon.ico"
+    File /oname=icon.ico "..\dist\.icon-ico\icon.ico"
+    ; 복사 확인
+    IfFileExists "$INSTDIR\icon.ico" 0 iconError
+    DetailPrint "아이콘 파일 복사 완료: $INSTDIR\icon.ico"
+    Goto iconDone
+    iconError:
+      DetailPrint "경고: 아이콘 파일 복사 실패"
+    iconDone:
   !endif
   
   ; 설치 경로 저장
@@ -74,22 +81,41 @@ Section -Main
   ; 바탕화면 바로가기 (아이콘 파일 우선 사용)
   DetailPrint "바탕화면 바로가기 생성 중..."
   !if /FileExists("..\dist\.icon-ico\icon.ico")
-    ; 아이콘 파일이 있는 경우 아이콘 파일 사용 (인덱스 0 = 첫 번째 아이콘)
+    ; 아이콘 파일이 있는 경우 아이콘 파일 사용
+    ; 아이콘 파일이 실제로 존재하는지 확인 후 바로가기 생성
+    IfFileExists "$INSTDIR\icon.ico" 0 useExeIcon
     CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\icon.ico" 0
+    DetailPrint "바탕화면 바로가기 생성 완료 (아이콘: $INSTDIR\icon.ico)"
+    Goto desktopDone
+    useExeIcon:
+      CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\${APP_EXE}" 0
+      DetailPrint "바탕화면 바로가기 생성 완료 (실행 파일 아이콘 사용)"
+    desktopDone:
   !else
     ; 아이콘 파일이 없는 경우 실행 파일 자체 사용
     CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\${APP_EXE}" 0
+    DetailPrint "바탕화면 바로가기 생성 완료 (실행 파일 아이콘 사용)"
   !endif
   
   ; 시작 메뉴 바로가기
   DetailPrint "시작 메뉴 바로가기 생성 중..."
   CreateDirectory "$SMPROGRAMS\${APP_NAME}"
   !if /FileExists("..\dist\.icon-ico\icon.ico")
+    ; 아이콘 파일이 실제로 존재하는지 확인
+    IfFileExists "$INSTDIR\icon.ico" 0 useExeIconMenu
     CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\icon.ico" 0
     CreateShortcut "$SMPROGRAMS\${APP_NAME}\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\icon.ico" 0
+    DetailPrint "시작 메뉴 바로가기 생성 완료 (아이콘: $INSTDIR\icon.ico)"
+    Goto menuDone
+    useExeIconMenu:
+      CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\${APP_EXE}" 0
+      CreateShortcut "$SMPROGRAMS\${APP_NAME}\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\${APP_EXE}" 0
+      DetailPrint "시작 메뉴 바로가기 생성 완료 (실행 파일 아이콘 사용)"
+    menuDone:
   !else
     CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\${APP_EXE}" 0
     CreateShortcut "$SMPROGRAMS\${APP_NAME}\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\${APP_EXE}" 0
+    DetailPrint "시작 메뉴 바로가기 생성 완료 (실행 파일 아이콘 사용)"
   !endif
   
   ; 레지스트리 등록

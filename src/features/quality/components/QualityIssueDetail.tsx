@@ -93,8 +93,6 @@ export const QualityIssueDetail: React.FC<QualityIssueDetailProps> = ({
   const statusOptions = [
     { value: '미해결', label: '미해결' },
     { value: '진행중', label: '진행중' },
-    { value: 'in-progress', label: '진행중' },
-    { value: 'resolved', label: '해결완료' },
     { value: '해결완료', label: '해결완료' }
   ];
 

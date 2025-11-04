@@ -13,6 +13,7 @@ import {
   onCollectionSnapshot
 } from '@/shared/services/firebase/firestore';
 import { uploadImageFilesParallel, deleteFile } from '@/shared/services/firebase/storage';
+import { auth } from '@/shared/services/firebase/config';
 import { JigRequest, CreateJigRequestData, UpdateJigRequestData, HistoryEntry, JigComment, JigStatus } from '../types';
 import { JIG_COLLECTIONS, JIG_STORAGE_PATHS } from '../constants';
 import { generateJigRequestId } from '../utils';
@@ -115,6 +116,21 @@ export const createJigRequest = async (
   await setDocument(JIG_COLLECTIONS.REQUESTS, id, cleanedRequest);
   // 알림 전송: 지그 요청 등록
   try {
+    // FirebaseAuth를 먼저 사용하여 사용자 정보 가져오기
+    let senderName = '사용자';
+    let senderAvatar: string | undefined = undefined;
+    
+    if (auth?.currentUser) {
+      senderName = auth.currentUser.displayName || 
+                   auth.currentUser.email?.split('@')[0] || 
+                   currentUser.displayName || 
+                   '사용자';
+      senderAvatar = auth.currentUser.photoURL || currentUser.photoURL || undefined;
+    } else if (currentUser.displayName) {
+      senderName = currentUser.displayName;
+      senderAvatar = currentUser.photoURL || undefined;
+    }
+
     await UnifiedNotificationService.sendJigRequestCreatedNotification({
       requestId: id,
       productName: (data as any).productName || data.itemName,
@@ -122,9 +138,9 @@ export const createJigRequest = async (
       jigNumber: (data as any).itemNumber || '',
       requestType: data.requestType,
       status: '요청',
-      senderName: currentUser.displayName,
+      senderName,
       senderUid: currentUser.uid,
-      senderAvatar: currentUser.photoURL || undefined
+      senderAvatar
     });
   } catch (e) {
     console.warn('지그 요청 등록 알림 실패:', e);
@@ -140,16 +156,28 @@ export const updateJigRequest = async (
 ): Promise<void> => {
   const now = new Date().toISOString();
   
+  // 기존 요청 정보 가져오기
+  const existingRequest = await getJigRequest(id);
+  if (!existingRequest) {
+    throw new Error('요청을 찾을 수 없습니다.');
+  }
+  
   const historyEntry: HistoryEntry = {
-    status: 'updated',
+    status: existingRequest.status, // 기존 상태 유지
     date: now,
     user: currentUser.displayName,
     action: 'updated',
     reason: '요청이 수정되었습니다.'
   };
 
+  // 기존 히스토리에 새 항목 추가
+  const updatedHistory = [...(existingRequest.history || []), historyEntry];
+
   // undefined 값을 null로 변환하여 Firestore 호환성 보장
-  const cleanedData = cleanUndefinedValues(data);
+  const cleanedData = cleanUndefinedValues({
+    ...data,
+    history: updatedHistory,
+  });
 
   await updateDocument(JIG_COLLECTIONS.REQUESTS, id, cleanedData);
 };
@@ -298,6 +326,21 @@ export const updateJigRequestQuantity = async (
 
   // 알림 전송: 지그 입고 처리 (입고/반출 모두 공지하되 수량 기준으로 텍스트 통일)
   try {
+    // FirebaseAuth를 먼저 사용하여 사용자 정보 가져오기
+    let senderName = '사용자';
+    let senderAvatar: string | undefined = undefined;
+    
+    if (auth?.currentUser) {
+      senderName = auth.currentUser.displayName || 
+                   auth.currentUser.email?.split('@')[0] || 
+                   currentUser.displayName || 
+                   '사용자';
+      senderAvatar = auth.currentUser.photoURL || currentUser.photoURL || undefined;
+    } else if (currentUser.displayName) {
+      senderName = currentUser.displayName;
+      senderAvatar = currentUser.photoURL || undefined;
+    }
+
     await UnifiedNotificationService.sendJigReceiveNotification({
       requestId,
       productName: (existingRequest as any).productName || existingRequest.itemName,
@@ -306,9 +349,9 @@ export const updateJigRequestQuantity = async (
       currentReceivedQuantity: finalReceivedQuantity,
       totalQuantity: existingRequest.quantity,
       status: newStatus,
-      senderName: currentUser.displayName,
+      senderName,
       senderUid: currentUser.uid,
-      senderAvatar: currentUser.photoURL || undefined
+      senderAvatar
     });
   } catch (e) {
     console.warn('지그 입고 처리 알림 실패:', e);

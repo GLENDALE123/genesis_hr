@@ -31,6 +31,7 @@ import { useImageUpload } from '@/shared/hooks';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
 import { useDeviceType } from '@/shared/hooks/use-device';
 import { ArrowLeft } from 'lucide-react';
+import { deleteImagesWithThumbnails } from '@/shared/utils/imagePathMigration';
 
 interface JigRequestFormProps {
   isOpen: boolean;
@@ -192,6 +193,12 @@ export const JigRequestForm: React.FC<JigRequestFormProps> = ({
     try {
       // 이미지 업로드 처리
       let imageUrls: string[] = [];
+      
+      // 수정 모드일 때는 기존 이미지 URL을 먼저 가져옴
+      if (editingRequest && editingRequest.imageUrls) {
+        imageUrls = [...editingRequest.imageUrls];
+      }
+      
       if (imageUploadHook.uploadingImages.length > 0) {
         // 업로드 시작 시 현재 파일 수 초기화
         setCurrentUploadCount(0);
@@ -222,10 +229,13 @@ export const JigRequestForm: React.FC<JigRequestFormProps> = ({
           // 타임아웃 Promise와 경쟁
           const timeoutPromise = createTimeoutPromise(30000); // 30초 타임아웃
           
-          imageUrls = await Promise.race([
+          const newImageUrls = await Promise.race([
             retryableUploadPromise,
             timeoutPromise
           ]) as string[];
+          
+          // 새로 업로드된 이미지 URL을 기존 이미지에 추가
+          imageUrls = [...imageUrls, ...newImageUrls];
           
           // 이미지 업로드 성공 토스트는 제거 (등록 완료 토스트로 대체)
           toast.dismiss('image-upload-progress');
@@ -248,6 +258,22 @@ export const JigRequestForm: React.FC<JigRequestFormProps> = ({
         }
       }
 
+      // 삭제된 이미지 URL 처리 (수정 모드일 때만)
+      if (editingRequest && imageUploadHook.deletedImageUrls.length > 0) {
+        try {
+          const deleteResult = await deleteImagesWithThumbnails(imageUploadHook.deletedImageUrls);
+          
+          // 삭제 성공한 이미지들을 imageUrls에서 제거
+          imageUrls = imageUrls.filter(url => !deleteResult.success.includes(url));
+          
+          // 삭제된 URL 목록 초기화
+          imageUploadHook.clearDeletedUrls();
+        } catch (error) {
+          console.error('❌ 이미지 삭제 실패:', error);
+          toast.error('이미지 삭제에 실패했습니다.');
+        }
+      }
+
       // 폼 데이터와 이미지 URL 결합
       const submitData = {
         ...formData,
@@ -260,11 +286,11 @@ export const JigRequestForm: React.FC<JigRequestFormProps> = ({
         .map(item => item.file!);
 
       await onSave(submitData, newFiles);
-      toast.success('지그 요청이 등록되었습니다.');
+      toast.success(editingRequest ? '지그 요청이 수정되었습니다.' : '지그 요청이 등록되었습니다.');
       onClose();
     } catch (error) {
-      console.error('지그 요청 등록 실패:', error);
-      toast.error('지그 요청 등록에 실패했습니다. 다시 시도해주세요.');
+      console.error(editingRequest ? '지그 요청 수정 실패:' : '지그 요청 등록 실패:', error);
+      toast.error(editingRequest ? '지그 요청 수정에 실패했습니다. 다시 시도해주세요.' : '지그 요청 등록에 실패했습니다. 다시 시도해주세요.');
     }
   };
 

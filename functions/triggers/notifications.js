@@ -87,15 +87,49 @@ exports.onNotificationCreated = onDocumentCreated({
       const categoryKey = getCategoryKey(n.type, n.priority, n.subType);
       let successCount = 0;
       let failureCount = 0;
+      
+      // Android는 data-only 메시지로 전송 (백그라운드 핸들러가 호출되도록)
+      // notification 필드가 있으면 시스템이 자동으로 알림을 표시하고 백그라운드 핸들러가 호출되지 않음
+      // 따라서 data-only로 전송하여 앱의 백그라운드 핸들러가 notifee로 알림을 표시하도록 함
       for (const tokens of chunkArray(androidDocs.map((d) => d.id), 500)) {
         const response = await messaging.sendEachForMulticast({
           tokens,
-          notification: { title: String(title), body: String(body) },
-          data: { ...data, tag: categoryKey, title: String(title), body: String(body), channelId: String(channelId) },
-          android: { priority: 'high', notification: { channelId: String(channelId), icon: 'ic_notification', color: '#FF3B30' } },
+          // notification 필드 제거 - React Native Firebase 백그라운드 핸들러가 작동하도록
+          // data 필드만 포함하여 앱이 직접 알림을 표시하도록 함
+          data: { 
+            ...data, 
+            tag: categoryKey, 
+            title: String(title), 
+            body: String(body), 
+            channelId: String(channelId) 
+          },
+          android: { 
+            priority: 'high',
+            // data-only 메시지는 앱이 백그라운드 핸들러에서 처리
+          },
         });
         successCount += response.successCount;
         failureCount += response.failureCount;
+        
+        // 실패한 토큰 처리
+        if (response.failureCount > 0) {
+          const failedTokens = [];
+          response.responses.forEach((res, idx) => {
+            if (!res.success) {
+              const err = res.error;
+              if (err && err.code && (
+                err.code.includes('registration-token-not-registered') ||
+                err.code.includes('invalid-registration-token')
+              )) {
+                failedTokens.push(tokens[idx]);
+              }
+            }
+          });
+          if (failedTokens.length > 0) {
+            const { disableFailedTokens } = require('../lib/notifications');
+            await disableFailedTokens(failedTokens);
+          }
+        }
       }
       return { successCount, failureCount };
     })(),
