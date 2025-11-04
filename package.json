@@ -1,6 +1,6 @@
 {
   "name": "hs-next",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "private": true,
   "main": "electron/main.js",
   "description": "TMS Integrated Management System",
