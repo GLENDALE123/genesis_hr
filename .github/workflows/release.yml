@@ -123,13 +123,20 @@ jobs:
         run: |
           # 서비스 계정 키 파일 생성
           $CREDENTIALS_PATH = "${{ github.workspace }}\firebase-service-account.json"
-          echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT_HS_JIG_B2093 }}" | Out-File -FilePath $CREDENTIALS_PATH -Encoding utf8 -NoNewline
+          $JSON_CONTENT = "${{ secrets.FIREBASE_SERVICE_ACCOUNT_HS_JIG_B2093 }}"
+          
+          # UTF-8 인코딩으로 JSON 파일 저장 (BOM 없이)
+          [System.IO.File]::WriteAllText($CREDENTIALS_PATH, $JSON_CONTENT, [System.Text.Encoding]::UTF8)
           
           Write-Host "서비스 계정 키 파일 생성됨: $CREDENTIALS_PATH"
           
           # 파일 존재 확인
           if (Test-Path $CREDENTIALS_PATH) {
             Write-Host "서비스 계정 키 파일 확인 완료"
+            
+            # JSON 유효성 검사 (첫 100자만 출력)
+            $firstLine = (Get-Content $CREDENTIALS_PATH -TotalCount 1)
+            Write-Host "JSON 파일 첫 줄 (처음 100자): $($firstLine.Substring(0, [Math]::Min(100, $firstLine.Length)))"
           } else {
             Write-Host "ERROR: 서비스 계정 키 파일을 찾을 수 없습니다"
             exit 1
