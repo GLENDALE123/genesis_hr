@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/shared/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/shared/components/ui/alert-dialog';
@@ -31,6 +31,8 @@ function QualityIssuesPageContent() {
   const { isFormModalOpen, isSaving, handleSaveIssue, handleCancelForm, openFormModal } = useQualityIssueForm();
   const { user, userProfile } = useAuthStore();
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   
   // 상세 모달 상태
   const [selectedIssue, setSelectedIssue] = useState<QualityIssue | null>(null);
@@ -71,19 +73,37 @@ function QualityIssuesPageContent() {
   const handleCloseDetailModal = () => {
     setIsDetailModalOpen(false);
     setSelectedIssue(null);
+    // URL에서 issueId 쿼리 파라미터 제거
+    if (searchParams?.get('issueId')) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('issueId');
+      const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+      router.replace(newUrl);
+    }
   };
 
   // URL 쿼리(issueId)로 진입 시 상세 모달 자동 오픈
   useEffect(() => {
     const issueId = searchParams?.get('issueId');
-    if (!issueId) return;
+    if (!issueId) {
+      // issueId가 없으면 모달 닫기
+      if (isDetailModalOpen) {
+        setIsDetailModalOpen(false);
+        setSelectedIssue(null);
+      }
+      return;
+    }
     if (!issues || issues.length === 0) return;
+    // 이미 같은 이슈가 선택되어 있고 모달이 열려있으면 다시 열지 않음
+    if (isDetailModalOpen && selectedIssue?.id === issueId) {
+      return;
+    }
     const target = issues.find(i => i.id === issueId);
     if (target) {
       setSelectedIssue(target);
       setIsDetailModalOpen(true);
     }
-  }, [searchParams, issues]);
+  }, [searchParams, issues, isDetailModalOpen, selectedIssue?.id]);
 
 
 

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { AlertCircle, Plus, MessageSquare } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
@@ -35,6 +35,8 @@ import { TABLE_CELL_STYLES, TABLE_HEAD_STYLES } from '../constants/tableStyles';
 
 const ProductionManagementCenterComponent: React.FC = () => {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const [requestTypeFilter, setRequestTypeFilter] = useState<'all' | ProductionRequestType>('all');
   const { requests, isLoading, createRequest, updateRequestStatus, deleteRequest, addComment, editComment, deleteComment } = useProductionRequests();
   const { user, userProfile } = useAuthStore();
@@ -55,7 +57,18 @@ const ProductionManagementCenterComponent: React.FC = () => {
   // URL 파라미터로 모달 열기 (딥링크 처리)
   useEffect(() => {
     const requestId = searchParams.get('requestId');
-    if (requestId && !isLoading && requests.length > 0) {
+    if (!requestId) {
+      // requestId가 없으면 모달 닫기
+      if (selectedRequest) {
+        setSelectedRequest(null);
+      }
+      return;
+    }
+    if (!isLoading && requests.length > 0) {
+      // 이미 같은 요청이 선택되어 있으면 다시 열지 않음
+      if (selectedRequest?.id === requestId) {
+        return;
+      }
       const request = requests.find(req => req.id === requestId);
       if (request) {
         setSelectedRequest(request);
@@ -63,7 +76,7 @@ const ProductionManagementCenterComponent: React.FC = () => {
         console.warn('⚠️ [ProductionManagement] 요청을 찾을 수 없음:', requestId);
       }
     }
-  }, [searchParams, requests, isLoading]);
+  }, [searchParams, requests, isLoading, selectedRequest?.id]);
 
   // 실시간 업데이트: requests가 변경되면 selectedRequest도 동기화
   useEffect(() => {
@@ -82,6 +95,18 @@ const ProductionManagementCenterComponent: React.FC = () => {
   const handleSelectRequest = useCallback((request: ProductionRequest) => {
     setSelectedRequest(request);
   }, []);
+
+  // 모달 닫기 핸들러 (URL 쿼리 파라미터 제거)
+  const handleCloseDetailModal = useCallback(() => {
+    setSelectedRequest(null);
+    // URL에서 requestId 쿼리 파라미터 제거
+    if (searchParams?.get('requestId')) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('requestId');
+      const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+      router.replace(newUrl);
+    }
+  }, [searchParams, pathname, router]);
 
   const handleSaveRequest = useCallback(async (
     data: {
@@ -300,7 +325,7 @@ const ProductionManagementCenterComponent: React.FC = () => {
       {/* 상세보기 모달 */}
       <ProductionRequestDetailModal
         isOpen={!!selectedRequest}
-        onClose={() => setSelectedRequest(null)}
+        onClose={handleCloseDetailModal}
         request={selectedRequest}
         currentUserUid={user?.uid || ''}
         isAdmin={isAdmin(userProfile)}

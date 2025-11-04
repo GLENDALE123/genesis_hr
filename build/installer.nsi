@@ -18,14 +18,15 @@ ShowInstDetails show
 ShowUnInstDetails show
 Unicode true
 
+; === 설치 프로그램 EXE 아이콘 설정 ===
+Icon "..\public\icon.ico"
+
 ; === MUI2 세팅 ===
 !include "MUI2.nsh"
 
-; 아이콘 (옵션 - electron-builder가 생성한 경우에만)
-!if /FileExists("..\dist\.icon-ico\icon.ico")
-  !define MUI_ICON "..\dist\.icon-ico\icon.ico"
-  !define MUI_UNICON "..\dist\.icon-ico\icon.ico"
-!endif
+; 설치 마법사 창 아이콘 설정
+!define MUI_ICON "..\public\icon.ico"
+!define MUI_UNICON "..\public\icon.ico"
 
 ; 설치 마법사 페이지
 !insertmacro MUI_PAGE_WELCOME
@@ -60,63 +61,33 @@ Section -Main
   ; dist/win-unpacked의 모든 파일 복사
   File /r "..\dist\win-unpacked\*.*"
   
-  ; 아이콘 파일 복사 (있는 경우) - 반드시 먼저 복사
-  !if /FileExists("..\dist\.icon-ico\icon.ico")
-    DetailPrint "아이콘 파일 복사 중..."
-    SetOutPath "$INSTDIR"
-    File /oname=icon.ico "..\dist\.icon-ico\icon.ico"
-    ; 복사 확인
-    IfFileExists "$INSTDIR\icon.ico" 0 iconError
-    DetailPrint "아이콘 파일 복사 완료: $INSTDIR\icon.ico"
-    Goto iconDone
-    iconError:
-      DetailPrint "경고: 아이콘 파일 복사 실패"
-    iconDone:
-  !endif
+  ; 아이콘 파일 복사
+  DetailPrint "아이콘 파일 복사 중..."
+  SetOutPath "$INSTDIR"
+  File /oname=icon.ico "..\public\icon.ico"
+  ; 복사 확인
+  IfFileExists "$INSTDIR\icon.ico" 0 iconError
+  DetailPrint "아이콘 파일 복사 완료: $INSTDIR\icon.ico"
+  Goto iconDone
+  iconError:
+    DetailPrint "경고: 아이콘 파일 복사 실패"
+  iconDone:
   
   ; 설치 경로 저장
   WriteRegStr HKCU "${APP_REGKEY}" "InstallPath" "$INSTDIR"
   WriteRegStr HKCU "${APP_REGKEY}" "Version" "${APP_VERSION}"
   
-  ; 바탕화면 바로가기 (아이콘 파일 우선 사용)
+  ; 바탕화면 바로가기 생성
   DetailPrint "바탕화면 바로가기 생성 중..."
-  !if /FileExists("..\dist\.icon-ico\icon.ico")
-    ; 아이콘 파일이 있는 경우 아이콘 파일 사용
-    ; 아이콘 파일이 실제로 존재하는지 확인 후 바로가기 생성
-    IfFileExists "$INSTDIR\icon.ico" 0 useExeIcon
-    CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\icon.ico" 0
-    DetailPrint "바탕화면 바로가기 생성 완료 (아이콘: $INSTDIR\icon.ico)"
-    Goto desktopDone
-    useExeIcon:
-      CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\${APP_EXE}" 0
-      DetailPrint "바탕화면 바로가기 생성 완료 (실행 파일 아이콘 사용)"
-    desktopDone:
-  !else
-    ; 아이콘 파일이 없는 경우 실행 파일 자체 사용
-    CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\${APP_EXE}" 0
-    DetailPrint "바탕화면 바로가기 생성 완료 (실행 파일 아이콘 사용)"
-  !endif
+  CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\icon.ico" 0
+  DetailPrint "바탕화면 바로가기 생성 완료 (아이콘: $INSTDIR\icon.ico)"
   
-  ; 시작 메뉴 바로가기
+  ; 시작 메뉴 바로가기 생성
   DetailPrint "시작 메뉴 바로가기 생성 중..."
   CreateDirectory "$SMPROGRAMS\${APP_NAME}"
-  !if /FileExists("..\dist\.icon-ico\icon.ico")
-    ; 아이콘 파일이 실제로 존재하는지 확인
-    IfFileExists "$INSTDIR\icon.ico" 0 useExeIconMenu
-    CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\icon.ico" 0
-    CreateShortcut "$SMPROGRAMS\${APP_NAME}\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\icon.ico" 0
-    DetailPrint "시작 메뉴 바로가기 생성 완료 (아이콘: $INSTDIR\icon.ico)"
-    Goto menuDone
-    useExeIconMenu:
-      CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\${APP_EXE}" 0
-      CreateShortcut "$SMPROGRAMS\${APP_NAME}\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\${APP_EXE}" 0
-      DetailPrint "시작 메뉴 바로가기 생성 완료 (실행 파일 아이콘 사용)"
-    menuDone:
-  !else
-    CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\${APP_EXE}" 0
-    CreateShortcut "$SMPROGRAMS\${APP_NAME}\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\${APP_EXE}" 0
-    DetailPrint "시작 메뉴 바로가기 생성 완료 (실행 파일 아이콘 사용)"
-  !endif
+  CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\icon.ico" 0
+  CreateShortcut "$SMPROGRAMS\${APP_NAME}\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\icon.ico" 0
+  DetailPrint "시작 메뉴 바로가기 생성 완료 (아이콘: $INSTDIR\icon.ico)"
   
   ; 레지스트리 등록
   WriteRegStr HKCU "${APP_UNINST_KEY}" "DisplayName" "${APP_NAME}"

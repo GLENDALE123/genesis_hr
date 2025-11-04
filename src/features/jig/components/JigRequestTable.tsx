@@ -138,6 +138,12 @@ const RequestTableRow: React.FC<{
         )}
       </TableCell>
       <TableCell className="text-right whitespace-nowrap">
+        {request.coreCost ? `${request.coreCost.toLocaleString()} 원` : '-'}
+      </TableCell>
+      <TableCell className="text-right whitespace-nowrap">
+        {request.unitPrice ? `${request.unitPrice.toLocaleString()} 원` : '-'}
+      </TableCell>
+      <TableCell className="text-right whitespace-nowrap">
         {request.receivedQuantity.toLocaleString()}
       </TableCell>
       <TableCell className="text-right whitespace-nowrap">{request.quantity.toLocaleString()}</TableCell>
@@ -215,14 +221,16 @@ export const JigRequestTable: React.FC<JigRequestTableProps> = ({
               <SortableHeader field="partName">부속명</SortableHeader>
               <SortableHeader field="itemNumber">지그번호</SortableHeader>
               <TableHead className="whitespace-nowrap text-primary-foreground w-16">이미지</TableHead>
-              <SortableHeader field="receivedQuantity">완료수량</SortableHeader>
+              <SortableHeader field="coreCost">코어비</SortableHeader>
+              <SortableHeader field="unitPrice">단가</SortableHeader>
+              <SortableHeader field="receivedQuantity">입고수량</SortableHeader>
               <SortableHeader field="quantity" className="rounded-tr-lg">발주수량</SortableHeader>
             </TableRow>
           </TableHeader>
           <TableBody>
             {sortedRequests.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={13} className="text-center py-10 text-muted-foreground">
+                <TableCell colSpan={15} className="text-center py-10 text-muted-foreground">
                   요청이 없습니다.
                 </TableCell>
               </TableRow>

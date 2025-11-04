@@ -126,6 +126,7 @@ export const ProductionScheduleUploadModal: React.FC<ProductionScheduleUploadMod
     let lastValidDate = currentDate;
 
     const parsed: ParsedSchedule[] = [];
+    let orderIndex = 0; // 엑셀 붙여넣기 순서를 유지하기 위한 인덱스
     
     for (const row of rows) {
       if (row.every(cell => !cell.trim())) continue;
@@ -164,6 +165,7 @@ export const ProductionScheduleUploadModal: React.FC<ProductionScheduleUploadMod
         jigUsed: String(scheduleData.jigUsed || ''),
         newOrRe: String(scheduleData.newOrRe || ''),
         shortageQuantity: parseInt(String(scheduleData.shortageQuantity).replace(/,/g, ''), 10) || 0,
+        orderIndex: orderIndex++, // 엑셀에 입력한 순서대로 인덱스 부여
       };
       
       parsed.push(schedule);
