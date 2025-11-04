@@ -106,16 +106,14 @@ export const useJigRequestStore = create<JigRequestState & JigRequestActions>()(
       },
 
       updateRequest: async (id, updates, currentUserUid, currentUserName) => {
-        set({ isLoading: true, error: null });
         try {
           await updateJigRequest(id, updates, { uid: currentUserUid, displayName: currentUserName });
-          // 업데이트 후 목록 새로고침
-          await get().fetchRequests();
+          // 실시간 구독이 자동으로 업데이트를 반영하므로 fetchRequests() 불필요
         } catch (error) {
           set({ 
             error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
-            isLoading: false 
           });
+          throw error; // 에러를 다시 throw하여 호출자가 처리할 수 있도록 함
         }
       },
 
