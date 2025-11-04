@@ -189,13 +189,21 @@ jobs:
           # 설치 파일은 항상 같은 이름으로 업로드 (덮어쓰기)
           
           $BUCKET = "hs-jig-b2093.firebasestorage.app"
+          $CREDENTIALS_PATH = "${{ github.workspace }}\firebase-service-account.json"
           
           Write-Host "=== Firebase Storage 업로드 시작 ==="
           Write-Host "버킷: $BUCKET"
+          Write-Host "서비스 계정 키 파일: $CREDENTIALS_PATH"
+          
+          # 서비스 계정 키 파일 확인
+          if (-not (Test-Path $CREDENTIALS_PATH)) {
+            Write-Host "ERROR: 서비스 계정 키 파일을 찾을 수 없습니다: $CREDENTIALS_PATH"
+            exit 1
+          }
           
           # latest.json 업로드
           Write-Host "업로드 중: latest.json"
-          gsutil cp latest.json "gs://$BUCKET/electron-releases/latest.json"
+          & gsutil -o "Credentials:gs_service_key_file=$CREDENTIALS_PATH" cp latest.json "gs://$BUCKET/electron-releases/latest.json"
           if ($LASTEXITCODE -ne 0) {
             Write-Host "latest.json 업로드 실패"
             exit 1
@@ -205,7 +213,7 @@ jobs:
           $INSTALLER_FILE = (Get-ChildItem dist -Filter "TMS-Setup-*.exe" | Select-Object -First 1).FullName
           if ($INSTALLER_FILE) {
             Write-Host "업로드 중: TMS-Setup-latest.exe"
-            gsutil cp "$INSTALLER_FILE" "gs://$BUCKET/electron-releases/TMS-Setup-latest.exe"
+            & gsutil -o "Credentials:gs_service_key_file=$CREDENTIALS_PATH" cp "$INSTALLER_FILE" "gs://$BUCKET/electron-releases/TMS-Setup-latest.exe"
             if ($LASTEXITCODE -ne 0) {
               Write-Host "설치 파일 업로드 실패"
               exit 1
@@ -216,7 +224,7 @@ jobs:
           $PORTABLE_FILE = (Get-ChildItem dist -Filter "*Integrated-Management*.exe" | Select-Object -First 1).FullName
           if ($PORTABLE_FILE) {
             Write-Host "업로드 중: TMS-Integrated-Management-latest.exe"
-            gsutil cp "$PORTABLE_FILE" "gs://$BUCKET/electron-releases/TMS-Integrated-Management-latest.exe"
+            & gsutil -o "Credentials:gs_service_key_file=$CREDENTIALS_PATH" cp "$PORTABLE_FILE" "gs://$BUCKET/electron-releases/TMS-Integrated-Management-latest.exe"
             if ($LASTEXITCODE -ne 0) {
               Write-Host "portable 파일 업로드 실패"
               exit 1
@@ -227,7 +235,7 @@ jobs:
           $LATEST_YML = (Get-ChildItem dist -Filter "*.yml" | Select-Object -First 1).FullName
           if ($LATEST_YML) {
             Write-Host "업로드 중: latest.yml"
-            gsutil cp "$LATEST_YML" "gs://$BUCKET/electron-releases/latest.yml"
+            & gsutil -o "Credentials:gs_service_key_file=$CREDENTIALS_PATH" cp "$LATEST_YML" "gs://$BUCKET/electron-releases/latest.yml"
             if ($LASTEXITCODE -ne 0) {
               Write-Host "latest.yml 업로드 실패"
               exit 1
@@ -237,7 +245,7 @@ jobs:
           # blockmap 파일 업로드
           Get-ChildItem dist -Filter "*.blockmap" | ForEach-Object {
             Write-Host "업로드 중: $($_.Name)"
-            gsutil cp $_.FullName "gs://$BUCKET/electron-releases/$($_.Name)"
+            & gsutil -o "Credentials:gs_service_key_file=$CREDENTIALS_PATH" cp $_.FullName "gs://$BUCKET/electron-releases/$($_.Name)"
             if ($LASTEXITCODE -ne 0) {
               Write-Host "$($_.Name) 업로드 실패"
               exit 1
