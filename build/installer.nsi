@@ -60,19 +60,35 @@ Section -Main
   ; dist/win-unpacked의 모든 파일 복사
   File /r "..\dist\win-unpacked\*.*"
   
+  ; 아이콘 파일 복사 (있는 경우)
+  !if /FileExists("..\dist\.icon-ico\icon.ico")
+    DetailPrint "아이콘 파일 복사 중..."
+    SetOutPath "$INSTDIR"
+    File "..\dist\.icon-ico\icon.ico"
+  !endif
+  
   ; 설치 경로 저장
   WriteRegStr HKCU "${APP_REGKEY}" "InstallPath" "$INSTDIR"
   WriteRegStr HKCU "${APP_REGKEY}" "Version" "${APP_VERSION}"
   
   ; 바탕화면 바로가기
   DetailPrint "바탕화면 바로가기 생성 중..."
-  CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}"
+  !if /FileExists("..\dist\.icon-ico\icon.ico")
+    CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\icon.ico" 0 SW_SHOWNORMAL "" "${APP_NAME}"
+  !else
+    CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "" 0 SW_SHOWNORMAL "" "${APP_NAME}"
+  !endif
   
   ; 시작 메뉴 바로가기
   DetailPrint "시작 메뉴 바로가기 생성 중..."
   CreateDirectory "$SMPROGRAMS\${APP_NAME}"
-  CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}"
-  CreateShortcut "$SMPROGRAMS\${APP_NAME}\Uninstall.lnk" "$INSTDIR\uninstall.exe"
+  !if /FileExists("..\dist\.icon-ico\icon.ico")
+    CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\icon.ico" 0 SW_SHOWNORMAL "" "${APP_NAME}"
+    CreateShortcut "$SMPROGRAMS\${APP_NAME}\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\icon.ico" 0 SW_SHOWNORMAL "" "${APP_NAME} 제거"
+  !else
+    CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "" 0 SW_SHOWNORMAL "" "${APP_NAME}"
+    CreateShortcut "$SMPROGRAMS\${APP_NAME}\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "" 0 SW_SHOWNORMAL "" "${APP_NAME} 제거"
+  !endif
   
   ; 레지스트리 등록
   WriteRegStr HKCU "${APP_UNINST_KEY}" "DisplayName" "${APP_NAME}"
@@ -173,6 +189,7 @@ Section "Uninstall"
   
   ; 파일 삭제
   DetailPrint "파일 삭제 중..."
+  Delete "$INSTDIR\icon.ico"
   RMDir /r "$INSTDIR"
   
   ; 바로가기 삭제
