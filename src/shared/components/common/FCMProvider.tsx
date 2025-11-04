@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, ReactNode, useState } from 'react';
+import React, { createContext, useContext, useEffect, ReactNode, useState, useRef } from 'react';
 import { toast } from '@/shared/hooks/use-toast';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { 
@@ -44,6 +44,11 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
     isLoading: false,
     error: null as string | null,
   });
+  
+  // interval ID 추적 (메모리 누수 방지)
+  const permissionIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  // recentIds setTimeout ID 추적
+  const recentIdsTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   // React Native WebView에 uid 전송 (모바일 앱 동기화)
   useEffect(() => {
@@ -227,7 +232,19 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
               }
 
               recentIds.add(notificationId);
-              setTimeout(() => recentIds.delete(notificationId), 5000);
+              
+              // 기존 타이머 정리 (중복 방지)
+              const existingTimer = recentIdsTimersRef.current.get(notificationId);
+              if (existingTimer) {
+                clearTimeout(existingTimer);
+              }
+              
+              // 새 타이머 생성 및 추적
+              const timerId = setTimeout(() => {
+                recentIds.delete(notificationId);
+                recentIdsTimersRef.current.delete(notificationId);
+              }, 5000);
+              recentIdsTimersRef.current.set(notificationId, timerId);
 
               // 설정 확인
               try {
@@ -296,6 +313,11 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
       if (firestoreUnsubscribe) {
         firestoreUnsubscribe();
       }
+      // recentIds 타이머 정리
+      recentIdsTimersRef.current.forEach((timerId) => {
+        clearTimeout(timerId);
+      });
+      recentIdsTimersRef.current.clear();
     };
   }, [state.isInitialized, user]);
 
@@ -360,6 +382,12 @@ const getRecentNotificationIds = () => {
 
     let cleanup: (() => void) | undefined;
 
+    // 기존 interval 정리
+    if (permissionIntervalRef.current) {
+      clearInterval(permissionIntervalRef.current);
+      permissionIntervalRef.current = null;
+    }
+
     const handlePermissionChange = async () => {
       const currentPermission = checkNotificationPermission();
       if (currentPermission !== state.permission) {
@@ -391,18 +419,33 @@ const getRecentNotificationIds = () => {
         };
       }).catch(() => {
         // 권한 API를 지원하지 않는 경우 폴링으로 대체
-        const interval = setInterval(handlePermissionChange, 2000);
-        cleanup = () => clearInterval(interval);
+        permissionIntervalRef.current = setInterval(handlePermissionChange, 2000);
+        cleanup = () => {
+          if (permissionIntervalRef.current) {
+            clearInterval(permissionIntervalRef.current);
+            permissionIntervalRef.current = null;
+          }
+        };
       });
     } else {
       // 권한 API를 지원하지 않는 경우 폴링으로 대체
-      const interval = setInterval(handlePermissionChange, 2000);
-      cleanup = () => clearInterval(interval);
+      permissionIntervalRef.current = setInterval(handlePermissionChange, 2000);
+      cleanup = () => {
+        if (permissionIntervalRef.current) {
+          clearInterval(permissionIntervalRef.current);
+          permissionIntervalRef.current = null;
+        }
+      };
     }
 
     return () => {
       if (cleanup) {
         cleanup();
+      }
+      // 안전장치: cleanup이 호출되지 않은 경우를 대비
+      if (permissionIntervalRef.current) {
+        clearInterval(permissionIntervalRef.current);
+        permissionIntervalRef.current = null;
       }
     };
   }, [state.permission, state.token]);

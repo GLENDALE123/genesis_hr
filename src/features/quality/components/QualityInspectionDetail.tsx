@@ -90,8 +90,8 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
   // 권한 체크 함수들
   const canEdit = (inspection: QualityInspection) => {
     if (!user || !inspection) return false;
-    // 작성자 본인이면서 Manager 권한이 있거나, Admin 권한이 있는 경우
-    return (inspection.createdBy === user.uid && userProfile?.role === 'Manager') || userProfile?.role === 'Admin';
+    // Manager 또는 Admin 권한이 있는 경우 수정 가능
+    return userProfile?.role === 'Manager' || userProfile?.role === 'Admin';
   };
   
   const canDelete = (inspection: QualityInspection) => {

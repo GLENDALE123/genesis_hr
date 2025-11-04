@@ -77,33 +77,40 @@ async function disableFailedTokens(tokens) {
   }
 }
 
-// 대상 사용자들의 FCM 토큰 수집 (최적화된 버전)
+// 대상 사용자들의 FCM 토큰 수집 (최적화된 버전 - 동시 실행 제한)
 async function collectTokensForTargets(targetUsers) {
   const { db } = initializeFirebase();
   const tokenDocs = [];
+  const MAX_CONCURRENT_QUERIES = 20; // 동시 실행 쿼리 수 제한
+  const CHUNK_SIZE = 10; // 각 청크 크기
   
   if (Array.isArray(targetUsers) && targetUsers.length > 0) {
-    // 병렬 처리로 성능 향상
-    const chunks = chunkArray(targetUsers, 10); // 10개씩 묶어서 처리
-    const snapPromises = chunks.map(chunk =>
-      Promise.all(
-        chunk.map(uid =>
-          db.collection('users')
-            .doc(uid)
-            .collection('fcmTokens')
-            .where('enabled', '==', true)
-            .get()
-            .catch(() => null)
-        )
-      )
-    );
+    // 병렬 처리로 성능 향상 (동시 실행 수 제한)
+    const chunks = chunkArray(targetUsers, CHUNK_SIZE);
     
-    const snapChunks = await Promise.all(snapPromises);
-    snapChunks.forEach(snapArray => {
-      snapArray.forEach(snap => {
-        if (snap) snap.forEach(doc => tokenDocs.push(doc));
+    // 동시 실행 수를 제한하여 메모리 사용량 감소
+    for (let i = 0; i < chunks.length; i += MAX_CONCURRENT_QUERIES) {
+      const batchChunks = chunks.slice(i, i + MAX_CONCURRENT_QUERIES);
+      const snapPromises = batchChunks.map(chunk =>
+        Promise.all(
+          chunk.map(uid =>
+            db.collection('users')
+              .doc(uid)
+              .collection('fcmTokens')
+              .where('enabled', '==', true)
+              .get()
+              .catch(() => null)
+          )
+        )
+      );
+      
+      const snapChunks = await Promise.all(snapPromises);
+      snapChunks.forEach(snapArray => {
+        snapArray.forEach(snap => {
+          if (snap) snap.forEach(doc => tokenDocs.push(doc));
+        });
       });
-    });
+    }
   } else {
     // 전체 브로드캐스트 (최후 수단)
     try {

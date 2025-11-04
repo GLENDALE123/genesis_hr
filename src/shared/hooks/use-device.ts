@@ -18,20 +18,48 @@ export function useDeviceType() {
     return () => window.removeEventListener("resize", handle)
   }, [])
 
+  // 터치 지원 여부 체크 (태블릿 감지에 사용)
+  const hasTouchSupport = React.useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    return 'ontouchstart' in window || 
+      (navigator.maxTouchPoints && navigator.maxTouchPoints > 0) ||
+      (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  }, []);
+
   if (!mounted) {
-    return { isSmartphone: false, isTablet: false, isDesktop: false, width: 0 }
+    // 마운트 전: User-Agent 기반으로만 감지 (화면 크기는 아직 모름)
+    const isTabletDeviceDetected = isTabletDevice();
+    const currentWidth = typeof window !== 'undefined' ? window.innerWidth : 0;
+    
+    // 터치 지원 + 태블릿 크기 화면인 경우
+    const isTabletByTouch = hasTouchSupport && currentWidth >= 768 && currentWidth < 1600;
+    const isTablet = isTabletDeviceDetected || isTabletByTouch;
+    const isSmartphone = !isTablet && currentWidth < 768;
+    const isDesktop = !isTablet && currentWidth >= 1600;
+    
+    return { 
+      isSmartphone, 
+      isTablet, 
+      isDesktop, 
+      width: currentWidth 
+    }
   }
 
   // User-Agent 기반 태블릿 감지
   const isTabletDeviceDetected = isTabletDevice();
   
-  // 화면 크기 기반 감지
-  const isTabletByWidth = width >= 768 && width < 1440;
+  // 화면 크기 기반 감지 (더 넓은 범위 허용)
+  const isTabletByWidth = width >= 768 && width < 1600;
   
-  // 실제 태블릿 기기이거나 태블릿 크기 화면인 경우
-  const isTablet = isTabletDeviceDetected || isTabletByWidth;
+  // 터치 지원 + 태블릿 크기 화면인 경우
+  // 또는 작은 태블릿 크기(1200px 미만)인 경우도 태블릿으로 간주
+  const isTabletByTouch = hasTouchSupport && width >= 768 && width < 1600;
+  
+  // 실제 태블릿 기기이거나, 태블릿 크기 화면이면서 터치 지원인 경우
+  // 또는 작은 태블릿 크기(1200px 미만)인 경우도 태블릿으로 간주
+  const isTablet = isTabletDeviceDetected || (isTabletByWidth && isTabletByTouch) || (isTabletByWidth && width < 1200);
   const isSmartphone = !isTablet && width < 768;
-  const isDesktop = !isTablet && width >= 1440;
+  const isDesktop = !isTablet && width >= 1600;
   
   return { isSmartphone, isTablet, isDesktop, width }
 }

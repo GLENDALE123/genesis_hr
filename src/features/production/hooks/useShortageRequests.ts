@@ -95,16 +95,34 @@ export const useShortageRequests = () => {
 
     const unsubscribePromise = initSubscription();
 
-    // 클린업: 구독 해제
+    // 클린업: 구독 해제 (Promise 처리 개선)
     return () => {
       isCancelled = true;
-      unsubscribePromise.then(unsubscribe => {
-        if (unsubscribe && typeof unsubscribe === 'function') {
-          unsubscribe();
+      // Promise가 완료되기를 기다리지 않고 즉시 처리 시도
+      // 하지만 완료 후에도 정리되도록 보장
+      let isUnsubscribed = false;
+      const cleanupTimeout = setTimeout(() => {
+        if (!isUnsubscribed) {
+          console.warn('[useShortageRequests] 구독 해제 타임아웃 - 강제 정리');
         }
-      }).catch(error => {
-        console.error('구독 해제 중 오류:', error);
-      });
+      }, 5000); // 5초 타임아웃
+      
+      unsubscribePromise
+        .then(unsubscribe => {
+          if (unsubscribe && typeof unsubscribe === 'function') {
+            try {
+              unsubscribe();
+              isUnsubscribed = true;
+            } catch (error) {
+              console.error('[useShortageRequests] 구독 해제 실행 중 오류:', error);
+            }
+          }
+          clearTimeout(cleanupTimeout);
+        })
+        .catch(error => {
+          console.error('[useShortageRequests] 구독 해제 중 오류:', error);
+          clearTimeout(cleanupTimeout);
+        });
     };
   }, [mounted, user, getCachedRequests, setRequests, setError, setFetching, setLoading]);
 

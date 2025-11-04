@@ -55,23 +55,23 @@ const getStatusBadge = (status: QualityIssue['status']) => {
   );
 };
 
-// 테이블 행 컴포넌트를 별도로 분리하여 최적화
-const QualityIssueRow = React.memo<{
+// 테이블 행 컴포넌트를 별도로 분리
+// React.memo 제거 - 프로덕션 빌드에서 함수 참조 문제 방지
+const QualityIssueRow: React.FC<{
   issue: QualityIssue;
   onSelectIssue?: (issue: QualityIssue) => void;
   showShippingWaitColumns?: boolean;
-}>(({ issue, onSelectIssue, showShippingWaitColumns = false }: { 
-  issue: QualityIssue; 
-  onSelectIssue?: (issue: QualityIssue) => void;
-  showShippingWaitColumns?: boolean;
-}) => {
+}> = ({ issue, onSelectIssue, showShippingWaitColumns = false }) => {
   const handleClick = useCallback((e: React.MouseEvent) => {
     // 이벤트가 버튼이나 다른 클릭 가능한 요소에서 발생한 경우 무시
     const target = e.target as HTMLElement;
     if (target.closest('button, a, input, select, textarea')) {
       return;
     }
-    onSelectIssue?.(issue);
+    if (!onSelectIssue) {
+      return;
+    }
+    onSelectIssue(issue);
   }, [issue, onSelectIssue]);
 
   // 최근 이슈 정보를 미리 계산
@@ -207,7 +207,7 @@ const QualityIssueRow = React.memo<{
       </TableCell>
     </TableRow>
   );
-});
+};
 
 QualityIssueRow.displayName = 'QualityIssueRow';
 

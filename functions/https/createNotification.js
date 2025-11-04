@@ -58,24 +58,64 @@ exports.createNotification = onRequest({
     const duplicateCacheKey = `notification_${duplicateKey}`;
     
     // 5초 내에 같은 알림이 생성되었는지 확인 (Redis 또는 메모리 캐시 사용 가능)
-    // 간단한 메모리 캐시로 구현
+    // 간단한 메모리 캐시로 구현 (메모리 누수 방지 개선)
     if (!global.notificationCache) {
       global.notificationCache = new Map();
     }
-    
-    const now = Date.now();
-    const lastSent = global.notificationCache.get(duplicateCacheKey);
-    if (lastSent && (now - lastSent) < 5000) {
-      return res.json({ ok: true, id: 'duplicate-prevented', sent: 'duplicate-prevented' });
+    if (!global.notificationCacheTimers) {
+      global.notificationCacheTimers = new Map();
     }
     
-    // 중복 방지 키 저장
-    global.notificationCache.set(duplicateCacheKey, now);
+    const now = Date.now();
+    const CACHE_MAX_SIZE = 1000;
+    const CACHE_TTL = 5 * 60 * 1000; // 5분
     
-    // 5분 후 자동 제거
-    setTimeout(() => {
+    // 캐시 크기 제한 - 오래된 항목부터 제거
+    if (global.notificationCache.size >= CACHE_MAX_SIZE) {
+      // 가장 오래된 항목 찾기
+      let oldestKey = null;
+      let oldestTime = Infinity;
+      for (const [key, value] of global.notificationCache.entries()) {
+        const timestamp = typeof value === 'object' ? value.timestamp : value;
+        if (timestamp < oldestTime) {
+          oldestTime = timestamp;
+          oldestKey = key;
+        }
+      }
+      // 오래된 항목 제거
+      if (oldestKey) {
+        const timerId = global.notificationCacheTimers.get(oldestKey);
+        if (timerId) {
+          clearTimeout(timerId);
+          global.notificationCacheTimers.delete(oldestKey);
+        }
+        global.notificationCache.delete(oldestKey);
+      }
+    }
+    
+    // 기존 타이머 정리 (중복 요청 시)
+    const existingTimer = global.notificationCacheTimers.get(duplicateCacheKey);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+    
+    const cached = global.notificationCache.get(duplicateCacheKey);
+    if (cached) {
+      const timestamp = typeof cached === 'object' ? cached.timestamp : cached;
+      if (now - timestamp < 5000) {
+        return res.json({ ok: true, id: 'duplicate-prevented', sent: 'duplicate-prevented' });
+      }
+    }
+    
+    // 중복 방지 키 저장 (타임스탬프와 함께)
+    global.notificationCache.set(duplicateCacheKey, { timestamp: now });
+    
+    // 5분 후 자동 제거 (타이머 ID 추적)
+    const timerId = setTimeout(() => {
       global.notificationCache.delete(duplicateCacheKey);
-    }, 5 * 60 * 1000);
+      global.notificationCacheTimers.delete(duplicateCacheKey);
+    }, CACHE_TTL);
+    global.notificationCacheTimers.set(duplicateCacheKey, timerId);
 
     logNotificationEvent('create_start', {
       type,
@@ -168,8 +208,13 @@ exports.createNotification = onRequest({
       metadata
     };
 
-    // 최적화: 여러 배치로 나눠서 병렬 처리 (20명씩 2개 배치)
-    const WRITE_BATCH_SIZE = 20;
+    // 최적화: 여러 배치로 나눠서 병렬 처리 (동적 배치 크기)
+    // 사용자 수에 따라 배치 크기 조정 (메모리 효율성)
+    const getUserCount = resolvedTargetUsers.length;
+    const WRITE_BATCH_SIZE = getUserCount > 1000 ? 50 : (getUserCount > 100 ? 30 : 20);
+    const MAX_BATCH_WRITES = 400; // Firestore 배치 제한 (500이지만 안전 마진)
+    const COUNTER_BATCH_SIZE = 400; // 카운터 배치 크기 (안전 마진)
+    
     const userChunks = [];
     for (let i = 0; i < resolvedTargetUsers.length; i += WRITE_BATCH_SIZE) {
       userChunks.push(resolvedTargetUsers.slice(i, i + WRITE_BATCH_SIZE));
@@ -189,18 +234,36 @@ exports.createNotification = onRequest({
         // 배치 commit
         await batch.commit();
       })).then(() => {
-        // 카운터 업데이트는 백그라운드로 처리 (비동기)
-        setImmediate(() => {
-          const counterBatch = db.batch();
-          for (const userId of resolvedTargetUsers) {
-            const counterRef = db.collection('users').doc(userId).collection('counters').doc('unread');
-            counterBatch.set(counterRef, { 
-              count: FieldValue.increment(1)
-            }, { merge: true });
-          }
-          counterBatch.commit().catch(err => {
+        // 카운터 업데이트는 백그라운드로 처리 (배치로 분할하여 메모리 누수 방지)
+        setImmediate(async () => {
+          try {
+            // 카운터 업데이트를 배치로 분할 (400개씩)
+            const counterChunks = [];
+            for (let i = 0; i < resolvedTargetUsers.length; i += COUNTER_BATCH_SIZE) {
+              counterChunks.push(resolvedTargetUsers.slice(i, i + COUNTER_BATCH_SIZE));
+            }
+            
+            // 각 배치를 순차적으로 처리 (메모리 부하 분산)
+            for (const counterChunk of counterChunks) {
+              const counterBatch = db.batch();
+              
+              for (const userId of counterChunk) {
+                const counterRef = db.collection('users').doc(userId).collection('counters').doc('unread');
+                counterBatch.set(counterRef, { 
+                  count: FieldValue.increment(1)
+                }, { merge: true });
+              }
+              
+              try {
+                await counterBatch.commit();
+              } catch (err) {
+                console.error('[createNotification] Counter batch update failed:', err);
+                // 개별 배치 실패는 전체를 중단하지 않음 (다음 배치 계속 처리)
+              }
+            }
+          } catch (err) {
             console.error('[createNotification] Counter update failed:', err);
-          });
+          }
         });
       }),
       
@@ -232,21 +295,31 @@ exports.createNotification = onRequest({
         const fcmTimer = createPerformanceTimer('fcm_send');
 
         // Platform-specific sending (토큰은 이미 수집된 상태)
-        const webDocs = tokenDocs.filter((d) => (String((d.data() || {}).platform || 'web').toLowerCase()) === 'web');
-        const androidDocs = tokenDocs.filter((d) => {
-          const platform = String((d.data() || {}).platform || '').toLowerCase();
-          const isAndroid = platform === 'android';
-          if (isAndroid) {
+        // 최적화: 한 번의 순회로 모든 플랫폼별로 분류 (data() 호출 캐싱)
+        const webDocs = [];
+        const androidDocs = [];
+        const iosDocs = [];
+        
+        for (const doc of tokenDocs) {
+          // data() 호출 결과 캐싱 (한 번만 호출)
+          const docData = doc.data() || {};
+          const platform = String(docData.platform || 'web').toLowerCase();
+          
+          if (platform === 'android') {
+            androidDocs.push(doc);
             console.log('[Android Token]', {
-              token: d.id.substring(0, 20) + '...',
+              token: doc.id.substring(0, 20) + '...',
               platform: platform,
-              enabled: d.data()?.enabled,
-              uid: d.ref.parent?.parent?.id
+              enabled: docData.enabled,
+              uid: doc.ref.parent?.parent?.id
             });
+          } else if (platform === 'ios') {
+            iosDocs.push(doc);
+          } else {
+            // 기본값은 web
+            webDocs.push(doc);
           }
-          return isAndroid;
-        });
-        const iosDocs = tokenDocs.filter((d) => (String((d.data() || {}).platform || '').toLowerCase()) === 'ios');
+        }
         
         console.log('[Token Filtering]', {
           total: tokenDocs.length,

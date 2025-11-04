@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, Suspense } from 'react';
+import React, { useEffect, useState, Suspense, useCallback } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/shared/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
@@ -34,9 +34,9 @@ function QualityIssuesPageContent() {
   const router = useRouter();
   const pathname = usePathname();
   
-  // 상세 모달 상태
+  // 상세 모달 상태 - 단순하게 관리
   const [selectedIssue, setSelectedIssue] = useState<QualityIssue | null>(null);
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const isDetailModalOpen = !!selectedIssue; // 선택된 이슈가 있으면 모달 열림
   
   // 삭제 확인 모달 상태
   const [issueToDelete, setIssueToDelete] = useState<QualityIssue | null>(null);
@@ -64,46 +64,60 @@ function QualityIssuesPageContent() {
   };
 
   // 이슈 선택 핸들러
-  const handleSelectIssue = (issue: QualityIssue) => {
+  const handleSelectIssue = useCallback((issue: QualityIssue) => {
     setSelectedIssue(issue);
-    setIsDetailModalOpen(true);
-  };
+    // URL 업데이트 (딥링크 지원)
+    const params = new URLSearchParams(searchParams?.toString() || '');
+    params.set('issueId', issue.id);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [searchParams, pathname, router]);
 
   // 상세 모달 닫기
-  const handleCloseDetailModal = () => {
-    setIsDetailModalOpen(false);
-    setSelectedIssue(null);
-    // URL에서 issueId 쿼리 파라미터 제거
+  const handleCloseDetailModal = useCallback(() => {
+    // URL을 먼저 업데이트
     if (searchParams?.get('issueId')) {
       const params = new URLSearchParams(searchParams.toString());
       params.delete('issueId');
       const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
-      router.replace(newUrl);
+      router.replace(newUrl, { scroll: false });
     }
-  };
+    
+    // 상태 업데이트 - 모달 닫기
+    setSelectedIssue(null);
+  }, [searchParams, pathname, router]);
 
-  // URL 쿼리(issueId)로 진입 시 상세 모달 자동 오픈
+  // URL 쿼리(issueId)로 진입 시 상세 모달 자동 오픈 - 딥링크 지원
   useEffect(() => {
     const issueId = searchParams?.get('issueId');
+    
+    // URL에 issueId가 없으면 아무것도 하지 않음
     if (!issueId) {
-      // issueId가 없으면 모달 닫기
-      if (isDetailModalOpen) {
-        setIsDetailModalOpen(false);
-        setSelectedIssue(null);
-      }
       return;
     }
-    if (!issues || issues.length === 0) return;
-    // 이미 같은 이슈가 선택되어 있고 모달이 열려있으면 다시 열지 않음
-    if (isDetailModalOpen && selectedIssue?.id === issueId) {
+    
+    // 이미 같은 이슈가 선택되어 있으면 아무것도 하지 않음
+    if (selectedIssue?.id === issueId) {
       return;
     }
+    
+    // selectedIssue가 null이면 모달을 열지 않음 (사용자가 닫은 경우)
+    if (!selectedIssue && issueId) {
+      // URL에 issueId가 있지만 selectedIssue가 null이면 URL만 정리
+      // 이는 사용자가 모달을 닫은 후 URL이 아직 업데이트되지 않은 경우를 처리
+      return;
+    }
+    
+    // 이슈 목록이 로드되지 않았으면 대기
+    if (!issues || issues.length === 0) {
+      return;
+    }
+    
+    // URL의 issueId에 해당하는 이슈 찾아서 모달 열기
     const target = issues.find(i => i.id === issueId);
     if (target) {
       setSelectedIssue(target);
-      setIsDetailModalOpen(true);
     }
-  }, [searchParams, issues, isDetailModalOpen, selectedIssue?.id]);
+  }, [searchParams, issues, selectedIssue]);
 
 
 
@@ -202,8 +216,7 @@ function QualityIssuesPageContent() {
       await deleteQualityIssue(issueToDelete.id);
       toast.success('품질이슈가 성공적으로 삭제되었습니다.');
       setIssueToDelete(null);
-      setIsDetailModalOpen(false);
-      setSelectedIssue(null);
+      setSelectedIssue(null); // 모달 닫기
     } catch (error) {
       console.error('Error deleting quality issue:', error);
       toast.error('품질이슈 삭제에 실패했습니다.');
@@ -333,6 +346,7 @@ function QualityIssuesPageContent() {
 
              {/* 품질이슈 상세 모달 */}
              <QualityIssueDetail
+               key={`detail-modal-${selectedIssue?.id || 'empty'}-${isDetailModalOpen}`}
                issue={selectedIssue}
                isOpen={isDetailModalOpen}
                onClose={handleCloseDetailModal}

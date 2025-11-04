@@ -8,6 +8,9 @@ const { initializeFirebase, chunkArray } = require('./utils');
 const cache = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5분
 
+// 캐시 정리 janitor interval ID 추적 (메모리 누수 방지)
+let cacheJanitorIntervalId = null;
+
 // 캐시된 데이터 가져오기
 function getCached(key) {
   const item = cache.get(key);
@@ -102,14 +105,27 @@ function clearExpiredCache() {
 // 주기적 캐시 정리 (5분마다) - 실행 환경 가드
 function initCacheJanitor() {
   try {
+    // 이미 실행 중이면 중복 실행 방지
+    if (cacheJanitorIntervalId !== null) {
+      return;
+    }
+    
     // Cloud Functions 에뮬레이터 또는 장기 실행 프로세스에서만 활성화
     const isEmulator = process.env.FUNCTIONS_EMULATOR === 'true' || process.env.FIREBASE_EMULATOR_HUB;
     const isNode = typeof process !== 'undefined' && process.versions && process.versions.node;
     if (isNode && (isEmulator || process.env.ENABLE_CACHE_JANITOR === 'true')) {
-      setInterval(clearExpiredCache, 5 * 60 * 1000);
+      cacheJanitorIntervalId = setInterval(clearExpiredCache, 5 * 60 * 1000);
     }
   } catch (e) {
     // noop
+  }
+}
+
+// 캐시 janitor 정리 함수 (필요시 수동 호출)
+function clearCacheJanitor() {
+  if (cacheJanitorIntervalId !== null) {
+    clearInterval(cacheJanitorIntervalId);
+    cacheJanitorIntervalId = null;
   }
 }
 
@@ -119,5 +135,6 @@ module.exports = {
   loadRoutingRuleForTypeCached,
   loadUserProfilesCached,
   clearExpiredCache,
-  initCacheJanitor
+  initCacheJanitor,
+  clearCacheJanitor
 };

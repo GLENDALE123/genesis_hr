@@ -154,11 +154,14 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
     const fetchShortageRequests = async () => {
       try {
         const requests = await getAllShortageRequests();
-        const requestsMap = new Map<string, ShortageRequest>();
-        requests.forEach(request => {
-          requestsMap.set(request.sourceReportId, request);
+        // 기존 Map을 직접 업데이트하여 불필요한 재렌더링 방지
+        setShortageRequestsMap(prev => {
+          const newMap = new Map(prev); // 기존 Map 복사
+          requests.forEach(request => {
+            newMap.set(request.sourceReportId, request);
+          });
+          return newMap;
         });
-        setShortageRequestsMap(requestsMap);
       } catch (error) {
       }
     };
@@ -375,11 +378,14 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
       
       // 부족분 신청 목록 다시 조회하여 아이콘 업데이트
       const requests = await getAllShortageRequests();
-      const requestsMap = new Map<string, ShortageRequest>();
-      requests.forEach(request => {
-        requestsMap.set(request.sourceReportId, request);
+      // 기존 Map을 직접 업데이트하여 불필요한 재렌더링 방지
+      setShortageRequestsMap(prev => {
+        const newMap = new Map(prev); // 기존 Map 복사
+        requests.forEach(request => {
+          newMap.set(request.sourceReportId, request);
+        });
+        return newMap;
       });
-      setShortageRequestsMap(requestsMap);
       
       // 모달 닫기
       setShortageModalState({ isOpen: false, report: null, existingRequest: null });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
@@ -52,6 +52,10 @@ export const QualityIssueDetail: React.FC<QualityIssueDetailProps> = ({
   // 출하대기 처리 관련 상태
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingQuantity, setProcessingQuantity] = useState('');
+
+  // 프로덕션 빌드에서 boolean 변환 안정성 확보
+  const dialogOpen = Boolean(isOpen);
+
 
   const handleAddNewIssue = () => {
     if (!issue) return;
@@ -135,7 +139,7 @@ ${issue.keywordPairs.map((pair, index) => `${index + 1}. ${pair.process} - ${pai
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={dialogOpen} onOpenChange={onClose}>
       <DialogContent 
         className="max-w-5xl max-h-[90vh] p-0"
         stickyHeader={
