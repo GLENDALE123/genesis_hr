@@ -74,8 +74,8 @@ Section -Main
   ; 바탕화면 바로가기 (아이콘 파일 우선 사용)
   DetailPrint "바탕화면 바로가기 생성 중..."
   !if /FileExists("..\dist\.icon-ico\icon.ico")
-    ; 아이콘 파일이 있는 경우 아이콘 파일 사용
-    CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\icon.ico"
+    ; 아이콘 파일이 있는 경우 아이콘 파일 사용 (인덱스 0 = 첫 번째 아이콘)
+    CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\icon.ico" 0
   !else
     ; 아이콘 파일이 없는 경우 실행 파일 자체 사용
     CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\${APP_EXE}" 0
@@ -85,8 +85,8 @@ Section -Main
   DetailPrint "시작 메뉴 바로가기 생성 중..."
   CreateDirectory "$SMPROGRAMS\${APP_NAME}"
   !if /FileExists("..\dist\.icon-ico\icon.ico")
-    CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\icon.ico"
-    CreateShortcut "$SMPROGRAMS\${APP_NAME}\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\icon.ico"
+    CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\icon.ico" 0
+    CreateShortcut "$SMPROGRAMS\${APP_NAME}\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\icon.ico" 0
   !else
     CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\${APP_EXE}" 0
     CreateShortcut "$SMPROGRAMS\${APP_NAME}\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\${APP_EXE}" 0
