@@ -46,13 +46,13 @@ export const isWebBrowser = (): boolean => {
  * 태블릿 기기 여부 확인 (User-Agent 및 터치 지원 기반)
  */
 export const isTabletDevice = (): boolean => {
-  if (typeof window === 'undefined') return false;
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
   
   const userAgent = navigator.userAgent.toLowerCase();
   
   // 터치 지원 여부 체크 (더 정확한 감지를 위해)
   const hasTouchSupport = 'ontouchstart' in window || 
-    navigator.maxTouchPoints > 0 || 
+    (navigator.maxTouchPoints && navigator.maxTouchPoints > 0) || 
     (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
   
   // iPad 감지 (iOS 13 이전은 "ipad", iOS 13 이후는 "macintosh"로 표시되지만 touch 지원)
@@ -62,7 +62,7 @@ export const isTabletDevice = (): boolean => {
   // Android 태블릿 감지 (Mobile이 없고 Tablet이 있거나, Mobile이 없고 화면 크기가 큰 경우)
   const isAndroidTablet = userAgent.includes('android') && 
     !userAgent.includes('mobile') &&
-    (userAgent.includes('tablet') || window.screen.width >= 768);
+    (userAgent.includes('tablet') || (window.screen && window.screen.width >= 768));
   
   // 기타 태블릿 (Galaxy Tab, Kindle 등)
   const isOtherTablet = /tablet|ipad|playbook|silk|android(?!.*mobile)/i.test(userAgent);

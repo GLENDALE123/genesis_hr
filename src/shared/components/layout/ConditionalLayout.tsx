@@ -17,9 +17,16 @@ export const ConditionalLayout: React.FC<ConditionalLayoutProps> = ({
   const pathname = usePathname();
   const { user, isLoading } = useAuthStore();
   const [mounted, setMounted] = useState(false);
+  // Electron 환경 감지 (타이틀바가 fixed일 때만 여백 필요)
+  const [isElectron, setIsElectron] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    
+    // Electron 환경 감지
+    if (typeof window !== 'undefined' && (window as any).electron) {
+      setIsElectron(true);
+    }
   }, []);
 
   // 로그인/회원가입 페이지는 AppLayout 없이 렌더링
@@ -37,6 +44,8 @@ export const ConditionalLayout: React.FC<ConditionalLayoutProps> = ({
       <div className="h-screen flex flex-col">
         {/* Electron 커스텀 타이틀바 (frame: false 환경) */}
         <TitleBar />
+        {/* Electron 환경에서 타이틀바가 fixed일 때만 여백 추가 */}
+        {isElectron && <div className="h-8 flex-shrink-0" />}
         <div className="flex-1 overflow-hidden">
           {children}
         </div>
@@ -51,6 +60,8 @@ export const ConditionalLayout: React.FC<ConditionalLayoutProps> = ({
       <div className="h-screen flex flex-col">
         {/* Electron 커스텀 타이틀바 (frame: false 환경) */}
         <TitleBar />
+        {/* Electron 환경에서 타이틀바가 fixed일 때만 여백 추가 */}
+        {isElectron && <div className="h-8 flex-shrink-0" />}
         <div className="flex-1 overflow-hidden">
           {children}
         </div>
@@ -63,6 +74,8 @@ export const ConditionalLayout: React.FC<ConditionalLayoutProps> = ({
     return (
       <div className="h-screen flex flex-col">
         <TitleBar />
+        {/* 타이틀바가 fixed이므로 높이만큼 여백 추가 */}
+        <div className="h-8 flex-shrink-0" />
         <div className="flex-1 overflow-hidden flex items-center justify-center">
           <div className="text-muted-foreground">인증 확인 중...</div>
         </div>

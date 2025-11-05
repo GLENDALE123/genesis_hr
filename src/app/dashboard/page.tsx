@@ -9,7 +9,7 @@ export default function DashboardPage() {
 
   return (
     <ProtectedRoute>
-      <div className="space-y-6 max-w-7xl mx-auto">
+      <div className="space-y-6 max-w-7xl mx-auto p-6">
         {/* Admin이 아닐 경우 준비중 메시지 표시 */}
         {!isAdmin && (
           <Card className="mt-8">

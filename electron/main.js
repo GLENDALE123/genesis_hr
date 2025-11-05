@@ -236,19 +236,11 @@ function createWindow() {
     mainWindow.webContents.setZoomFactor(1.0);
   });
 
-  // 개발: dev 서버가 살아있으면 우선 연결, 아니면 내장 정적 서버로 폴백
-  // 패키지된 앱(설치본)에서는 무조건 로컬 정적 서버 사용
+  // 항상 웹 URL 사용
   const load = async () => {
-    // 패키지된 앱이면 무조건 로컬 서버 사용
-    const useDev = !app.isPackaged && preferDevServer && await isUrlReachable(DEV_SERVER_URL);
-    devServerInUse = useDev;
-    const startUrl = useDev
-      ? DEV_SERVER_URL
-      : `http://127.0.0.1:${await startStaticOutServer()}`;
-    if (useDev) {
-      await mainWindow.webContents.session.clearCache();
-    }
-    await mainWindow.loadURL(startUrl);
+    devServerInUse = true;
+    await mainWindow.webContents.session.clearCache();
+    await mainWindow.loadURL(DEV_SERVER_URL);
   };
   load();
 

@@ -27,9 +27,19 @@ export function useDeviceType() {
   }, []);
 
   if (!mounted) {
+    // 마운트 전: SSR 환경에서는 기본값 반환
+    if (typeof window === 'undefined') {
+      return { 
+        isSmartphone: false, 
+        isTablet: false, 
+        isDesktop: true, 
+        width: 0 
+      };
+    }
+    
     // 마운트 전: User-Agent 기반으로만 감지 (화면 크기는 아직 모름)
     const isTabletDeviceDetected = isTabletDevice();
-    const currentWidth = typeof window !== 'undefined' ? window.innerWidth : 0;
+    const currentWidth = window.innerWidth || 0;
     
     // 터치 지원 + 태블릿 크기 화면인 경우
     const isTabletByTouch = hasTouchSupport && currentWidth >= 768 && currentWidth < 1600;

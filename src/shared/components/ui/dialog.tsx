@@ -39,16 +39,23 @@ const DialogClose = DialogPrimitive.Close
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
->(({ className, ...props }, ref) => (
-  <DialogPrimitive.Overlay
-    ref={ref}
-    className={cn(
-      "fixed inset-0 z-50 bg-black/40  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-      className
-    )}
-    {...props}
-  />
-))
+>(({ className, ...props }, ref) => {
+  // Electron 환경 감지
+  const isElectron = typeof window !== 'undefined' && (window as any).electron;
+  
+  return (
+    <DialogPrimitive.Overlay
+      ref={ref}
+      className={cn(
+        "fixed inset-0 z-50 bg-black/40  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+        // Electron 환경에서만 타이틀바 영역 제외 (타이틀바 높이: 32px = 2rem = h-8)
+        isElectron && "[clip-path:inset(2rem_0_0_0)]",
+        className
+      )}
+      {...props}
+    />
+  );
+})
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
 interface DialogContentProps extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {

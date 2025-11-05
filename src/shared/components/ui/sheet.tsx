@@ -38,16 +38,23 @@ const SheetPortal = SheetPrimitive.Portal
 const SheetOverlay = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof SheetPrimitive.Overlay>
->(({ className, ...props }, ref) => (
-  <SheetPrimitive.Overlay
-    className={cn(
-      "fixed inset-0 z-50 bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-      className
-    )}
-    {...props}
-    ref={ref}
-  />
-))
+>(({ className, ...props }, ref) => {
+  // Electron 환경 감지
+  const isElectron = typeof window !== 'undefined' && (window as any).electron;
+  
+  return (
+    <SheetPrimitive.Overlay
+      className={cn(
+        "fixed inset-0 z-50 bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+        // Electron 환경에서만 타이틀바 영역 제외 (타이틀바 높이: 32px = 2rem = h-8)
+        isElectron && "[clip-path:inset(2rem_0_0_0)]",
+        className
+      )}
+      {...props}
+      ref={ref}
+    />
+  );
+})
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName
 
 const sheetVariants = cva(

@@ -31,12 +31,19 @@ const AppLayoutComponent: React.FC<AppLayoutProps> = ({
   const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
   const [viewportHeight, setViewportHeight] = React.useState<string>('100vh');
+  // Electron 환경 감지 (타이틀바가 fixed일 때만 여백 필요)
+  const [isElectron, setIsElectron] = React.useState(false);
 
   const sidebarCollapsed = preferences.sidebarCollapsed;
   
   // 모바일 환경에서 마운트 상태 관리 및 뷰포트 높이 계산
   React.useEffect(() => {
     setMounted(true);
+    
+    // Electron 환경 감지
+    if (typeof window !== 'undefined' && (window as any).electron) {
+      setIsElectron(true);
+    }
     
     // 모바일에서 실제 뷰포트 높이 계산
     if (isMobile && typeof window !== 'undefined') {
@@ -75,6 +82,8 @@ const AppLayoutComponent: React.FC<AppLayoutProps> = ({
         }}
       >
         <TitleBar />
+        {/* Electron 환경에서 타이틀바가 fixed일 때만 여백 추가 */}
+        {isElectron && <div className="h-8 flex-shrink-0" />}
         <div className="flex flex-1 overflow-hidden">
           <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
             <div className="flex-shrink-0">
@@ -119,6 +128,8 @@ const AppLayoutComponent: React.FC<AppLayoutProps> = ({
     >
       {/* Electron 커스텀 타이틀바 (frame: false 환경) */}
       <TitleBar />
+      {/* Electron 환경에서 타이틀바가 fixed일 때만 여백 추가 */}
+      {isElectron && <div className="h-8 flex-shrink-0" />}
       
       <div className="flex flex-1 overflow-hidden">
         {/* Desktop Sidebar */}

@@ -103,11 +103,14 @@ export const TitleBar: React.FC<TitleBarProps> = ({ className }) => {
     }
   };
 
+
   return (
     <div
       className={cn(
         "h-8 w-full flex items-center justify-between bg-background border-b select-none",
         "drag-region", // 드래그 가능 영역
+        // Electron 환경에서만 fixed로 설정 (모달 오버레이로부터 보호)
+        isElectron && "fixed top-0 left-0 right-0 z-[9999]",
         className
       )}
       style={{

@@ -157,12 +157,21 @@ export const OutgoingInspectionForm: React.FC<OutgoingInspectionFormProps> = ({
           {/* 작업라인 */}
           <div className="space-y-2">
             <Label htmlFor="workLine">작업라인</Label>
-            <InputSelect
-              value={formData.workLine || ''}
-              onChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, workLine: value }))}
-              options={PRODUCTION_LINE_OPTIONS}
-              placeholder="작업라인을 선택하세요"
-            />
+            <Select 
+              value={formData.workLine || ''} 
+              onValueChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, workLine: value }))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="작업라인을 선택하세요" />
+              </SelectTrigger>
+              <SelectContent>
+                {PRODUCTION_LINE_OPTIONS.map((line) => (
+                  <SelectItem key={line} value={line}>
+                    {line}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
