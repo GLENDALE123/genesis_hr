@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { Platform, StyleSheet, View, BackHandler, Alert, Linking } from 'react-native';
+import { Platform, StyleSheet, View, BackHandler, Alert, Linking, ToastAndroid } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import notifee, { AndroidImportance, AndroidStyle } from '@notifee/react-native';
 import messaging, { FirebaseMessagingTypes } from '@react-native-firebase/messaging';
@@ -360,6 +360,8 @@ const App: React.FC = () => {
   const [deviceToken, setDeviceToken] = useState<string | null>(null);
   const webViewRef = useRef<WebView>(null);
   const [canGoBack, setCanGoBack] = useState(false);
+  const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const backPressCountRef = useRef<number>(0);
 
   // 초기 알림 권한 요청 및 리스너 설정
   useEffect(() => {
@@ -794,21 +796,111 @@ const App: React.FC = () => {
     }
   }, [uid]); // deviceToken 제거 (무한 루프 방지)
 
+  // 앱 종료 처리 (토스트 표시 또는 실제 종료)
+  const handleAppExit = useCallback(() => {
+    if (backPressCountRef.current === 0) {
+      // 첫 번째 뒤로가기: 토스트 표시
+      if (Platform.OS === 'android') {
+        ToastAndroid.show('한 번 더 누르면 앱이 종료됩니다', ToastAndroid.SHORT);
+      }
+      backPressCountRef.current = 1;
+      
+      // 2초 후 카운트 리셋
+      if (exitTimerRef.current) {
+        clearTimeout(exitTimerRef.current);
+      }
+      exitTimerRef.current = setTimeout(() => {
+        backPressCountRef.current = 0;
+        exitTimerRef.current = null;
+      }, 2000);
+      
+      return true; // 이벤트 처리됨
+    } else {
+      // 두 번째 뒤로가기: 앱 종료
+      if (exitTimerRef.current) {
+        clearTimeout(exitTimerRef.current);
+        exitTimerRef.current = null;
+      }
+      backPressCountRef.current = 0;
+      return false; // 앱 종료
+    }
+  }, []);
+
   // Android 뒤로가기 버튼 처리
   useEffect(() => {
     const backAction = () => {
-      if (canGoBack && webViewRef.current) {
-        // 웹뷰에서 뒤로가기 가능하면 웹뷰 뒤로가기 실행
-        webViewRef.current.goBack();
-        return true; // 이벤트 처리됨
+      // 두 번째 뒤로가기 (토스트 표시 후 2초 이내): 앱 종료
+      if (backPressCountRef.current === 1) {
+        if (exitTimerRef.current) {
+          clearTimeout(exitTimerRef.current);
+          exitTimerRef.current = null;
+        }
+        backPressCountRef.current = 0;
+        return false; // 앱 종료
       }
-      // 웹뷰에서 뒤로가기 불가능하면 앱 종료 (기본 동작)
-      return false;
+
+      if (!webViewRef.current) {
+        // WebView가 없으면 앱 종료 처리
+        return handleAppExit();
+      }
+
+      // 웹뷰에서 모달/시트 닫기 및 뒤로가기 처리
+      // JavaScript로 모든 것을 한 번에 처리하고 결과를 postMessage로 전송
+      webViewRef.current.injectJavaScript(`
+        (function() {
+          let handled = false;
+          
+          // 1. 모달/시트가 열려있으면 먼저 닫기
+          if (typeof window.closeModalIfOpen === 'function') {
+            const modalWasOpen = window.closeModalIfOpen();
+            if (modalWasOpen) {
+              handled = true; // 모달이 닫혔으므로 처리 완료
+              if (window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'modal-closed'
+                }));
+              }
+            }
+          }
+          
+          // 2. 모달이 없었으면 WebView 뒤로가기 가능 여부 확인
+          if (!handled) {
+            if (window.history.length > 1) {
+              // 뒤로가기 가능: postMessage로 요청
+              if (window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'go-back'
+                }));
+              }
+              handled = true;
+            } else {
+              // 뒤로가기 불가능: 처리할 것이 없음
+              if (window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'nothing-to-handle'
+                }));
+              }
+            }
+          }
+        })();
+      `);
+      
+      // JavaScript 실행은 비동기이므로 항상 true 반환 (이벤트 처리됨)
+      // 실제 처리는 JavaScript에서 postMessage로 응답하여 수행됨
+      return true;
     };
 
     const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
-    return () => backHandler.remove();
-  }, [canGoBack]);
+    return () => {
+      backHandler.remove();
+      // 컴포넌트 언마운트 시 타이머 정리
+      if (exitTimerRef.current) {
+        clearTimeout(exitTimerRef.current);
+        exitTimerRef.current = null;
+      }
+      backPressCountRef.current = 0;
+    };
+  }, [handleAppExit]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -861,10 +953,52 @@ const App: React.FC = () => {
               if (payload && payload.type === 'notification-badge-update' && uid) {
                 updateBadgeCount(uid);
               }
+              
+              // 웹뷰 뒤로가기 요청 (모달이 없을 때)
+              if (payload && payload.type === 'go-back' && webViewRef.current && canGoBack) {
+                webViewRef.current.goBack();
+                // 뒤로가기 처리 완료 - 타이머 취소
+                if (exitTimerRef.current) {
+                  clearTimeout(exitTimerRef.current);
+                  exitTimerRef.current = null;
+                }
+                backPressCountRef.current = 0;
+              }
+              
+              // 모달이 닫혔다는 응답
+              if (payload && payload.type === 'modal-closed') {
+                // 모달 닫기 완료 - 타이머 취소
+                if (exitTimerRef.current) {
+                  clearTimeout(exitTimerRef.current);
+                  exitTimerRef.current = null;
+                }
+                backPressCountRef.current = 0;
+              }
+              
+              // 처리할 것이 없다는 응답 (모달도 없고 뒤로가기도 불가능)
+              if (payload && payload.type === 'nothing-to-handle') {
+                // 첫 번째 뒤로가기: 토스트 표시
+                if (backPressCountRef.current === 0) {
+                  if (Platform.OS === 'android') {
+                    ToastAndroid.show('한 번 더 누르면 앱이 종료됩니다', ToastAndroid.SHORT);
+                  }
+                  backPressCountRef.current = 1;
+                  
+                  // 2초 후 카운트 리셋
+                  if (exitTimerRef.current) {
+                    clearTimeout(exitTimerRef.current);
+                  }
+                  exitTimerRef.current = setTimeout(() => {
+                    backPressCountRef.current = 0;
+                    exitTimerRef.current = null;
+                  }, 2000);
+                }
+                // 두 번째 뒤로가기는 backAction에서 처리됨
+              }
             } catch (error) {
               console.error('❌ onMessage 파싱 실패:', error);
             }
-          }, [uid])}
+          }, [uid, canGoBack, handleAppExit])}
           onShouldStartLoadWithRequest={(request) => {
             return true;
           }}

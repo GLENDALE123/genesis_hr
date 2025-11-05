@@ -35,6 +35,24 @@ const setupGlobalPopStateHandler = () => {
   window.addEventListener('popstate', globalPopStateHandler, true);
 };
 
+// 모바일 앱에서 뒤로가기 버튼 처리용 전역 함수
+// 모달/시트가 열려있으면 닫고 true 반환, 없으면 false 반환
+if (typeof window !== 'undefined') {
+  (window as any).closeModalIfOpen = (): boolean => {
+    if (historyStack.length > 0) {
+      const topItem = historyStack[historyStack.length - 1];
+      topItem.onClose();
+      historyStack.pop();
+      // 히스토리도 정리
+      if (window.history.length > 1) {
+        window.history.back();
+      }
+      return true; // 모달이 닫혔음
+    }
+    return false; // 모달이 없음
+  };
+}
+
 export const useMobileBackHandler = ({
   isOpen,
   onClose,
