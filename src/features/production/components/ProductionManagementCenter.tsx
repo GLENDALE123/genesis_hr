@@ -56,27 +56,38 @@ const ProductionManagementCenterComponent: React.FC = () => {
 
   // URL 파라미터로 모달 열기 (딥링크 처리)
   useEffect(() => {
-    const requestId = searchParams.get('requestId');
+    const requestId = searchParams?.get('requestId');
+    
+    // URL에 requestId가 없으면 아무것도 하지 않음
     if (!requestId) {
-      // requestId가 없으면 모달 닫기
-      if (selectedRequest) {
-        setSelectedRequest(null);
-      }
       return;
     }
-    if (!isLoading && requests.length > 0) {
-      // 이미 같은 요청이 선택되어 있으면 다시 열지 않음
-      if (selectedRequest?.id === requestId) {
-        return;
-      }
-      const request = requests.find(req => req.id === requestId);
-      if (request) {
-        setSelectedRequest(request);
-      } else {
-        console.warn('⚠️ [ProductionManagement] 요청을 찾을 수 없음:', requestId);
-      }
+    
+    // 이미 같은 요청이 선택되어 있으면 아무것도 하지 않음
+    if (selectedRequest?.id === requestId) {
+      return;
     }
-  }, [searchParams, requests, isLoading, selectedRequest?.id]);
+    
+    // selectedRequest가 null이면 모달을 열지 않음 (사용자가 닫은 경우)
+    if (!selectedRequest && requestId) {
+      // URL에 requestId가 있지만 selectedRequest가 null이면 URL만 정리
+      // 이는 사용자가 모달을 닫은 후 URL이 아직 업데이트되지 않은 경우를 처리
+      return;
+    }
+    
+    // 요청 목록이 로드되지 않았으면 대기
+    if (!requests || requests.length === 0) {
+      return;
+    }
+    
+    // URL의 requestId에 해당하는 요청 찾아서 모달 열기
+    const target = requests.find(req => req.id === requestId);
+    if (target) {
+      setSelectedRequest(target);
+    } else {
+      console.warn('⚠️ [ProductionManagement] 요청을 찾을 수 없음:', requestId);
+    }
+  }, [searchParams, requests, selectedRequest]);
 
   // 실시간 업데이트: requests가 변경되면 selectedRequest도 동기화
   useEffect(() => {
@@ -94,18 +105,24 @@ const ProductionManagementCenterComponent: React.FC = () => {
 
   const handleSelectRequest = useCallback((request: ProductionRequest) => {
     setSelectedRequest(request);
-  }, []);
+    // URL 업데이트 (딥링크 지원)
+    const params = new URLSearchParams(searchParams?.toString() || '');
+    params.set('requestId', request.id);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [searchParams, pathname, router]);
 
   // 모달 닫기 핸들러 (URL 쿼리 파라미터 제거)
   const handleCloseDetailModal = useCallback(() => {
-    setSelectedRequest(null);
-    // URL에서 requestId 쿼리 파라미터 제거
+    // URL을 먼저 업데이트
     if (searchParams?.get('requestId')) {
       const params = new URLSearchParams(searchParams.toString());
       params.delete('requestId');
       const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
-      router.replace(newUrl);
+      router.replace(newUrl, { scroll: false });
     }
+    
+    // 상태 업데이트 - 모달 닫기
+    setSelectedRequest(null);
   }, [searchParams, pathname, router]);
 
   const handleSaveRequest = useCallback(async (

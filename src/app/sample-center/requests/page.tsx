@@ -4,8 +4,8 @@
 
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import React, { useState, useEffect, Suspense, useCallback } from 'react';
+import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 import {
   SampleRequestTable,
@@ -28,6 +28,8 @@ import { useAuthStore } from '@/features/auth/store/authStore';
 function SampleRequestsContent() {
   const { user } = useAuthStore();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
   const {
     requests,
     isLoading,
@@ -67,6 +69,7 @@ function SampleRequestsContent() {
   const [editingRequest, setEditingRequest] = useState<SampleRequest | null>(null);
   const [selectedRequest, setSelectedRequest] = useState<SampleRequest | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isClosingModal, setIsClosingModal] = useState(false);
 
   // URL 쿼리 파라미터에서 초기 필터 복원
   useEffect(() => {
@@ -93,6 +96,54 @@ function SampleRequestsContent() {
     }
   }, [searchParams, setStatusFilter, setCoatingMethodFilter, resetFilters, isInitialized]);
 
+  // 요청 선택 핸들러 (URL 업데이트 포함)
+  const handleSelectRequest = useCallback((request: SampleRequest) => {
+    setSelectedRequest(request);
+    // URL 업데이트 (딥링크 지원)
+    const params = new URLSearchParams(searchParams?.toString() || '');
+    params.set('requestId', request.id);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [searchParams, pathname, router]);
+
+  // URL 파라미터로 모달 열기 (딥링크 처리)
+  useEffect(() => {
+    const requestId = searchParams?.get('requestId');
+    
+    // URL에 requestId가 없으면 아무것도 하지 않음
+    if (!requestId) {
+      return;
+    }
+    
+    // 이미 같은 요청이 선택되어 있으면 아무것도 하지 않음
+    if (selectedRequest?.id === requestId) {
+      return;
+    }
+    
+    // 모달을 닫는 중이면 아무것도 하지 않음
+    if (isClosingModal) {
+      return;
+    }
+    
+    // selectedRequest가 null이고 모달을 닫지 않는 중이면 모달을 열지 않음 (사용자가 닫은 경우)
+    if (!selectedRequest && requestId) {
+      // URL에 requestId가 있지만 selectedRequest가 null이면 URL만 정리
+      // 이는 사용자가 모달을 닫은 후 URL이 아직 업데이트되지 않은 경우를 처리
+      return;
+    }
+    
+    // 요청 목록이 로드되지 않았으면 대기
+    if (!requests || requests.length === 0) {
+      return;
+    }
+    
+    // URL의 requestId에 해당하는 요청 찾아서 모달 열기
+    const target = requests.find(req => req.id === requestId);
+    if (target) {
+      setSelectedRequest(target);
+      setIsClosingModal(false); // 모달 열리면 닫기 플래그 초기화
+    }
+  }, [searchParams, requests, selectedRequest, isClosingModal]);
+
   // 새 요청 등록
   const handleCreateRequest = async (data: SampleFormData, images: File[]) => {
     await createRequest(data, images);
@@ -113,6 +164,28 @@ function SampleRequestsContent() {
     setShowForm(true);
     setSelectedRequest(null);
   };
+
+  // 상세 모달 닫기 핸들러 (URL 쿼리 파라미터 제거)
+  const handleCloseDetailModal = useCallback(() => {
+    // 모달 닫기 플래그 설정
+    setIsClosingModal(true);
+    
+    // 상태 업데이트 - 모달 닫기 (먼저)
+    setSelectedRequest(null);
+    
+    // URL 업데이트 (나중에)
+    if (searchParams?.get('requestId')) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('requestId');
+      const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+      router.replace(newUrl, { scroll: false });
+    }
+    
+    // 짧은 딜레이 후 플래그 해제 (URL 업데이트 완료 대기)
+    setTimeout(() => {
+      setIsClosingModal(false);
+    }, 100);
+  }, [searchParams, pathname, router]);
 
   // 로딩 상태
   if (isLoading && requests.length === 0) {
@@ -187,14 +260,14 @@ function SampleRequestsContent() {
                   <SampleRequestCard
                     key={request.id}
                     request={request}
-                    onSelect={() => setSelectedRequest(request)}
+                    onSelect={() => handleSelectRequest(request)}
                   />
                 ))}
               </div>
             ) : (
               <SampleRequestTable
                 requests={filteredRequests}
-                onSelectRequest={setSelectedRequest}
+                onSelectRequest={handleSelectRequest}
                 currentUserUid={user?.uid}
               />
             )
@@ -225,7 +298,7 @@ function SampleRequestsContent() {
           <SampleRequestDetail
             open={!!selectedRequest}
             request={selectedRequest}
-            onClose={() => setSelectedRequest(null)}
+            onClose={handleCloseDetailModal}
             onUpdateStatus={updateStatus}
             onDelete={deleteRequest}
             onEdit={handleEdit}

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { JigRequestTable, JigRequestCard, JigRequestKanban, JigRequestDetail, JigRequestForm, JigRequestFilterSection } from '../components';
 import { JigStatus, JigRequest, CreateJigRequestData } from '../types';
 import { useJigRequests } from '../hooks/useJigRequests';
@@ -18,6 +19,9 @@ import { Table, Grid3X3, Kanban } from 'lucide-react';
 import { Badge } from '@/shared/components/ui/badge';
 
 export const JigManagementContainer: React.FC = () => {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const { requests, isLoading, error, updateRequestStatus, createRequest, updateRequest, updateRequestQuantity, deleteRequest } = useJigRequests();
   const userRole = useUserRole() || 'Member';
   const { user, userProfile } = useAuthStore();
@@ -52,6 +56,40 @@ export const JigManagementContainer: React.FC = () => {
       }
     }
   }, [requests, selectedRequest]);
+
+  // URL 파라미터로 모달 열기 (딥링크 처리)
+  useEffect(() => {
+    const requestId = searchParams?.get('requestId');
+    
+    // URL에 requestId가 없으면 아무것도 하지 않음
+    if (!requestId) {
+      return;
+    }
+    
+    // 이미 같은 요청이 선택되어 있으면 아무것도 하지 않음
+    if (selectedRequest?.id === requestId && isDetailModalOpen) {
+      return;
+    }
+    
+    // selectedRequest가 null이면 모달을 열지 않음 (사용자가 닫은 경우)
+    if (!selectedRequest && requestId) {
+      // URL에 requestId가 있지만 selectedRequest가 null이면 URL만 정리
+      // 이는 사용자가 모달을 닫은 후 URL이 아직 업데이트되지 않은 경우를 처리
+      return;
+    }
+    
+    // 요청 목록이 로드되지 않았으면 대기
+    if (!requests || requests.length === 0) {
+      return;
+    }
+    
+    // URL의 requestId에 해당하는 요청 찾아서 모달 열기
+    const target = requests.find(req => req.id === requestId);
+    if (target) {
+      setSelectedRequest(target);
+      setIsDetailModalOpen(true);
+    }
+  }, [searchParams, requests, selectedRequest, isDetailModalOpen]);
 
   const {
     searchTerm,
@@ -149,12 +187,25 @@ export const JigManagementContainer: React.FC = () => {
   const handleSelectRequest = useCallback((request: JigRequest) => {
     setSelectedRequest(request);
     setIsDetailModalOpen(true);
-  }, []);
+    // URL 업데이트 (딥링크 지원)
+    const params = new URLSearchParams(searchParams?.toString() || '');
+    params.set('requestId', request.id);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [searchParams, pathname, router]);
 
   const handleCloseDetailModal = useCallback(() => {
+    // URL을 먼저 업데이트
+    if (searchParams?.get('requestId')) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('requestId');
+      const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+      router.replace(newUrl, { scroll: false });
+    }
+    
+    // 상태 업데이트 - 모달 닫기
     setIsDetailModalOpen(false);
     setSelectedRequest(null);
-  }, []);
+  }, [searchParams, pathname, router]);
 
   const handleDeleteRequest = useCallback(async (requestId: string) => {
     try {

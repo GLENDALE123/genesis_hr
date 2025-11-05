@@ -120,6 +120,18 @@ const DialogContent = React.forwardRef<
   // Electron 환경 감지
   const isElectron = typeof window !== 'undefined' && (window as any).electron;
   
+  // Electron 환경에서 className의 max-h 값을 조정 (타이틀바 높이 고려)
+  const adjustedClassName = React.useMemo(() => {
+    if (!isElectron || !className) return className;
+    
+    // max-h-[95vh] → max-h-[calc(95vh-2rem)] 같은 패턴 처리
+    // 이미 calc가 포함된 경우는 제외하고 처리
+    return className.replace(
+      /max-h-\[(\d+vh)\](?!\w)/g,
+      (match, value) => `max-h-[calc(${value}-2rem)]`
+    );
+  }, [className, isElectron]);
+  
   // 타이틀바 영역 클릭 시 모달이 닫히지 않도록 처리
   const handleInteractOutside = React.useCallback((e: Event) => {
     if (isElectron) {
@@ -149,13 +161,16 @@ const DialogContent = React.forwardRef<
         className={cn(
           // 기본: 중앙에 위치한 모달
           !isFullscreenOnMobile && "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-0 border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
+          // Electron 환경에서 타이틀바 높이(32px = 2rem) 고려하여 top 위치 조정
+          !isFullscreenOnMobile && isElectron && "!top-[calc(50%+1rem)]",
           // 모바일 전체화면 모드 (중앙에서 확대)
           isFullscreenOnMobile && "fixed inset-0 z-50 grid w-[100dvw] h-[100dvh] gap-0 bg-background shadow-lg duration-200 pb-[env(safe-area-inset-bottom)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
-          stickyHeader && stickyFooter ? "max-h-[90vh] grid-rows-[auto_1fr_auto]" : 
-          stickyHeader ? "max-h-[90vh] grid-rows-[auto_1fr]" :
-          stickyFooter ? "max-h-[90vh] grid-rows-[1fr_auto]" : "",
+          // Electron 환경에서 타이틀바 높이 고려하여 최대 높이 조정
+          stickyHeader && stickyFooter ? (isElectron ? "max-h-[calc(90vh-2rem)] grid-rows-[auto_1fr_auto]" : "max-h-[90vh] grid-rows-[auto_1fr_auto]") : 
+          stickyHeader ? (isElectron ? "max-h-[calc(90vh-2rem)] grid-rows-[auto_1fr]" : "max-h-[90vh] grid-rows-[auto_1fr]") :
+          stickyFooter ? (isElectron ? "max-h-[calc(90vh-2rem)] grid-rows-[1fr_auto]" : "max-h-[90vh] grid-rows-[1fr_auto]") : "",
           isFullscreenOnMobile && "!max-h-none",
-          className
+          adjustedClassName
         )}
         {...props}
       >
