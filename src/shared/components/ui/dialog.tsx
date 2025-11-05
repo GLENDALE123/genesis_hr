@@ -45,10 +45,39 @@ const DialogOverlay = React.forwardRef<
   
   // 타이틀바 영역 클릭 시 모달이 닫히지 않도록 처리
   const handlePointerDown = React.useCallback((e: React.PointerEvent) => {
-    if (isElectron && e.clientY < 32) {
-      // 타이틀바 영역 (상단 32px) 클릭은 무시
-      e.preventDefault();
-      e.stopPropagation();
+    if (isElectron) {
+      const target = e.target as HTMLElement;
+      const isTitleBarClick = 
+        target.closest('.drag-region') || 
+        e.clientY < 32;
+      
+      if (isTitleBarClick) {
+        // 타이틀바 영역 (상단 32px) 클릭은 무시
+        e.preventDefault();
+        e.stopPropagation();
+        // 네이티브 이벤트로도 차단
+        if (e.nativeEvent) {
+          e.nativeEvent.stopImmediatePropagation();
+        }
+      }
+    }
+  }, [isElectron]);
+  
+  const handleClick = React.useCallback((e: React.MouseEvent) => {
+    if (isElectron) {
+      const target = e.target as HTMLElement;
+      const isTitleBarClick = 
+        target.closest('.drag-region') || 
+        e.clientY < 32;
+      
+      if (isTitleBarClick) {
+        e.preventDefault();
+        e.stopPropagation();
+        // 네이티브 이벤트로도 차단
+        if (e.nativeEvent) {
+          e.nativeEvent.stopImmediatePropagation();
+        }
+      }
     }
   }, [isElectron]);
   
@@ -62,6 +91,7 @@ const DialogOverlay = React.forwardRef<
         className
       )}
       onPointerDown={handlePointerDown}
+      onClick={handleClick}
       {...props}
     />
   );
@@ -93,10 +123,19 @@ const DialogContent = React.forwardRef<
   // 타이틀바 영역 클릭 시 모달이 닫히지 않도록 처리
   const handleInteractOutside = React.useCallback((e: Event) => {
     if (isElectron) {
+      const mouseEvent = e as MouseEvent;
       const target = e.target as HTMLElement;
+      
       // 타이틀바 영역 클릭인지 확인
-      if (target.closest('.drag-region') || (e as MouseEvent).clientY < 32) {
+      const isTitleBarClick = 
+        target.closest('.drag-region') || 
+        (mouseEvent.clientY !== undefined && mouseEvent.clientY < 32) ||
+        (target.getBoundingClientRect && target.getBoundingClientRect().top < 32);
+      
+      if (isTitleBarClick) {
         e.preventDefault();
+        e.stopImmediatePropagation();
+        return false;
       }
     }
   }, [isElectron]);

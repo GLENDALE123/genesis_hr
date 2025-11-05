@@ -115,6 +115,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ className }) => {
       )}
       style={{
         WebkitAppRegion: 'drag',
+        pointerEvents: 'auto', // 클릭 이벤트 명시적으로 활성화
       } as React.CSSProperties}
     >
       {/* 왼쪽: 앱 아이콘 & 타이틀 */}
