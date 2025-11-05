@@ -43,6 +43,15 @@ const DialogOverlay = React.forwardRef<
   // Electron 환경 감지
   const isElectron = typeof window !== 'undefined' && (window as any).electron;
   
+  // 타이틀바 영역 클릭 시 모달이 닫히지 않도록 처리
+  const handlePointerDown = React.useCallback((e: React.PointerEvent) => {
+    if (isElectron && e.clientY < 32) {
+      // 타이틀바 영역 (상단 32px) 클릭은 무시
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, [isElectron]);
+  
   return (
     <DialogPrimitive.Overlay
       ref={ref}
@@ -52,6 +61,7 @@ const DialogOverlay = React.forwardRef<
         isElectron && "[clip-path:inset(2rem_0_0_0)]",
         className
       )}
+      onPointerDown={handlePointerDown}
       {...props}
     />
   );
@@ -76,12 +86,27 @@ const DialogContent = React.forwardRef<
 >(({ className, children, stickyHeader, stickyFooter, mobileFullscreen = true, ...props }, ref) => {
   const { isSmartphone } = useDeviceType();
   const isFullscreenOnMobile = mobileFullscreen && isSmartphone;
+  
+  // Electron 환경 감지
+  const isElectron = typeof window !== 'undefined' && (window as any).electron;
+  
+  // 타이틀바 영역 클릭 시 모달이 닫히지 않도록 처리
+  const handleInteractOutside = React.useCallback((e: Event) => {
+    if (isElectron) {
+      const target = e.target as HTMLElement;
+      // 타이틀바 영역 클릭인지 확인
+      if (target.closest('.drag-region') || (e as MouseEvent).clientY < 32) {
+        e.preventDefault();
+      }
+    }
+  }, [isElectron]);
 
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Content
         ref={ref}
+        onInteractOutside={handleInteractOutside}
         className={cn(
           // 기본: 중앙에 위치한 모달
           !isFullscreenOnMobile && "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-0 border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",

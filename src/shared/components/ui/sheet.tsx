@@ -42,6 +42,15 @@ const SheetOverlay = React.forwardRef<
   // Electron 환경 감지
   const isElectron = typeof window !== 'undefined' && (window as any).electron;
   
+  // 타이틀바 영역 클릭 시 모달이 닫히지 않도록 처리
+  const handlePointerDown = React.useCallback((e: React.PointerEvent) => {
+    if (isElectron && e.clientY < 32) {
+      // 타이틀바 영역 (상단 32px) 클릭은 무시
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, [isElectron]);
+  
   return (
     <SheetPrimitive.Overlay
       className={cn(
@@ -50,6 +59,7 @@ const SheetOverlay = React.forwardRef<
         isElectron && "[clip-path:inset(2rem_0_0_0)]",
         className
       )}
+      onPointerDown={handlePointerDown}
       {...props}
       ref={ref}
     />
@@ -91,12 +101,28 @@ interface SheetContentProps
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, overlayClassName, children, hideClose, fullscreen, animationVariant = 'default', ...props }, ref) => (
-  <SheetPortal>
-    <SheetOverlay className={overlayClassName} />
-    <SheetPrimitive.Content
-      ref={ref}
-      className={(() => {
+>(({ side = "right", className, overlayClassName, children, hideClose, fullscreen, animationVariant = 'default', ...props }, ref) => {
+  // Electron 환경 감지
+  const isElectron = typeof window !== 'undefined' && (window as any).electron;
+  
+  // 타이틀바 영역 클릭 시 모달이 닫히지 않도록 처리
+  const handleInteractOutside = React.useCallback((e: Event) => {
+    if (isElectron) {
+      const target = e.target as HTMLElement;
+      // 타이틀바 영역 클릭인지 확인
+      if (target.closest('.drag-region') || (e as MouseEvent).clientY < 32) {
+        e.preventDefault();
+      }
+    }
+  }, [isElectron]);
+  
+  return (
+    <SheetPortal>
+      <SheetOverlay className={overlayClassName} />
+      <SheetPrimitive.Content
+        ref={ref}
+        onInteractOutside={handleInteractOutside}
+        className={(() => {
         if (fullscreen) {
           // Fullscreen 모드: 변형에 따라 애니메이션 세분화
           const base = "fixed inset-0 z-50 bg-background shadow-lg h-[100dvh] w-[100dvw] max-h-[100dvh]";
@@ -120,7 +146,8 @@ const SheetContent = React.forwardRef<
       {children}
     </SheetPrimitive.Content>
   </SheetPortal>
-))
+  );
+})
 SheetContent.displayName = SheetPrimitive.Content.displayName
 
 const SheetHeader = ({
