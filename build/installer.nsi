@@ -8,7 +8,7 @@
 !define APP_URL "https://hs-hr.com"
 !define APP_REGKEY "Software\HS-HR\TMS"
 !define APP_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}"
-!define APP_EXE "TMS 통합관리시스템.exe"
+!define APP_EXE "TMS-Integrated-Management.exe"
 
 Name "${APP_NAME}"
 OutFile "..\dist\TMS-Setup-${APP_VERSION}.exe"
@@ -77,17 +77,27 @@ Section -Main
   WriteRegStr HKCU "${APP_REGKEY}" "InstallPath" "$INSTDIR"
   WriteRegStr HKCU "${APP_REGKEY}" "Version" "${APP_VERSION}"
   
+  ; 실행 파일 존재 확인
+  IfFileExists "$INSTDIR\${APP_EXE}" 0 exeNotFound
+  
   ; 바탕화면 바로가기 생성
   DetailPrint "바탕화면 바로가기 생성 중..."
-  CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\icon.ico" 0
-  DetailPrint "바탕화면 바로가기 생성 완료 (아이콘: $INSTDIR\icon.ico)"
+  CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\icon.ico" 0 "" "" "$INSTDIR"
+  DetailPrint "바탕화면 바로가기 생성 완료 (대상: $INSTDIR\${APP_EXE}, 작업 디렉토리: $INSTDIR)"
   
   ; 시작 메뉴 바로가기 생성
   DetailPrint "시작 메뉴 바로가기 생성 중..."
   CreateDirectory "$SMPROGRAMS\${APP_NAME}"
-  CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\icon.ico" 0
-  CreateShortcut "$SMPROGRAMS\${APP_NAME}\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\icon.ico" 0
-  DetailPrint "시작 메뉴 바로가기 생성 완료 (아이콘: $INSTDIR\icon.ico)"
+  CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\icon.ico" 0 "" "" "$INSTDIR"
+  CreateShortcut "$SMPROGRAMS\${APP_NAME}\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\icon.ico" 0 "" "" "$INSTDIR"
+  DetailPrint "시작 메뉴 바로가기 생성 완료 (대상: $INSTDIR\${APP_EXE}, 작업 디렉토리: $INSTDIR)"
+  Goto shortcutsDone
+  
+  exeNotFound:
+    MessageBox MB_OK|MB_ICONEXCLAMATION "오류: 실행 파일을 찾을 수 없습니다.$\n$\n경로: $INSTDIR\${APP_EXE}$\n$\n설치를 계속하지만 바로가기는 생성되지 않습니다."
+    DetailPrint "경고: 실행 파일이 없어 바로가기를 생성할 수 없습니다: $INSTDIR\${APP_EXE}"
+  
+  shortcutsDone:
   
   ; 레지스트리 등록
   WriteRegStr HKCU "${APP_UNINST_KEY}" "DisplayName" "${APP_NAME}"

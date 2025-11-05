@@ -350,46 +350,33 @@ exports.createNotification = onRequest({
             let successCount = 0;
             let failureCount = 0;
             
-            // Android 알림 전송 전략 (수정된 베스트 프랙티스):
-            // React Native Firebase의 실제 동작:
-            // - 앱이 종료된 상태: notification 필드가 있어야 시스템 알림 표시, 백그라운드 핸들러 호출 안 됨
-            // - 앱이 백그라운드에 있을 때: notification + data 필드가 모두 있으면 시스템 알림 표시 + 백그라운드 핸들러 호출됨
-            // - 앱이 포그라운드에 있을 때: onMessage 핸들러에서 처리
-            //
-            // 전략: notification + data 필드를 함께 전송
-            // - 앱 종료 상태: notification 필드로 시스템 알림 표시 (백그라운드 핸들러 호출 안 됨)
-            // - 앱 백그라운드 상태: 시스템 알림 표시 + 백그라운드 핸들러 호출되어 notifee로 커스텀 알림 추가 표시
-            // - 앱 포그라운드 상태: onMessage 핸들러에서 notifee로 알림 표시
-            //
-            // 주의: 앱이 종료된 상태에서는 백그라운드 핸들러가 호출되지 않으므로 시스템 알림만 표시됨
-            // 하지만 앱이 백그라운드에 있을 때는 notifee로 더 풍부한 알림을 표시할 수 있음
+            // Android 알림 전송 전략: data-only 메시지 전송 (중복 알림 방지)
+            // 포그라운드에서 중복 알림이 발생하는 문제 해결:
+            // - notification + data를 함께 보내면 포그라운드에서 FCM SDK가 자동 알림 + onMessage에서 notifee 알림 = 2개
+            // - data-only로 보내면 포그라운드에서 onMessage에서만 notifee 알림 = 1개
+            // - 백그라운드/종료 상태: React Native Firebase 백그라운드 핸들러에서 notifee로 알림 표시
             console.log('[Android FCM Send]', {
               tokenCount: androidDocs.length,
               channelId: channelId,
               title: title.substring(0, 30),
-              strategy: 'notification + data (hybrid)'
+              strategy: 'data-only (prevents duplicate notifications)'
             });
-            
-            for (const tokens of chunkArray(androidDocs.map((d) => d.id), 500)) {
+
+            for (const tokens of chunkArray(androidDocs.map((d) => d.id), 500)) {                                                                               
               const response = await messaging.sendEachForMulticast({
                 tokens,
-                // notification 필드: 앱이 종료된 상태에서도 알림 표시 보장
-                notification: {
+                // notification 필드 제거: 포그라운드에서 FCM SDK 자동 알림 방지
+                // data-only로 전송하여 앱의 onMessage/백그라운드 핸들러에서만 notifee로 알림 표시
+                data: {
+                  ...data,
+                  tag: categoryKey,
                   title: String(title),
                   body: String(bodyText),
+                  channelId: String(channelId)
                 },
-                // data 필드: 백그라운드 핸들러가 호출되어 notifee로 커스텀 알림 표시 가능
-                data: { 
-                  ...data, 
-                  tag: categoryKey, 
-                  title: String(title), 
-                  body: String(bodyText), 
-                  channelId: String(channelId) 
-                },
-                android: { 
+                android: {
                   priority: 'high',
-                  // Android 특정 설정 (notification 필드는 최상위에만 있음)
-                  // android.notification은 별도로 설정하지 않음 (최상위 notification 필드가 사용됨)
+                  // data-only 메시지는 Android 채널 설정이 필요 없음 (notifee에서 처리)
                 },
               });
               

@@ -77,15 +77,16 @@ function mapNotificationTypeToChannel(type) {
 }
 
 // 백그라운드 메시지 핸들러 등록 (앱이 종료되거나 백그라운드에 있을 때)
-// 이 핸들러는 반드시 index.js의 최상위 레벨에 있어야 합니다.
+// 이 핸들러는 백그라운드 index.js에서 독립적으로 실행됩니다.
+// 서버에서 data-only 메시지를 전송하므로 이 핸들러에서 notifee로 알림을 표시합니다.
 messaging().setBackgroundMessageHandler(async remoteMessage => {
-  console.log('📱 ========== 백그라운드 메시지 핸들러 호출됨 ==========');
-  console.log('📱 백그라운드 메시지 수신:', JSON.stringify(remoteMessage, null, 2));
-  console.log('📱 remoteMessage.data:', remoteMessage?.data);
-  console.log('📱 remoteMessage.notification:', remoteMessage?.notification);
-  
+  console.log('🔵 ========== 백그라운드 메시지 핸들러 실행 ==========');
+  console.log('🔵 백그라운드 메시지 수신:', JSON.stringify(remoteMessage, null, 2));
+  console.log('�� remoteMessage.data:', remoteMessage?.data);
+  console.log('🔵 remoteMessage.notification:', remoteMessage?.notification);
+
   try {
-    console.log('📱 백그라운드 핸들러 시작');
+    console.log('🔵 백그라운드 핸들러 시작');
     // Android 채널 초기화
     if (Platform.OS === 'android') {
       for (const group of CHANNEL_GROUPS) {
@@ -109,21 +110,21 @@ messaging().setBackgroundMessageHandler(async remoteMessage => {
 
     const data = remoteMessage?.data || {};
     const notification = remoteMessage?.notification || {};
-    
-    // Notification + Data 메시지 처리 (하이브리드 전략)
-    // notification 필드가 있으면 시스템 알림이 자동으로 표시됨
-    // data 필드가 있으면 백그라운드 핸들러가 호출되어 notifee로 커스텀 알림도 추가 표시 가능
+
+    // data-only 메시지 처리
+    // 서버에서 notification 페이로드를 제거하고 data-only로 전송하므로
+    // data 필드에서 title, body를 가져와서 notifee로 알림 표시
     const title = notification?.title || data?.title || '알림';
     const body = notification?.body || data?.body || '';
     const type = String(data?.type || '');
     // Functions에서 보낸 channelId 우선 사용, 없으면 타입 매핑
     const channelId = String(data?.channelId || mapNotificationTypeToChannel(type) || 'default');
-    
+
     const centerInfo = String(data?.centerInfo || data?.requestType || data?.category || '');
     const subtitle = String(data?.subtitle || data?.productName || '');
     const senderName = String(data?.senderName || '시스템');
     const senderAvatar = String(data?.senderAvatar || '');
-    
+
     // BigText 본문 구성
     let bigTextBody = '';
     if (centerInfo && !centerInfo.includes('댓글')) {
@@ -136,15 +137,12 @@ messaging().setBackgroundMessageHandler(async remoteMessage => {
       bigTextBody += `${subtitle}\n`;
     }
     bigTextBody += body;
-    
+
     console.log('📤 백그라운드 notifee 알림 표시 시도:', { title, body, channelId });
     console.log('📤 notification 필드 존재:', !!notification);
     console.log('📤 data 필드 존재:', !!data && Object.keys(data).length > 0);
-    
-    // Notification + Data 필드가 모두 있으면:
-    // - 시스템 알림이 이미 표시되었을 수 있음
-    // - notifee로 커스텀 알림을 추가 표시하여 더 풍부한 정보 제공
-    // - 시스템 알림은 자동으로 사라지고 notifee 알림만 남게 됨
+
+    // data-only 메시지를 notifee로 알림 표시
     const notificationId = await notifee.displayNotification({
       title: title,
       subtitle: subtitle || undefined,
@@ -172,7 +170,7 @@ messaging().setBackgroundMessageHandler(async remoteMessage => {
         url: data?.url || '',
       },
     });
-    
+
     console.log('✅ 백그라운드 알림 표시 완료:', { title, notificationId });
   } catch (error) {
     console.error('❌ 백그라운드 알림 표시 실패:', error);
