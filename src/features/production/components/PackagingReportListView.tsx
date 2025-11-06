@@ -123,6 +123,21 @@ const ReportRow = React.memo<ReportRowProps>(({
       <TableCell className="px-2 py-3 whitespace-nowrap text-right">{(report.orderQuantity && report.orderQuantity.toLocaleString()) || '-'}</TableCell>
       {/* 사양 */}
       <TableCell className="px-2 py-3 whitespace-nowrap">{report.specification || '-'}</TableCell>
+      {/* 공정조건 */}
+      <TableCell className="px-2 py-3 whitespace-nowrap text-center">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onOpenProcessConditions(report)}
+          className="w-full text-center p-1 h-auto hover:bg-accent transition-colors"
+        >
+          {report.processConditions && Object.values(report.processConditions).some(v => (v && v.conditions) || (v && v.remarks)) ? (
+            <span className="font-bold text-green-500 text-base">O</span>
+          ) : (
+            <span className="text-muted-foreground">-</span>
+          )}
+        </Button>
+      </TableCell>
       {/* 투입 */}
       <TableCell className="px-2 py-3 whitespace-nowrap text-right">{(report.inputQuantity && report.inputQuantity.toLocaleString()) || 0}</TableCell>
       {/* 양품 */}
@@ -151,21 +166,6 @@ const ReportRow = React.memo<ReportRowProps>(({
       </TableCell>
       {/* 작성자 */}
       <TableCell className="px-2 py-3 whitespace-nowrap">{report.author.displayName}</TableCell>
-      {/* 공정조건 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap text-center">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onOpenProcessConditions(report)}
-          className="w-full text-center p-1 h-auto hover:bg-accent transition-colors"
-        >
-          {report.processConditions && Object.values(report.processConditions).some(v => (v && v.conditions) || (v && v.remarks)) ? (
-            <span className="font-bold text-green-500 text-base">O</span>
-          ) : (
-            <span className="text-muted-foreground">-</span>
-          )}
-        </Button>
-      </TableCell>
       {/* 메모 */}
       <TableCell className="px-2 py-3 whitespace-nowrap text-center">
         {report.memo ? (
@@ -321,6 +321,21 @@ const ReportRowWithPressState = React.memo<ReportRowProps>((props) => {
       <TableCell className="px-2 py-3 whitespace-nowrap text-right">{(report.orderQuantity && report.orderQuantity.toLocaleString()) || '-'}</TableCell>
       {/* 사양 */}
       <TableCell className="px-2 py-3 whitespace-nowrap">{report.specification || '-'}</TableCell>
+      {/* 공정조건 */}
+      <TableCell className="px-2 py-3 whitespace-nowrap text-center">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onOpenProcessConditions(report)}
+          className="w-full text-center p-1 h-auto hover:bg-accent transition-colors"
+        >
+          {report.processConditions && Object.values(report.processConditions).some(v => (v && v.conditions) || (v && v.remarks)) ? (
+            <span className="font-bold text-green-500 text-base">O</span>
+          ) : (
+            <span className="text-muted-foreground">-</span>
+          )}
+        </Button>
+      </TableCell>
       {/* 투입 */}
       <TableCell className="px-2 py-3 whitespace-nowrap text-right">{(report.inputQuantity && report.inputQuantity.toLocaleString()) || 0}</TableCell>
       {/* 양품 */}
@@ -349,21 +364,6 @@ const ReportRowWithPressState = React.memo<ReportRowProps>((props) => {
       </TableCell>
       {/* 작성자 */}
       <TableCell className="px-2 py-3 whitespace-nowrap">{report.author.displayName}</TableCell>
-      {/* 공정조건 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap text-center">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onOpenProcessConditions(report)}
-          className="w-full text-center p-1 h-auto hover:bg-accent transition-colors"
-        >
-          {report.processConditions && Object.values(report.processConditions).some(v => (v && v.conditions) || (v && v.remarks)) ? (
-            <span className="font-bold text-green-500 text-base">O</span>
-          ) : (
-            <span className="text-muted-foreground">-</span>
-          )}
-        </Button>
-      </TableCell>
       {/* 메모 */}
       <TableCell className="px-2 py-3 whitespace-nowrap text-center">
         {report.memo ? (
@@ -995,6 +995,7 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
                     <TableHead className="px-2 py-3 whitespace-nowrap bg-background">제품명/부속명</TableHead>
                      <TableHead className="px-2 py-3 whitespace-nowrap bg-background text-right">발주수량</TableHead>
                      <TableHead className="px-2 py-3 whitespace-nowrap bg-background">사양</TableHead>
+                     <TableHead className="px-2 py-3 whitespace-nowrap bg-background">공정조건</TableHead>
                      <TableHead className="px-2 py-3 whitespace-nowrap bg-background text-right">투입</TableHead>
                      <TableHead className="px-2 py-3 whitespace-nowrap bg-background text-right">양품</TableHead>
                      <TableHead className="px-2 py-3 whitespace-nowrap bg-background text-right">불량</TableHead>
@@ -1005,7 +1006,6 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
                      <TableHead className="px-2 py-3 whitespace-nowrap bg-background">종료시간</TableHead>
                      <TableHead className="px-2 py-3 whitespace-nowrap bg-background text-right">양품률</TableHead>
                     <TableHead className="px-2 py-3 whitespace-nowrap bg-background">작성자</TableHead>
-                    <TableHead className="px-2 py-3 whitespace-nowrap bg-background">공정조건</TableHead>
                     <TableHead className="px-2 py-3 whitespace-nowrap bg-background">메모</TableHead>
                     <TableHead className="px-2 py-3 whitespace-nowrap bg-background">부족분신청</TableHead>
                     <TableHead className="px-2 py-3 whitespace-nowrap bg-background">작업</TableHead>
