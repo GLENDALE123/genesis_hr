@@ -96,35 +96,35 @@ const ReportRow = React.memo<ReportRowProps>(({
       onClick={handleRowClick}
     >
       {/* 작업일자 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap">
+      <TableCell className="px-1.5 py-2 whitespace-nowrap">
         {formatDate(report.workDate)}
       </TableCell>
       {/* 상태 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap">
+      <TableCell className="px-1.5 py-2 whitespace-nowrap">
         <span className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${statusColorClass}`}>
           {status}
         </span>
       </TableCell>
       {/* 생산라인 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap">
+      <TableCell className="px-1.5 py-2 whitespace-nowrap">
         <Badge variant="secondary">{report.productionLine}</Badge>
       </TableCell>
       {/* 발주번호 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap">
+      <TableCell className="px-1.5 py-2 whitespace-nowrap">
         {(report.orderNumbers && report.orderNumbers.join(', ')) || '-'}
       </TableCell>
       {/* 발주처 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap font-semibold">{report.supplier}</TableCell>
+      <TableCell className="px-1.5 py-2 whitespace-nowrap font-semibold">{report.supplier}</TableCell>
       {/* 제품명/부속명 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap font-semibold">
+      <TableCell className="px-1.5 py-2 whitespace-nowrap font-semibold">
         {report.productName}{report.partName ? '/' + report.partName : ''}
       </TableCell>
       {/* 발주수량 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap text-right">{(report.orderQuantity && report.orderQuantity.toLocaleString()) || '-'}</TableCell>
+      <TableCell className="px-1.5 py-2 whitespace-nowrap text-right">{(report.orderQuantity && report.orderQuantity.toLocaleString()) || '-'}</TableCell>
       {/* 사양 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap">{report.specification || '-'}</TableCell>
+      <TableCell className="px-1.5 py-2 whitespace-nowrap">{report.specification || '-'}</TableCell>
       {/* 공정조건 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap text-center">
+      <TableCell className="px-1.5 py-2 whitespace-nowrap text-center">
         <Button
           variant="ghost"
           size="sm"
@@ -139,35 +139,35 @@ const ReportRow = React.memo<ReportRowProps>(({
         </Button>
       </TableCell>
       {/* 투입 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap text-right">{(report.inputQuantity && report.inputQuantity.toLocaleString()) || 0}</TableCell>
+      <TableCell className="px-1.5 py-2 whitespace-nowrap text-right">{(report.inputQuantity && report.inputQuantity.toLocaleString()) || 0}</TableCell>
       {/* 양품 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap text-green-600 font-semibold text-right">
+      <TableCell className="px-1.5 py-2 whitespace-nowrap text-green-600 font-semibold text-right">
         {(report.goodQuantity && report.goodQuantity.toLocaleString()) || 0}
       </TableCell>
       {/* 불량 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap text-red-600 font-semibold text-right">
+      <TableCell className="px-1.5 py-2 whitespace-nowrap text-red-600 font-semibold text-right">
         {(report.defectQuantity && report.defectQuantity.toLocaleString()) || 0}
       </TableCell>
       {/* 인원 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap text-right">{report.personnelCount || '-'}</TableCell>
+      <TableCell className="px-1.5 py-2 whitespace-nowrap text-right">{report.personnelCount || '-'}</TableCell>
       {/* 라인비율 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap">{report.lineRatio || '-'}</TableCell>
+      <TableCell className="px-1.5 py-2 whitespace-nowrap text-center">{report.lineRatio || '-'}</TableCell>
       {/* 시간당생산량 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap text-right font-semibold text-orange-600 dark:text-orange-400">
+      <TableCell className="px-1.5 py-2 whitespace-nowrap text-right font-semibold text-orange-600 dark:text-orange-400">
         {report.uph || report.productionPerMinute ? (report.uph || report.productionPerMinute)!.toLocaleString() : '-'}
       </TableCell>
       {/* 시작시간 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap">{report.startTime || '-'}</TableCell>
+      <TableCell className="px-1.5 py-2 whitespace-nowrap">{report.startTime || '-'}</TableCell>
       {/* 종료시간 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap">{report.endTime || '-'}</TableCell>
+      <TableCell className="px-1.5 py-2 whitespace-nowrap">{report.endTime || '-'}</TableCell>
       {/* 양품률 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap text-right">
+      <TableCell className="px-1.5 py-2 whitespace-nowrap text-right">
         {calculateYieldRate(report.goodQuantity || 0, report.inputQuantity || 0)}%
       </TableCell>
       {/* 작성자 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap">{report.author.displayName}</TableCell>
+      <TableCell className="px-1.5 py-2 whitespace-nowrap">{report.author.displayName}</TableCell>
       {/* 메모 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap text-center">
+      <TableCell className="px-1.5 py-2 whitespace-nowrap text-center">
         {report.memo ? (
           <Button
             variant="link"
@@ -182,7 +182,7 @@ const ReportRow = React.memo<ReportRowProps>(({
         )}
       </TableCell>
       {/* 부족분 신청 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap text-center">
+      <TableCell className="px-1.5 py-2 whitespace-nowrap text-center">
         <Button
           variant="ghost"
           size="sm"
@@ -201,7 +201,7 @@ const ReportRow = React.memo<ReportRowProps>(({
         </Button>
       </TableCell>
       {/* 작업 */}
-      <TableCell className="h-8 px-3 py-1 whitespace-nowrap text-right">
+      <TableCell className="h-8 px-1.5 py-2 whitespace-nowrap text-right">
         {(canUpdate || canDelete) ? (
           <div className="flex items-center justify-end gap-1">
             {canUpdate && (
@@ -230,7 +230,7 @@ const ReportRow = React.memo<ReportRowProps>(({
         )}
       </TableCell>
       {/* 물류이동 체크박스 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap text-center">
+      <TableCell className="px-1.5 py-2 whitespace-nowrap text-center">
         <Checkbox
           checked={isSelected}
           onCheckedChange={() => onToggleSelection(report.id)}
@@ -294,35 +294,35 @@ const ReportRowWithPressState = React.memo<ReportRowProps>((props) => {
       onTouchEnd={clearPressed}
     >
       {/* 작업일자 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap">
+      <TableCell className="px-1.5 py-2 whitespace-nowrap">
         {formatDate(report.workDate)}
       </TableCell>
       {/* 상태 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap">
+      <TableCell className="px-1.5 py-2 whitespace-nowrap">
         <span className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${statusColorClass}`}>
           {status}
         </span>
       </TableCell>
       {/* 생산라인 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap">
+      <TableCell className="px-1.5 py-2 whitespace-nowrap">
         <Badge variant="secondary">{report.productionLine}</Badge>
       </TableCell>
       {/* 발주번호 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap">
+      <TableCell className="px-1.5 py-2 whitespace-nowrap">
         {(report.orderNumbers && report.orderNumbers.join(', ')) || '-'}
       </TableCell>
       {/* 발주처 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap font-semibold">{report.supplier}</TableCell>
+      <TableCell className="px-1.5 py-2 whitespace-nowrap font-semibold">{report.supplier}</TableCell>
       {/* 제품명/부속명 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap font-semibold">
+      <TableCell className="px-1.5 py-2 whitespace-nowrap font-semibold">
         {report.productName}{report.partName ? '/' + report.partName : ''}
       </TableCell>
       {/* 발주수량 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap text-right">{(report.orderQuantity && report.orderQuantity.toLocaleString()) || '-'}</TableCell>
+      <TableCell className="px-1.5 py-2 whitespace-nowrap text-right">{(report.orderQuantity && report.orderQuantity.toLocaleString()) || '-'}</TableCell>
       {/* 사양 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap">{report.specification || '-'}</TableCell>
+      <TableCell className="px-1.5 py-2 whitespace-nowrap">{report.specification || '-'}</TableCell>
       {/* 공정조건 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap text-center">
+      <TableCell className="px-1.5 py-2 whitespace-nowrap text-center">
         <Button
           variant="ghost"
           size="sm"
@@ -337,35 +337,35 @@ const ReportRowWithPressState = React.memo<ReportRowProps>((props) => {
         </Button>
       </TableCell>
       {/* 투입 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap text-right">{(report.inputQuantity && report.inputQuantity.toLocaleString()) || 0}</TableCell>
+      <TableCell className="px-1.5 py-2 whitespace-nowrap text-right">{(report.inputQuantity && report.inputQuantity.toLocaleString()) || 0}</TableCell>
       {/* 양품 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap text-green-600 font-medium text-right">
+      <TableCell className="px-1.5 py-2 whitespace-nowrap text-green-600 font-medium text-right">
         {(report.goodQuantity && report.goodQuantity.toLocaleString()) || 0}
       </TableCell>
       {/* 불량 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap text-red-600 text-right">
+      <TableCell className="px-1.5 py-2 whitespace-nowrap text-red-600 text-right">
         {(report.defectQuantity && report.defectQuantity.toLocaleString()) || 0}
       </TableCell>
       {/* 인원 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap text-right">{report.personnelCount || '-'}</TableCell>
+      <TableCell className="px-1.5 py-2 whitespace-nowrap text-right">{report.personnelCount || '-'}</TableCell>
       {/* 라인비율 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap">{report.lineRatio || '-'}</TableCell>
+      <TableCell className="px-1.5 py-2 whitespace-nowrap text-center">{report.lineRatio || '-'}</TableCell>
       {/* 시간당생산량 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap text-right font-semibold text-orange-600 dark:text-orange-400">
+      <TableCell className="px-1.5 py-2 whitespace-nowrap text-right font-semibold text-orange-600 dark:text-orange-400">
         {report.uph || report.productionPerMinute ? (report.uph || report.productionPerMinute)!.toLocaleString() : '-'}
       </TableCell>
       {/* 시작시간 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap">{report.startTime || '-'}</TableCell>
+      <TableCell className="px-1.5 py-2 whitespace-nowrap">{report.startTime || '-'}</TableCell>
       {/* 종료시간 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap">{report.endTime || '-'}</TableCell>
+      <TableCell className="px-1.5 py-2 whitespace-nowrap">{report.endTime || '-'}</TableCell>
       {/* 양품률 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap text-right">
+      <TableCell className="px-1.5 py-2 whitespace-nowrap text-right">
         {calculateYieldRate(report.goodQuantity || 0, report.inputQuantity || 0)}%
       </TableCell>
       {/* 작성자 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap">{report.author.displayName}</TableCell>
+      <TableCell className="px-1.5 py-2 whitespace-nowrap">{report.author.displayName}</TableCell>
       {/* 메모 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap text-center">
+      <TableCell className="px-1.5 py-2 whitespace-nowrap text-center">
         {report.memo ? (
           <Button
             variant="link"
@@ -380,7 +380,7 @@ const ReportRowWithPressState = React.memo<ReportRowProps>((props) => {
         )}
       </TableCell>
       {/* 부족분 신청 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap text-center">
+      <TableCell className="px-1.5 py-2 whitespace-nowrap text-center">
         <Button
           variant="ghost"
           size="sm"
@@ -399,7 +399,7 @@ const ReportRowWithPressState = React.memo<ReportRowProps>((props) => {
         </Button>
       </TableCell>
       {/* 작업 */}
-      <TableCell className="h-8 px-3 py-1 whitespace-nowrap text-right">
+      <TableCell className="h-8 px-1.5 py-2 whitespace-nowrap text-right">
         {(canUpdate || canDelete) ? (
           <div className="flex items-center justify-end gap-1">
             {canUpdate && (
@@ -428,7 +428,7 @@ const ReportRowWithPressState = React.memo<ReportRowProps>((props) => {
         )}
       </TableCell>
       {/* 물류이동 체크박스 */}
-      <TableCell className="px-2 py-3 whitespace-nowrap text-center">
+      <TableCell className="px-1.5 py-2 whitespace-nowrap text-center">
         <Checkbox
           checked={isSelected}
           onCheckedChange={() => onToggleSelection(report.id)}
@@ -987,29 +987,29 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
                 {/* 고정 헤더 */}
                 <TableHeader className="sticky top-0 z-10 bg-background">
                   <TableRow className="border-b bg-background">
-                    <TableHead className="px-2 py-3 whitespace-nowrap bg-background rounded-tl-lg">작업일자</TableHead>
-                    <TableHead className="px-2 py-3 whitespace-nowrap bg-background">상태</TableHead>
-                    <TableHead className="px-2 py-3 whitespace-nowrap bg-background">생산라인</TableHead>
-                    <TableHead className="px-2 py-3 whitespace-nowrap bg-background">발주번호</TableHead>
-                    <TableHead className="px-2 py-3 whitespace-nowrap bg-background">발주처</TableHead>
-                    <TableHead className="px-2 py-3 whitespace-nowrap bg-background">제품명/부속명</TableHead>
-                     <TableHead className="px-2 py-3 whitespace-nowrap bg-background text-right">발주수량</TableHead>
-                     <TableHead className="px-2 py-3 whitespace-nowrap bg-background">사양</TableHead>
-                     <TableHead className="px-2 py-3 whitespace-nowrap bg-background">공정조건</TableHead>
-                     <TableHead className="px-2 py-3 whitespace-nowrap bg-background text-right">투입</TableHead>
-                     <TableHead className="px-2 py-3 whitespace-nowrap bg-background text-right">양품</TableHead>
-                     <TableHead className="px-2 py-3 whitespace-nowrap bg-background text-right">불량</TableHead>
-                     <TableHead className="px-2 py-3 whitespace-nowrap bg-background text-right">인원</TableHead>
-                     <TableHead className="px-2 py-3 whitespace-nowrap bg-background">라인비율</TableHead>
-                     <TableHead className="px-2 py-3 whitespace-nowrap bg-background text-right">시간당생산량</TableHead>
-                     <TableHead className="px-2 py-3 whitespace-nowrap bg-background">시작시간</TableHead>
-                     <TableHead className="px-2 py-3 whitespace-nowrap bg-background">종료시간</TableHead>
-                     <TableHead className="px-2 py-3 whitespace-nowrap bg-background text-right">양품률</TableHead>
-                    <TableHead className="px-2 py-3 whitespace-nowrap bg-background">작성자</TableHead>
-                    <TableHead className="px-2 py-3 whitespace-nowrap bg-background">메모</TableHead>
-                    <TableHead className="px-2 py-3 whitespace-nowrap bg-background">부족분신청</TableHead>
-                    <TableHead className="px-2 py-3 whitespace-nowrap bg-background">작업</TableHead>
-                    <TableHead className="px-2 py-3 whitespace-nowrap bg-background rounded-tr-lg">
+                    <TableHead className="px-1.5 py-2 whitespace-nowrap bg-background rounded-tl-lg">작업일자</TableHead>
+                    <TableHead className="px-1.5 py-2 whitespace-nowrap bg-background">상태</TableHead>
+                    <TableHead className="px-1.5 py-2 whitespace-nowrap bg-background">생산라인</TableHead>
+                    <TableHead className="px-1.5 py-2 whitespace-nowrap bg-background">발주번호</TableHead>
+                    <TableHead className="px-1.5 py-2 whitespace-nowrap bg-background">발주처</TableHead>
+                    <TableHead className="px-1.5 py-2 whitespace-nowrap bg-background">제품명/부속명</TableHead>
+                     <TableHead className="px-1.5 py-2 whitespace-nowrap bg-background text-right">발주수량</TableHead>
+                     <TableHead className="px-1.5 py-2 whitespace-nowrap bg-background">사양</TableHead>
+                     <TableHead className="px-1.5 py-2 whitespace-nowrap bg-background">공정조건</TableHead>
+                     <TableHead className="px-1.5 py-2 whitespace-nowrap bg-background text-right">투입</TableHead>
+                     <TableHead className="px-1.5 py-2 whitespace-nowrap bg-background text-right">양품</TableHead>
+                     <TableHead className="px-1.5 py-2 whitespace-nowrap bg-background text-right">불량</TableHead>
+                     <TableHead className="px-1.5 py-2 whitespace-nowrap bg-background text-right">인원</TableHead>
+                     <TableHead className="px-1.5 py-2 whitespace-nowrap bg-background text-center">라인비율</TableHead>
+                     <TableHead className="px-1.5 py-2 whitespace-nowrap bg-background text-right">시간당생산량</TableHead>
+                     <TableHead className="px-1.5 py-2 whitespace-nowrap bg-background">시작시간</TableHead>
+                     <TableHead className="px-1.5 py-2 whitespace-nowrap bg-background">종료시간</TableHead>
+                     <TableHead className="px-1.5 py-2 whitespace-nowrap bg-background text-right">양품률</TableHead>
+                    <TableHead className="px-1.5 py-2 whitespace-nowrap bg-background">작성자</TableHead>
+                    <TableHead className="px-1.5 py-2 whitespace-nowrap bg-background">메모</TableHead>
+                    <TableHead className="px-1.5 py-2 whitespace-nowrap bg-background">부족분신청</TableHead>
+                    <TableHead className="px-1.5 py-2 whitespace-nowrap bg-background">작업</TableHead>
+                    <TableHead className="px-1.5 py-2 whitespace-nowrap bg-background rounded-tr-lg">
                       <div className="flex items-center justify-center gap-2">
                       <span>물류이동</span>
                         <Checkbox
