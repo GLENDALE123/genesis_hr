@@ -172,7 +172,7 @@ function mapUrlByType(type, requestId, subType) {
     // ==================== 샘플센터 ====================
     case 'sample-status':
     case 'sample-request':
-      return `/sample-center/requests?requestId=${id}`;
+      return `/sample-center/requests/?requestId=${id}`;
     
     // ==================== 지그센터 ====================
     case 'jig-request':
@@ -182,7 +182,7 @@ function mapUrlByType(type, requestId, subType) {
     // ==================== 댓글/멘션 ====================
     case 'comment-mention':
       if (s === 'jig') return `/jig/management?requestId=${id}`;
-      if (s === 'sample') return `/sample-center/requests?requestId=${id}`;
+      if (s === 'sample') return `/sample-center/requests/?requestId=${id}`;
       return `/production/management?requestId=${id}`;
     
     // ==================== 기타 ====================

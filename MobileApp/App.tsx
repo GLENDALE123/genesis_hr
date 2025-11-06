@@ -418,14 +418,58 @@ const App: React.FC = () => {
         
         // 딥링크 처리
         if (url && webViewRef.current) {
-          const escapedUrl = url.replace(/"/g, '\\"').replace(/\n/g, '\\n');
+          console.log('🔗 백그라운드 알림 딥링크 URL:', url);
+          const escapedUrl = url.replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\$/g, '\\$');
+          const baseUrl = DEFAULT_URL;
           webViewRef.current.injectJavaScript(`
             (function() {
               const url = "${escapedUrl}";
-              if (url && url !== '#' && url !== window.location.href) {
-                window.location.href = url;
+              const baseUrl = "${baseUrl}";
+              console.log('🔗 딥링크 처리 시작 (백그라운드):', url);
+              
+              if (!url || url === '#') {
+                console.log('⚠️ 유효하지 않은 URL');
+                return;
+              }
+              
+              // Next.js 라우터 사용 시도
+              if (typeof window !== 'undefined' && window.next && window.next.router) {
+                try {
+                  console.log('✅ Next.js 라우터 사용');
+                  window.next.router.push(url);
+                  return;
+                } catch (e) {
+                  console.error('❌ Next.js 라우터 실패:', e);
+                }
+              }
+              
+              // 커스텀 이벤트로 라우터 호출 시도
+              if (typeof window !== 'undefined' && window.dispatchEvent) {
+                try {
+                  const event = new CustomEvent('react-native-navigate', { detail: { url } });
+                  window.dispatchEvent(event);
+                  console.log('✅ 커스텀 이벤트 전송');
+                  setTimeout(() => {
+                    const fullUrl = url.startsWith('/') ? baseUrl + url : url;
+                    if (window.location.href !== fullUrl) {
+                      console.log('🔄 폴백: window.location.href 사용');
+                      window.location.href = fullUrl;
+                    }
+                  }, 100);
+                  return;
+                } catch (e) {
+                  console.error('❌ 커스텀 이벤트 실패:', e);
+                }
+              }
+              
+              // 폴백: 전체 URL로 이동
+              const fullUrl = url.startsWith('/') ? baseUrl + url : url;
+              console.log('🔄 폴백: window.location.href 사용:', fullUrl);
+              if (window.location.href !== fullUrl) {
+                window.location.href = fullUrl;
               }
             })();
+            true;
           `);
         }
         
@@ -451,16 +495,60 @@ const App: React.FC = () => {
         
         // 딥링크 처리 (웹뷰 로딩 대기)
         if (url && webViewRef.current) {
+          console.log('🔗 앱 종료 상태 딥링크 URL:', url);
           setTimeout(() => {
             if (!isMounted || !webViewRef.current) return;
-            const escapedUrl = url.replace(/"/g, '\\"').replace(/\n/g, '\\n');
+            const escapedUrl = url.replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\$/g, '\\$');
+            const baseUrl = DEFAULT_URL;
             webViewRef.current.injectJavaScript(`
               (function() {
                 const url = "${escapedUrl}";
-                if (url && url !== '#' && url !== window.location.href) {
-                  window.location.href = url;
+                const baseUrl = "${baseUrl}";
+                console.log('🔗 딥링크 처리 시작 (앱 종료):', url);
+                
+                if (!url || url === '#') {
+                  console.log('⚠️ 유효하지 않은 URL');
+                  return;
+                }
+                
+                // Next.js 라우터 사용 시도
+                if (typeof window !== 'undefined' && window.next && window.next.router) {
+                  try {
+                    console.log('✅ Next.js 라우터 사용');
+                    window.next.router.push(url);
+                    return;
+                  } catch (e) {
+                    console.error('❌ Next.js 라우터 실패:', e);
+                  }
+                }
+                
+                // 커스텀 이벤트로 라우터 호출 시도
+                if (typeof window !== 'undefined' && window.dispatchEvent) {
+                  try {
+                    const event = new CustomEvent('react-native-navigate', { detail: { url } });
+                    window.dispatchEvent(event);
+                    console.log('✅ 커스텀 이벤트 전송');
+                    setTimeout(() => {
+                      const fullUrl = url.startsWith('/') ? baseUrl + url : url;
+                      if (window.location.href !== fullUrl) {
+                        console.log('🔄 폴백: window.location.href 사용');
+                        window.location.href = fullUrl;
+                      }
+                    }, 100);
+                    return;
+                  } catch (e) {
+                    console.error('❌ 커스텀 이벤트 실패:', e);
+                  }
+                }
+                
+                // 폴백: 전체 URL로 이동
+                const fullUrl = url.startsWith('/') ? baseUrl + url : url;
+                console.log('🔄 폴백: window.location.href 사용:', fullUrl);
+                if (window.location.href !== fullUrl) {
+                  window.location.href = fullUrl;
                 }
               })();
+              true;
             `);
           }, 1000);
         }
@@ -722,14 +810,58 @@ const App: React.FC = () => {
         
         // 딥링크 처리
         if (url && webViewRef.current) {
-          const escapedUrl = url.replace(/"/g, '\\"').replace(/\n/g, '\\n');
+          console.log('🔗 포그라운드 알림 딥링크 URL:', url);
+          const escapedUrl = url.replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\$/g, '\\$');
+          const baseUrl = DEFAULT_URL;
           webViewRef.current.injectJavaScript(`
             (function() {
               const url = "${escapedUrl}";
-              if (url && url !== '#' && url !== window.location.href) {
-                window.location.href = url;
+              const baseUrl = "${baseUrl}";
+              console.log('🔗 딥링크 처리 시작 (포그라운드):', url);
+              
+              if (!url || url === '#') {
+                console.log('⚠️ 유효하지 않은 URL');
+                return;
+              }
+              
+              // Next.js 라우터 사용 시도
+              if (typeof window !== 'undefined' && window.next && window.next.router) {
+                try {
+                  console.log('✅ Next.js 라우터 사용');
+                  window.next.router.push(url);
+                  return;
+                } catch (e) {
+                  console.error('❌ Next.js 라우터 실패:', e);
+                }
+              }
+              
+              // 커스텀 이벤트로 라우터 호출 시도
+              if (typeof window !== 'undefined' && window.dispatchEvent) {
+                try {
+                  const event = new CustomEvent('react-native-navigate', { detail: { url } });
+                  window.dispatchEvent(event);
+                  console.log('✅ 커스텀 이벤트 전송');
+                  setTimeout(() => {
+                    const fullUrl = url.startsWith('/') ? baseUrl + url : url;
+                    if (window.location.href !== fullUrl) {
+                      console.log('🔄 폴백: window.location.href 사용');
+                      window.location.href = fullUrl;
+                    }
+                  }, 100);
+                  return;
+                } catch (e) {
+                  console.error('❌ 커스텀 이벤트 실패:', e);
+                }
+              }
+              
+              // 폴백: 전체 URL로 이동
+              const fullUrl = url.startsWith('/') ? baseUrl + url : url;
+              console.log('🔄 폴백: window.location.href 사용:', fullUrl);
+              if (window.location.href !== fullUrl) {
+                window.location.href = fullUrl;
               }
             })();
+            true;
           `);
         }
         

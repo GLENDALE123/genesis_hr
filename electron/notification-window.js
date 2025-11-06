@@ -1,9 +1,26 @@
-const { BrowserWindow, screen } = require('electron');
+const { BrowserWindow, screen, app } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
 const http = require('http');
 const { URL } = require('url');
+
+/**
+ * 프로덕션/개발 환경에 따른 리소스 경로 가져오기
+ */
+function getResourcePath(relativePath) {
+  if (app.isPackaged) {
+    // 프로덕션 빌드: resources 디렉토리 기준
+    // notification.html은 asarUnpack으로 추출되므로 resources/app.asar.unpacked/electron/ 경로
+    if (relativePath.startsWith('electron/')) {
+      return path.join(process.resourcesPath, 'app.asar.unpacked', relativePath);
+    }
+    return path.join(process.resourcesPath, 'app', relativePath);
+  } else {
+    // 개발 환경: __dirname 기준
+    return path.join(__dirname, relativePath);
+  }
+}
 
 class NotificationWindow {
   constructor() {
@@ -24,7 +41,7 @@ class NotificationWindow {
    */
   getTmsLogoBase64() {
     try {
-      const logoPath = path.join(__dirname, '../public/tms-logo.png');
+      const logoPath = getResourcePath('public/tms-logo.png');
       if (!fs.existsSync(logoPath)) {
         console.warn('⚠️ [NotificationWindow] TMS 로고 파일을 찾을 수 없습니다:', logoPath);
         return null;
@@ -160,7 +177,7 @@ class NotificationWindow {
         webPreferences: {
           nodeIntegration: false,
           contextIsolation: true,
-          preload: path.join(__dirname, 'notification-preload.js'),
+          preload: getResourcePath('electron/notification-preload.js'),
           // 보안 기본값 유지. 외부 이미지 로드는 downloadImage로 dataURL 변환하여 처리
           webSecurity: true,
           allowRunningInsecureContent: false
@@ -178,7 +195,7 @@ class NotificationWindow {
         title,
         subtitle: options.subtitle,  // ✅ 서브타이틀 추가
         body,
-        icon: icon || path.join(__dirname, '../public/tms-logo.png'),
+        icon: icon || getResourcePath('public/tms-logo.png'),
         senderName: options.senderName,
         senderAvatar: processedSenderAvatar,  // ✅ 처리된 아바타 사용
         timestamp: options.timestamp || new Date().toISOString(),
@@ -188,8 +205,26 @@ class NotificationWindow {
       };
       const notificationData = encodeURIComponent(JSON.stringify(dataToSend));
 
-      const htmlPath = path.join(__dirname, 'notification.html');
-      const fullUrl = `file://${htmlPath}?data=${notificationData}`;
+      const htmlPath = getResourcePath('electron/notification.html');
+      
+      // 파일 존재 여부 확인
+      if (!fs.existsSync(htmlPath)) {
+        console.error('❌ [NotificationWindow] notification.html 파일을 찾을 수 없습니다:', htmlPath);
+        throw new Error(`notification.html 파일을 찾을 수 없습니다: ${htmlPath}`);
+      }
+      
+      // Windows 경로 처리: 역슬래시를 슬래시로 변환하고, 드라이브 문자 처리
+      let fileUrl = htmlPath.replace(/\\/g, '/');
+      // Windows 절대 경로인 경우 (C:/ 형태) file:///로 시작
+      if (fileUrl.match(/^[A-Z]:\//)) {
+        fileUrl = `file:///${fileUrl}`;
+      } else {
+        fileUrl = `file://${fileUrl}`;
+      }
+      
+      const fullUrl = `${fileUrl}?data=${notificationData}`;
+      console.log('📄 [NotificationWindow] 알림 HTML 로드:', fullUrl);
+      
     notificationWindow.loadURL(fullUrl);
 
     // 윈도우 준비되면 표시

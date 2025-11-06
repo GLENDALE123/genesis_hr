@@ -217,7 +217,7 @@ function createWindow() {
       // 폰트 렌더링 선명도 개선
       enableBlinkFeatures: 'CSSFontFeatureValues',
     },
-    icon: path.join(__dirname, '../public/tms-logo.png'),
+    icon: getResourcePath('public/tms-logo.png'),
     show: false, // 로딩 완료 후 표시
     frame: false, // 타이틀바 제거 (커스텀 타이틀바 사용)
     titleBarStyle: 'hidden', // macOS용 타이틀바 스타일
@@ -288,13 +288,21 @@ function createWindow() {
     // 알림 권한 자동 허용 (Firestore 리스너 방식)
     if (permission === 'notifications') {
       callback(true);
-      if (isDev && !hasLoggedNotificationPermission) {
+      if (!hasLoggedNotificationPermission) {
+        console.log('✅ [Electron Main] 알림 권한 허용됨');
         hasLoggedNotificationPermission = true;
       }
     } else {
       callback(false);
     }
   });
+  
+  // Windows 알림 권한 확인 (프로덕션 빌드)
+  if (app.isPackaged && process.platform === 'win32') {
+    // Windows 10/11에서 알림이 작동하려면 시스템 알림 설정이 활성화되어 있어야 함
+    // 이는 사용자가 시스템 설정에서 허용해야 함
+    console.log('ℹ️ [Electron Main] Windows 알림 권한 확인 - 시스템 설정에서 알림이 활성화되어 있어야 합니다.');
+  }
 
   // 개발/프로덕션 공통 단축키 등록 (DevTools/새로고침)
   mainWindow.webContents.on('before-input-event', (event, input) => {
@@ -348,7 +356,7 @@ function createWindow() {
  */
 function createTray() {
   // 트레이 아이콘 (16x16 또는 32x32 권장)
-  const iconPath = path.join(__dirname, '../public/tms-logo.png');
+  const iconPath = getResourcePath('public/tms-logo.png');
   const trayIcon = nativeImage.createFromPath(iconPath);
   
   tray = new Tray(trayIcon.resize({ width: 16, height: 16 }));
@@ -419,6 +427,33 @@ function playSystemNotificationSound() {
 }
 
 /**
+ * 프로덕션/개발 환경에 따른 리소스 경로 가져오기
+ */
+function getResourcePath(relativePath) {
+  let finalPath;
+  if (app.isPackaged) {
+    // 프로덕션 빌드: resources 디렉토리 기준
+    finalPath = path.join(process.resourcesPath, 'app', relativePath);
+  } else {
+    // 개발 환경: __dirname 기준
+    finalPath = path.join(__dirname, relativePath);
+  }
+  
+  // 디버깅: 프로덕션 빌드에서 경로 확인
+  if (app.isPackaged && !fs.existsSync(finalPath)) {
+    console.warn(`⚠️ [Electron Main] 리소스 경로를 찾을 수 없습니다: ${finalPath}`);
+    // 대안 경로 시도
+    const altPath = path.join(process.resourcesPath, relativePath);
+    if (fs.existsSync(altPath)) {
+      console.log(`✅ [Electron Main] 대안 경로 사용: ${altPath}`);
+      return altPath;
+    }
+  }
+  
+  return finalPath;
+}
+
+/**
  * 커스텀 알림 표시
  */
 ipcMain.handle('show-notification', async (event, options) => {
@@ -441,6 +476,9 @@ ipcMain.handle('show-notification', async (event, options) => {
     } else {
     }
     
+    // 프로덕션 빌드에서 아이콘 경로 설정
+    const defaultIcon = icon || getResourcePath('public/tms-logo.png');
+    
     // 커스텀 알림 사용
     if (useCustom) {
       try {
@@ -448,7 +486,7 @@ ipcMain.handle('show-notification', async (event, options) => {
           title: title || 'TMS 통합관리시스템',
           subtitle: subtitle,  // ✅ 서브타이틀 추가
           body: body || '',
-          icon: icon || path.join(__dirname, '../public/tms-logo.png'),
+          icon: defaultIcon,
           senderName: senderName,
           senderAvatar: senderAvatar,
           timestamp: timestamp,
@@ -474,30 +512,64 @@ ipcMain.handle('show-notification', async (event, options) => {
     }
     
     // 네이티브 알림 사용 (폴백)
-    const notification = new Notification({
-      title: title || 'TMS 통합관리시스템',
-      body: body || '',
-      icon: icon || path.join(__dirname, '../public/tms-logo.png'),
-      silent: false
-    });
-
-    notification.show();
-
-    // 알림 클릭 이벤트
-    notification.on('click', () => {
-      if (mainWindow) {
-        mainWindow.show();
-        mainWindow.focus();
-        
-        // ✅ 네이티브 알림도 링크 이동 지원
-        if (link) {
-          mainWindow.webContents.send('navigate-to', link);
-        }
+    try {
+      // 아이콘 파일 존재 여부 확인
+      let iconToUse = defaultIcon;
+      if (!fs.existsSync(iconToUse)) {
+        console.warn('⚠️ [Electron Main] 아이콘 파일을 찾을 수 없습니다:', iconToUse);
+        // 아이콘 없이 알림 표시 시도
+        iconToUse = undefined;
       }
-    });
-    return { success: true, type: 'native' };
+      
+      const notification = new Notification({
+        title: title || 'TMS 통합관리시스템',
+        body: body || '',
+        icon: iconToUse,
+        silent: false
+      });
+
+      notification.show();
+      
+      console.log('✅ [Electron Main] 네이티브 알림 표시됨:', { title, body });
+
+      // 알림 클릭 이벤트
+      notification.on('click', () => {
+        if (mainWindow) {
+          mainWindow.show();
+          mainWindow.focus();
+          
+          // ✅ 네이티브 알림도 링크 이동 지원
+          if (link) {
+            mainWindow.webContents.send('navigate-to', link);
+          }
+        }
+      });
+      
+      notification.on('show', () => {
+        console.log('✅ [Electron Main] 알림이 화면에 표시되었습니다.');
+      });
+      
+      notification.on('error', (error) => {
+        console.error('❌ [Electron Main] 알림 표시 오류:', error);
+      });
+      
+      return { success: true, type: 'native' };
+    } catch (notifError) {
+      console.error('❌ [Electron Main] 네이티브 알림 생성 실패:', notifError);
+      // 최종 폴백: 작업 표시줄 깜빡임만 사용
+      if (mainWindow) {
+        mainWindow.flashFrame(true);
+        setTimeout(() => {
+          if (mainWindow) {
+            mainWindow.flashFrame(false);
+          }
+        }, 3000);
+      }
+      return { success: false, error: notifError.message, type: 'fallback' };
+    }
   } catch (error) {
     console.error('❌ [Electron] 알림 표시 실패:', error);
+    console.error('❌ [Electron] Error stack:', error.stack);
     return { success: false, error: error.message };
   }
 });
