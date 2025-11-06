@@ -199,16 +199,40 @@ const calculateOptimalBatchSize = (files: File[], operation: 'compress' | 'uploa
 const compressImagesParallel = async (files: File[]): Promise<File[]> => {
   const BATCH_SIZE = calculateOptimalBatchSize(files, 'compress');
   const compressedFiles: File[] = [];
+  const totalBatches = Math.ceil(files.length / BATCH_SIZE);
   
   // 배치 단위로 나누어 처리
-  for (let i = 0; i < files.length; i += BATCH_SIZE) {
-    const batch = files.slice(i, i + BATCH_SIZE);
+  for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+    const startIndex = batchIndex * BATCH_SIZE;
+    const batch = files.slice(startIndex, startIndex + BATCH_SIZE);
     
     // 배치 내에서 병렬 처리
-    const batchPromises = batch.map(file => compressImageQuick(file));
-    const batchResults = await Promise.all(batchPromises);
+    const batchPromises = batch.map(async (file) => {
+      try {
+        return await compressImageQuick(file);
+      } catch (error) {
+        console.error(`❌ 압축 실패: ${file.name}`, error);
+        // 압축 실패 시 원본 파일 반환
+        return file;
+      }
+    });
     
-    compressedFiles.push(...batchResults);
+    // Promise.allSettled 사용: 일부 실패해도 다음 배치 계속 진행
+    const batchResults = await Promise.allSettled(batchPromises);
+    
+    // 결과 추출 및 처리
+    batchResults.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        compressedFiles.push(result.value);
+      } else {
+        // 실패한 경우 해당 배치의 원본 파일 사용
+        const originalFileIndex = startIndex + index;
+        if (originalFileIndex < files.length) {
+          compressedFiles.push(files[originalFileIndex]);
+          console.warn(`⚠️ 압축 실패로 원본 파일 사용: ${files[originalFileIndex].name}`);
+        }
+      }
+    });
     
     // UI 업데이트를 위한 짧은 대기
     await new Promise(resolve => setTimeout(resolve, 10));
@@ -218,116 +242,73 @@ const compressImagesParallel = async (files: File[]): Promise<File[]> => {
 };
 
 /**
- * 이미지 압축을 Web Worker에서 처리 (비동기)
- * - 메인 스레드 블로킹 방지
- * - 더 빠른 처리
+ * 고품질 이미지 압축 (큰 파일용)
+ * - 메인 스레드에서 처리 (Web Worker는 DOM 접근 불가로 제거)
+ * - 더 높은 품질로 압축
  */
-const compressImageWithWorker = async (file: File): Promise<File> => {
-  // Web Worker가 지원되지 않는 경우 기본 압축 사용
-  if (typeof Worker === 'undefined') {
-    return compressImageQuick(file);
-  }
+const compressImageHighQuality = async (file: File): Promise<File> => {
+  const MAX_WIDTH = 1920;
+  const MAX_HEIGHT = 1080;
+  const QUALITY = 0.7; // 높은 품질
   
-  return new Promise(async (resolve) => {
-    // 간단한 Web Worker 코드 (실제로는 별도 파일로 분리 권장)
-    const workerCode = `
-      self.onmessage = function(e) {
-        const { file, maxWidth, maxHeight, quality } = e.data;
+  // HEIF/HEIC 파일은 압축 건너뛰기
+  if (file.type.includes('heic') || file.type.includes('heif')) {
+    return file;
+  }
+
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    
+    reader.onload = (e) => {
+      const img = new Image();
+      img.src = e.target?.result as string;
+      
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+
+        // 비율 유지하면서 리사이징
+        if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+          const ratio = Math.min(MAX_WIDTH / width, MAX_HEIGHT / height);
+          width = width * ratio;
+          height = height * ratio;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
         
-        // ArrayBuffer를 Blob으로 변환
-        const blob = new Blob([file.data], { type: file.type });
+        if (!ctx) {
+          resolve(file);
+          return;
+        }
+
+        // 고품질 압축을 위한 Canvas 설정
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high'; // 높은 품질
         
-        const reader = new FileReader();
-        reader.readAsDataURL(blob);
-        
-        reader.onload = function(event) {
-          const img = new Image();
-          img.src = event.target.result;
-          
-          img.onload = function() {
-            const canvas = document.createElement('canvas');
-            let { width, height } = img;
-            
-            if (width > maxWidth || height > maxHeight) {
-              const ratio = Math.min(maxWidth / width, maxHeight / height);
-              width = width * ratio;
-              height = height * ratio;
-            }
-            
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            
-            if (!ctx) {
-              self.postMessage({ success: false, file: file });
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              resolve(file);
               return;
             }
-            
-            ctx.imageSmoothingEnabled = true;
-            ctx.imageSmoothingQuality = 'low';
-            ctx.drawImage(img, 0, 0, width, height);
-            
-            canvas.toBlob(function(blob) {
-              if (!blob) {
-                self.postMessage({ success: false, file: file });
-                return;
-              }
-              
-              const compressedFile = new File([blob], file.name, {
-                type: 'image/jpeg',
-                lastModified: Date.now(),
-              });
-              
-              self.postMessage({ 
-                success: true, 
-                file: compressedFile,
-                originalSize: file.size,
-                compressedSize: compressedFile.size
-              });
-            }, 'image/jpeg', quality);
-          };
-          
-          img.onerror = function() {
-            self.postMessage({ success: false, file: file });
-          };
-        };
-        
-        reader.onerror = function() {
-          self.postMessage({ success: false, file: file });
-        };
+            const compressedFile = new File([blob], file.name, {
+              type: 'image/jpeg',
+              lastModified: Date.now(),
+            });
+            resolve(compressedFile);
+          },
+          'image/jpeg',
+          QUALITY
+        );
       };
-    `;
-    
-    const blob = new Blob([workerCode], { type: 'application/javascript' });
-    const workerUrl = URL.createObjectURL(blob);
-    const worker = new Worker(workerUrl);
-    
-    // File을 ArrayBuffer로 변환하여 전달
-    const arrayBuffer = await file.arrayBuffer();
-    worker.postMessage({
-      file: {
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        data: arrayBuffer
-      },
-      maxWidth: 1920,
-      maxHeight: 1080,
-      quality: 0.6
-    });
-    
-    worker.onmessage = function(e) {
-      const { success, file: resultFile } = e.data;
-      worker.terminate();
-      URL.revokeObjectURL(workerUrl);
-      resolve(success ? resultFile : file);
+      img.onerror = () => resolve(file);
     };
-    
-    worker.onerror = function() {
-      worker.terminate();
-      URL.revokeObjectURL(workerUrl);
-      resolve(file);
-    };
+    reader.onerror = () => resolve(file);
   });
 };
 
@@ -348,7 +329,7 @@ const compressImageSmart = async (file: File): Promise<File> => {
   
   // 큰 파일은 고품질 압축
   if (file.size > LARGE_FILE_SIZE) {
-    return compressImageWithWorker(file);
+    return compressImageHighQuality(file);
   }
   
   // 중간 파일은 빠른 압축
@@ -475,8 +456,10 @@ export const uploadImage = async (
   }
   
   // 모든 재시도 실패
-  console.error(`❌ 이미지 업로드 최종 실패 (${maxRetries}회 시도):`, lastError?.message);
-  throw new Error(`이미지 업로드 실패: ${lastError?.message || '알 수 없는 오류'}`);
+  const errorDetails = lastError?.message || '알 수 없는 오류';
+  const finalErrorMessage = `이미지 업로드 실패 (${maxRetries}회 시도): ${errorDetails}`;
+  console.error(`❌ ${finalErrorMessage}`);
+  throw new Error(finalErrorMessage);
 };
 
 /**
@@ -506,9 +489,13 @@ export const uploadImagesParallel = async (
     const BATCH_SIZE = calculateOptimalBatchSize(processedFiles, 'upload');
     const urls: string[] = [];
     let completedCount = 0; // 완료된 파일 수 추적
+    const totalBatches = Math.ceil(processedFiles.length / BATCH_SIZE);
     
-    for (let i = 0; i < processedFiles.length; i += BATCH_SIZE) {
-      const batch = processedFiles.slice(i, i + BATCH_SIZE);
+    for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+      const startIndex = batchIndex * BATCH_SIZE;
+      const batch = processedFiles.slice(startIndex, startIndex + BATCH_SIZE);
+      
+      console.log(`📦 배치 ${batchIndex + 1}/${totalBatches} 처리 시작 (${batch.length}개 파일)`);
       
       // 배치 내에서 병렬 업로드 (재시도 횟수 증가)
       const batchPromises = batch.map(async (file, index) => {
@@ -516,27 +503,48 @@ export const uploadImagesParallel = async (
           const url = await uploadImage(file, folder, 5); // 재시도 횟수 5회로 증가
           completedCount++;
           onProgress?.(completedCount, files.length);
-          return url;
+          return { success: true, url, file: file.name };
         } catch (error) {
-          console.error(`업로드 실패: ${file.name}`, error);
+          const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
+          console.error(`❌ 업로드 실패: ${file.name}`, errorMessage);
           completedCount++;
           onProgress?.(completedCount, files.length);
-          return null;
+          return { success: false, url: null, file: file.name, error: errorMessage };
         }
       });
       
-      const batchResults = await Promise.all(batchPromises);
-      urls.push(...batchResults.filter(url => url !== null));
+      // Promise.allSettled 사용: 일부 실패해도 다음 배치 계속 진행
+      const batchResults = await Promise.allSettled(batchPromises);
       
-      // UI 업데이트를 위한 짧은 대기
+      // 결과 추출 및 처리
+      let batchSuccessCount = 0;
+      batchResults.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          const { success, url } = result.value;
+          if (success && url) {
+            urls.push(url);
+            batchSuccessCount++;
+          }
+        } else {
+          console.error(`❌ 배치 ${batchIndex + 1}의 파일 ${index + 1} 처리 실패:`, result.reason);
+          // 실패해도 카운트는 증가 (진행률 유지)
+          completedCount++;
+          onProgress?.(completedCount, files.length);
+        }
+      });
+      
+      console.log(`✅ 배치 ${batchIndex + 1}/${totalBatches} 완료 (성공: ${batchSuccessCount}/${batch.length}개)`);
+      
+      // UI 업데이트를 위한 짧은 대기 (다음 배치로 넘어가기 전)
       await new Promise(resolve => setTimeout(resolve, 50));
     }
     
     return urls;
     
   } catch (error) {
-    console.error('❌ 병렬 업로드 실패:', error);
-    throw error;
+    const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
+    console.error(`❌ 병렬 업로드 실패: ${errorMessage}`);
+    throw new Error(`병렬 업로드 실패: ${errorMessage}`);
   }
 };
 

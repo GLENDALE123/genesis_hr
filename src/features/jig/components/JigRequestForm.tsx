@@ -151,6 +151,13 @@ export const JigRequestForm: React.FC<JigRequestFormProps> = ({
         imageUploadHook.cancelUpload();
       }
     }
+    
+    // cleanup: 모달이 닫힐 때 토스트 정리
+    return () => {
+      if (!isOpen) {
+        toast.dismiss('image-upload-progress');
+      }
+    };
   }, [isOpen, editingRequest, user, userProfile]);
 
   // 파일 선택 핸들러
@@ -237,9 +244,6 @@ export const JigRequestForm: React.FC<JigRequestFormProps> = ({
           // 새로 업로드된 이미지 URL을 기존 이미지에 추가
           imageUrls = [...imageUrls, ...newImageUrls];
           
-          // 이미지 업로드 성공 토스트는 제거 (등록 완료 토스트로 대체)
-          toast.dismiss('image-upload-progress');
-          
         } catch (error: any) {
           console.error('이미지 업로드 실패:', error);
           
@@ -253,8 +257,10 @@ export const JigRequestForm: React.FC<JigRequestFormProps> = ({
           }
           
           // 업로드 실패 시 폼 제출 중단
-          toast.dismiss('image-upload-progress');
           return;
+        } finally {
+          // 성공/실패 관계없이 토스트 확실히 정리
+          toast.dismiss('image-upload-progress');
         }
       }
 
@@ -296,8 +302,12 @@ export const JigRequestForm: React.FC<JigRequestFormProps> = ({
 
   // 취소
   const handleCancel = () => {
-    // 진행 중인 토스트 정리
+    // 진행 중인 토스트 정리 (여러 번 호출해도 안전)
     toast.dismiss('image-upload-progress');
+    // 약간의 지연 후 다시 한 번 확인 (토스트가 늦게 생성될 수 있음)
+    setTimeout(() => {
+      toast.dismiss('image-upload-progress');
+    }, 100);
     
     // 이미지 상태 완전 정리 (업로드 진행 상태 포함)
     imageUploadHook.clearImages();

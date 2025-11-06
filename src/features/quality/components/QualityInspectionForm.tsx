@@ -480,6 +480,13 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
         }
       }
     }
+    
+    // cleanup: 모달이 닫힐 때 토스트 정리
+    return () => {
+      if (!isOpen) {
+        toast.dismiss('image-upload-progress');
+      }
+    };
   }, [isOpen, mode, initialTab, loadTempData, initialData]);
 
 
@@ -538,8 +545,6 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
             retryableUploadPromise,
             timeoutPromise
           ]);
-          // 업로드 완료 즉시 진행 토스트 닫기 (문서 업데이트와 분리)
-          toast.dismiss('image-upload-progress');
 
           // 수정 모드에서는 기존 이미지와 새 이미지를 합쳐서 저장
           const existingImageUrls = imageUploadHook.uploadingImages
@@ -562,8 +567,10 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
           
           // 업로드 실패 시 폼 제출 중단
           setIsSaving(false);
-          toast.dismiss('image-upload-progress');
           return;
+        } finally {
+          // 성공/실패 관계없이 토스트 확실히 정리
+          toast.dismiss('image-upload-progress');
         }
       }
 
@@ -742,8 +749,6 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
             retryableUploadPromise,
             timeoutPromise
           ]);
-          // 업로드 완료 즉시 진행 토스트 닫기 (문서 업데이트와 분리)
-          toast.dismiss('image-upload-progress');
 
           // 이미지 URL로 문서 업데이트
           await updateQualityInspection(docId, { imageUrls: imageUrls as string[] });
@@ -762,8 +767,10 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
           
           // 업로드 실패 시 폼 제출 중단
           setIsSaving(false);
-          toast.dismiss('image-upload-progress');
           return;
+        } finally {
+          // 성공/실패 관계없이 토스트 확실히 정리
+          toast.dismiss('image-upload-progress');
         }
       }
       
@@ -803,8 +810,12 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
   };
 
   const handleClose = () => {
-    // 진행 중인 토스트 정리
+    // 진행 중인 토스트 정리 (여러 번 호출해도 안전)
     toast.dismiss('image-upload-progress');
+    // 약간의 지연 후 다시 한 번 확인 (토스트가 늦게 생성될 수 있음)
+    setTimeout(() => {
+      toast.dismiss('image-upload-progress');
+    }, 100);
     
     // 폼 데이터 초기화
     setFormData({

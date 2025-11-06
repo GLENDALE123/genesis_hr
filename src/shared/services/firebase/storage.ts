@@ -2,7 +2,7 @@
  * Firebase Storage 서비스
  */
 
-import { ref, uploadBytes, uploadBytesResumable, getDownloadURL, deleteObject, getMetadata, UploadTaskSnapshot } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, deleteObject, getMetadata } from 'firebase/storage';
 import { storage } from './config';
 
 /**
@@ -174,7 +174,7 @@ export const compressImage = async (
 };
 
 /**
- * 일반 파일 업로드 (개선된 재시도 로직 및 진행률 추적)
+ * 일반 파일 업로드 (개선된 재시도 로직)
  * @param file - 업로드할 파일
  * @param path - Storage 경로
  * @param maxRetries - 최대 재시도 횟수 (기본값: 5)
@@ -192,8 +192,6 @@ export const uploadFile = async (
   let lastError: Error | null = null;
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    let uploadTask: ReturnType<typeof uploadBytesResumable> | null = null;
-    
     try {
       const storageRef = ref(storage, path);
       
@@ -203,113 +201,65 @@ export const uploadFile = async (
       const sizeTimeout = Math.max(fileSizeMB * 10000, 30000); // 파일 크기당 10초, 최소 30초
       const dynamicTimeout = Math.min(baseTimeout + sizeTimeout, 300000); // 최대 5분
       
-      // uploadBytesResumable 사용 (진행률 추적 및 취소 가능)
-      uploadTask = uploadBytesResumable(storageRef, file, {
+      // 업로드 실행
+      const uploadPromise = uploadBytes(storageRef, file, {
         contentType: file.type,
       });
       
-      // 업로드 완료를 Promise로 변환
-      const uploadPromise = new Promise<UploadTaskSnapshot>((resolve, reject) => {
-        let lastProgress = 0;
-        let progressTimeout: NodeJS.Timeout | null = null;
-        
-        // 진행률 추적 (5초 이상 진행이 없으면 타임아웃)
-        const resetProgressTimeout = () => {
-          if (progressTimeout) {
-            clearTimeout(progressTimeout);
-          }
-          progressTimeout = setTimeout(() => {
-            if (uploadTask) {
-              uploadTask.cancel();
-              reject(new Error('업로드 진행률이 멈춤 (5초 이상 진행 없음)'));
-            }
-          }, 5000);
-        };
-        
-        uploadTask.on(
-          'state_changed',
-          (snapshot) => {
-            // 진행률 업데이트
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            
-            // 진행률이 증가했는지 확인
-            if (progress > lastProgress) {
-              lastProgress = progress;
-              resetProgressTimeout();
-            }
-          },
-          (error) => {
-            if (progressTimeout) {
-              clearTimeout(progressTimeout);
-            }
-            reject(error);
-          },
-          (snapshot) => {
-            if (progressTimeout) {
-              clearTimeout(progressTimeout);
-            }
-            resolve(snapshot);
-          }
-        );
-        
-        resetProgressTimeout();
-      });
-      
       // 타임아웃 Promise
+      let timeoutId: NodeJS.Timeout | null = null;
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => {
-          if (uploadTask) {
-            uploadTask.cancel();
-          }
-          reject(new Error(`업로드 타임아웃 (${dynamicTimeout / 1000}초)`));
+        timeoutId = setTimeout(() => {
+          reject(new Error(`업로드 타임아웃 (${Math.round(dynamicTimeout / 1000)}초)`));
         }, dynamicTimeout);
       });
       
       // 업로드 실행 및 타임아웃 처리
-      await Promise.race([uploadPromise, timeoutPromise]);
+      try {
+        await Promise.race([uploadPromise, timeoutPromise]);
+        // 타임아웃이 발생하지 않았으면 타임아웃 타이머 정리
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+      } catch (raceError) {
+        // 타임아웃 발생 시 타임아웃 타이머 정리
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+        // 타임아웃 에러인 경우 재시도
+        if (raceError instanceof Error && raceError.message.includes('업로드 타임아웃')) {
+          throw raceError;
+        }
+        // 다른 에러도 다시 throw
+        throw raceError;
+      }
       
-      // 업로드 완료 후 다운로드 URL 가져오기
+      // 다운로드 URL 가져오기 (별도 타임아웃)
       const downloadURLPromise = getDownloadURL(storageRef);
+      let downloadTimeoutId: NodeJS.Timeout | null = null;
       const downloadTimeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('다운로드 URL 가져오기 타임아웃')), 10000);
+        downloadTimeoutId = setTimeout(() => {
+          reject(new Error('다운로드 URL 가져오기 타임아웃'));
+        }, 10000);
       });
       
-      const downloadURL = await Promise.race([downloadURLPromise, downloadTimeoutPromise]);
-      return downloadURL;
+      try {
+        const downloadURL = await Promise.race([downloadURLPromise, downloadTimeoutPromise]);
+        // 타임아웃이 발생하지 않았으면 타임아웃 타이머 정리
+        if (downloadTimeoutId) {
+          clearTimeout(downloadTimeoutId);
+        }
+        return downloadURL;
+      } catch (raceError) {
+        // 타임아웃 발생 시 타임아웃 타이머 정리
+        if (downloadTimeoutId) {
+          clearTimeout(downloadTimeoutId);
+        }
+        throw raceError;
+      }
       
     } catch (error) {
-      // 업로드 태스크가 있으면 취소 시도
-      if (uploadTask) {
-        try {
-          uploadTask.cancel();
-        } catch (cancelError) {
-          // 취소 실패는 무시 (이미 완료되었을 수 있음)
-        }
-      }
-      
       lastError = error instanceof Error ? error : new Error('알 수 없는 오류');
-      
-      // 타임아웃이나 진행률 멈춤 오류인 경우, 실제로 파일이 업로드되었는지 확인
-      if (
-        lastError.message.includes('업로드 타임아웃') ||
-        lastError.message.includes('업로드 진행률이 멈춤')
-      ) {
-        try {
-          // 파일이 실제로 업로드되었는지 확인 (짧은 타임아웃)
-          const checkPromise = getDownloadURL(ref(storage, path));
-          const checkTimeout = new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error('확인 타임아웃')), 3000);
-          });
-          
-          const url = await Promise.race([checkPromise, checkTimeout]);
-          // 업로드가 실제로 완료되었다면 URL 반환
-          console.log('✅ 타임아웃 발생했지만 파일이 이미 업로드되었습니다.');
-          return url;
-        } catch (checkError) {
-          // 파일이 업로드되지 않았음, 재시도 진행
-          console.warn('⚠️ 파일이 업로드되지 않았습니다. 재시도합니다.');
-        }
-      }
       
       // 재시도 가능한 오류인지 확인 (타임아웃 오류 포함)
       const isRetryableError = (
@@ -317,22 +267,25 @@ export const uploadFile = async (
         lastError.message.includes('network') ||
         lastError.message.includes('timeout') ||
         lastError.message.includes('업로드 타임아웃') ||
-        lastError.message.includes('업로드 진행률이 멈춤') ||
         lastError.message.includes('다운로드 URL 가져오기 타임아웃') ||
         lastError.message.includes('quota') ||
         lastError.message.includes('unavailable') ||
         lastError.message.includes('connection') ||
         lastError.message.includes('aborted') ||
         lastError.message.includes('cancelled') ||
-        lastError.message.includes('storage/')
+        lastError.message.includes('ECONNRESET') ||
+        lastError.message.includes('ETIMEDOUT') ||
+        lastError.message.includes('ENOTFOUND')
       );
       
       if (!isRetryableError) {
-        console.error(`❌ 재시도 불가능한 오류: ${lastError.message}`);
-        throw lastError;
+        const errorMessage = `재시도 불가능한 오류: ${lastError.message}`;
+        console.error(`❌ ${errorMessage}`);
+        throw new Error(errorMessage);
       }
       
-      console.warn(`⚠️ 파일 업로드 실패 (시도 ${attempt}/${maxRetries}): ${lastError.message}`);
+      const warningMessage = `파일 업로드 실패 (시도 ${attempt}/${maxRetries}): ${lastError.message}`;
+      console.warn(`⚠️ ${warningMessage}`);
       
       // 마지막 시도가 아니면 지수 백오프로 대기
       if (attempt < maxRetries) {
@@ -343,8 +296,10 @@ export const uploadFile = async (
   }
   
   // 모든 재시도 실패
-  console.error(`❌ 파일 업로드 최종 실패 (${maxRetries}회 시도): ${lastError?.message}`);
-  throw new Error(`파일 업로드 실패: ${lastError?.message || '알 수 없는 오류'}`);
+  const errorDetails = lastError?.message || '알 수 없는 오류';
+  const finalErrorMessage = `파일 업로드 실패 (${maxRetries}회 시도): ${errorDetails}`;
+  console.error(`❌ ${finalErrorMessage}`);
+  throw new Error(finalErrorMessage);
 };
 
 /**
@@ -523,12 +478,13 @@ export const uploadImageFilesParallel = async (
     return downloadURLs;
   } catch (error) {
     // AbortError인 경우 취소된 것으로 처리
-    if (error instanceof Error && error.name === 'AbortError') {
+    if (error instanceof Error && (error.name === 'AbortError' || error.message.includes('취소'))) {
       throw new Error('사용자에 의해 취소되었습니다.');
     }
     
-    console.error('❌ 병렬 이미지 업로드 실패:', error);
-    throw error;
+    const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
+    console.error(`❌ 병렬 이미지 업로드 실패: ${errorMessage}`);
+    throw new Error(`병렬 이미지 업로드 실패: ${errorMessage}`);
   }
 };
 
@@ -553,8 +509,6 @@ export const uploadImageFilesWithRetry = async (
   for (const file of files) {
     let lastError: Error | null = null;
     let success = false;
-    let uploadTask: ReturnType<typeof uploadBytesResumable> | null = null;
-    let currentPath = '';
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -576,80 +530,27 @@ export const uploadImageFilesWithRetry = async (
         const fileName = `image_${timestamp}_${attempt}.${fileExtension}`;
         
         // Storage 경로
-        currentPath = `${folderPath}/${fileName}`;
-        const storageRef = ref(storage, currentPath);
+        const storageRef = ref(storage, `${folderPath}/${fileName}`);
 
         // 파일 크기에 따른 동적 타임아웃 설정
         const fileSizeMB = file.size / (1024 * 1024);
         const baseTimeout = 60000; // 기본 60초
         const sizeTimeout = Math.max(fileSizeMB * 10000, 30000); // 파일 크기당 10초, 최소 30초
         const dynamicTimeout = Math.min(baseTimeout + sizeTimeout, 300000); // 최대 5분
-        
-        // uploadBytesResumable 사용 (진행률 추적 및 취소 가능)
-        uploadTask = uploadBytesResumable(storageRef, file, {
+        // 업로드 실행
+        const uploadPromise = uploadBytes(storageRef, file, {
           contentType: file.type,
-        });
-        
-        // 업로드 완료를 Promise로 변환
-        const uploadPromise = new Promise<UploadTaskSnapshot>((resolve, reject) => {
-          let lastProgress = 0;
-          let progressTimeout: NodeJS.Timeout | null = null;
-          
-          // 진행률 추적 (5초 이상 진행이 없으면 타임아웃)
-          const resetProgressTimeout = () => {
-            if (progressTimeout) {
-              clearTimeout(progressTimeout);
-            }
-            progressTimeout = setTimeout(() => {
-              if (uploadTask) {
-                uploadTask.cancel();
-                reject(new Error('업로드 진행률이 멈춤 (5초 이상 진행 없음)'));
-              }
-            }, 5000);
-          };
-          
-          uploadTask.on(
-            'state_changed',
-            (snapshot) => {
-              // 진행률 업데이트
-              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-              
-              // 진행률이 증가했는지 확인
-              if (progress > lastProgress) {
-                lastProgress = progress;
-                resetProgressTimeout();
-              }
-            },
-            (error) => {
-              if (progressTimeout) {
-                clearTimeout(progressTimeout);
-              }
-              reject(error);
-            },
-            (snapshot) => {
-              if (progressTimeout) {
-                clearTimeout(progressTimeout);
-              }
-              resolve(snapshot);
-            }
-          );
-          
-          resetProgressTimeout();
         });
         
         // 타임아웃 Promise
         const timeoutPromise = new Promise<never>((_, reject) => {
           setTimeout(() => {
-            if (uploadTask) {
-              uploadTask.cancel();
-            }
             reject(new Error(`업로드 타임아웃 (${dynamicTimeout / 1000}초)`));
           }, dynamicTimeout);
         });
         
         // 업로드 실행 및 타임아웃 처리
         await Promise.race([uploadPromise, timeoutPromise]);
-        
         // 다운로드 URL 가져오기 (별도 타임아웃)
         const downloadURLPromise = getDownloadURL(storageRef);
         const downloadTimeoutPromise = new Promise<never>((_, reject) => {
@@ -662,41 +563,7 @@ export const uploadImageFilesWithRetry = async (
         break;
         
       } catch (error) {
-        // 업로드 태스크가 있으면 취소 시도
-        if (uploadTask) {
-          try {
-            uploadTask.cancel();
-          } catch (cancelError) {
-            // 취소 실패는 무시 (이미 완료되었을 수 있음)
-          }
-        }
-        
         lastError = error instanceof Error ? error : new Error('알 수 없는 오류');
-        
-        // 타임아웃이나 진행률 멈춤 오류인 경우, 실제로 파일이 업로드되었는지 확인
-        if (
-          (lastError.message.includes('업로드 타임아웃') ||
-          lastError.message.includes('업로드 진행률이 멈춤')) &&
-          currentPath
-        ) {
-          try {
-            // 파일이 실제로 업로드되었는지 확인 (짧은 타임아웃)
-            const checkPromise = getDownloadURL(ref(storage, currentPath));
-            const checkTimeout = new Promise<never>((_, reject) => {
-              setTimeout(() => reject(new Error('확인 타임아웃')), 3000);
-            });
-            
-            const url = await Promise.race([checkPromise, checkTimeout]);
-            // 업로드가 실제로 완료되었다면 URL 반환
-            console.log(`✅ ${file.name} 타임아웃 발생했지만 파일이 이미 업로드되었습니다.`);
-            results.push(url);
-            success = true;
-            break;
-          } catch (checkError) {
-            // 파일이 업로드되지 않았음, 재시도 진행
-            console.warn(`⚠️ ${file.name} 파일이 업로드되지 않았습니다. 재시도합니다.`);
-          }
-        }
         
         // 재시도 가능한 오류인지 확인
         const isRetryableError = (
@@ -704,14 +571,12 @@ export const uploadImageFilesWithRetry = async (
           lastError.message.includes('network') ||
           lastError.message.includes('timeout') ||
           lastError.message.includes('업로드 타임아웃') ||
-          lastError.message.includes('업로드 진행률이 멈춤') ||
           lastError.message.includes('다운로드 URL 가져오기 타임아웃') ||
           lastError.message.includes('quota') ||
           lastError.message.includes('unavailable') ||
           lastError.message.includes('connection') ||
           lastError.message.includes('aborted') ||
-          lastError.message.includes('cancelled') ||
-          lastError.message.includes('storage/')
+          lastError.message.includes('cancelled')
         );
         
         if (!isRetryableError) {
