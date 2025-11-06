@@ -1,1 +1,0 @@
-(globalThis.TURBOPACK||(globalThis.TURBOPACK=[])).push(["object"==typeof document?document.currentScript:void 0,83800,i=>{"use strict";var e=i.i(43476),t=i.i(88381),a=i.i(71645);function n(){return(0,a.useEffect)(()=>()=>{},[]),(0,e.jsx)(t.LoadingSpinner,{label:"생산관리부 데이터 로딩 중...",loadingVariant:"card",className:"min-h-[400px]",size:"lg"})}i.s(["default",()=>n])}]);
