@@ -437,7 +437,7 @@ export const JigListForm: React.FC<JigListFormProps> = ({
             hideClose
             className="w-full max-w-none overflow-hidden p-0 flex flex-col"
           >
-            <div className="h-full flex flex-col max-h-[100dvh] pb-[env(safe-area-inset-bottom)]">
+            <div className="h-full flex flex-col max-h-[100dvh]">
               <SheetHeader className="sticky top-0 z-10 bg-background border-b p-4 text-left flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <Button
