@@ -15,6 +15,7 @@ import { ChatService } from '../services/chatService';
 import { ChatMessageComponent } from './ChatMessage';
 import { ChatInput } from '@/shared/components/common/ChatInput';
 import { useAuthStore } from '@/features/auth/store/authStore';
+import { getUserDisplayName } from '@/shared/utils/userUtils';
 import { SCROLL_CONFIG } from '../constants';
 import type { ChatMessage } from '../types/chat.types';
 
@@ -22,12 +23,16 @@ export interface ChatViewProps {
   chatRoomId: string;
   searchQuery?: string;
   currentUserId: string;
+  onSearchResultsChange?: (results: Array<{ id: string; index: number }>) => void;
+  hideInput?: boolean;
 }
 
 export const ChatView: React.FC<ChatViewProps> = ({
   chatRoomId,
   searchQuery = '',
   currentUserId,
+  onSearchResultsChange,
+  hideInput = false,
 }) => {
   const router = useRouter();
   const { user, userProfile } = useAuthStore();
@@ -50,28 +55,62 @@ export const ChatView: React.FC<ChatViewProps> = ({
     return messages[chatRoomId] || [];
   }, [messages, chatRoomId]);
 
-  // 검색 결과 하이라이트할 메시지 ID
-  const highlightedMessageIds = useMemo(() => {
-    if (!searchQuery.trim()) return new Set<string>();
-    const query = searchQuery.toLowerCase();
-    return new Set(
-      roomMessages
-        .filter((msg) => msg.text.toLowerCase().includes(query))
-        .map((msg) => msg.id)
-    );
-  }, [roomMessages, searchQuery]);
-
-  // 메시지 구독
+  // 검색 결과 추적 (2글자 이상일 때만)
   useEffect(() => {
-    if (!chatRoomId || chatRoomId.startsWith('temp_') || !isMounted) {
+    if (!onSearchResultsChange) return;
+    
+    const trimmedQuery = searchQuery?.trim() || '';
+    if (trimmedQuery.length >= 2) {
+      const query = trimmedQuery.toLowerCase();
+      // 최신 메시지가 먼저 오도록 역순으로 검색
+      const results = roomMessages
+        .slice()
+        .reverse() // 배열을 역순으로
+        .map((msg, originalIndex) => {
+          // 역순으로 변환된 인덱스를 원래 인덱스로 변환
+          const actualIndex = roomMessages.length - 1 - originalIndex;
+          return { msg, index: actualIndex };
+        })
+        .filter(({ msg }) => msg.text.toLowerCase().includes(query))
+        .map(({ msg, index }) => ({ id: msg.id, index }));
+      
+      onSearchResultsChange(results);
+    } else {
+      onSearchResultsChange([]);
+    }
+  }, [searchQuery, roomMessages, onSearchResultsChange]);
+
+  // 메시지 구독 및 읽음 처리
+  useEffect(() => {
+    if (!chatRoomId || chatRoomId.startsWith('temp_') || !isMounted || !currentUserId) {
       setMessages(chatRoomId, []);
       return;
     }
 
     const unsubscribe = ChatService.subscribeToMessages(
       chatRoomId,
-      (newMessages) => {
+      async (newMessages) => {
         setMessages(chatRoomId, newMessages);
+        
+        // 읽지 않은 메시지를 읽음 처리 (자신이 보낸 메시지 제외)
+        const unreadMessages = newMessages.filter(
+          (msg) => msg.sender.uid !== currentUserId && !msg.readBy.includes(currentUserId)
+        );
+        
+        // 읽지 않은 메시지가 있으면 읽음 처리
+        if (unreadMessages.length > 0) {
+          // 병렬로 읽음 처리 (성능 최적화)
+          const markAsReadPromises = unreadMessages.map((msg) =>
+            ChatService.markMessageAsRead(msg.id, currentUserId).catch((error) => {
+              // 개별 메시지 읽음 처리 실패는 조용히 처리
+              if (process.env.NODE_ENV === 'development') {
+                console.warn(`Failed to mark message ${msg.id} as read:`, error);
+              }
+            })
+          );
+          
+          await Promise.allSettled(markAsReadPromises);
+        }
       },
       (error) => {
         console.error('Failed to subscribe to messages:', error);
@@ -81,7 +120,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
     return () => {
       unsubscribe();
     };
-  }, [chatRoomId, isMounted, setMessages]);
+  }, [chatRoomId, isMounted, currentUserId, setMessages]);
 
   // 컴포넌트 마운트 확인
   useEffect(() => {
@@ -126,17 +165,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
     }
   }, [roomMessages, isAtBottom]);
 
-  // 검색 결과로 스크롤
-  useEffect(() => {
-    if (searchQuery.trim() && highlightedMessageIds.size > 0) {
-      const firstHighlighted = roomMessages.find((msg) =>
-        highlightedMessageIds.has(msg.id)
-      );
-      if (firstHighlighted) {
-        scrollToMessage(firstHighlighted.id);
-      }
-    }
-  }, [searchQuery, highlightedMessageIds, roomMessages]);
+  // 검색 결과로 스크롤은 ChatRoomPageClient에서 처리하므로 제거
 
   // 커스텀 이벤트 리스너 (검색 결과 클릭 시 스크롤)
   useEffect(() => {
@@ -175,15 +204,21 @@ export const ChatView: React.FC<ChatViewProps> = ({
     if (!user || !text.trim()) return;
 
     const tempRoom = temporaryRooms.find((r) => r.id === chatRoomId);
-    const displayName = getUserDisplayName(user, userProfile, '사용자');
+    
+    // 이름+직급 가져오기 (UserList에서 사용하는 방식과 동일)
+    const senderDisplayName = getUserDisplayName(
+      { displayName: user.displayName, email: user.email },
+      { position: userProfile?.position },
+      '사용자'
+    );
 
     try {
-      await ChatService.sendMessage(
+      const result = await ChatService.sendMessage(
         chatRoomId,
         text,
         {
           uid: user.uid,
-          displayName,
+          displayName: senderDisplayName,
           photoURL: user.photoURL || undefined,
         },
         undefined,
@@ -192,7 +227,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
         tempRoom
       );
 
-      // 임시 채팅방인 경우 URL 업데이트는 ChatService.sendMessage 내부에서 처리됨
+      // 임시 채팅방인 경우 저장된 채팅방 ID로 URL 업데이트
+      if (tempRoom && result.roomId !== chatRoomId) {
+        router.push(`/chat?room=${result.roomId}`);
+      }
     } catch (error) {
       console.error('Failed to send message:', error);
     }
@@ -211,11 +249,37 @@ export const ChatView: React.FC<ChatViewProps> = ({
     );
   };
 
+  // 연속된 메시지 그룹 판단 (1분 기준)
+  const isFirstInGroup = (index: number): boolean => {
+    if (index === 0) return true;
+    const currentMessage = roomMessages[index];
+    const previousMessage = roomMessages[index - 1];
+    return (
+      currentMessage.sender.uid !== previousMessage.sender.uid ||
+      new Date(currentMessage.timestamp).getTime() -
+        new Date(previousMessage.timestamp).getTime() >
+        60 * 1000 // 1분 이상 차이
+    );
+  };
+
+  // 연속된 메시지 그룹의 마지막 메시지인지 판단 (1분 기준)
+  const isLastInGroup = (index: number): boolean => {
+    if (index === roomMessages.length - 1) return true;
+    const currentMessage = roomMessages[index];
+    const nextMessage = roomMessages[index + 1];
+    return (
+      currentMessage.sender.uid !== nextMessage.sender.uid ||
+      new Date(nextMessage.timestamp).getTime() -
+        new Date(currentMessage.timestamp).getTime() >
+        60 * 1000 // 1분 이상 차이
+    );
+  };
+
   return (
-    <div className="flex flex-col h-full min-w-0 relative">
+    <div className="flex flex-col h-full min-w-0 relative overflow-hidden">
       {/* 메시지 영역 */}
-      <ScrollArea className="flex-1 min-w-0" ref={scrollAreaRef}>
-        <div className="p-4 space-y-1 min-w-0">
+      <ScrollArea className="flex-1 min-h-0 min-w-0" ref={scrollAreaRef}>
+        <div className="py-4 space-y-0.5 min-w-0">
           {roomMessages.length === 0 ? (
             <div className="flex items-center justify-center h-full text-muted-foreground">
               <p>첫 메시지를 보내 채팅을 시작하세요</p>
@@ -231,7 +295,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   message={message}
                   currentUserId={currentUserId}
                   showAvatar={shouldShowAvatar(index)}
-                  isSearchResult={highlightedMessageIds.has(message.id)}
+                  searchQuery={searchQuery}
+                  participants={currentChatRoom?.participants || []}
+                  isFirstInGroup={isFirstInGroup(index)}
+                  isLastInGroup={isLastInGroup(index)}
                 />
               </div>
             ))
@@ -254,15 +321,17 @@ export const ChatView: React.FC<ChatViewProps> = ({
       )}
 
       {/* 입력 영역 */}
-      <div className="flex-shrink-0 border-t bg-background p-4 min-w-0">
-        <ChatInput
-          onSubmit={handleSendMessage}
-          placeholder="메시지를 입력하세요..."
-          disabled={!user}
-          users={[]} // TODO: 채팅방 참여자 목록 전달
-          currentUserUid={user?.uid}
-        />
-      </div>
+      {!hideInput && (
+        <div className="flex-shrink-0 border-t bg-background p-4 min-w-0 sticky bottom-0 z-10">
+          <ChatInput
+            onSubmit={handleSendMessage}
+            placeholder="메시지를 입력하세요..."
+            disabled={!user}
+            users={[]} // TODO: 채팅방 참여자 목록 전달
+            currentUserUid={user?.uid}
+          />
+        </div>
+      )}
     </div>
   );
 };

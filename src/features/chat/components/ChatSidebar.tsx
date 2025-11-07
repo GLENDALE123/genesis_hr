@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui
 import { UserList } from './UserList';
 import { ChatRoomList } from './ChatRoomList';
 import { useRouter, usePathname } from 'next/navigation';
+import { useDeviceType } from '@/shared/hooks/use-device';
 
 export interface ChatSidebarProps {
   className?: string;
@@ -18,6 +19,8 @@ export interface ChatSidebarProps {
 export const ChatSidebar: React.FC<ChatSidebarProps> = ({ className }) => {
   const router = useRouter();
   const pathname = usePathname();
+  const { isSmartphone } = useDeviceType();
+  const isMobile = isSmartphone;
   const [activeTab, setActiveTab] = useState<'users' | 'rooms'>('rooms');
 
   // sessionStorage에서 탭 상태 복원
@@ -59,11 +62,11 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ className }) => {
   }, []);
 
   const handleRoomClick = (roomId: string) => {
-    router.push(`/chat/${roomId}`);
+    router.push(`/chat?room=${roomId}`);
   };
 
   return (
-    <div className={`flex flex-col h-full bg-background border-r ${className}`} style={{ width: '300px' }}>
+    <div className={`flex flex-col h-full bg-background border-r ${className}`} style={{ width: isMobile ? '100%' : '300px' }}>
       <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col h-full">
         <div className="flex-shrink-0 p-4 border-b">
           <TabsList className="grid w-full grid-cols-2">

@@ -24,6 +24,7 @@ import { useAuthStore } from '@/features/auth/store/authStore';
 import { getAllUsersWithAuthInfo } from '@/shared/services/firebase/userManagement';
 import { getUserDisplayName, getUserInitial } from '@/shared/utils/userUtils';
 import { UserStatusService } from '../services/userStatusService';
+import { ChatService } from '../services/chatService';
 import { useChatStore } from '../store/chatStore';
 import { MessageSquare, Star, Search } from 'lucide-react';
 import type { UserManagementInfo } from '@/shared/services/firebase/userManagement';
@@ -33,6 +34,20 @@ let cachedUsers: UserManagementInfo[] = [];
 let hasCachedUsers = false;
 let cachedUserStatuses: Record<string, boolean> = {};
 let userStatusUnsubscribe: (() => void) | null = null;
+
+// 캐시 접근을 위한 export (프리로드용)
+export const getCachedUsers = () => ({ cachedUsers, hasCachedUsers, cachedUserStatuses });
+export const setCachedUsers = (users: UserManagementInfo[]) => {
+  cachedUsers = users;
+  hasCachedUsers = true;
+};
+export const setCachedUserStatuses = (statuses: Record<string, boolean>) => {
+  cachedUserStatuses = statuses;
+};
+export const getUserStatusUnsubscribe = () => userStatusUnsubscribe;
+export const setUserStatusUnsubscribe = (unsubscribe: (() => void) | null) => {
+  userStatusUnsubscribe = unsubscribe;
+};
 
 // 전역 사용자 정보 참조 (다른 컴포넌트에서도 접근 가능)
 export const globalUsersRef = React.createRef<{
@@ -63,6 +78,13 @@ export const UserList: React.FC<UserListProps> = ({ className }) => {
     users: [],
     loaded: false,
   });
+
+  // globalUsersRef 초기화
+  useEffect(() => {
+    if (!globalUsersRef.current) {
+      (globalUsersRef as any).current = { users: [], loaded: false };
+    }
+  }, []);
 
   // 즐겨찾기 로드 및 구독 (Firestore)
   useEffect(() => {
@@ -200,47 +222,94 @@ export const UserList: React.FC<UserListProps> = ({ className }) => {
   };
 
   // 채팅 시작
-  const handleStartChat = (userId: string) => {
+  const handleStartChat = async (userId: string) => {
     if (!currentUser?.uid) return;
 
     const targetUser = users.find((u) => u.uid === userId);
     if (!targetUser) return;
 
-    // 임시 채팅방 생성
-    const tempRoomId = `temp_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    try {
+      // 기존 1:1 채팅방 확인
+      const existingRoom = await ChatService.findDirectChatRoom(
+        currentUser.uid,
+        targetUser.uid
+      );
 
-    addTemporaryRoom({
-      id: tempRoomId,
-      type: 'direct',
-      participants: [
-        {
-          uid: currentUser.uid,
-          displayName: getUserDisplayName(currentUser, null, '사용자'),
-          photoURL: currentUser.photoURL || undefined,
-          joinedAt: new Date().toISOString(),
-        },
-        {
-          uid: targetUser.uid,
-          displayName: getUserDisplayName(
-            { displayName: targetUser.displayName, email: targetUser.email },
-            { position: targetUser.position },
-            '사용자'
-          ),
-          photoURL: (targetUser as any).photoURL || undefined,
-          joinedAt: new Date().toISOString(),
-        },
-      ],
-      createdAt: new Date().toISOString(),
-    });
+      if (existingRoom) {
+        // 기존 채팅방이 있으면 그 채팅방으로 이동
+        // 채팅방 탭으로 전환
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('chat-sidebar-tab', 'rooms');
+          window.dispatchEvent(new Event('chat-sidebar-tab-change'));
+        }
+        router.push(`/chat?room=${existingRoom.id}`);
+        return;
+      }
 
-    // 채팅방 탭으로 전환
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('chat-sidebar-tab', 'rooms');
-      window.dispatchEvent(new Event('chat-sidebar-tab-change'));
+      // 기존 채팅방이 없으면 임시 채팅방 생성
+      const tempRoomId = `temp_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
+      addTemporaryRoom({
+        id: tempRoomId,
+        type: 'direct',
+        participants: [
+          {
+            uid: currentUser.uid,
+            displayName: getUserDisplayName(currentUser, null, '사용자'),
+            photoURL: currentUser.photoURL || undefined,
+            joinedAt: new Date().toISOString(),
+          },
+          {
+            uid: targetUser.uid,
+            displayName: getUserDisplayName(
+              { displayName: targetUser.displayName, email: targetUser.email },
+              { position: targetUser.position },
+              '사용자'
+            ),
+            photoURL: (targetUser as any).photoURL || undefined,
+            joinedAt: new Date().toISOString(),
+          },
+        ],
+        createdAt: new Date().toISOString(),
+      });
+
+      // 채팅방 탭으로 전환
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('chat-sidebar-tab', 'rooms');
+        window.dispatchEvent(new Event('chat-sidebar-tab-change'));
+      }
+
+      // 임시 채팅방으로 이동
+      router.push(`/chat?room=${tempRoomId}`);
+    } catch (error) {
+      console.error('Failed to start chat:', error);
+      // 에러가 발생해도 임시 채팅방으로 이동
+      const tempRoomId = `temp_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      addTemporaryRoom({
+        id: tempRoomId,
+        type: 'direct',
+        participants: [
+          {
+            uid: currentUser.uid,
+            displayName: getUserDisplayName(currentUser, null, '사용자'),
+            photoURL: currentUser.photoURL || undefined,
+            joinedAt: new Date().toISOString(),
+          },
+          {
+            uid: targetUser.uid,
+            displayName: getUserDisplayName(
+              { displayName: targetUser.displayName, email: targetUser.email },
+              { position: targetUser.position },
+              '사용자'
+            ),
+            photoURL: (targetUser as any).photoURL || undefined,
+            joinedAt: new Date().toISOString(),
+          },
+        ],
+        createdAt: new Date().toISOString(),
+      });
+      router.push(`/chat?room=${tempRoomId}`);
     }
-
-    // 채팅방으로 이동
-    router.push(`/chat/${tempRoomId}`);
   };
 
   // 필터링 및 정렬된 사용자 목록
@@ -424,25 +493,48 @@ export const UserList: React.FC<UserListProps> = ({ className }) => {
 
 // getUserInfo 함수 export (다른 컴포넌트에서 사용)
 export const getUserInfo = (userId: string) => {
+  // globalUsersRef에서 먼저 시도
   if (globalUsersRef.current?.loaded && globalUsersRef.current.users) {
     const user = globalUsersRef.current.users.find((u) => u.uid === userId);
-    if (!user) return null;
-
-    const baseDisplayName = user.displayName || user.email?.split('@')[0] || '사용자';
-    // position이 이미 displayName에 포함되어 있는지 확인
-    if (user.position && !baseDisplayName.includes(user.position)) {
+    if (user) {
+      const baseDisplayName = user.displayName || user.email?.split('@')[0] || '사용자';
+      // position이 이미 displayName에 포함되어 있는지 확인
+      if (user.position && !baseDisplayName.includes(user.position)) {
+        return {
+          displayName: `${baseDisplayName} ${user.position}`,
+          photoURL: user.photoURL || undefined,
+          position: user.position,
+        };
+      }
       return {
-        displayName: `${baseDisplayName} ${user.position}`,
-        photoURL: user.photoURL || undefined,
+        displayName: baseDisplayName,
+        photoURL: (user as any).photoURL || undefined,
         position: user.position,
       };
     }
-    return {
-      displayName: baseDisplayName,
-      photoURL: (user as any).photoURL || undefined,
-      position: user.position,
-    };
   }
+  
+  // globalUsersRef가 없거나 로드되지 않았으면 캐시된 사용자 정보 사용
+  if (hasCachedUsers && cachedUsers.length > 0) {
+    const user = cachedUsers.find((u) => u.uid === userId);
+    if (user) {
+      const baseDisplayName = user.displayName || user.email?.split('@')[0] || '사용자';
+      // position이 이미 displayName에 포함되어 있는지 확인
+      if (user.position && !baseDisplayName.includes(user.position)) {
+        return {
+          displayName: `${baseDisplayName} ${user.position}`,
+          photoURL: user.photoURL || undefined,
+          position: user.position,
+        };
+      }
+      return {
+        displayName: baseDisplayName,
+        photoURL: (user as any).photoURL || undefined,
+        position: user.position,
+      };
+    }
+  }
+  
   return null;
 };
 

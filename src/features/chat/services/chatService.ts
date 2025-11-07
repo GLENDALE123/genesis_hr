@@ -26,13 +26,40 @@ import {
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '@/shared/services/firebase/config';
 import { CHAT_COLLECTIONS, MESSAGE_LIMITS } from '../constants';
+import { MessageStatus } from '../types/chat.types';
+
+// undefined 값을 재귀적으로 제거하는 유틸리티 함수
+const removeUndefinedValues = (obj: any): any => {
+  if (obj === null || obj === undefined) {
+    return null;
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(removeUndefinedValues).filter(item => item !== undefined);
+  }
+  
+  if (typeof obj === 'object') {
+    const cleaned: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (value !== undefined) {
+        const cleanedValue = removeUndefinedValues(value);
+        if (cleanedValue !== undefined) {
+          cleaned[key] = cleanedValue;
+        }
+      }
+    }
+    return cleaned;
+  }
+  
+  return obj;
+};
+
 import type {
   ChatRoom,
   ChatMessage,
   ChatRoomParticipant,
   MessageAttachment,
   TemporaryChatRoom,
-  MessageStatus,
 } from '../types/chat.types';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
 
@@ -62,14 +89,22 @@ export class ChatService {
     const now = new Date().toISOString();
     const roomData: Omit<ChatRoom, 'id'> = {
       type,
-      name,
-      participants,
+      participants: participants.map((p) => ({
+        uid: p.uid,
+        displayName: p.displayName || '',
+        photoURL: p.photoURL || null,
+        joinedAt: p.joinedAt || now,
+      })),
       createdBy,
       createdAt: now,
       updatedAt: now,
+      ...(name && { name }),
     };
 
-    const docRef = await addDoc(collection(db, CHAT_COLLECTIONS.ROOMS), roomData);
+    // undefined 필드 재귀적으로 제거
+    const sanitizedData = removeUndefinedValues(roomData) as Omit<ChatRoom, 'id'>;
+
+    const docRef = await addDoc(collection(db, CHAT_COLLECTIONS.ROOMS), sanitizedData);
     return docRef.id;
   }
 
@@ -83,23 +118,22 @@ export class ChatService {
     if (!db) throw new Error('Firestore is not initialized');
 
     const roomsRef = collection(db, CHAT_COLLECTIONS.ROOMS);
+    // participants는 객체 배열이므로 모든 direct 채팅방을 가져온 후 필터링
     const q = query(
       roomsRef,
-      where('type', '==', 'direct'),
-      where('participants', 'array-contains-any', [
-        { uid: uid1 },
-        { uid: uid2 },
-      ])
+      where('type', '==', 'direct')
     );
 
     const snapshot = await getDocs(q);
     for (const docSnap of snapshot.docs) {
       const room = { id: docSnap.id, ...docSnap.data() } as ChatRoom;
-      const participantUids = room.participants.map((p) => p.uid);
+      if (!room.participants || !Array.isArray(room.participants)) continue;
+      
+      const participantUids = room.participants.map((p) => p.uid).filter(Boolean);
       if (
+        participantUids.length === 2 &&
         participantUids.includes(uid1) &&
-        participantUids.includes(uid2) &&
-        participantUids.length === 2
+        participantUids.includes(uid2)
       ) {
         return room;
       }
@@ -133,13 +167,21 @@ export class ChatService {
     const now = new Date().toISOString();
     const roomData: Omit<ChatRoom, 'id'> = {
       type: temporaryRoom.type,
-      participants: temporaryRoom.participants,
+      participants: temporaryRoom.participants.map((p) => ({
+        uid: p.uid,
+        displayName: p.displayName || '',
+        photoURL: p.photoURL || null,
+        joinedAt: p.joinedAt || now,
+      })),
       createdBy,
       createdAt: now,
       updatedAt: now,
     };
 
-    const docRef = await addDoc(collection(db, CHAT_COLLECTIONS.ROOMS), roomData);
+    // undefined 필드 재귀적으로 제거
+    const sanitizedData = removeUndefinedValues(roomData) as Omit<ChatRoom, 'id'>;
+
+    const docRef = await addDoc(collection(db, CHAT_COLLECTIONS.ROOMS), sanitizedData);
     return docRef.id;
   }
 
@@ -173,20 +215,27 @@ export class ChatService {
     if (!db) throw new Error('Firestore is not initialized');
 
     const roomsRef = collection(db, CHAT_COLLECTIONS.ROOMS);
+    // participants는 객체 배열이므로, 모든 채팅방을 가져온 후 클라이언트에서 필터링
+    // 또는 participants 배열에 userId를 포함하는 문자열 필드를 추가하는 방법도 있음
     const q = query(
       roomsRef,
-      where('participants', 'array-contains-any', [{ uid: userId }]),
       orderBy('updatedAt', 'desc')
     );
 
     return onSnapshot(
       q,
       (snapshot) => {
-        const rooms = snapshot.docs.map((doc) => ({
+        const allRooms = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         })) as ChatRoom[];
-        callback(rooms);
+        
+        // 클라이언트에서 참여자 필터링
+        const userRooms = allRooms.filter((room) =>
+          room.participants?.some((p) => p.uid === userId)
+        );
+        
+        callback(userRooms);
       },
       (error) => {
         console.error('Error fetching chat rooms:', error);
@@ -212,22 +261,18 @@ export class ChatService {
     // 문서 존재 여부 확인
     const docSnap = await getDoc(docRef);
 
+    // undefined 필드 재귀적으로 제거
+    const sanitizedUpdates = removeUndefinedValues({
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    });
+
     if (docSnap.exists()) {
       // 문서가 존재하면 업데이트
-      await updateDoc(docRef, {
-        ...updates,
-        updatedAt: new Date().toISOString(),
-      });
+      await updateDoc(docRef, sanitizedUpdates);
     } else {
       // 문서가 없으면 생성 (merge 옵션으로 기존 데이터 보존)
-      await setDoc(
-        docRef,
-        {
-          ...updates,
-          updatedAt: new Date().toISOString(),
-        },
-        { merge: true }
-      );
+      await setDoc(docRef, sanitizedUpdates, { merge: true });
     }
   }
 
@@ -314,6 +359,7 @@ export class ChatService {
 
   /**
    * 메시지 전송
+   * @returns {Promise<{ messageId: string; roomId: string }>} 메시지 ID와 채팅방 ID 반환
    */
   static async sendMessage(
     chatRoomId: string,
@@ -323,7 +369,7 @@ export class ChatService {
     mentionedUserIds?: string[],
     replyTo?: string,
     temporaryRoom?: TemporaryChatRoom
-  ): Promise<string> {
+  ): Promise<{ messageId: string; roomId: string }> {
     if (!db) throw new Error('Firestore is not initialized');
 
     // 임시 채팅방인 경우 먼저 Firestore에 저장
@@ -332,7 +378,6 @@ export class ChatService {
         temporaryRoom,
         sender.uid
       );
-      // URL 업데이트는 클라이언트에서 처리
       chatRoomId = savedRoomId;
     }
 
@@ -340,7 +385,11 @@ export class ChatService {
     const messageData: Omit<ChatMessage, 'id'> = {
       chatRoomId,
       text,
-      sender,
+      sender: {
+        uid: sender.uid,
+        displayName: sender.displayName || '',
+        photoURL: sender.photoURL || null,
+      },
       timestamp: now,
       status: MessageStatus.SENT,
       readBy: [sender.uid], // 보낸 사람은 즉시 읽음 처리
@@ -349,9 +398,12 @@ export class ChatService {
       ...(replyTo && { replyTo }),
     };
 
+    // undefined 필드 재귀적으로 제거
+    const sanitizedMessageData = removeUndefinedValues(messageData) as Omit<ChatMessage, 'id'>;
+
     const docRef = await addDoc(
       collection(db, CHAT_COLLECTIONS.MESSAGES),
-      messageData
+      sanitizedMessageData
     );
 
     // 채팅방의 lastMessage 업데이트
@@ -368,7 +420,7 @@ export class ChatService {
       sender.uid
     );
 
-    return docRef.id;
+    return { messageId: docRef.id, roomId: chatRoomId };
   }
 
   /**
@@ -383,11 +435,12 @@ export class ChatService {
     if (!db) throw new Error('Firestore is not initialized');
 
     const messagesRef = collection(db, CHAT_COLLECTIONS.MESSAGES);
+    // Firestore 인덱스가 필요한 쿼리이므로, 인덱스 없이도 작동하도록 수정
+    // 먼저 chatRoomId로 필터링한 후 클라이언트에서 정렬
     const q = query(
       messagesRef,
       where('chatRoomId', '==', chatRoomId),
-      orderBy('timestamp', 'desc'),
-      limit(limitCount)
+      limit(limitCount * 2) // 정렬을 위해 더 많이 가져옴
     );
 
     return onSnapshot(
@@ -398,7 +451,13 @@ export class ChatService {
             id: doc.id,
             ...doc.data(),
           }))
-          .reverse() as ChatMessage[]; // 시간순으로 정렬
+          .sort((a, b) => {
+            // timestamp로 정렬 (오름차순: 가장 오래된 것부터)
+            const aTime = a.timestamp || '';
+            const bTime = b.timestamp || '';
+            return aTime.localeCompare(bTime);
+          })
+          .slice(-limitCount) as ChatMessage[]; // 최신 limitCount개만 사용
         callback(messages);
       },
       (error) => {

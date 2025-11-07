@@ -59,6 +59,19 @@ export const getAllUsersWithAuthInfo = async (): Promise<UserManagementInfo[]> =
     if (error && typeof error === 'object' && 'code' in error) {
       const firebaseError = error as { code: string; message?: string; details?: unknown };
       
+      // INTERNAL 에러 (500)인 경우
+      if (firebaseError.code === 'functions/internal' || 
+          firebaseError.code === 'internal' ||
+          firebaseError.message?.includes('INTERNAL')) {
+        const errorMessage = firebaseError.message || '서버 내부 오류가 발생했습니다.';
+        console.error('Firebase Functions INTERNAL 에러:', {
+          code: firebaseError.code,
+          message: firebaseError.message,
+          details: firebaseError.details
+        });
+        throw new Error(`유저 목록 조회 실패: ${errorMessage} 잠시 후 다시 시도해주세요.`);
+      }
+      
       // 권한 관련 에러인 경우 더 명확한 메시지 제공
       if (firebaseError.code === 'functions/permission-denied' || 
           firebaseError.code === 'unauthenticated' ||
