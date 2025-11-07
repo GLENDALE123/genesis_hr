@@ -4,11 +4,13 @@ import React, { useEffect, useState, Suspense, useCallback } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/shared/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/shared/components/ui/sheet';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/shared/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/shared/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, ArrowLeft, X } from 'lucide-react';
+import { useDeviceType } from '@/shared/hooks/use-device';
 // import { Plus } from 'lucide-react';
 import { 
   QualityIssueForm,
@@ -28,8 +30,10 @@ import { ProtectedRoute } from '@/shared/components/auth';
 
 function QualityIssuesPageContent() {
   const { issues, isLoading, error, searchTerm, setSearchTerm, setStatusFilter, statusFilter, stats } = useQualityIssues();
-  const { isFormModalOpen, isSaving, handleSaveIssue, handleCancelForm, openFormModal } = useQualityIssueForm();
+  const { isFormModalOpen, isSaving, handleSaveIssue, handleCancelForm, openFormModal, openEditModal, editingIssue } = useQualityIssueForm();
   const { user, userProfile } = useAuthStore();
+  const { isSmartphone, isTablet } = useDeviceType();
+  const isMobileOrTablet = isSmartphone || isTablet;
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -41,8 +45,25 @@ function QualityIssuesPageContent() {
   // 삭제 확인 모달 상태
   const [issueToDelete, setIssueToDelete] = useState<QualityIssue | null>(null);
 
-  // 출하대기 필터링된 이슈 목록
-  const shippingWaitIssues = issues.filter(issue => issue.registrationKeyword === '출하대기');
+  // 출하대기 필터링된 이슈 목록 (해결완료 상태 제외)
+  const shippingWaitIssues = issues.filter(issue => {
+    // 출하대기가 아니면 제외
+    if (issue.registrationKeyword !== '출하대기') return false;
+    
+    // 현재 상태 확인
+    const lastIssue = issue.issues[issue.issues.length - 1];
+    const currentStatus = lastIssue && typeof lastIssue === 'object' && lastIssue.status 
+      ? lastIssue.status 
+      : issue.status || '해결완료';
+    
+    // 해결완료 상태면 제외
+    const isResolved = 
+      currentStatus === '해결완료' || 
+      currentStatus === 'resolved' || 
+      currentStatus === 'closed';
+    
+    return !isResolved;
+  });
 
   // 작성자 권한 체크 함수
   const canChangeStatus = (issue: QualityIssue | null): boolean => {
@@ -313,13 +334,14 @@ function QualityIssuesPageContent() {
         </Tabs>
       </div>
 
-      {/* 품질이슈 등록 모달 */}
-      <Dialog open={isFormModalOpen} onOpenChange={handleCancelForm}>
+      {/* 품질이슈 등록/수정 모달 - 데스크톱: Dialog */}
+      {!isMobileOrTablet && (
+        <Dialog open={isFormModalOpen} onOpenChange={handleCancelForm}>
           <DialogContent 
             className="max-w-6xl"
             stickyHeader={
               <DialogHeader>
-                <DialogTitle>신규 품질이슈 등록</DialogTitle>
+                <DialogTitle>{editingIssue ? '품질이슈 수정' : '신규 품질이슈 등록'}</DialogTitle>
               </DialogHeader>
             }
             stickyFooter={
@@ -340,9 +362,65 @@ function QualityIssuesPageContent() {
           >
             <QualityIssueForm
               onSave={handleSaveIssue}
+              initialData={editingIssue || undefined}
+              isEditMode={!!editingIssue}
             />
           </DialogContent>
         </Dialog>
+      )}
+
+      {/* 품질이슈 등록/수정 시트 - 모바일/태블릿: Sheet */}
+      {isMobileOrTablet && (
+        <Sheet open={isFormModalOpen} onOpenChange={handleCancelForm}>
+          <SheetContent 
+            side="right"
+            fullscreen
+            animationVariant={isTablet ? 'tablet' : 'default'}
+            hideClose
+            className="w-full max-w-none overflow-hidden p-0 flex flex-col"
+          >
+            <div className="h-full flex flex-col max-h-[100dvh]">
+              <SheetHeader className="sticky top-0 z-10 bg-background border-b p-4 text-left flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCancelForm}
+                    className="-ml-2"
+                    aria-label="뒤로가기"
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                  </Button>
+                  <SheetTitle className="ml-1">
+                    {editingIssue ? '품질이슈 수정' : '신규 품질이슈 등록'}
+                  </SheetTitle>
+                </div>
+              </SheetHeader>
+              <div className="flex-1 overflow-y-auto overscroll-contain px-2 py-2 min-h-0">
+                <QualityIssueForm
+                  onSave={handleSaveIssue}
+                  initialData={editingIssue || undefined}
+                  isEditMode={!!editingIssue}
+                />
+              </div>
+              <SheetFooter className="sticky bottom-0 bg-background border-t p-4 flex-row justify-end gap-2 flex-shrink-0 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+                <Button type="button" variant="outline" onClick={handleCancelForm} disabled={isSaving}>
+                  <X className="h-4 w-4 mr-2" />
+                  취소
+                </Button>
+                <Button 
+                  type="submit" 
+                  form="quality-issue-form"
+                  disabled={isSaving} 
+                  className="min-w-[120px]"
+                >
+                  {isSaving ? '저장 중...' : '저장'}
+                </Button>
+              </SheetFooter>
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
 
              {/* 품질이슈 상세 모달 */}
              <QualityIssueDetail
@@ -357,6 +435,7 @@ function QualityIssuesPageContent() {
                onAddIssueItem={handleAddIssueItem}
                onDelete={handleDeleteClick}
                onUpdateProcessedQuantity={handleUpdateProcessedQuantity}
+               onEdit={openEditModal}
              />
 
       {/* 삭제 확인 모달 */}

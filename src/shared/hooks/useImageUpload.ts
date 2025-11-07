@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useCallback, useMemo } from 'react';
+import { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import { 
   createImagePreview, 
   uploadImageWithState, 
@@ -35,6 +35,13 @@ export const useImageUpload = (): UseImageUploadReturn => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [deletedImageUrls, setDeletedImageUrls] = useState<string[]>([]); // 삭제된 이미지 URL 추적
   const [abortController, setAbortController] = useState<AbortController | null>(null);
+  // 최신 상태를 참조하기 위한 ref
+  const uploadingImagesRef = useRef<UploadingImageItem[]>([]);
+  
+  // uploadingImages가 변경될 때마다 ref 업데이트
+  useEffect(() => {
+    uploadingImagesRef.current = uploadingImages;
+  }, [uploadingImages]);
 
   const handleFileSelect = useCallback(async (files: File[]) => {
     if (files.length === 0) return;
@@ -46,7 +53,9 @@ export const useImageUpload = (): UseImageUploadReturn => {
     let startIndex = 0;
     setUploadingImages(prev => {
       startIndex = prev.length;
-      return [...prev, ...newItems];
+      const updated = [...prev, ...newItems];
+      uploadingImagesRef.current = updated; // ref도 업데이트
+      return updated;
     });
     
     // 동적 배치 크기 계산
@@ -88,6 +97,7 @@ export const useImageUpload = (): UseImageUploadReturn => {
           setUploadingImages(prev => {
             const updated = [...prev];
             updated[globalIndex] = { file, preview: thumbnail.previewUrl };
+            uploadingImagesRef.current = updated; // ref도 업데이트
             return updated;
           });
           
@@ -97,6 +107,7 @@ export const useImageUpload = (): UseImageUploadReturn => {
           setUploadingImages(prev => {
             const updated = [...prev];
             updated[globalIndex] = { file, preview: URL.createObjectURL(file) };
+            uploadingImagesRef.current = updated; // ref도 업데이트
             return updated;
           });
           
@@ -126,66 +137,105 @@ export const useImageUpload = (): UseImageUploadReturn => {
         URL.revokeObjectURL(item.preview);
       }
       
-      return prev.filter((_, i) => i !== index);
+      const updated = prev.filter((_, i) => i !== index);
+      uploadingImagesRef.current = updated; // ref도 업데이트
+      return updated;
     });
   }, []);
 
   const uploadImages = useCallback(async (folder: string, onProgress?: (progress: number) => void): Promise<string[]> => {
-    // 현재 uploadingImages 상태를 직접 참조하여 무한 루프 방지
     return new Promise((resolve, reject) => {
-      setUploadingImages(currentImages => {
-        if (currentImages.length === 0) {
-          resolve([]);
-          return currentImages;
-        }
-
-        // 비동기 작업을 별도로 실행
-        (async () => {
-          try {
-            // 새로운 AbortController 생성
-            const controller = new AbortController();
-            setAbortController(controller);
-            setIsUploading(true);
-            setUploadProgress(0);
-
-            const uploadedUrls: string[] = [];
+      // 비동기 작업을 즉시 시작
+      (async () => {
+        try {
+          // 썸네일 생성이 완료될 때까지 대기 (최대 10초)
+          let retryCount = 0;
+          const maxRetries = 100; // 10초 (100 * 100ms)
+          
+          while (retryCount < maxRetries) {
+            // ref를 통해 최신 상태 가져오기
+            const currentImages = uploadingImagesRef.current;
             
             // 새로 업로드할 파일들만 필터링 (기존 이미지는 제외)
             const newFiles = currentImages
               .filter(item => item.file !== null)
               .map(item => item.file!);
             
-            if (newFiles.length > 0) {
-              // 진행률 콜백이 있는 경우 사용
-              if (onProgress) {
-                // 병렬처리로 업로드 (진행률 포함, AbortController 전달)
-                const newUrls = await uploadImageFilesParallel(newFiles, folder, onProgress, controller.signal);
-                uploadedUrls.push(...newUrls);
-              } else {
-                // 기존 방식 (진행률 없음, AbortController 전달)
-                const newUrls = await uploadImageFilesParallel(newFiles, folder, undefined, controller.signal);
-                uploadedUrls.push(...newUrls);
-              }
+            if (newFiles.length === 0) {
+              // 파일이 없으면 즉시 종료
+              resolve([]);
+              return;
             }
-
-            resolve(uploadedUrls);
-          } catch (error) {
-            // AbortError인 경우 취소된 것으로 처리
-            if (error instanceof Error && error.name === 'AbortError') {
-              reject(new Error('사용자에 의해 취소되었습니다.'));
-            } else {
-              console.error('이미지 업로드 실패:', error);
-              reject(error);
+            
+            // 모든 썸네일이 준비되었는지 확인
+            const allReady = currentImages
+              .filter(item => item.file !== null)
+              .every(item => item.preview !== null);
+            
+            if (allReady) {
+              // 모든 썸네일이 준비되었으면 업로드 시작
+              break;
             }
-          } finally {
-            setIsUploading(false);
-            setUploadProgress(0);
-            setAbortController(null);
+            
+            // 최대 재시도 횟수에 도달했으면 강제로 시작
+            if (retryCount >= maxRetries - 1) {
+              console.warn('⚠️ 썸네일 생성이 완료되지 않았지만 업로드를 시작합니다.');
+              break;
+            }
+            
+            // 100ms 대기 후 재시도
+            await new Promise(resolve => setTimeout(resolve, 100));
+            retryCount++;
           }
-        })();
+          
+          // 최종 파일 목록 가져오기
+          const finalImages = uploadingImagesRef.current;
+          const finalFiles = finalImages
+            .filter(item => item.file !== null)
+            .map(item => item.file!);
+          
+          if (finalFiles.length === 0) {
+            resolve([]);
+            return;
+          }
+          
+          console.log(`🚀 업로드 시작: ${finalFiles.length}개 파일`);
+          
+          // 새로운 AbortController 생성
+          const controller = new AbortController();
+          setAbortController(controller);
+          setIsUploading(true);
+          setUploadProgress(0);
 
-        return currentImages;
-      });
+          const uploadedUrls: string[] = [];
+          
+          // 진행률 콜백이 있는 경우 사용
+          if (onProgress) {
+            // 병렬처리로 업로드 (진행률 포함, AbortController 전달)
+            const newUrls = await uploadImageFilesParallel(finalFiles, folder, onProgress, controller.signal);
+            uploadedUrls.push(...newUrls);
+          } else {
+            // 기존 방식 (진행률 없음, AbortController 전달)
+            const newUrls = await uploadImageFilesParallel(finalFiles, folder, undefined, controller.signal);
+            uploadedUrls.push(...newUrls);
+          }
+
+          console.log(`✅ 업로드 완료: ${uploadedUrls.length}개 파일`);
+          resolve(uploadedUrls);
+        } catch (error) {
+          // AbortError인 경우 취소된 것으로 처리
+          if (error instanceof Error && error.name === 'AbortError') {
+            reject(new Error('사용자에 의해 취소되었습니다.'));
+          } else {
+            console.error('❌ 이미지 업로드 실패:', error);
+            reject(error);
+          }
+        } finally {
+          setIsUploading(false);
+          setUploadProgress(0);
+          setAbortController(null);
+        }
+      })();
     });
   }, []); // 의존성 배열에서 uploadingImages 제거
 
@@ -198,6 +248,7 @@ export const useImageUpload = (): UseImageUploadReturn => {
           URL.revokeObjectURL(item.preview);
         }
       });
+      uploadingImagesRef.current = []; // ref도 초기화
       return [];
     });
     setIsUploading(false);
@@ -226,6 +277,7 @@ export const useImageUpload = (): UseImageUploadReturn => {
         }
       });
       
+      uploadingImagesRef.current = []; // ref도 초기화
       return [];
     });
     
@@ -254,6 +306,7 @@ export const useImageUpload = (): UseImageUploadReturn => {
       // 기존 이미지들 중에서 새로 추가된 이미지가 아닌 것들만 필터링
       const newImages = prev.filter(item => item.file !== null);
       const result = [...existingItems, ...newImages];
+      uploadingImagesRef.current = result; // ref도 업데이트
       return result;
     });
     

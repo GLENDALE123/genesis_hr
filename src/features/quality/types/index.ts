@@ -37,8 +37,9 @@ export interface QualityIssue {
   keywordPairs: KeywordPair[];
   imageUrls?: string[];
   createdAt: Date | string;
+  updatedAt?: Date | string;
   author: string | { uid: string; displayName: string; email: string };
-  status: 'open' | 'in-progress' | 'resolved' | 'closed' | '미해결' | '진행중' | '해결완료';
+  status: 'open' | 'in-progress' | 'resolved' | 'closed' | '대기중' | '진행중' | '해결완료';
   priority: 'low' | 'normal' | 'high' | 'urgent';
   category: string;
   assignedTo?: string;

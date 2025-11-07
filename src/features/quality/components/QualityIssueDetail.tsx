@@ -6,10 +6,10 @@ import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { Input } from '@/shared/components/ui/input';
 import { Progress } from '@/shared/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { ImageGalleryGrid } from '@/shared/components/common/ImageGalleryGrid';
 import { 
   AlertCircle, 
-  Copy,
   Edit,
   Trash2,
   Plus,
@@ -98,7 +98,7 @@ export const QualityIssueDetail: React.FC<QualityIssueDetailProps> = ({
 
   // 상태 옵션 정의
   const statusOptions = [
-    { value: '미해결', label: '미해결' },
+    { value: '대기중', label: '대기중' },
     { value: '진행중', label: '진행중' },
     { value: '해결완료', label: '해결완료' }
   ];
@@ -114,29 +114,6 @@ export const QualityIssueDetail: React.FC<QualityIssueDetailProps> = ({
     });
   };
 
-  const handleCopy = () => {
-    if (!issue) return;
-    const text = `
-품질이슈 정보
-발주번호: ${issue.orderNumber}
-부서: ${issue.department}
-등록키워드: ${issue.registrationKeyword}
-제품명: ${issue.productName}
-부속명: ${issue.partName}
-발주처: ${issue.supplier}
-상태: ${issue.status}
-작성자: ${typeof issue.author === 'string' ? issue.author : issue.author?.displayName || issue.author?.email || 'N/A'}
-작성일: ${formatDate(issue.createdAt)}
-
-이슈사항:
-${issue.issues.map((issueItem, index) => `${index + 1}. ${issueItem}`).join('\n')}
-
-공정/불량 키워드:
-${issue.keywordPairs.map((pair, index) => `${index + 1}. ${pair.process} - ${pair.defect}`).join('\n')}
-    `.trim();
-
-    navigator.clipboard.writeText(text);
-  };
 
   return (
     <Dialog open={dialogOpen} onOpenChange={onClose}>
@@ -177,7 +154,7 @@ ${issue.keywordPairs.map((pair, index) => `${index + 1}. ${pair.process} - ${pai
           </div>
         }
         stickyFooter={
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center py-2">
             {issue ? (
               <>
                 {/* 출하대기 처리 완료 버튼 */}
@@ -219,15 +196,6 @@ ${issue.keywordPairs.map((pair, index) => `${index + 1}. ${pair.process} - ${pai
                 )}
                 
                 <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={handleCopy}
-                    className="flex items-center gap-2"
-                    disabled={!issue}
-                  >
-                    <Copy className="h-4 w-4" />
-                    복사
-                  </Button>
                   {canDelete && onDelete && issue && (
                     <Button
                       variant="destructive"
@@ -383,15 +351,15 @@ ${issue.keywordPairs.map((pair, index) => `${index + 1}. ${pair.process} - ${pai
                           className={cn("text-xs ml-2", STATUS_COLORS[status as keyof typeof STATUS_COLORS])}
                         >
                           {(() => {
-                            const statusMapping = {
-                              '미해결': '미해결',
-                              '진행중': '진행중',
-                              '해결완료': '해결완료',
-                              'open': '미해결',
-                              'in-progress': '진행중',
-                              'resolved': '해결완료',
-                              'closed': '해결완료',
-                            };
+                              const statusMapping = {
+                                '대기중': '대기중',
+                                '진행중': '진행중',
+                                '해결완료': '해결완료',
+                                'open': '대기중',
+                                'in-progress': '진행중',
+                                'resolved': '해결완료',
+                                'closed': '해결완료',
+                              };
                             return statusMapping[status as keyof typeof statusMapping] || '해결완료';
                           })()}
                         </Badge>
@@ -402,45 +370,62 @@ ${issue.keywordPairs.map((pair, index) => `${index + 1}. ${pair.process} - ${pai
               </ul>
               {canManage && (
                 !isAddingIssue ? (
-                  <button
+                  <Button
+                    type="button"
+                    variant="outline"
                     onClick={() => setIsAddingIssue(true)}
-                    className="mt-3 w-full py-2 border border-dashed border-gray-400 dark:border-slate-500 rounded-md text-sm text-gray-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+                    className="mt-3 w-full border-dashed"
                   >
-                    <Plus className="h-4 w-4 inline mr-2" />
+                    <Plus className="h-4 w-4 mr-2" />
                     이슈사항 추가하기
-                  </button>
+                  </Button>
                 ) : (
-                  <div className="mt-3 space-y-3">
-                    <Textarea
-                      value={newIssue}
-                      onChange={(e) => setNewIssue(e.target.value)}
-                      className="w-full"
-                      rows={3}
-                      placeholder="추가할 이슈 내용을 입력하세요..."
-                      autoFocus
-                    />
-                    {/* 상태 선택 버튼 */}
+                  <div className="mt-3 space-y-2 p-4 border rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <Textarea
+                        value={newIssue}
+                        onChange={(e) => setNewIssue(e.target.value)}
+                        placeholder="추가할 이슈 내용을 입력하세요..."
+                        rows={4}
+                        className="flex-1"
+                        autoFocus
+                      />
+                    </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">상태:</span>
-                      <div className="flex gap-2">
-                        {statusOptions.map((option) => (
-                          <Button
-                            key={option.value}
-                            type="button"
-                            variant={selectedStatus === option.value ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setSelectedStatus(option.value)}
-                            className={cn(
-                              "text-xs px-3 py-1",
-                              selectedStatus === option.value 
-                                ? STATUS_COLORS[option.value as keyof typeof STATUS_COLORS]
-                                : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                      <span className="text-sm font-medium text-foreground whitespace-nowrap">진행상태:</span>
+                      <Select
+                        value={selectedStatus}
+                        onValueChange={setSelectedStatus}
+                      >
+                        <SelectTrigger className="w-40">
+                          <SelectValue>
+                            {selectedStatus ? (
+                              <Badge 
+                                variant="outline" 
+                                className={cn("text-xs", STATUS_COLORS[selectedStatus as keyof typeof STATUS_COLORS])}
+                              >
+                                {statusOptions.find(opt => opt.value === selectedStatus)?.label || selectedStatus}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground">상태 선택</span>
                             )}
-                          >
-                            {option.label}
-                          </Button>
-                        ))}
-                      </div>
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {statusOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              <div className="flex items-center gap-2">
+                                <Badge 
+                                  variant="outline" 
+                                  className={cn("text-xs", STATUS_COLORS[option.value as keyof typeof STATUS_COLORS])}
+                                >
+                                  {option.label}
+                                </Badge>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="flex justify-end gap-2">
                       <Button 

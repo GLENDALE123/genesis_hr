@@ -5,49 +5,175 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
+import { Badge } from '@/shared/components/ui/badge';
 import { Plus, Minus, Camera, Upload } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { useOrderNumberFormatter } from '@/shared/hooks/useOrderNumberFormatter';
 import { UploadingImageGrid, type UploadingImageItem, InputSelect } from '@/shared/components/common';
 import { useImageUpload } from '@/shared/hooks';
 import {
-  QualityIssueFormData
+  QualityIssueFormData,
+  QualityIssue
 } from '../types';
 import {
   DEPARTMENT_OPTIONS,
   REGISTRATION_KEYWORD_OPTIONS,
   PROCESS_KEYWORD_OPTIONS,
   DEFECT_KEYWORD_OPTIONS,
-  SHIPPING_WAIT_TYPE_OPTIONS
+  SHIPPING_WAIT_TYPE_OPTIONS,
+  STATUS_COLORS
 } from '../constants';
 
 interface QualityIssueFormProps {
-  onSave: (data: QualityIssueFormData, imageFiles: File[]) => void;
+  onSave: (data: QualityIssueFormData, imageFiles: File[], existingImageUrls?: string[], issueItems?: Array<{ content: string; status: string; createdAt?: string }>) => void;
+  initialData?: QualityIssue | null;
+  isEditMode?: boolean;
 }
 
 export const QualityIssueForm: React.FC<QualityIssueFormProps> = ({
-  onSave
+  onSave,
+  initialData,
+  isEditMode = false
 }) => {
   // 이미지 업로드 훅 사용
   const imageUploadHook = useImageUpload();
   
-  const [formData, setFormData] = useState<QualityIssueFormData>({
-    department: '',
-    registrationKeyword: '',
-    orderNumber: 'T',
-    supplier: '',
-    productName: '',
-    partName: '',
-    issues: [''],
-    keywordPairs: [{ process: '', defect: '' }],
-    category: '',
-    priority: 'normal',
-    assignedTo: '',
-    shippingWaitType: '',
-    shippingWaitQuantity: undefined
+  // 이슈사항과 상태를 함께 관리하는 상태
+  const [issueItems, setIssueItems] = useState<Array<{ content: string; status: string; createdAt?: string }>>(() => {
+    if (initialData && isEditMode) {
+      return initialData.issues.map(issue => {
+        if (typeof issue === 'string') {
+          return { content: issue, status: '진행중', createdAt: initialData.createdAt as string };
+        } else {
+          // status 매핑 (영어 -> 한국어)
+        const statusMapping: Record<string, string> = {
+          'open': '대기중',
+          'in-progress': '진행중',
+          'resolved': '해결완료',
+          'closed': '해결완료',
+        };
+          const koreanStatus = statusMapping[issue.status || ''] || issue.status || '진행중';
+          return {
+            content: issue.content || '',
+            status: koreanStatus,
+            createdAt: issue.createdAt
+          };
+        }
+      });
+    }
+    return [{ content: '', status: '진행중' }];
   });
 
+  // 초기 데이터로 폼 초기화
+  const getInitialFormData = (): QualityIssueFormData => {
+    if (initialData && isEditMode) {
+      // 모든 이슈사항 가져오기 (상태는 별도로 관리)
+      const allIssues = initialData.issues.map(issue => {
+        return typeof issue === 'string' ? issue : (issue?.content || '');
+      });
+      
+      return {
+        department: initialData.department || '',
+        registrationKeyword: initialData.registrationKeyword || '',
+        orderNumber: initialData.orderNumber || 'T',
+        supplier: initialData.supplier || '',
+        productName: initialData.productName || '',
+        partName: initialData.partName || '',
+        issues: allIssues.length > 0 ? allIssues : [''],
+        keywordPairs: initialData.keywordPairs && initialData.keywordPairs.length > 0 
+          ? initialData.keywordPairs 
+          : [{ process: '', defect: '' }],
+        category: initialData.category || '',
+        priority: initialData.priority || 'normal',
+        assignedTo: initialData.assignedTo || '',
+        shippingWaitType: initialData.shippingWaitType || '',
+        shippingWaitQuantity: initialData.shippingWaitQuantity
+      };
+    }
+    
+    return {
+      department: '',
+      registrationKeyword: '',
+      orderNumber: 'T',
+      supplier: '',
+      productName: '',
+      partName: '',
+      issues: [''],
+      keywordPairs: [{ process: '', defect: '' }],
+      category: '',
+      priority: 'normal',
+      assignedTo: '',
+      shippingWaitType: '',
+      shippingWaitQuantity: undefined
+    };
+  };
+
+  const [formData, setFormData] = useState<QualityIssueFormData>(getInitialFormData());
+  const [existingImageUrls, setExistingImageUrls] = useState<string[]>(
+    (initialData?.imageUrls && isEditMode) ? initialData.imageUrls : []
+  );
+
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // initialData가 변경되면 폼 초기화
+  React.useEffect(() => {
+    if (initialData && isEditMode) {
+      setFormData(getInitialFormData());
+      setExistingImageUrls(initialData.imageUrls || []);
+      setErrors({});
+      
+      // 이슈사항과 상태 초기화
+      const newIssueItems = initialData.issues.map(issue => {
+        if (typeof issue === 'string') {
+          return { content: issue, status: '진행중', createdAt: initialData.createdAt as string };
+        } else {
+        const statusMapping: Record<string, string> = {
+          'open': '대기중',
+          'in-progress': '진행중',
+          'resolved': '해결완료',
+          'closed': '해결완료',
+        };
+          const koreanStatus = statusMapping[issue.status || ''] || issue.status || '진행중';
+          return {
+            content: issue.content || '',
+            status: koreanStatus,
+            createdAt: issue.createdAt
+          };
+        }
+      });
+      setIssueItems(newIssueItems.length > 0 ? newIssueItems : [{ content: '', status: '진행중' }]);
+      
+      // 이미지 업로드 훅 초기화
+      imageUploadHook.uploadingImages.forEach((_, index) => {
+        imageUploadHook.removeImage(index);
+      });
+    } else if (!isEditMode) {
+      // 생성 모드로 전환 시 폼 초기화
+      setFormData({
+        department: '',
+        registrationKeyword: '',
+        orderNumber: 'T',
+        supplier: '',
+        productName: '',
+        partName: '',
+        issues: [''],
+        keywordPairs: [{ process: '', defect: '' }],
+        category: '',
+        priority: 'normal',
+        assignedTo: '',
+        shippingWaitType: '',
+        shippingWaitQuantity: undefined
+      });
+      setExistingImageUrls([]);
+      setIssueItems([{ content: '', status: '진행중' }]);
+      setErrors({});
+    }
+  }, [initialData?.id, isEditMode]);
+
+  // 기존 이미지 삭제 핸들러
+  const handleRemoveExistingImage = (index: number) => {
+    setExistingImageUrls(prev => prev.filter((_, i) => i !== index));
+  };
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -83,10 +209,44 @@ export const QualityIssueForm: React.FC<QualityIssueFormProps> = ({
   };
 
   const handleIssueChange = (index: number, value: string) => {
+    const newIssueItems = [...issueItems];
+    newIssueItems[index] = { ...newIssueItems[index], content: value };
+    setIssueItems(newIssueItems);
+    
+    // formData도 업데이트 (호환성 유지)
     const newIssues = [...formData.issues];
     newIssues[index] = value;
     setFormData(prev => ({ ...prev, issues: newIssues }));
   };
+
+  const handleIssueStatusChange = (index: number, status: string) => {
+    const newIssueItems = [...issueItems];
+    newIssueItems[index] = { ...newIssueItems[index], status };
+    setIssueItems(newIssueItems);
+  };
+
+  const addIssue = () => {
+    setIssueItems(prev => [...prev, { content: '', status: '진행중' }]);
+    setFormData(prev => ({ 
+      ...prev, 
+      issues: [...prev.issues, ''] 
+    }));
+  };
+
+  const removeIssue = (index: number) => {
+    if (issueItems.length > 1) {
+      setIssueItems(prev => prev.filter((_, i) => i !== index));
+      const newIssues = formData.issues.filter((_, i) => i !== index);
+      setFormData(prev => ({ ...prev, issues: newIssues }));
+    }
+  };
+
+  // 상태 옵션 정의
+  const statusOptions = [
+    { value: '대기중', label: '대기중' },
+    { value: '진행중', label: '진행중' },
+    { value: '해결완료', label: '해결완료' }
+  ];
 
 
   const handleKeywordPairChange = useCallback((index: number, field: 'process' | 'defect', value: string) => {
@@ -175,7 +335,8 @@ export const QualityIssueForm: React.FC<QualityIssueFormProps> = ({
       .filter(item => item.file !== null)
       .map(item => item.file!);
     
-    onSave(submitData, newFiles);
+    // 이슈사항과 상태 정보를 함께 전달 (커스텀 속성으로)
+    onSave(submitData, newFiles, isEditMode ? existingImageUrls : undefined, issueItems);
   };
 
   return (
@@ -365,13 +526,75 @@ export const QualityIssueForm: React.FC<QualityIssueFormProps> = ({
           {/* 이슈사항 */}
           <div className="space-y-3">
             <h3 className="text-lg font-medium text-foreground">이슈사항</h3>
-            <Textarea
-              value={formData.issues[0] || ''}
-              onChange={(e) => handleIssueChange(0, e.target.value)}
-              placeholder="이슈사항을 상세히 입력하세요"
-              rows={4}
-              className="w-full"
-            />
+            {issueItems.map((issueItem, index) => (
+              <div key={index} className="space-y-2 p-4 border rounded-lg">
+                <div className="flex items-start gap-2">
+                  <Textarea
+                    value={issueItem.content}
+                    onChange={(e) => handleIssueChange(index, e.target.value)}
+                    placeholder={`이슈사항 ${index + 1}을 상세히 입력하세요`}
+                    rows={4}
+                    className="flex-1"
+                  />
+                  {issueItems.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => removeIssue(index)}
+                      className="text-red-500 hover:text-red-700 flex-shrink-0 mt-0"
+                    >
+                      <Minus className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-foreground whitespace-nowrap">진행상태:</span>
+                  <Select
+                    value={issueItem.status}
+                    onValueChange={(value) => handleIssueStatusChange(index, value)}
+                  >
+                    <SelectTrigger className="w-40">
+                      <SelectValue>
+                        {issueItem.status ? (
+                          <Badge 
+                            variant="outline" 
+                            className={cn("text-xs", STATUS_COLORS[issueItem.status as keyof typeof STATUS_COLORS])}
+                          >
+                            {statusOptions.find(opt => opt.value === issueItem.status)?.label || issueItem.status}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">상태 선택</span>
+                        )}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {statusOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          <div className="flex items-center gap-2">
+                            <Badge 
+                              variant="outline" 
+                              className={cn("text-xs", STATUS_COLORS[option.value as keyof typeof STATUS_COLORS])}
+                            >
+                              {option.label}
+                            </Badge>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={addIssue}
+              className="w-full border-dashed"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              이슈사항 추가
+            </Button>
             {errors.issues && (
               <p className="text-sm text-red-500">{errors.issues}</p>
             )}
@@ -419,12 +642,41 @@ export const QualityIssueForm: React.FC<QualityIssueFormProps> = ({
               className="hidden"
             />
 
-            {/* 이미지 미리보기 */}
+            {/* 기존 이미지 표시 (수정 모드) */}
+            {isEditMode && existingImageUrls.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">기존 이미지</p>
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2">
+                  {existingImageUrls.map((url, index) => (
+                    <div key={index} className="relative">
+                      <img
+                        src={url}
+                        alt={`기존 이미지 ${index + 1}`}
+                        className="w-full h-24 object-cover border rounded-md"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveExistingImage(index)}
+                        className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-destructive/90 transition-colors"
+                        aria-label="이미지 삭제"
+                      >
+                        <Minus className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* 새로 업로드하는 이미지 미리보기 */}
             {imageUploadHook.uploadingImages.length > 0 && (
-              <UploadingImageGrid
-                items={imageUploadHook.uploadingImages}
-                onRemove={imageUploadHook.removeImage}
-              />
+              <div className="space-y-2">
+                {isEditMode && <p className="text-sm text-muted-foreground">새 이미지</p>}
+                <UploadingImageGrid
+                  items={imageUploadHook.uploadingImages}
+                  onRemove={imageUploadHook.removeImage}
+                />
+              </div>
             )}
           </div>
     </form>

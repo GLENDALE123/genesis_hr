@@ -36,10 +36,10 @@ const getDepartmentColor = (department: string) => {
 const getStatusBadge = (status: QualityIssue['status']) => {
   // 한국어 상태를 영어로 매핑
   const statusMapping = {
-    '미해결': '미해결',
+    '대기중': '대기중',
     '진행중': '진행중', 
     '해결완료': '해결완료',
-    'open': '미해결',
+    'open': '대기중',
     'in-progress': '진행중',
     'resolved': '해결완료',
     'closed': '해결완료',
@@ -79,10 +79,24 @@ const QualityIssueRow: React.FC<{
     return issue.issues[issue.issues.length - 1];
   }, [issue.issues]);
 
+  // 최근 업데이트 날짜 계산 (updatedAt 우선, 없으면 최근 이슈사항 추가일, 없으면 원래 작성일)
+  const lastUpdatedAt = useMemo(() => {
+    // 1순위: updatedAt (전체 이슈의 수정일)
+    if (issue.updatedAt) {
+      return issue.updatedAt;
+    }
+    // 2순위: 최근 이슈사항 추가일
+    if (lastIssue && typeof lastIssue === 'object' && lastIssue.createdAt) {
+      return lastIssue.createdAt;
+    }
+    // 3순위: 원래 작성일
+    return issue.createdAt;
+  }, [lastIssue, issue.createdAt, issue.updatedAt]);
+
   // 상태 배지 렌더링 최적화
   const statusBadge = useMemo(() => {
     if (lastIssue && typeof lastIssue === 'object' && lastIssue.status) {
-      return getStatusBadge(lastIssue.status as 'open' | 'in-progress' | 'resolved' | 'closed' | '미해결' | '진행중' | '해결완료');
+      return getStatusBadge(lastIssue.status as 'open' | 'in-progress' | 'resolved' | 'closed' | '대기중' | '진행중' | '해결완료');
     }
     return getStatusBadge(issue.status || '해결완료');
   }, [lastIssue, issue.status]);
@@ -112,8 +126,8 @@ const QualityIssueRow: React.FC<{
       className="cursor-pointer xl:hover:bg-muted/50 transition-colors"
       onClick={handleClick}
     >
-      {/* 작성일 */}
-      <TableCell className="whitespace-nowrap">{formatDate(issue.createdAt)}</TableCell>
+      {/* 최근업데이트 */}
+      <TableCell className="whitespace-nowrap">{formatDate(lastUpdatedAt)}</TableCell>
       {/* 상태 */}
       <TableCell className="whitespace-nowrap">
         {statusBadge}
@@ -284,7 +298,7 @@ export const QualityIssueTable: React.FC<QualityIssueTableProps> = ({
           <Table className="w-full min-w-[1200px]">
             <TableHeader>
               <TableRow>
-                <TableHead className="whitespace-nowrap">작성일</TableHead>
+                <TableHead className="whitespace-nowrap">최근업데이트</TableHead>
                 <TableHead className="whitespace-nowrap">상태</TableHead>
                 <TableHead className="whitespace-nowrap">부서</TableHead>
                 <TableHead className="whitespace-nowrap">등록키워드</TableHead>
@@ -317,7 +331,11 @@ export const QualityIssueTable: React.FC<QualityIssueTableProps> = ({
               ) : issues.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={showShippingWaitColumns ? 14 : 11} className="py-8 text-center text-muted-foreground">
-                    {searchTerm ? '검색된 품질이슈가 없습니다.' : '등록된 품질이슈가 없습니다.'}
+                    {searchTerm 
+                      ? '검색된 품질이슈가 없습니다.' 
+                      : showShippingWaitColumns 
+                        ? '출하대기중인 이슈가 없습니다' 
+                        : '등록된 품질이슈가 없습니다.'}
                   </TableCell>
                 </TableRow>
               ) : (
