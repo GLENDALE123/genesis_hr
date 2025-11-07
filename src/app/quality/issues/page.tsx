@@ -65,6 +65,52 @@ function QualityIssuesPageContent() {
     return !isResolved;
   });
 
+  // 검색어로 필터링된 출하대기 이슈 목록
+  const filteredShippingWaitIssues = React.useMemo(() => {
+    if (!searchTerm.trim()) return shippingWaitIssues;
+
+    const searchLower = searchTerm.toLowerCase();
+    
+    return shippingWaitIssues.filter(issue => {
+      const authorText = typeof issue.author === 'string'
+        ? issue.author 
+        : issue.author?.displayName || issue.author?.email || '';
+      
+      // 날짜 검색을 위한 포맷팅 함수
+      const formatDateForSearch = (dateString: string | Date) => {
+        const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+        const year = date.getFullYear().toString();
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+      
+      // 공정/불량 키워드 검색을 위한 함수
+      const keywordPairsText = issue.keywordPairs?.map(pair => 
+        `${pair.process || ''} ${pair.defect || ''}`
+      ).join(' ') || '';
+      
+      return (
+        // 검색 필드들
+        issue.orderNumber.toLowerCase().includes(searchLower) ||
+        issue.productName.toLowerCase().includes(searchLower) ||
+        issue.partName.toLowerCase().includes(searchLower) ||
+        issue.supplier.toLowerCase().includes(searchLower) ||
+        authorText.toLowerCase().includes(searchLower) ||
+        issue.issues.some(i => {
+          const content = typeof i === 'string' ? i : i.content;
+          return content.toLowerCase().includes(searchLower);
+        }) ||
+        (issue.department || '').toLowerCase().includes(searchLower) ||
+        (issue.registrationKeyword || '').toLowerCase().includes(searchLower) ||
+        keywordPairsText.toLowerCase().includes(searchLower) ||
+        // 작성일 검색 (YYYY-MM-DD 형식)
+        formatDateForSearch(issue.createdAt).includes(searchLower) ||
+        formatDateForSearch(issue.createdAt).replace(/-/g, '').includes(searchLower.replace(/-/g, ''))
+      );
+    });
+  }, [shippingWaitIssues, searchTerm]);
+
   // 작성자 권한 체크 함수
   const canChangeStatus = (issue: QualityIssue | null): boolean => {
     if (!issue || !user) return false;
@@ -306,7 +352,9 @@ function QualityIssuesPageContent() {
         <Tabs defaultValue="all" className="h-full flex flex-col">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="all">전체 품질이슈</TabsTrigger>
-            <TabsTrigger value="shipping-wait">출하대기</TabsTrigger>
+            <TabsTrigger value="shipping-wait">
+              출하대기 ({shippingWaitIssues.length})
+            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="all" className="flex-1 min-h-0 mt-4">
@@ -322,7 +370,7 @@ function QualityIssuesPageContent() {
           
           <TabsContent value="shipping-wait" className="flex-1 min-h-0 mt-4">
             <QualityIssueTable 
-              issues={shippingWaitIssues}
+              issues={filteredShippingWaitIssues}
               isLoading={isLoading}
               searchTerm={searchTerm}
               onSelectIssue={handleSelectIssue}

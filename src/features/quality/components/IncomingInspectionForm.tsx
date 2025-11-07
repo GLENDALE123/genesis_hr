@@ -127,23 +127,15 @@ export const IncomingInspectionForm: React.FC<IncomingInspectionFormProps> = ({
 
             <div className="space-y-2">
               <Label htmlFor="finalConsultationDept">최종협의(소속)</Label>
-              <Select value={formData.finalConsultationDept} onValueChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, finalConsultationDept: value }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="소속을 선택하세요" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="군포">군포</SelectItem>
-                  <SelectItem value="군포품질">군포품질</SelectItem>
-                  <SelectItem value="사출실">사출실</SelectItem>
-                  <SelectItem value="생산관리">생산관리</SelectItem>
-                  <SelectItem value="안양">안양</SelectItem>
-                  <SelectItem value="안양품질">안양품질</SelectItem>
-                  <SelectItem value="영업부">영업부</SelectItem>
-                  <SelectItem value="임원">임원</SelectItem>
-                  <SelectItem value="인쇄실">인쇄실</SelectItem>
-                  <SelectItem value="조립실">조립실</SelectItem>
-                </SelectContent>
-              </Select>
+              <InputSelect
+                value={formData.finalConsultationDept || ''}
+                onChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, finalConsultationDept: value }))}
+                options={[
+                  '군포', '군포품질', '사출실', '생산관리', '안양', '안양품질',
+                  '영업부', '임원', '인쇄실', '조립실'
+                ]}
+                placeholder="소속을 입력하거나 선택하세요"
+              />
             </div>
 
             <div className="space-y-2">

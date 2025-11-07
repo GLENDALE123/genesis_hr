@@ -357,11 +357,8 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     return null;
   }, []);
 
-  // 자동 임시저장을 위한 디바운스 타이머
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  
-  // 이전 formData를 추적하여 실제 변경이 있을 때만 임시저장
-  const prevFormDataRef = useRef<Partial<QualityInspection> | undefined>(undefined);
+  // 임시저장 데이터 존재 여부 추적
+  const [hasTempData, setHasTempData] = useState(false);
   
   // autocompleteData 구독
   useEffect(() => {
@@ -394,38 +391,59 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
 
     return () => unsubscribe();
   }, []);
-  
-  // formData 변경시 자동 임시저장 (생성 모드에서만)
-  useEffect(() => {
-    // 수정 모드에서는 임시저장하지 않음
-    if (mode === 'edit') return;
-    
-    // 초기 로드 시에는 임시저장하지 않음 (무한 루프 방지)
-    if (!isOpen) return;
-    
-    // 이전 데이터와 비교하여 실제 변경이 있는지 확인
-    const prevData = prevFormDataRef.current;
-    if (prevData && JSON.stringify(prevData) === JSON.stringify(formData)) {
-      return; // 변경사항이 없으면 임시저장하지 않음
-    }
-    
-    // 현재 데이터를 이전 데이터로 저장
-    prevFormDataRef.current = { ...formData };
-    
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-    
-    saveTimeoutRef.current = setTimeout(() => {
-      saveTempData(formData);
-    }, 1000); // 1초 후 저장
-    
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
+
+  // 기본 폼 데이터 생성 함수
+  const getDefaultFormData = useCallback((): Partial<QualityInspection> => {
+    return {
+      // 공통 필드
+      orderNumber: 'T',
+      supplier: '',
+      productName: '',
+      partName: '',
+      orderQuantity: '',
+      injectionMaterial: '',
+      injectionColor: '',
+      specification: '',
+      postProcess: '',
+      injectionCompany: '',
+      inspector: defaultInspectorName,
+      inspectionDate: new Date().toISOString().split('T')[0],
+      imageUrls: [] as string[],
+      
+      // 수입검사 필드
+      packagingInfo: '',
+      appearanceHistory: '',
+      functionHistory: '',
+      result: '합격' as InspectionResult,
+      resultReason: '',
+      finalConsultationDept: '',
+      finalConsultationName: '',
+      finalConsultationRank: '',
+      
+      // 공정검사 필드
+      jigUsed1: '',
+      jigUsed2: '',
+      internalJigLower: '',
+      internalJigUpper: '',
+      dryerUsed: '미사용' as '사용' | '미사용' | '',
+      flameTreatment: '미사용' as '사용' | '미사용' | '',
+      processLines: [{ workLine: '', lineSpeed: '', lineConditions: [{ type: '하도' as const, value: 0 }, { type: '상도' as const, value: 0 }], lampUsage: [] }] as ProcessLineData[],
+      reliabilityTestResult: { result: '양호', action: '', decisionMaker: '' } as TestResultDetail,
+      colorCheckResult: { result: '견본과 색상동일', action: '', decisionMaker: '' } as TestResultDetail,
+      injectionPackaging: '',
+      postProcessPackaging: '',
+      preInspectionHistory: '',
+      inProcessInspectionHistory: '',
+      keywordPairs: [{ process: '', defect: '' }] as KeywordPair[],
+      
+      // 출하검사 필드
+      workerCount: '1',
+      workers: [{ name: '', totalInspected: 0, defectQuantity: 0, result: '합격' as '합격' | '불합격', defectReasons: [], directInputResult: '', action: '', decisionMaker: '' }] as WorkerInspectionData[],
+      reliabilityReview: { method: '' as ReliabilityReview['method'], result: '양호' as ReliabilityReview['result'], action: '', decisionMaker: '' } as ReliabilityReview,
+      reinspectionKeyword: '',
+      reinspectionContent: ''
     };
-  }, [formData, saveTempData, mode, isOpen]);
+  }, [defaultInspectorName]);
 
   // 모달이 열릴 때 기본 초기화
   useEffect(() => {
@@ -433,9 +451,6 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       // 모달이 열릴 때 기본 초기화
       setIsSaving(false);
       imagesInitializedRef.current = false;
-      
-      // 이전 formData 추적 초기화
-      prevFormDataRef.current = undefined;
       
       // 수정 모드가 아닌 경우에만 이미지 초기화
       if (mode !== 'edit') {
@@ -449,15 +464,19 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
         imageUploadHook.cancelUpload();
       }
       
-      // 수정 모드가 아닌 경우에만 탭 설정 및 임시저장 데이터 로드
+      // 수정 모드가 아닌 경우에만 탭 설정 및 폼 초기화
       if (mode !== 'edit') {
         if (initialTab) {
           setActiveTab(initialTab);
         }
         
-        // 생성 모드에서만 임시저장 데이터 로드 (initialData가 없는 경우에만)
+        // 생성 모드에서 모달이 다시 열릴 때 폼 데이터 초기화 (initialData가 없는 경우에만)
         if (mode === 'create' && !initialData) {
-          // 약간의 지연을 두어 초기화가 완료된 후 로드
+          // 먼저 폼을 기본값으로 초기화
+          const defaultData = getDefaultFormData();
+          setFormData(defaultData);
+          
+          // 약간의 지연을 두어 초기화가 완료된 후 임시저장 데이터 로드
           const loadTimer = setTimeout(() => {
             const tempData = loadTempData();
             if (tempData) {
@@ -469,10 +488,11 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
                   reliabilityTestResult: tempData.reliabilityTestResult || { result: '양호', action: '', decisionMaker: '' } as TestResultDetail,
                   colorCheckResult: tempData.colorCheckResult || { result: '견본과 색상동일', action: '', decisionMaker: '' } as TestResultDetail,
                 };
-                // 복원된 데이터를 이전 데이터로 설정하여 즉시 임시저장되지 않도록 함
-                prevFormDataRef.current = { ...restoredData };
                 return restoredData;
               });
+              setHasTempData(true);
+            } else {
+              setHasTempData(false);
             }
           }, 100); // 100ms 지연
           
@@ -487,7 +507,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
         toast.dismiss('image-upload-progress');
       }
     };
-  }, [isOpen, mode, initialTab, loadTempData, initialData]);
+  }, [isOpen, mode, initialTab, loadTempData, initialData, getDefaultFormData]);
 
 
 
@@ -791,6 +811,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       });
       
       clearTempData();
+      setHasTempData(false);
       
       toast.success('등록 완료');
       
@@ -872,10 +893,41 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     
     // 임시저장 데이터 삭제
     clearTempData();
+    setHasTempData(false);
     
     // 모달 닫기
     onClose();
   };
+
+  // 임시저장 핸들러 (생성 모드에서만)
+  const handleTempSave = useCallback(() => {
+    if (mode !== 'create' || isEditMode) return;
+    
+    try {
+      saveTempData(formData);
+      setHasTempData(true);
+      toast.success('임시저장되었습니다.');
+    } catch (error) {
+      console.error('임시저장 실패:', error);
+      toast.error('임시저장에 실패했습니다.');
+    }
+  }, [mode, isEditMode, formData, saveTempData]);
+
+  // 초기화 핸들러 (생성 모드에서만)
+  const handleReset = useCallback(() => {
+    if (mode !== 'create' || isEditMode) return;
+    
+    const confirmed = window.confirm('임시저장된 데이터를 삭제하고 폼을 초기화하시겠습니까?');
+    if (!confirmed) return;
+    
+    const defaultData = getDefaultFormData();
+    setFormData(defaultData);
+    clearTempData();
+    setHasTempData(false);
+    imageUploadHook.clearImages();
+    imageUploadHook.clearDeletedUrls();
+    toast.success('폼이 초기화되었습니다.');
+  }, [mode, isEditMode, getDefaultFormData, clearTempData, imageUploadHook]);
 
 
   const renderFormFields = () => {
@@ -1050,6 +1102,35 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
         </Button>
       )}
       
+      {/* 생성 모드에서만 임시저장 및 초기화 버튼 표시 */}
+      {isCreateMode && !isViewMode && (
+        <>
+          {/* 초기화 버튼 - 임시저장 데이터가 있을 때만 표시 */}
+          {hasTempData && (
+            <Button 
+              type="button" 
+              onClick={handleReset}
+              disabled={isSaving}
+              variant="outline"
+              className="min-w-[100px]"
+            >
+              초기화
+            </Button>
+          )}
+          
+          {/* 임시저장 버튼 */}
+          <Button 
+            type="button" 
+            onClick={handleTempSave}
+            disabled={isSaving}
+            variant="outline"
+            className="min-w-[100px]"
+          >
+            임시저장
+          </Button>
+        </>
+      )}
+      
       {/* 수정/저장 버튼 */}
       {!isViewMode && (
         <Button 
@@ -1169,6 +1250,34 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
                   >
                     {isSaving ? '삭제 중...' : '삭제'}
                   </Button>
+                )}
+                {/* 생성 모드에서만 임시저장 및 초기화 버튼 표시 */}
+                {isCreateMode && !isViewMode && (
+                  <>
+                    {/* 초기화 버튼 - 임시저장 데이터가 있을 때만 표시 */}
+                    {hasTempData && (
+                      <Button 
+                        type="button" 
+                        onClick={handleReset}
+                        disabled={isSaving}
+                        variant="outline"
+                        className="min-w-[100px]"
+                      >
+                        초기화
+                      </Button>
+                    )}
+                    
+                    {/* 임시저장 버튼 */}
+                    <Button 
+                      type="button" 
+                      onClick={handleTempSave}
+                      disabled={isSaving}
+                      variant="outline"
+                      className="min-w-[100px]"
+                    >
+                      임시저장
+                    </Button>
+                  </>
                 )}
                 {!isViewMode && (
                   <Button 
