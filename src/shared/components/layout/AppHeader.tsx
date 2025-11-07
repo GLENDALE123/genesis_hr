@@ -32,7 +32,8 @@ import {
   Shield,
   Palette,
   Info,
-  Users
+  Users,
+  MessageSquare
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { logout } from '@/shared/services/firebase';
@@ -221,6 +222,16 @@ const AppHeaderComponent: React.FC<AppHeaderProps> = ({
         {/* Right Section */}
         <div className="flex items-center gap-2">
           {/* Theme Customizer removed */}
+
+          {/* Messages */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => router.push('/chat')}
+            className="relative"
+          >
+            <MessageSquare className="h-5 w-5" />
+          </Button>
 
           {/* Notifications */}
           <Popover open={isNotificationOpen} onOpenChange={setIsNotificationOpen}>

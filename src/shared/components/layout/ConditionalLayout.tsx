@@ -83,9 +83,13 @@ export const ConditionalLayout: React.FC<ConditionalLayoutProps> = ({
     );
   }
 
+  // 채팅 페이지는 여백 없이 렌더링
+  const chatPages = ['/chat'];
+  const isChatPage = chatPages.some((page) => pathname.startsWith(page));
+
   // 로그인된 사용자의 일반 페이지는 AppLayout과 함께 렌더링
   return (
-    <AppLayout>
+    <AppLayout noContentPadding={isChatPage}>
       {children}
     </AppLayout>
   );

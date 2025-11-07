@@ -89,6 +89,11 @@ const subNavigationItems: NavItem[] = [
     href: '/work-schedule',
     icon: ROUTE_ICONS['/work-schedule'],
   },
+  {
+    title: '메시지',
+    href: '/chat',
+    icon: ROUTE_ICONS['/chat'],
+  },
 ];
 
 const AppSidebarComponent = ({
