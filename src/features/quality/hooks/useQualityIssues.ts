@@ -127,14 +127,19 @@ export const useQualityIssues = () => {
   }, [mounted, user, getCachedIssues, setIssues, setError, setFetching, setLoading]);
 
   // 검색 및 상태 필터링
+  const getCurrentStatus = useCallback((issue: QualityIssue) => {
+    const lastIssue = issue.issues[issue.issues.length - 1];
+    if (lastIssue && typeof lastIssue === 'object' && lastIssue.status) {
+      return lastIssue.status;
+    }
+    return issue.status || '해결완료';
+  }, []);
+
   const filteredIssues = issues
     .filter(issue => {
       // 상태 필터링
       if (statusFilter) {
-        const lastIssue = issue.issues[issue.issues.length - 1];
-        const currentStatus = lastIssue && typeof lastIssue === 'object' && lastIssue.status 
-          ? lastIssue.status 
-          : issue.status || '해결완료';
+        const currentStatus = getCurrentStatus(issue);
         
         const statusMatch = 
           currentStatus === statusFilter ||
@@ -211,18 +216,23 @@ export const useQualityIssues = () => {
   // 통계 계산
   const stats = {
     total: issues.length,
-    unresolved: issues.filter(issue => 
-      issue.status === '대기중' || issue.status === 'open'
-    ).length,
-    inProgress: issues.filter(issue => 
-      issue.status === '진행중' || issue.status === 'in-progress'
-    ).length,
-    resolved: issues.filter(issue => 
-      issue.status === '해결완료' || 
-      issue.status === 'resolved' || 
-      issue.status === 'closed' ||
-      !issue.status // undefined 상태도 해결완료로 처리
-    ).length,
+    unresolved: issues.filter(issue => {
+      const currentStatus = getCurrentStatus(issue);
+      return currentStatus === '대기중' || currentStatus === 'open';
+    }).length,
+    inProgress: issues.filter(issue => {
+      const currentStatus = getCurrentStatus(issue);
+      return currentStatus === '진행중' || currentStatus === 'in-progress';
+    }).length,
+    resolved: issues.filter(issue => {
+      const currentStatus = getCurrentStatus(issue);
+      return (
+        currentStatus === '해결완료' ||
+        currentStatus === 'resolved' ||
+        currentStatus === 'closed' ||
+        !currentStatus
+      );
+    }).length,
   };
 
   return {
