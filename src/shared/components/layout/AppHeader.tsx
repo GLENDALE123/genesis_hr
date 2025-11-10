@@ -32,18 +32,25 @@ import {
   Shield,
   Palette,
   Info,
-  Users
+  Users,
+  ArrowLeft
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { logout } from '@/shared/services/firebase';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { cn } from '@/shared/lib/utils';
-import { getUserDisplayName, getUserInitial, getUserRoleBadgeVariant, getUserRoleText } from '@/shared/utils/userUtils';
+import { getUserDisplayName, getUserInitial, getUserRoleText } from '@/shared/utils/userUtils';
 import { useDevStore } from '@/app/store';
 import { toast } from 'sonner';
 import { getRouteIcon, getRouteTitle } from '@/shared/constants/navigation';
 import { useNotifications } from '@/shared/hooks/useNotifications';
 import { NotificationPanel } from './NotificationPanel';
+import { 
+  Sheet, 
+  SheetContent, 
+  SheetTrigger
+} from '@/shared/components/ui/sheet';
+import { useDeviceType } from '@/shared/hooks/use-device';
 
 interface AppHeaderProps {
   className?: string;
@@ -61,11 +68,13 @@ const AppHeaderComponent: React.FC<AppHeaderProps> = ({
   const searchParams = useSearchParams();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const { dummyRole, setDummyRole, clearDummyRole } = useDevStore();
+  const { isSmartphone } = useDeviceType();
   
   // 알림 관리 훅 사용
   const { notifications, unreadCount } = useNotifications();
   const [isNotificationOpen, setIsNotificationOpen] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
+  const [isMobileMarkingAllRead, setIsMobileMarkingAllRead] = React.useState(false);
 
   // 모바일 환경에서 마운트 상태 관리
   React.useEffect(() => {
@@ -132,6 +141,30 @@ const AppHeaderComponent: React.FC<AppHeaderProps> = ({
       console.error('❌ 알림 읽음 처리 실패:', err);
     });
   };
+
+  const handleMobileMarkAllRead = async () => {
+    if (isMobileMarkingAllRead) return;
+    setIsMobileMarkingAllRead(true);
+    try {
+      await handleMarkAllRead();
+    } finally {
+      setIsMobileMarkingAllRead(false);
+    }
+  };
+
+  const renderNotificationTriggerButton = () => (
+    <Button variant="ghost" size="icon" className="relative">
+      <Bell className="h-5 w-5" />
+      {unreadCount > 0 && (
+        <Badge 
+          variant="destructive"
+          className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+        >
+          {unreadCount > 9 ? '9+' : unreadCount}
+        </Badge>
+      )}
+    </Button>
+  );
 
   const handleLogout = async () => {
     try {
@@ -223,32 +256,78 @@ const AppHeaderComponent: React.FC<AppHeaderProps> = ({
           {/* Theme Customizer removed */}
 
           {/* Notifications */}
-          <Popover open={isNotificationOpen} onOpenChange={setIsNotificationOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-5 w-5" />
-                {unreadCount > 0 && (
-                  <Badge 
-                    variant="destructive"
-                    className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
-                  >
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </Badge>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-96 p-0" align="end">
-              <NotificationPanel
-                notifications={notifications}
-                unreadCount={unreadCount}
-                isOpen={isNotificationOpen}
-                onOpenChange={setIsNotificationOpen}
-                onMarkAllRead={handleMarkAllRead}
-                onNotificationClick={handleNotificationClick}
-                userId={user?.uid}
-              />
-            </PopoverContent>
-          </Popover>
+          {isSmartphone ? (
+            <Sheet open={isNotificationOpen} onOpenChange={setIsNotificationOpen}>
+              <SheetTrigger asChild>
+                {renderNotificationTriggerButton()}
+              </SheetTrigger>
+              <SheetContent
+                className="w-full max-w-none overflow-hidden p-0 flex flex-col"
+                fullscreen
+                hideClose
+              >
+                <div className="flex h-full flex-col max-h-[100dvh]">
+                  <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b bg-background px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setIsNotificationOpen(false)}
+                        className="-ml-2"
+                        aria-label="뒤로가기"
+                      >
+                        <ArrowLeft className="h-5 w-5" />
+                      </Button>
+                      <span className="text-base font-semibold text-foreground">
+                        알림
+                      </span>
+                    </div>
+                    {unreadCount > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs px-2"
+                        onClick={handleMobileMarkAllRead}
+                        disabled={isMobileMarkingAllRead}
+                      >
+                        {isMobileMarkingAllRead ? '처리 중...' : '모두 읽음'}
+                      </Button>
+                    )}
+                  </div>
+                  <div className="flex-1 min-h-0 overflow-y-auto">
+                    <NotificationPanel
+                      notifications={notifications}
+                      unreadCount={unreadCount}
+                      isOpen={isNotificationOpen}
+                      onOpenChange={setIsNotificationOpen}
+                      onMarkAllRead={handleMarkAllRead}
+                      onNotificationClick={handleNotificationClick}
+                      userId={user?.uid}
+                      layout="sheet"
+                      showHeader={false}
+                    />
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
+          ) : (
+            <Popover open={isNotificationOpen} onOpenChange={setIsNotificationOpen}>
+              <PopoverTrigger asChild>
+                {renderNotificationTriggerButton()}
+              </PopoverTrigger>
+              <PopoverContent className="w-96 p-0" align="end">
+                <NotificationPanel
+                  notifications={notifications}
+                  unreadCount={unreadCount}
+                  isOpen={isNotificationOpen}
+                  onOpenChange={setIsNotificationOpen}
+                  onMarkAllRead={handleMarkAllRead}
+                  onNotificationClick={handleNotificationClick}
+                  userId={user?.uid}
+                />
+              </PopoverContent>
+            </Popover>
+          )}
 
           {/* User Menu */}
           <DropdownMenu>

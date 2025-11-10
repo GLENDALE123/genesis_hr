@@ -42,6 +42,14 @@ interface NotificationPanelProps {
   onMarkAllRead: () => Promise<void>;
   onNotificationClick: (notificationId: string) => Promise<void>;
   userId?: string;
+  /**
+   * 레이아웃 모드: 기본(popover) 또는 전체 화면 시트(sheet)
+   */
+  layout?: 'popover' | 'sheet';
+  /**
+   * 상단 헤더 영역 노출 여부
+   */
+  showHeader?: boolean;
 }
 
 /**
@@ -59,9 +67,12 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
   onOpenChange,
   onMarkAllRead,
   onNotificationClick,
-  userId
+  userId,
+  layout = 'popover',
+  showHeader = true
 }) => {
   const [isMarkingAllRead, setIsMarkingAllRead] = React.useState(false);
+  const isSheetLayout = layout === 'sheet';
 
   // 샘플 상태 텍스트를 샘플 배지 클래스에 매핑
   const getSampleStatusBadgeClass = (statusText: string) => {
@@ -125,22 +136,24 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
   };
 
   return (
-    <div className="w-full p-0">
-      <div className="flex items-center justify-between px-4 py-2 border-b">
-        <h3 className="text-sm font-semibold">알림</h3>
-        {unreadCount > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 text-xs px-2"
-            disabled={isMarkingAllRead}
-            onClick={handleMarkAllRead}
-          >
-            {isMarkingAllRead ? '처리 중...' : '모두 읽음'}
-          </Button>
-        )}
-      </div>
-      <div className="max-h-96 overflow-y-auto">
+    <div className={cn("w-full p-0", isSheetLayout && "flex h-full flex-col")}>
+      {showHeader && (
+        <div className="flex items-center justify-between px-4 py-2 border-b">
+          <h3 className="text-sm font-semibold">알림</h3>
+          {unreadCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs px-2"
+              disabled={isMarkingAllRead}
+              onClick={handleMarkAllRead}
+            >
+              {isMarkingAllRead ? '처리 중...' : '모두 읽음'}
+            </Button>
+          )}
+        </div>
+      )}
+      <div className={cn(isSheetLayout ? "flex-1 overflow-y-auto" : "max-h-96 overflow-y-auto")}>
         {notifications.length === 0 ? (
           <div className="py-8 text-center text-muted-foreground text-sm">
             알림이 없습니다

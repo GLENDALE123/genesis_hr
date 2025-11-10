@@ -445,6 +445,28 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     };
   }, [defaultInspectorName]);
 
+  // 폼 상태와 관련 자원 초기화
+  const resetFormState = useCallback(() => {
+    if (mode !== 'create') {
+      clearTempData();
+      setHasTempData(false);
+      return;
+    }
+
+    const defaultData = getDefaultFormData();
+    setFormData(defaultData);
+
+    imageUploadHook.clearImages();
+    imageUploadHook.clearDeletedUrls();
+
+    if (imageUploadHook.isUploading) {
+      imageUploadHook.cancelUpload();
+    }
+
+    clearTempData();
+    setHasTempData(false);
+  }, [mode, getDefaultFormData, clearTempData, imageUploadHook]);
+
   // 모달이 열릴 때 기본 초기화
   useEffect(() => {
     if (isOpen) {
@@ -810,9 +832,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
         injectionCompany: formData.injectionCompany
       });
       
-      clearTempData();
-      setHasTempData(false);
-      
+      resetFormState();
       toast.success('등록 완료');
       
       // onComplete가 있으면 호출 (모달 닫기 등)
@@ -837,65 +857,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     setTimeout(() => {
       toast.dismiss('image-upload-progress');
     }, 100);
-    
-    // 폼 데이터 초기화
-    setFormData({
-      orderNumber: 'T',
-      supplier: '',
-      productName: '',
-      partName: '',
-      orderQuantity: '',
-      injectionMaterial: '',
-      injectionColor: '',
-      specification: '',
-      postProcess: '',
-      injectionCompany: '',
-      inspector: '',
-      inspectionDate: new Date().toISOString().split('T')[0],
-      imageUrls: [],
-      packagingInfo: '',
-      appearanceHistory: '',
-      functionHistory: '',
-      result: '합격' as InspectionResult,
-      resultReason: '',
-      finalConsultationDept: '',
-      finalConsultationName: '',
-      finalConsultationRank: '',
-      jigUsed1: '',
-      jigUsed2: '',
-      internalJigLower: '',
-      internalJigUpper: '',
-      dryerUsed: '미사용' as '사용' | '미사용' | '',
-      flameTreatment: '미사용' as '사용' | '미사용' | '',
-      processLines: [{ workLine: '', lineSpeed: '', lineConditions: [{ type: '하도' as const, value: 0 }, { type: '상도' as const, value: 0 }], lampUsage: [] }],
-      reliabilityTestResult: { result: '양호', action: '', decisionMaker: '' },
-      colorCheckResult: { result: '견본과 색상동일', action: '', decisionMaker: '' },
-      injectionPackaging: '',
-      postProcessPackaging: '',
-      preInspectionHistory: '',
-      inProcessInspectionHistory: '',
-      keywordPairs: [{ process: '', defect: '' }],
-      workerCount: '1',
-      workers: [{ name: '', totalInspected: 0, defectQuantity: 0, result: '합격' as '합격' | '불합격', defectReasons: [], directInputResult: '', action: '', decisionMaker: '' }],
-      reliabilityReview: { method: '' as ReliabilityReview['method'], result: '양호' as ReliabilityReview['result'], action: '', decisionMaker: '' },
-      reinspectionKeyword: '',
-      reinspectionContent: ''
-    });
-    
-    // 이미지 상태 완전 정리 (업로드 진행 상태 포함)
-    imageUploadHook.clearImages();
-    imageUploadHook.clearDeletedUrls();
-    
-    // 업로드 진행 상태 강제 초기화 (추가 안전장치)
-    if (imageUploadHook.isUploading) {
-      imageUploadHook.cancelUpload();
-    }
-    
-    // 임시저장 데이터 삭제
-    clearTempData();
-    setHasTempData(false);
-    
-    // 모달 닫기
+
     onClose();
   };
 
@@ -907,11 +869,13 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       saveTempData(formData);
       setHasTempData(true);
       toast.success('임시저장되었습니다.');
+      // 임시저장 후 모달 닫기
+      handleClose();
     } catch (error) {
       console.error('임시저장 실패:', error);
       toast.error('임시저장에 실패했습니다.');
     }
-  }, [mode, isEditMode, formData, saveTempData]);
+  }, [mode, isEditMode, formData, saveTempData, handleClose]);
 
   // 초기화 핸들러 (생성 모드에서만)
   const handleReset = useCallback(() => {
@@ -920,14 +884,9 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     const confirmed = window.confirm('임시저장된 데이터를 삭제하고 폼을 초기화하시겠습니까?');
     if (!confirmed) return;
     
-    const defaultData = getDefaultFormData();
-    setFormData(defaultData);
-    clearTempData();
-    setHasTempData(false);
-    imageUploadHook.clearImages();
-    imageUploadHook.clearDeletedUrls();
+    resetFormState();
     toast.success('폼이 초기화되었습니다.');
-  }, [mode, isEditMode, getDefaultFormData, clearTempData, imageUploadHook]);
+  }, [mode, isEditMode, resetFormState]);
 
 
   const renderFormFields = () => {
@@ -1118,16 +1077,18 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
             </Button>
           )}
           
-          {/* 임시저장 버튼 */}
-          <Button 
-            type="button" 
-            onClick={handleTempSave}
-            disabled={isSaving}
-            variant="outline"
-            className="min-w-[100px]"
-          >
-            임시저장
-          </Button>
+          {/* 임시저장 버튼 - 임시저장 데이터가 없을 때만 표시 */}
+          {!hasTempData && (
+            <Button 
+              type="button" 
+              onClick={handleTempSave}
+              disabled={isSaving}
+              variant="outline"
+              className="min-w-[100px]"
+            >
+              임시저장
+            </Button>
+          )}
         </>
       )}
       
@@ -1267,16 +1228,18 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
                       </Button>
                     )}
                     
-                    {/* 임시저장 버튼 */}
-                    <Button 
-                      type="button" 
-                      onClick={handleTempSave}
-                      disabled={isSaving}
-                      variant="outline"
-                      className="min-w-[100px]"
-                    >
-                      임시저장
-                    </Button>
+                    {/* 임시저장 버튼 - 임시저장 데이터가 없을 때만 표시 */}
+                    {!hasTempData && (
+                      <Button 
+                        type="button" 
+                        onClick={handleTempSave}
+                        disabled={isSaving}
+                        variant="outline"
+                        className="min-w-[100px]"
+                      >
+                        임시저장
+                      </Button>
+                    )}
                   </>
                 )}
                 {!isViewMode && (
