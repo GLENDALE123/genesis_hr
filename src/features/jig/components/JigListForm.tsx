@@ -55,6 +55,8 @@ export const JigListForm: React.FC<JigListFormProps> = ({
     specifications: [],
     injectionCompanies: [],
     shippingWaitTypes: [],
+    injectionPackagings: [],
+    postProcessPackagings: [],
     lastUpdated: ''
   });
   
@@ -102,6 +104,8 @@ export const JigListForm: React.FC<JigListFormProps> = ({
           specifications: [],
           injectionCompanies: [],
           shippingWaitTypes: [],
+          injectionPackagings: [],
+          postProcessPackagings: [],
           lastUpdated: ''
         });
       }
