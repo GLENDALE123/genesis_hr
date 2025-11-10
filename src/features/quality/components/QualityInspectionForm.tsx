@@ -135,6 +135,8 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     specifications: [],
     injectionCompanies: [],
     shippingWaitTypes: [],
+    injectionPackagings: [],
+    postProcessPackagings: [],
     lastUpdated: ''
   });
   
@@ -372,6 +374,8 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
           specifications: data.specifications || [],
           injectionCompanies: data.injectionCompanies || [],
           shippingWaitTypes: data.shippingWaitTypes || [],
+          injectionPackagings: data.injectionPackagings || [],
+          postProcessPackagings: data.postProcessPackagings || [],
           lastUpdated: data.lastUpdated || ''
         });
       } else {
@@ -384,6 +388,8 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
           specifications: [],
           injectionCompanies: [],
           shippingWaitTypes: [],
+          injectionPackagings: [],
+          postProcessPackagings: [],
           lastUpdated: ''
         });
       }
@@ -453,18 +459,21 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       return;
     }
 
+    // 임시저장 데이터 먼저 삭제
+    clearTempData();
+    setHasTempData(false);
+
+    // 기본 데이터로 폼 초기화
     const defaultData = getDefaultFormData();
     setFormData(defaultData);
 
+    // 이미지 상태 초기화
     imageUploadHook.clearImages();
     imageUploadHook.clearDeletedUrls();
 
     if (imageUploadHook.isUploading) {
       imageUploadHook.cancelUpload();
     }
-
-    clearTempData();
-    setHasTempData(false);
   }, [mode, getDefaultFormData, clearTempData, imageUploadHook]);
 
   // 모달이 열릴 때 기본 초기화
@@ -829,7 +838,10 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
         partName: formData.partName,
         injectionColor: formData.injectionColor,
         specification: formData.specification,
-        injectionCompany: formData.injectionCompany
+        injectionCompany: formData.injectionCompany,
+        injectionPackaging: formData.injectionPackaging,
+        postProcessPackaging: formData.postProcessPackaging,
+        packagingInfo: formData.packagingInfo
       });
       
       resetFormState();
@@ -884,8 +896,13 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     const confirmed = window.confirm('임시저장된 데이터를 삭제하고 폼을 초기화하시겠습니까?');
     if (!confirmed) return;
     
+    // 초기화 실행
     resetFormState();
-    toast.success('폼이 초기화되었습니다.');
+    
+    // 상태 업데이트가 완료되도록 약간의 지연 후 토스트 표시
+    setTimeout(() => {
+      toast.success('폼이 초기화되었습니다.');
+    }, 50);
   }, [mode, isEditMode, resetFormState]);
 
 

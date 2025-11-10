@@ -594,11 +594,11 @@ export const useCommonFields = (
   const packagingInfoField = (
     <div className="space-y-2">
       <Label htmlFor="packagingInfo">사출포장</Label>
-      <Input
-        id="packagingInfo"
+      <InputSelect
         value={formData.packagingInfo || ''}
-        onChange={(e) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, packagingInfo: e.target.value }))}
-        placeholder="사출포장 정보를 입력하세요"
+        onChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, packagingInfo: value }))}
+        options={autocompleteData.injectionPackagings || []}
+        placeholder="사출포장 정보를 입력하거나 선택하세요"
       />
     </div>
   );

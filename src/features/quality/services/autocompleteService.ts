@@ -19,6 +19,8 @@ export interface AutocompleteData {
   specifications: string[];
   injectionCompanies: string[];
   shippingWaitTypes: string[];
+  injectionPackagings: string[];
+  postProcessPackagings: string[];
   lastUpdated: string;
 }
 
@@ -77,6 +79,9 @@ export const updateAutocompleteData = async (inspectionData: {
   specification?: string;
   injectionCompany?: string;
   shippingWaitType?: string;
+  injectionPackaging?: string;
+  postProcessPackaging?: string;
+  packagingInfo?: string;
 }) => {
   try {
     const docRef = getAutocompleteDocRef();
@@ -105,6 +110,15 @@ export const updateAutocompleteData = async (inspectionData: {
     }
     if (inspectionData.shippingWaitType?.trim()) {
       updates.shippingWaitTypes = arrayUnion(inspectionData.shippingWaitType.trim());
+    }
+    // 사출포장 필드 (injectionPackaging 또는 packagingInfo)
+    const injectionPackaging = inspectionData.injectionPackaging || inspectionData.packagingInfo;
+    if (injectionPackaging?.trim()) {
+      updates.injectionPackagings = arrayUnion(injectionPackaging.trim());
+    }
+    // 후가공포장 필드
+    if (inspectionData.postProcessPackaging?.trim()) {
+      updates.postProcessPackagings = arrayUnion(inspectionData.postProcessPackaging.trim());
     }
 
     // 업데이트할 필드가 있는 경우에만 업데이트 실행
@@ -139,6 +153,8 @@ export const collectAutocompleteDataFromInspections = async () => {
       specifications: new Set<string>(),
       injectionCompanies: new Set<string>(),
       shippingWaitTypes: new Set<string>(),
+      injectionPackagings: new Set<string>(),
+      postProcessPackagings: new Set<string>(),
       lastUpdated: new Date().toISOString()
     };
     
@@ -152,6 +168,11 @@ export const collectAutocompleteDataFromInspections = async () => {
       if (data.specification?.trim()) autocompleteData.specifications.add(data.specification.trim());
       if (data.injectionCompany?.trim()) autocompleteData.injectionCompanies.add(data.injectionCompany.trim());
       if (data.shippingWaitType?.trim()) autocompleteData.shippingWaitTypes.add(data.shippingWaitType.trim());
+      // 사출포장 필드 (injectionPackaging 또는 packagingInfo)
+      const injectionPackaging = data.injectionPackaging || data.packagingInfo;
+      if (injectionPackaging?.trim()) autocompleteData.injectionPackagings.add(injectionPackaging.trim());
+      // 후가공포장 필드
+      if (data.postProcessPackaging?.trim()) autocompleteData.postProcessPackagings.add(data.postProcessPackaging.trim());
     });
     
     // Set을 배열로 변환하고 정렬
@@ -163,6 +184,8 @@ export const collectAutocompleteDataFromInspections = async () => {
       specifications: [...autocompleteData.specifications].sort((a, b) => a.localeCompare(b, 'ko')),
       injectionCompanies: [...autocompleteData.injectionCompanies].sort((a, b) => a.localeCompare(b, 'ko')),
       shippingWaitTypes: [...autocompleteData.shippingWaitTypes].sort((a, b) => a.localeCompare(b, 'ko')),
+      injectionPackagings: [...autocompleteData.injectionPackagings].sort((a, b) => a.localeCompare(b, 'ko')),
+      postProcessPackagings: [...autocompleteData.postProcessPackagings].sort((a, b) => a.localeCompare(b, 'ko')),
       lastUpdated: new Date().toISOString()
     };
     return finalData;
