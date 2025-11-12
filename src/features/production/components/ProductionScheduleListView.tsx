@@ -490,25 +490,25 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
               <Table>
               <TableHeader className="sticky top-0 z-10 bg-muted">
                 <TableRow>
-                  <TableHead className="whitespace-nowrap rounded-tl-lg">계획일자</TableHead>
-                  <TableHead className="whitespace-nowrap">진행</TableHead>
-                  <TableHead className="whitespace-nowrap">출하</TableHead>
-                  <TableHead className="whitespace-nowrap">라인</TableHead>
-                  <TableHead className="whitespace-nowrap">사출</TableHead>
-                  <TableHead className="whitespace-nowrap">발주번호</TableHead>
-                  <TableHead className="whitespace-nowrap">발주처</TableHead>
-                  <TableHead className="whitespace-nowrap">제품명</TableHead>
-                  <TableHead className="whitespace-nowrap">부속명</TableHead>
-                  <TableHead className="whitespace-nowrap text-right">발주</TableHead>
-                  <TableHead className="whitespace-nowrap">사양</TableHead>
-                  <TableHead className="whitespace-nowrap">후공정</TableHead>
-                  <TableHead className="whitespace-nowrap">참고</TableHead>
-                  <TableHead className="whitespace-nowrap">담당자</TableHead>
-                  <TableHead className="whitespace-nowrap">내/수</TableHead>
-                  <TableHead className="whitespace-nowrap">사용지그</TableHead>
-                  <TableHead className="whitespace-nowrap">신/재</TableHead>
-                  <TableHead className={`whitespace-nowrap text-right ${canManage ? '' : 'rounded-tr-lg'}`}>부족수량</TableHead>
-                  {canManage && <TableHead className="whitespace-nowrap rounded-tr-lg">작업</TableHead>}
+                  <TableHead className="whitespace-nowrap rounded-tl-lg px-2">계획일자</TableHead>
+                  <TableHead className="whitespace-nowrap px-2">진행</TableHead>
+                  <TableHead className="whitespace-nowrap px-2">출하</TableHead>
+                  <TableHead className="whitespace-nowrap px-2">라인</TableHead>
+                  <TableHead className="whitespace-nowrap px-2">사출</TableHead>
+                  <TableHead className="whitespace-nowrap px-2">발주번호</TableHead>
+                  <TableHead className="whitespace-nowrap px-2">발주처</TableHead>
+                  <TableHead className="whitespace-nowrap px-2">제품명</TableHead>
+                  <TableHead className="whitespace-nowrap px-2">부속명</TableHead>
+                  <TableHead className="whitespace-nowrap text-right px-2">발주</TableHead>
+                  <TableHead className="whitespace-nowrap px-2">사양</TableHead>
+                  <TableHead className="whitespace-nowrap px-2">후공정</TableHead>
+                  <TableHead className="whitespace-nowrap px-2">참고</TableHead>
+                  <TableHead className="whitespace-nowrap px-2">담당자</TableHead>
+                  <TableHead className="whitespace-nowrap px-2">내/수</TableHead>
+                  <TableHead className="whitespace-nowrap px-2">사용지그</TableHead>
+                  <TableHead className="whitespace-nowrap px-2">신/재</TableHead>
+                  <TableHead className={`whitespace-nowrap text-right px-2 ${canManage ? '' : 'rounded-tr-lg'}`}>부족수량</TableHead>
+                  {canManage && <TableHead className="whitespace-nowrap rounded-tr-lg px-2">작업</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -516,7 +516,7 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
                   <React.Fragment key={date}>
                     {/* 날짜 헤더 행 */}
                     <TableRow className="bg-muted/50">
-                      <TableCell colSpan={18 + (canManage ? 1 : 0)} className="whitespace-nowrap font-bold text-base py-1">
+                      <TableCell colSpan={18 + (canManage ? 1 : 0)} className="whitespace-nowrap font-bold text-base py-1 px-2">
                         <div className="flex items-center gap-4">
                           <span>
                             {date} ({new Date(date + 'T00:00:00').toLocaleDateString('ko-KR', { weekday: 'long' })})
@@ -546,34 +546,34 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
                       
                       return (
                         <TableRow key={schedule.id} className={`${lineBgColor} xl:hover:bg-muted/50`}>
-                          <TableCell className="whitespace-nowrap py-1">{schedule.planDate}</TableCell>
-                          <TableCell className="whitespace-nowrap py-1">
+                          <TableCell className="whitespace-nowrap py-1 px-2">{schedule.planDate}</TableCell>
+                          <TableCell className="whitespace-nowrap py-1 px-2">
                             <span className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full ${statusColorClass}`}>
                               {actualStatus}
                             </span>
                           </TableCell>
-                          <TableCell className="whitespace-nowrap py-1">{schedule.shipping}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1">{schedule.line}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1">{schedule.injection}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1">{schedule.orderNumber}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1">{schedule.client}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1">{schedule.productName}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1">{schedule.partName}</TableCell>
-                        <TableCell className="whitespace-nowrap text-right py-1">
+                          <TableCell className="whitespace-nowrap py-1 px-2">{schedule.shipping}</TableCell>
+                        <TableCell className="whitespace-nowrap py-1 px-2">{schedule.line}</TableCell>
+                        <TableCell className="whitespace-nowrap py-1 px-2">{schedule.injection}</TableCell>
+                        <TableCell className="whitespace-nowrap py-1 px-2">{schedule.orderNumber}</TableCell>
+                        <TableCell className="whitespace-nowrap py-1 px-2">{schedule.client}</TableCell>
+                        <TableCell className="whitespace-nowrap py-1 px-2">{schedule.productName}</TableCell>
+                        <TableCell className="whitespace-nowrap py-1 px-2">{schedule.partName}</TableCell>
+                        <TableCell className="whitespace-nowrap text-right py-1 px-2">
                           {schedule.orderQuantity.toLocaleString()}
                         </TableCell>
-                        <TableCell className="whitespace-nowrap py-1">{schedule.specification}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1">{schedule.postProcess}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1 text-red-600 font-semibold" title={schedule.remarks}>{schedule.remarks}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1">{schedule.manager}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1">{schedule.domesticOrExport}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1">{schedule.jigUsed}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1">{schedule.newOrRe}</TableCell>
-                        <TableCell className="whitespace-nowrap text-right py-1">
+                        <TableCell className="whitespace-nowrap py-1 px-2">{schedule.specification}</TableCell>
+                        <TableCell className="whitespace-nowrap py-1 px-2">{schedule.postProcess}</TableCell>
+                        <TableCell className="whitespace-nowrap py-1 px-2 text-red-600 font-semibold" title={schedule.remarks}>{schedule.remarks}</TableCell>
+                        <TableCell className="whitespace-nowrap py-1 px-2">{schedule.manager}</TableCell>
+                        <TableCell className="whitespace-nowrap py-1 px-2">{schedule.domesticOrExport}</TableCell>
+                        <TableCell className="whitespace-nowrap py-1 px-2">{schedule.jigUsed}</TableCell>
+                        <TableCell className="whitespace-nowrap py-1 px-2">{schedule.newOrRe}</TableCell>
+                        <TableCell className="whitespace-nowrap text-right py-1 px-2">
                           {schedule.shortageQuantity.toLocaleString()}
                         </TableCell>
                         {canManage && isAdmin && (
-                          <TableCell className="whitespace-nowrap py-1">
+                          <TableCell className="whitespace-nowrap py-1 px-2">
                             <Button
                               variant="destructive"
                               size="sm"
