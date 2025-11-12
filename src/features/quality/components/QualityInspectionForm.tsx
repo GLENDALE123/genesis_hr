@@ -26,6 +26,7 @@ import {
   updateProgressToast, 
   createTimeoutPromise
 } from '@/shared/components/common/ProgressToast';
+import { getLocalDateString } from '@/shared/utils/dateUtils';
 
 // 재시도 로직을 포함한 업로드 함수 (직접 정의)
 const createRetryableUploadPromise = (
@@ -184,6 +185,9 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
 
     // 생성 모드이고 initialData가 있는 경우 (추가입력)
     if (isCreateMode && initialData) {
+      // initialData에서 검사일시를 제외 (항상 오늘 날짜 사용)
+      const { inspectionDate, ...initialDataWithoutDate } = initialData;
+      
       return {
         // 기본값 먼저 설정
         orderNumber: 'T',
@@ -197,7 +201,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
         postProcess: '',
         injectionCompany: '',
         inspector: defaultInspectorName,
-        inspectionDate: new Date().toISOString().split('T')[0],
+        inspectionDate: getLocalDateString(), // 항상 오늘 날짜 사용
         imageUrls: [] as string[],
         
         // 수입검사 필드
@@ -231,8 +235,8 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
         reinspectionKeyword: '',
         reinspectionContent: '',
         
-        // initialData로 덮어쓰기
-        ...initialData,
+        // initialData로 덮어쓰기 (검사일시 제외)
+        ...initialDataWithoutDate,
         // 중요한 기본값들은 보호 - initialData에 값이 없으면 기본값 사용
         reliabilityTestResult: initialData.reliabilityTestResult || { result: '양호', action: '', decisionMaker: '' } as TestResultDetail,
         colorCheckResult: initialData.colorCheckResult || { result: '견본과 색상동일', action: '', decisionMaker: '' } as TestResultDetail,
@@ -253,7 +257,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     postProcess: '',
     injectionCompany: '',
       inspector: defaultInspectorName,
-    inspectionDate: new Date().toISOString().split('T')[0],
+    inspectionDate: getLocalDateString(),
     imageUrls: [] as string[],
     
     // 수입검사 필드
@@ -367,7 +371,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       postProcess: '',
       injectionCompany: '',
       inspector: defaultInspectorName,
-      inspectionDate: new Date().toISOString().split('T')[0],
+      inspectionDate: getLocalDateString(),
       imageUrls: [] as string[],
       
       // 수입검사 필드
@@ -434,6 +438,15 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
         if (mode === 'create' && !initialData) {
           const defaultData = getDefaultFormData();
           setFormData(defaultData);
+        }
+        
+        // 생성 모드인 경우 검사일시를 항상 오늘 날짜로 업데이트
+        if (mode === 'create') {
+          const today = getLocalDateString();
+          setFormData((prev) => ({
+            ...prev,
+            inspectionDate: today
+          }));
         }
       }
     }
@@ -623,7 +636,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
         postProcess: formData.postProcess || '',
         injectionCompany: formData.injectionCompany || '',
         inspector: formData.inspector || defaultInspectorName,
-        inspectionDate: formData.inspectionDate || new Date().toISOString().split('T')[0],
+        inspectionDate: formData.inspectionDate || getLocalDateString(),
         imageUrls: [], // 먼저 빈 배열로 생성
         
         // 수입검사 필드

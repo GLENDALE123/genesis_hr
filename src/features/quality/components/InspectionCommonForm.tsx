@@ -11,6 +11,7 @@ import { PROCESS_KEYWORD_OPTIONS, DEFECT_KEYWORD_OPTIONS } from '../constants';
 import type { AutocompleteData } from '../services/autocompleteService';
 import { useOrderNumberFormatter } from '@/shared/hooks/useOrderNumberFormatter';
 import { QualityInspection, KeywordPair } from '../types';
+import { getLocalDateString } from '@/shared/utils/dateUtils';
 import { 
   createImagePreview, 
   uploadImageWithState, 
@@ -106,7 +107,7 @@ export const InspectionCommonForm: React.FC<InspectionCommonFormProps> = ({
       <Input
         id="inspectionDate"
         type="date"
-        value={formData.inspectionDate || new Date().toISOString().split('T')[0]}
+        value={formData.inspectionDate || getLocalDateString()}
         onChange={(e) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, inspectionDate: e.target.value }))}
       />
     </div>
@@ -435,7 +436,7 @@ export const useCommonFields = (
       <Input
         id="inspectionDate"
         type="date"
-        value={formData.inspectionDate || new Date().toISOString().split('T')[0]}
+        value={formData.inspectionDate || getLocalDateString()}
         onChange={(e) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, inspectionDate: e.target.value }))}
       />
     </div>
