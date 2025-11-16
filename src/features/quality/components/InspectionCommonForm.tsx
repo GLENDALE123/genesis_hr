@@ -8,6 +8,7 @@ import { InputSelect } from '@/shared/components/common/InputSelect';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Button } from '@/shared/components/ui/button';
 import { PROCESS_KEYWORD_OPTIONS, DEFECT_KEYWORD_OPTIONS } from '../constants';
+import { INJECTION_MATERIAL_OPTIONS, POST_PROCESS_OPTIONS } from '../constants';
 import type { AutocompleteData } from '../services/autocompleteService';
 import { useOrderNumberFormatter } from '@/shared/hooks/useOrderNumberFormatter';
 import { QualityInspection, KeywordPair } from '../types';
@@ -191,12 +192,9 @@ export const InspectionCommonForm: React.FC<InspectionCommonFormProps> = ({
           <SelectValue placeholder="사출원료를 선택하세요" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="ABS">ABS</SelectItem>
-          <SelectItem value="AS">AS</SelectItem>
-          <SelectItem value="P.P">P.P</SelectItem>
-          <SelectItem value="PC">PC</SelectItem>
-          <SelectItem value="PET">PET</SelectItem>
-          <SelectItem value="PETG">PETG</SelectItem>
+          {INJECTION_MATERIAL_OPTIONS.map((opt) => (
+            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+          ))}
         </SelectContent>
       </Select>
     </div>
@@ -237,15 +235,9 @@ export const InspectionCommonForm: React.FC<InspectionCommonFormProps> = ({
           <SelectValue placeholder="후공정을 선택하세요" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="디지털프린팅">디지털프린팅</SelectItem>
-          <SelectItem value="레이져컷팅">레이져컷팅</SelectItem>
-          <SelectItem value="인쇄">인쇄</SelectItem>
-          <SelectItem value="인쇄/박">인쇄/박</SelectItem>
-          <SelectItem value="전사">전사</SelectItem>
-          <SelectItem value="조립">조립</SelectItem>
-          <SelectItem value="패드인쇄">패드인쇄</SelectItem>
-          <SelectItem value="출하">출하</SelectItem>
-          <SelectItem value="박">박</SelectItem>
+          {POST_PROCESS_OPTIONS.map((opt) => (
+            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+          ))}
         </SelectContent>
       </Select>
     </div>
@@ -520,12 +512,9 @@ export const useCommonFields = (
           <SelectValue placeholder="사출원료를 선택하세요" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="ABS">ABS</SelectItem>
-          <SelectItem value="AS">AS</SelectItem>
-          <SelectItem value="P.P">P.P</SelectItem>
-          <SelectItem value="PC">PC</SelectItem>
-          <SelectItem value="PET">PET</SelectItem>
-          <SelectItem value="PETG">PETG</SelectItem>
+          {INJECTION_MATERIAL_OPTIONS.map((opt) => (
+            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+          ))}
         </SelectContent>
       </Select>
     </div>
@@ -566,15 +555,9 @@ export const useCommonFields = (
           <SelectValue placeholder="후공정을 선택하세요" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="디지털프린팅">디지털프린팅</SelectItem>
-          <SelectItem value="레이져컷팅">레이져컷팅</SelectItem>
-          <SelectItem value="인쇄">인쇄</SelectItem>
-          <SelectItem value="인쇄/박">인쇄/박</SelectItem>
-          <SelectItem value="전사">전사</SelectItem>
-          <SelectItem value="조립">조립</SelectItem>
-          <SelectItem value="패드인쇄">패드인쇄</SelectItem>
-          <SelectItem value="출하">출하</SelectItem>
-          <SelectItem value="박">박</SelectItem>
+          {POST_PROCESS_OPTIONS.map((opt) => (
+            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+          ))}
         </SelectContent>
       </Select>
     </div>
