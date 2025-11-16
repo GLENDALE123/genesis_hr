@@ -153,6 +153,7 @@ export const DEFECT_REASON_OPTIONS = [
 export const INJECTION_MATERIAL_OPTIONS = [
   'ABS',
   'AS',
+  'SAN',
   'P.P',
   'PC',
   'PET',
@@ -170,6 +171,7 @@ export const INJECTION_COLOR_OPTIONS = [
 export const POST_PROCESS_OPTIONS = [
   '디지털프린팅',
   '레이져컷팅',
+  'NC가공',
   '인쇄',
   '인쇄/박',
   '전사',
