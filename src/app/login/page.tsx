@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { LoginForm } from "@/features/auth"
 import { AccountSelection } from "@/features/auth/components/AccountSelection";
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { getSavedAccount } from '@/features/auth/utils/savedAccounts';
 
-export default function Page() {
+function LoginPageContent() {
   const { user, isLoading } = useAuthStore();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -72,5 +72,19 @@ export default function Page() {
         )}
       </div>
     </div>
-  )
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-full w-full items-center justify-center p-6 md:p-10 overflow-y-auto">
+        <div className="w-full max-w-sm my-auto">
+          <div className="text-center">로딩 중...</div>
+        </div>
+      </div>
+    }>
+      <LoginPageContent />
+    </Suspense>
+  );
 }

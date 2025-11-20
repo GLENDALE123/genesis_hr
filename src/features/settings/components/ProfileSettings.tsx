@@ -29,16 +29,6 @@ import { useAuthStore } from '@/features/auth/store/authStore';
 import { User, Mail, Phone, Building2, Upload, Edit, X, Check, Info, Trash2 } from 'lucide-react';
 import { clearSavedAccount } from '@/features/auth/utils/savedAccounts';
 import { clearSession } from '@/features/auth/services/sessionService';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/shared/components/ui/alert-dialog';
 import { Spinner } from '@/shared/components/ui/spinner';
 import { toast } from 'sonner';
 import { getUserInitial } from '@/shared/utils/userUtils';
