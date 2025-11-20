@@ -117,6 +117,9 @@ export const onSessionChange = (
     const platform = getCurrentPlatform();
     const sessionRef = getSessionRef(uid, platform);
     
+    let isFirstSnapshot = true; // 첫 번째 스냅샷(초기 로드) 플래그
+    let lastSessionDeviceId: string | null = null; // 마지막으로 본 세션의 deviceId
+    
     // 세션 변경 감지 리스너
     const unsubscribe = onSnapshot(
       sessionRef,
@@ -130,14 +133,35 @@ export const onSessionChange = (
             createdAt: data.createdAt?.toDate() || new Date(),
           };
           
-          // 다른 기기에서 로그인한 경우 (deviceId가 다름)
-          if (session.deviceId !== currentDeviceId) {
-            console.log(`🔄 [SessionService] 세션 변경 감지: 다른 기기에서 로그인 (기존: ${currentDeviceId}, 새로운: ${session.deviceId})`);
-            callback(session);
+          // 첫 번째 스냅샷(초기 로드)은 무시하고, 현재 세션의 deviceId만 저장
+          if (isFirstSnapshot) {
+            lastSessionDeviceId = session.deviceId;
+            isFirstSnapshot = false;
+            console.log(`📋 [SessionService] 초기 세션 로드: deviceId=${session.deviceId}, 현재 기기=${currentDeviceId}`);
+            
+            // 현재 기기의 세션이면 초기 로드만 기록하고 종료
+            if (session.deviceId === currentDeviceId) {
+              return;
+            }
+          } else {
+            // 두 번째 스냅샷부터는 실제 변경 감지
+            // deviceId가 변경되었고, 현재 기기의 deviceId와 다를 때만 콜백 호출
+            if (session.deviceId !== lastSessionDeviceId && session.deviceId !== currentDeviceId) {
+              console.log(`🔄 [SessionService] 세션 변경 감지: 다른 기기에서 로그인 (기존: ${lastSessionDeviceId}, 새로운: ${session.deviceId}, 현재: ${currentDeviceId})`);
+              lastSessionDeviceId = session.deviceId;
+              callback(session);
+            } else if (session.deviceId === currentDeviceId) {
+              // 현재 기기의 세션으로 변경된 경우는 무시
+              console.log(`ℹ️ [SessionService] 현재 기기 세션으로 변경됨 - 무시`);
+              lastSessionDeviceId = session.deviceId;
+            }
           }
         } else {
           // 세션이 삭제된 경우
-          callback(null);
+          if (!isFirstSnapshot) {
+            lastSessionDeviceId = null;
+            callback(null);
+          }
         }
       },
       (error) => {
