@@ -147,12 +147,19 @@ export const onSessionChange = (
             // 두 번째 스냅샷부터는 실제 변경 감지
             // deviceId가 변경되었고, 현재 기기의 deviceId와 다를 때만 콜백 호출
             if (session.deviceId !== lastSessionDeviceId && session.deviceId !== currentDeviceId) {
+              // 다른 기기에서 로그인한 경우
               console.log(`🔄 [SessionService] 세션 변경 감지: 다른 기기에서 로그인 (기존: ${lastSessionDeviceId}, 새로운: ${session.deviceId}, 현재: ${currentDeviceId})`);
               lastSessionDeviceId = session.deviceId;
               callback(session);
-            } else if (session.deviceId === currentDeviceId) {
-              // 현재 기기의 세션으로 변경된 경우는 무시
-              console.log(`ℹ️ [SessionService] 현재 기기 세션으로 변경됨 - 무시`);
+            } else {
+              // deviceId가 변경되지 않았거나, 현재 기기의 세션인 경우
+              // (같은 기기에서 lastActiveAt만 업데이트된 경우 포함)
+              if (session.deviceId === currentDeviceId) {
+                console.log(`ℹ️ [SessionService] 현재 기기 세션 업데이트 - 무시 (deviceId: ${session.deviceId})`);
+              } else {
+                console.log(`ℹ️ [SessionService] 세션 변경 없음 - 무시 (deviceId: ${session.deviceId})`);
+              }
+              // lastSessionDeviceId 업데이트 (같은 deviceId이거나 현재 기기인 경우)
               lastSessionDeviceId = session.deviceId;
             }
           }
