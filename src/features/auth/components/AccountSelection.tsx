@@ -91,7 +91,15 @@ export function AccountSelection() {
       // 세션 등록 및 계정 저장 (업데이트)
       try {
         const deviceId = getDeviceId();
+        
+        // 세션 등록 전에 약간 대기 (AuthProvider 리스너 등록 시간 확보)
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
         await registerSession(loggedInUser.uid, deviceId);
+        
+        // 세션 등록 시간 기록 (로컬 스토리지에 임시 저장)
+        const sessionRegistrationTime = Date.now();
+        sessionStorage.setItem(`session-reg-time-${loggedInUser.uid}`, sessionRegistrationTime.toString());
         
         await new Promise(resolve => setTimeout(resolve, 300));
         await refreshUserProfile();

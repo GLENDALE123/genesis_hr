@@ -265,8 +265,15 @@ export function LoginForm({ initialEmail }: LoginFormProps = {} as LoginFormProp
           try {
             const deviceId = getDeviceId();
             
+            // 세션 등록 전에 약간 대기 (AuthProvider 리스너 등록 시간 확보)
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
             // Firestore에 세션 등록 (다른 기기 세션 무효화)
             await registerSession(loggedInUser.uid, deviceId);
+            
+            // 세션 등록 시간 기록 (로컬 스토리지에 임시 저장)
+            const sessionRegistrationTime = Date.now();
+            sessionStorage.setItem(`session-reg-time-${loggedInUser.uid}`, sessionRegistrationTime.toString());
             
             // 프로필을 다시 가져오기 위해 약간 대기 (store 업데이트 대기)
             await new Promise(resolve => setTimeout(resolve, 300));
