@@ -134,10 +134,13 @@ export const onSessionChange = (
           };
           
           // 첫 번째 스냅샷(초기 로드)은 무시하고, 현재 세션의 deviceId만 저장
-          if (isFirstSnapshot) {
+          // metadata.fromCache를 체크하여 캐시에서 온 초기 로드인지 확인
+          const isInitialLoad = isFirstSnapshot && !snapshot.metadata.hasPendingWrites;
+          
+          if (isInitialLoad || isFirstSnapshot) {
             lastSessionDeviceId = session.deviceId;
             isFirstSnapshot = false;
-            console.log(`📋 [SessionService] 초기 세션 로드: deviceId=${session.deviceId}, 현재 기기=${currentDeviceId}`);
+            console.log(`📋 [SessionService] 초기 세션 로드: deviceId=${session.deviceId}, 현재 기기=${currentDeviceId}, fromCache=${snapshot.metadata.fromCache}, hasPendingWrites=${snapshot.metadata.hasPendingWrites}`);
             
             // 현재 기기의 세션이면 초기 로드만 기록하고 종료
             if (session.deviceId === currentDeviceId) {
