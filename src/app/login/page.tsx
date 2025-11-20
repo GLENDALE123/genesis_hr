@@ -16,10 +16,10 @@ function LoginPageContent() {
   const [hasSavedAccount, setHasSavedAccount] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // 저장된 계정 확인
+    // 저장된 계정 확인 (user가 변경될 때마다 다시 확인)
     const savedAccount = getSavedAccount();
     setHasSavedAccount(!!savedAccount);
-  }, []);
+  }, [user]); // user가 변경될 때마다 다시 확인
 
   // 로그인된 사용자는 즉시 대시보드로 리다이렉트
   useEffect(() => {

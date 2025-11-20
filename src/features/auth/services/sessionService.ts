@@ -151,7 +151,12 @@ export const onSessionChange = (
             // deviceId가 변경되었고, 현재 기기의 deviceId와 다를 때만 콜백 호출
             if (session.deviceId !== lastSessionDeviceId && session.deviceId !== currentDeviceId) {
               // 다른 기기에서 로그인한 경우
-              console.log(`🔄 [SessionService] 세션 변경 감지: 다른 기기에서 로그인 (기존: ${lastSessionDeviceId}, 새로운: ${session.deviceId}, 현재: ${currentDeviceId})`);
+              console.log(`🔄 [SessionService] 세션 변경 감지: 다른 기기에서 로그인 감지`);
+              console.log(`   - 기존 deviceId: ${lastSessionDeviceId}`);
+              console.log(`   - 새로운 deviceId: ${session.deviceId}`);
+              console.log(`   - 현재 기기 deviceId: ${currentDeviceId}`);
+              console.log(`   - 세션 등록 시간: ${new Date(session.lastActiveAt).toISOString()}`);
+              console.log(`   - 로컬 localStorage device-id: ${typeof window !== 'undefined' ? localStorage.getItem('device-id') : 'N/A'}`);
               lastSessionDeviceId = session.deviceId;
               callback(session);
             } else {

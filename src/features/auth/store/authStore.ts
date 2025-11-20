@@ -100,8 +100,23 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         logout: async () => {
           set({ isLoading: true });
           try {
+            // 현재 사용자 정보 저장 (세션 삭제용)
+            const { user: currentUser } = useAuthStore.getState();
+            
             // 실제 Firebase 로그아웃 호출
             await AuthService.logout();
+            
+            // ✅ Firestore 세션 삭제 (저장된 계정은 유지)
+            if (currentUser) {
+              try {
+                const { clearSession } = await import('../services/sessionService');
+                await clearSession(currentUser.uid);
+              } catch (sessionError) {
+                console.error('⚠️ [AuthStore] 세션 삭제 실패:', sessionError);
+                // 세션 삭제 실패해도 로그아웃은 진행
+              }
+            }
+            
             set({ user: null, userProfile: null, error: null });
             
             // ✅ 권한 캐시 초기화
