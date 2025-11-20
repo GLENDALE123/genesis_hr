@@ -4,6 +4,9 @@ import React, { useEffect, useRef } from 'react';
 import { useAuthStore } from '../store';
 import { useRouter } from 'next/navigation';
 import { getKoreaDateString, getKoreaTimeInfo } from '@/shared/utils/dateUtils';
+import { onSessionChange, clearSession } from '../services/sessionService';
+import { getDeviceId } from '../utils/savedAccounts';
+import { toast } from 'sonner';
 
 interface AuthProviderProps {
   children: React.ReactNode;
@@ -17,6 +20,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const router = useRouter();
   const logoutCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastCheckedDateRef = useRef<string>('');
+  const sessionUnsubscribeRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     // 스크립트에서 이미 초기 상태가 설정되었다면 즉시 Firebase 인증 확인
@@ -28,6 +32,53 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     return unsubscribe;
   }, [initializeAuth]);
+
+  // 세션 변경 감지 및 자동 로그아웃 (다른 기기에서 로그인 감지)
+  useEffect(() => {
+    // 로그인된 사용자가 없거나 로딩 중이면 스킵
+    if (isLoading || !user) {
+      // 기존 세션 리스너 정리
+      if (sessionUnsubscribeRef.current) {
+        sessionUnsubscribeRef.current();
+        sessionUnsubscribeRef.current = null;
+      }
+      return;
+    }
+
+    // 세션 변경 감지 리스너 등록
+    const currentDeviceId = getDeviceId();
+    const unsubscribe = onSessionChange(
+      user.uid,
+      currentDeviceId,
+      async (session) => {
+        // 다른 기기에서 로그인한 경우 (세션이 변경됨)
+        // session이 null이면 세션이 삭제된 것이므로 무시
+        if (session && session.deviceId !== currentDeviceId) {
+          try {
+            console.log('🔄 [AuthProvider] 다른 기기에서 로그인 감지 - 자동 로그아웃 실행');
+            toast.warning('다른 기기에서 로그인되어 로그아웃되었습니다.');
+            
+            // 로그아웃 처리 (이미 다른 기기에서 세션이 등록되었으므로)
+            await logout();
+            
+            router.push('/login');
+          } catch (error) {
+            console.error('❌ [AuthProvider] 자동 로그아웃 실패:', error);
+          }
+        }
+      }
+    );
+    
+    sessionUnsubscribeRef.current = unsubscribe;
+    
+    // cleanup: 컴포넌트 언마운트 또는 로그아웃 시 리스너 정리
+    return () => {
+      if (sessionUnsubscribeRef.current) {
+        sessionUnsubscribeRef.current();
+        sessionUnsubscribeRef.current = null;
+      }
+    };
+  }, [user, isLoading, logout, router]);
 
   // 자동 로그아웃 체크 로직 (한국 시간대 기준)
   useEffect(() => {

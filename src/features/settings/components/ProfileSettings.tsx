@@ -13,9 +13,32 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/shared/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/shared/components/ui/alert-dialog';
 import { useSettings } from '../hooks/useSettings';
 import { useAuthStore } from '@/features/auth/store/authStore';
-import { User, Mail, Phone, Building2, Upload, Edit, X, Check, Info } from 'lucide-react';
+import { User, Mail, Phone, Building2, Upload, Edit, X, Check, Info, Trash2 } from 'lucide-react';
+import { clearSavedAccount } from '@/features/auth/utils/savedAccounts';
+import { clearSession } from '@/features/auth/services/sessionService';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/shared/components/ui/alert-dialog';
 import { Spinner } from '@/shared/components/ui/spinner';
 import { toast } from 'sonner';
 import { getUserInitial } from '@/shared/utils/userUtils';
@@ -48,6 +71,10 @@ export const ProfileSettings: React.FC = () => {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  
+  // 로그인 기록 삭제 다이얼로그 상태
+  const [deleteLoginHistoryDialogOpen, setDeleteLoginHistoryDialogOpen] = useState(false);
+  const [isDeletingLoginHistory, setIsDeletingLoginHistory] = useState(false);
 
   const handleChange = (field: string, value: string) => {
     // 연락처 필드인 경우 자동 포맷팅
@@ -277,6 +304,32 @@ export const ProfileSettings: React.FC = () => {
   };
 
   // 파일 선택 대화상자 열기
+  // 로그인 기록 삭제 핸들러
+  const handleDeleteLoginHistory = async () => {
+    if (!user?.uid) {
+      toast.error('로그인이 필요합니다.');
+      return;
+    }
+
+    try {
+      setIsDeletingLoginHistory(true);
+      
+      // 로컬 저장된 계정 삭제
+      clearSavedAccount();
+      
+      // Firestore 세션 삭제
+      await clearSession(user.uid);
+      
+      toast.success('이 기기에서 로그인 기록이 삭제되었습니다.');
+      setDeleteLoginHistoryDialogOpen(false);
+    } catch (error) {
+      console.error('❌ [ProfileSettings] 로그인 기록 삭제 실패:', error);
+      toast.error('로그인 기록 삭제에 실패했습니다.');
+    } finally {
+      setIsDeletingLoginHistory(false);
+    }
+  };
+
   const handlePhotoClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -533,6 +586,58 @@ export const ProfileSettings: React.FC = () => {
           <p className="text-xs text-muted-foreground mt-2">
             💡 비밀번호 변경 기능은 곧 추가될 예정입니다.
           </p>
+        </CardContent>
+      </Card>
+
+      {/* 로그인 기록 삭제 */}
+      <Card className="border-destructive/50">
+        <CardHeader>
+          <CardTitle className="text-destructive">로그인 기록</CardTitle>
+          <CardDescription>
+            이 기기에서 저장된 로그인 기록을 삭제할 수 있습니다.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            삭제 후에는 이 기기에서 자동 로그인 기능을 사용할 수 없습니다.
+            다른 기기나 브라우저의 로그인 기록에는 영향을 주지 않습니다.
+          </p>
+          <AlertDialog open={deleteLoginHistoryDialogOpen} onOpenChange={setDeleteLoginHistoryDialogOpen}>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" className="w-full" disabled={isDeletingLoginHistory}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                {isDeletingLoginHistory ? '삭제 중...' : '이 기기에서 로그인 기록 삭제'}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>로그인 기록 삭제 확인</AlertDialogTitle>
+                <AlertDialogDescription>
+                  이 기기에서 저장된 로그인 기록을 삭제하시겠습니까?
+                  삭제 후에는 자동 로그인 기능을 사용할 수 없으며,
+                  다음 로그인 시 이메일과 비밀번호를 입력해야 합니다.
+                  다른 기기나 브라우저의 로그인 기록에는 영향을 주지 않습니다.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isDeletingLoginHistory}>취소</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteLoginHistory}
+                  disabled={isDeletingLoginHistory}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {isDeletingLoginHistory ? (
+                    <>
+                      <Spinner className="mr-2 size-4 text-inherit" />
+                      삭제 중...
+                    </>
+                  ) : (
+                    '삭제'
+                  )}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </CardContent>
       </Card>
 
