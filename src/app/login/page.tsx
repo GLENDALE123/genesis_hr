@@ -63,8 +63,8 @@ function LoginPageContent() {
   const showAccountSelection = hasSavedAccount && !mode;
 
   return (
-    <div className="flex h-full w-full items-center justify-center p-6 md:p-10 overflow-y-auto">
-      <div className="w-full max-w-sm my-auto">
+    <div className="flex h-screen w-full items-center justify-center p-6 md:p-10 overflow-hidden">
+      <div className="w-full max-w-sm">
         {showAccountSelection ? (
           <AccountSelection />
         ) : (

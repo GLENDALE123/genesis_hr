@@ -178,17 +178,16 @@ export function AccountSelection() {
   const userInitial = getUserInitial({ displayName: savedAccount.displayName });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 p-4 sm:p-6">
-      <div className="max-w-md mx-auto">
-        {/* 로고/타이틀 영역 - 상단 고정 */}
-        <div className="text-center space-y-3 pt-8 pb-12">
+    <div className="w-full bg-gradient-to-br from-background via-background to-muted/30 p-4 sm:p-6 flex items-center justify-center">
+      <div className="max-w-md w-full space-y-6">
+        {/* 로고/타이틀 영역 */}
+        <div className="text-center space-y-3">
           <h1 className="text-4xl font-bold tracking-tight">로그인</h1>
           <p className="text-muted-foreground text-base">계정을 선택하여 로그인하세요</p>
         </div>
 
         {/* 계정 선택 카드 - 중앙 배치 */}
-        <div className="flex items-center justify-center min-h-[calc(100vh-280px)]">
-          <Card className="border shadow-xl w-full">
+        <Card className="border shadow-xl w-full">
           <CardContent className="p-6 sm:p-8">
             <div className="space-y-5">
               {/* 저장된 계정 표시 */}
@@ -283,8 +282,7 @@ export function AccountSelection() {
               </Button>
             </div>
           </CardContent>
-          </Card>
-        </div>
+        </Card>
 
         {/* 계정 삭제 확인 다이얼로그 */}
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
