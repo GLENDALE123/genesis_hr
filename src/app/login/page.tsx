@@ -17,6 +17,7 @@ function LoginPageContent() {
 
   useEffect(() => {
     // 저장된 계정 확인 (user가 변경될 때마다 다시 확인)
+    // 모바일에서도 계정 선택 페이지 표시
     const savedAccount = getSavedAccount();
     setHasSavedAccount(!!savedAccount);
   }, [user]); // user가 변경될 때마다 다시 확인

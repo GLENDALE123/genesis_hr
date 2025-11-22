@@ -105,6 +105,7 @@ export const getSavedAccount = (): SavedAccount | null => {
   try {
     const platform = getCurrentPlatform();
     const key = getPlatformKey(platform);
+    
     const saved = localStorage.getItem(key);
     
     if (!saved) {
