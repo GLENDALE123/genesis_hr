@@ -54,6 +54,9 @@ ui-debug.log
 firestore-debug.log
 # .firebase/ 폴더는 설정 파일이므로 버전 관리에 포함
 
+# Firebase Admin SDK credentials (민감 정보)
+*firebase-adminsdk*.json
+
 # firebase emulator data (로컬 데이터 보존용, 커밋하지 않음)
 emulator-data/
 
