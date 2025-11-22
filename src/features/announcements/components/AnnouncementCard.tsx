@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useState, useEffect } from 'react';
 import { Calendar, User, Image as ImageIcon, Edit, Trash2 } from 'lucide-react';
@@ -177,3 +176,5 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
     </Card>
   );
 };
+
+

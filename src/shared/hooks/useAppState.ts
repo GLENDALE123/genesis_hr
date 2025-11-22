@@ -1,4 +1,3 @@
-'use client';
 
 import { useEffect } from 'react';
 import { NotificationManager } from '@/shared/components/common/CustomNotification';
@@ -44,5 +43,6 @@ export const useAppState = () => {
 };
 
 export default useAppState;
+
 
 

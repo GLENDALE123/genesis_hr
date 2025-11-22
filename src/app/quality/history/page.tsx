@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -191,4 +190,8 @@ export default function QualityHistoryPage() {
     </ProtectedRoute>
   );
 }
+
+
+
+
 

@@ -1,7 +1,5 @@
-'use client';
-
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
 
@@ -18,7 +16,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children, 
   fallback 
 }) => {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { user, isLoading } = useAuthStore();
   const [mounted, setMounted] = useState(false);
   const [timerStarted, setTimerStarted] = useState(false);
@@ -35,19 +33,19 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     const id = setTimeout(() => {
       try {
         if (!user && isLoading) {
-          router.push('/login/');
+          navigate('/login', { replace: true });
         }
       } catch {}
     }, 4000);
     return () => clearTimeout(id);
-  }, [mounted, timerStarted, user, isLoading, router]);
+  }, [mounted, timerStarted, user, isLoading, navigate]);
 
   useEffect(() => {
     // 로딩이 완료되고 사용자가 로그인되지 않은 경우 로그인 페이지로 리다이렉트
     if (!isLoading && !user) {
-      router.push('/login/');
+      navigate('/login', { replace: true });
     }
-  }, [user, isLoading, router]);
+  }, [user, isLoading, navigate]);
 
   // 서버에서는 아무것도 렌더링하지 않음 (hydration 불일치 방지)
   if (!mounted) {
@@ -89,3 +87,4 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   // 인증된 사용자에게는 자식 컴포넌트 렌더링
   return <>{children}</>;
 };
+

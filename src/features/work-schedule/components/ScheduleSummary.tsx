@@ -30,3 +30,4 @@ export const ScheduleSummaryView: React.FC<ScheduleSummaryViewProps> = ({ summar
     </div>
   );
 };
+

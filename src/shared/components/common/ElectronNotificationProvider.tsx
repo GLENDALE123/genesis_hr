@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useEffect } from 'react';
 import { useAuthStore } from '@/features/auth/store/authStore';
@@ -143,4 +142,6 @@ export const ElectronNotificationProvider: React.FC<ElectronNotificationProvider
 };
 
 export default ElectronNotificationProvider;
+
+
 

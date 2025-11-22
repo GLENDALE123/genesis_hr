@@ -1,4 +1,3 @@
-'use client';
 
 import { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import { 
@@ -349,3 +348,4 @@ export const useImageUpload = (): UseImageUploadReturn => {
     abortController
   ]);
 };
+

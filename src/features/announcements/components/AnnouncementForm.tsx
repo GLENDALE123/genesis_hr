@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
@@ -301,3 +300,5 @@ export const AnnouncementForm: React.FC<AnnouncementFormProps> = ({
     </Card>
   );
 };
+
+

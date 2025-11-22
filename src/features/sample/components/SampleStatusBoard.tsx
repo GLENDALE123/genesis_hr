@@ -3,7 +3,6 @@
  * HS-Jig StatusBoard 참고 (코팅방식 x 상태 매트릭스)
  */
 
-'use client';
 
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
@@ -92,4 +91,5 @@ export const SampleStatusBoard: React.FC<SampleStatusBoardProps> = ({
     </Card>
   );
 };
+
 

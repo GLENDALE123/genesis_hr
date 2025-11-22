@@ -1,4 +1,3 @@
-'use client';
 
 import React from 'react';
 import { Progress } from '@/shared/components/ui/progress';
@@ -309,3 +308,5 @@ export const createRetryableUploadPromise = (
     reject(lastError);
   });
 };
+
+

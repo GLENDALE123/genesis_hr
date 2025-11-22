@@ -1,0 +1,474 @@
+---
+alwaysApply: true
+---
+# 코드 분리 법칙
+
+## 🎯 코드 분리의 핵심 원칙
+
+### 1. **단일 책임 원칙 (SRP)**
+- 각 파일/함수는 하나의 책임만 가져야 함
+- 하나의 이유로만 변경되어야 함
+- 명확한 목적과 역할을 가져야 함
+
+### 2. **관심사 분리 (Separation of Concerns)**
+- UI 로직과 비즈니스 로직 분리
+- 데이터 처리와 프레젠테이션 로직 분리
+- 상태 관리와 컴포넌트 로직 분리
+
+## 📁 파일 분리 규칙
+
+### 1. **컴포넌트 분리**
+```typescript
+// ❌ 잘못된 예: 모든 로직이 하나의 파일에
+const UserProfile = () => {
+  // API 호출 로직
+  const fetchUser = async () => { /* ... */ };
+  
+  // 상태 관리 로직
+  const [user, setUser] = useState(null);
+  
+  // UI 렌더링 로직
+  return <div>{/* ... */}</div>;
+};
+
+// ✅ 올바른 예: 관심사별 분리
+// components/UserProfile.tsx
+const UserProfile = () => {
+  const { user, loading, error } = useUserProfile();
+  return <UserProfileView user={user} loading={loading} error={error} />;
+};
+
+// hooks/useUserProfile.ts
+export const useUserProfile = () => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  
+  const fetchUser = async () => { /* ... */ };
+  
+  return { user, loading, error, fetchUser };
+};
+
+// components/UserProfileView.tsx
+export const UserProfileView = ({ user, loading, error }) => {
+  if (loading) return <Spinner />;
+  if (error) return <ErrorMessage error={error} />;
+  return <div>{/* UI 렌더링 */}</div>;
+};
+```
+
+### 2. **서비스 레이어 분리**
+```typescript
+// ❌ 잘못된 예: 컴포넌트에서 직접 API 호출
+const EmployeeList = () => {
+  const [employees, setEmployees] = useState([]);
+  
+  useEffect(() => {
+    fetch('/api/employees')
+      .then(res => res.json())
+      .then(setEmployees);
+  }, []);
+  
+  return <div>{/* ... */}</div>;
+};
+
+// ✅ 올바른 예: 서비스 레이어 분리
+// services/employeeService.ts
+export const employeeService = {
+  async getEmployees(): Promise<Employee[]> {
+    const response = await fetch('/api/employees');
+    return response.json();
+  },
+  
+  async createEmployee(data: CreateEmployeeData): Promise<Employee> {
+    const response = await fetch('/api/employees', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return response.json();
+  }
+};
+
+// hooks/useEmployees.ts
+export const useEmployees = () => {
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(false);
+  
+  const fetchEmployees = async () => {
+    setLoading(true);
+    try {
+      const data = await employeeService.getEmployees();
+      setEmployees(data);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  return { employees, loading, fetchEmployees };
+};
+```
+
+## 🔧 함수 분리 규칙
+
+### 1. **순수 함수 분리**
+```typescript
+// ❌ 잘못된 예: 부수 효과가 있는 함수
+const calculatePayroll = (employees) => {
+  const results = [];
+  employees.forEach(emp => {
+    const salary = emp.baseSalary * emp.multiplier;
+    console.log(`Calculated: ${salary}`); // 부수 효과
+    results.push({ ...emp, calculatedSalary: salary });
+  });
+  return results;
+};
+
+// ✅ 올바른 예: 순수 함수로 분리
+// utils/payrollCalculations.ts
+export const calculateEmployeeSalary = (employee: Employee): number => {
+  return employee.baseSalary * employee.multiplier;
+};
+
+export const calculatePayroll = (employees: Employee[]): PayrollResult[] => {
+  return employees.map(emp => ({
+    ...emp,
+    calculatedSalary: calculateEmployeeSalary(emp)
+  }));
+};
+
+// 사용하는 곳에서 로깅
+const payrollResults = calculatePayroll(employees);
+payrollResults.forEach(result => {
+  console.log(`Calculated: ${result.calculatedSalary}`);
+});
+```
+
+### 2. **비동기 함수 분리**
+```typescript
+// ❌ 잘못된 예: 복잡한 비동기 로직
+const handleSubmit = async (formData) => {
+  try {
+    setLoading(true);
+    const response = await fetch('/api/employees', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData)
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to create employee');
+    }
+    
+    const newEmployee = await response.json();
+    setEmployees(prev => [...prev, newEmployee]);
+    toast.success('Employee created successfully');
+    resetForm();
+  } catch (error) {
+    toast.error(error.message);
+  } finally {
+    setLoading(false);
+  }
+};
+
+// ✅ 올바른 예: 비동기 로직 분리
+// services/employeeService.ts
+export const createEmployee = async (data: CreateEmployeeData): Promise<Employee> => {
+  const response = await fetch('/api/employees', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to create employee');
+  }
+  
+  return response.json();
+};
+
+// hooks/useEmployeeForm.ts
+export const useEmployeeForm = () => {
+  const [loading, setLoading] = useState(false);
+  const { employees, addEmployee } = useEmployeeStore();
+  
+  const submitEmployee = async (formData: CreateEmployeeData) => {
+    setLoading(true);
+    try {
+      const newEmployee = await createEmployee(formData);
+      addEmployee(newEmployee);
+      toast.success('Employee created successfully');
+      return newEmployee;
+    } catch (error) {
+      toast.error(error.message);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  return { submitEmployee, loading };
+};
+```
+
+## 🎨 UI 컴포넌트 분리
+
+### 1. **컨테이너와 프레젠테이션 분리**
+```typescript
+// ❌ 잘못된 예: 로직과 UI가 혼재
+const EmployeeList = () => {
+  const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
+  
+  const fetchEmployees = async () => {
+    setLoading(true);
+    try {
+      const data = await employeeService.getEmployees();
+      setEmployees(data);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const filteredEmployees = employees.filter(emp => 
+    emp.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  
+  return (
+    <div>
+      <input 
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        placeholder="Search employees..."
+      />
+      {loading ? (
+        <div>Loading...</div>
+      ) : (
+        <div>
+          {filteredEmployees.map(emp => (
+            <div key={emp.id}>{emp.name}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ✅ 올바른 예: 컨테이너와 프레젠테이션 분리
+// containers/EmployeeListContainer.tsx
+export const EmployeeListContainer = () => {
+  const { employees, loading, fetchEmployees } = useEmployees();
+  const { searchTerm, setSearchTerm, filteredEmployees } = useEmployeeSearch(employees);
+  
+  useEffect(() => {
+    fetchEmployees();
+  }, [fetchEmployees]);
+  
+  return (
+    <EmployeeListView
+      employees={filteredEmployees}
+      loading={loading}
+      searchTerm={searchTerm}
+      onSearchChange={setSearchTerm}
+    />
+  );
+};
+
+// components/EmployeeListView.tsx
+interface EmployeeListViewProps {
+  employees: Employee[];
+  loading: boolean;
+  searchTerm: string;
+  onSearchChange: (term: string) => void;
+}
+
+export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
+  employees,
+  loading,
+  searchTerm,
+  onSearchChange
+}) => {
+  return (
+    <div>
+      <EmployeeSearchInput
+        value={searchTerm}
+        onChange={onSearchChange}
+      />
+      {loading ? (
+        <EmployeeListSkeleton />
+      ) : (
+        <EmployeeList employees={employees} />
+      )}
+    </div>
+  );
+};
+```
+
+### 2. **재사용 가능한 컴포넌트 분리**
+```typescript
+// ❌ 잘못된 예: 특정 용도에만 사용 가능
+const EmployeeCard = ({ employee }) => {
+  return (
+    <div className="p-4 border rounded-lg">
+      <h3>{employee.name}</h3>
+      <p>{employee.position}</p>
+      <p>{employee.department}</p>
+      <button onClick={() => editEmployee(employee.id)}>
+        Edit
+      </button>
+      <button onClick={() => deleteEmployee(employee.id)}>
+        Delete
+      </button>
+    </div>
+  );
+};
+
+// ✅ 올바른 예: 재사용 가능한 컴포넌트
+// components/ui/Card.tsx
+interface CardProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+export const Card: React.FC<CardProps> = ({ children, className }) => {
+  return (
+    <div className={`p-4 border rounded-lg ${className || ''}`}>
+      {children}
+    </div>
+  );
+};
+
+// components/EmployeeCard.tsx
+interface EmployeeCardProps {
+  employee: Employee;
+  onEdit?: (id: string) => void;
+  onDelete?: (id: string) => void;
+  showActions?: boolean;
+}
+
+export const EmployeeCard: React.FC<EmployeeCardProps> = ({
+  employee,
+  onEdit,
+  onDelete,
+  showActions = true
+}) => {
+  return (
+    <Card>
+      <h3>{employee.name}</h3>
+      <p>{employee.position}</p>
+      <p>{employee.department}</p>
+      {showActions && (
+        <div className="flex gap-2 mt-2">
+          {onEdit && (
+            <Button onClick={() => onEdit(employee.id)}>
+              Edit
+            </Button>
+          )}
+          {onDelete && (
+            <Button variant="destructive" onClick={() => onDelete(employee.id)}>
+              Delete
+            </Button>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+};
+```
+
+## 🔄 상태 관리 분리
+
+### 1. **전역 상태와 로컬 상태 분리**
+```typescript
+// ❌ 잘못된 예: 모든 상태를 전역에서 관리
+const useGlobalStore = create((set) => ({
+  // 전역 상태
+  user: null,
+  theme: 'light',
+  
+  // 로컬 상태도 전역에
+  employeeFormData: {},
+  employeeFormErrors: {},
+  employeeFormLoading: false,
+  
+  // 액션들
+  setUser: (user) => set({ user }),
+  setTheme: (theme) => set({ theme }),
+  setEmployeeFormData: (data) => set({ employeeFormData: data }),
+  // ...
+}));
+
+// ✅ 올바른 예: 상태 범위에 따른 분리
+// app/store/globalStore.ts - 전역 상태
+const useGlobalStore = create((set) => ({
+  user: null,
+  theme: 'light',
+  notifications: [],
+  
+  setUser: (user) => set({ user }),
+  setTheme: (theme) => set({ theme }),
+  addNotification: (notification) => set((state) => ({
+    notifications: [...state.notifications, notification]
+  })),
+}));
+
+// features/employees/hooks/useEmployeeForm.ts - 로컬 상태
+export const useEmployeeForm = () => {
+  const [formData, setFormData] = useState({});
+  const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+  
+  const validateForm = () => { /* ... */ };
+  const submitForm = async () => { /* ... */ };
+  
+  return {
+    formData,
+    setFormData,
+    errors,
+    setErrors,
+    loading,
+    validateForm,
+    submitForm
+  };
+};
+```
+
+## 📋 코드 분리 체크리스트
+
+### ✅ 파일 분리 체크리스트
+- [ ] 각 파일이 단일 책임을 가지는가?
+- [ ] UI 로직과 비즈니스 로직이 분리되었는가?
+- [ ] 재사용 가능한 컴포넌트가 분리되었는가?
+- [ ] 서비스 레이어가 별도로 존재하는가?
+
+### ✅ 함수 분리 체크리스트
+- [ ] 순수 함수와 부수 효과가 있는 함수가 분리되었는가?
+- [ ] 비동기 로직이 적절히 분리되었는가?
+- [ ] 함수가 하나의 작업만 수행하는가?
+- [ ] 함수명이 명확하고 구체적인가?
+
+### ✅ 컴포넌트 분리 체크리스트
+- [ ] 컨테이너와 프레젠테이션 컴포넌트가 분리되었는가?
+- [ ] 재사용 가능한 UI 컴포넌트가 분리되었는가?
+- [ ] 상태 관리 로직이 컴포넌트에서 분리되었는가?
+- [ ] 이벤트 핸들러가 적절히 분리되었는가?
+
+### ✅ 상태 관리 분리 체크리스트
+- [ ] 전역 상태와 로컬 상태가 적절히 분리되었는가?
+- [ ] 상태 업데이트 로직이 분리되었는가?
+- [ ] 상태 선택자가 적절히 분리되었는가?
+- [ ] 상태 초기화 로직이 분리되었는가?
+
+## 🎯 분리 원칙 요약
+
+1. **단일 책임**: 각 파일/함수는 하나의 명확한 목적
+2. **관심사 분리**: UI, 비즈니스 로직, 데이터 처리 분리
+3. **재사용성**: 공통 로직과 컴포넌트 분리
+4. **테스트 용이성**: 순수 함수와 부수 효과 분리
+5. **유지보수성**: 변경 영향 범위 최소화
+
+이러한 분리 원칙을 따르면 코드의 가독성, 재사용성, 테스트 용이성, 유지보수성이 크게 향상됩니다.

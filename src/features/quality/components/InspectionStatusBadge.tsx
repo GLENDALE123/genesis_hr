@@ -97,3 +97,4 @@ export const InspectionStatusBadge: React.FC<InspectionStatusBadgeProps> = ({
   );
 };
 
+

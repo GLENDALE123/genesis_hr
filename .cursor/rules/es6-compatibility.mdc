@@ -1,0 +1,271 @@
+---
+alwaysApply: true
+---
+# ES6 호환성 규칙
+
+## 🎯 ES6 타겟 설정
+
+### **배포 환경 호환성**
+- **타겟**: ES6 (ES2015)
+- **모듈 시스템**: CommonJS + ES6 Modules
+- **브라우저 지원**: IE11+ (필요시), 모던 브라우저 우선
+
+## 📋 ES6 호환성 체크리스트
+
+### ✅ **사용 가능한 ES6 기능**
+- **Arrow Functions** - `() => {}`
+- **Template Literals** - `` `Hello ${name}` ``
+- **Destructuring** - `const { name, age } = user`
+- **Spread/Rest** - `...array`, `...object`
+- **Classes** - `class MyClass {}`
+- **Modules** - `import/export`
+- **Promises** - `new Promise()`
+- **Let/Const** - `let`, `const`
+
+### ❌ **사용 금지 기능 (ES6 이후)**
+- **Optional Chaining** - `obj?.prop` (ES2020)
+- **Nullish Coalescing** - `??` (ES2020)
+- **Private Fields** - `#private` (ES2022)
+- **Top-level Await** - `await` (ES2022)
+- **Array.at()** - `array.at(-1)` (ES2022)
+
+## 🔧 TypeScript 설정
+
+### **tsconfig.json 설정**
+```json
+{
+  "compilerOptions": {
+    "target": "ES2015",        // ES6 타겟
+    "module": "ESNext",        // ESM 모듈 시스템
+    "lib": ["ES2015", "DOM"],  // ES6 + DOM 라이브러리
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  }
+}
+```
+
+### **Vite 설정**
+```typescript
+// vite.config.ts
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import path from 'path'
+
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+  build: {
+    target: 'es2015',  // ES6 타겟
+    sourcemap: false,
+  },
+})
+```
+
+## 🚫 ES6 이후 기능 대체 방법
+
+### 1. **Optional Chaining 대체**
+```typescript
+// ❌ ES2020 기능 (사용 금지)
+const name = user?.profile?.name;
+
+// ✅ ES6 호환 방법
+const name = user && user.profile && user.profile.name;
+// 또는
+const name = (user || {}).profile?.name || 'Unknown';
+```
+
+### 2. **Nullish Coalescing 대체**
+```typescript
+// ❌ ES2020 기능 (사용 금지)
+const value = data ?? 'default';
+
+// ✅ ES6 호환 방법
+const value = data != null ? data : 'default';
+// 또는
+const value = data || 'default'; // falsy 값 체크
+```
+
+### 3. **Private Fields 대체**
+```typescript
+// ❌ ES2022 기능 (사용 금지)
+class MyClass {
+  #privateField = 'secret';
+}
+
+// ✅ ES6 호환 방법
+class MyClass {
+  private _privateField = 'secret';
+  
+  getPrivateField() {
+    return this._privateField;
+  }
+}
+```
+
+### 4. **Array.at() 대체**
+```typescript
+// ❌ ES2022 기능 (사용 금지)
+const lastItem = array.at(-1);
+
+// ✅ ES6 호환 방법
+const lastItem = array[array.length - 1];
+```
+
+## 🔍 코드 검사 규칙
+
+### **ESLint 설정**
+```json
+{
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:react/recommended",
+    "plugin:react-hooks/recommended"
+  ],
+  "rules": {
+    "prefer-const": "error",
+    "no-var": "error",
+    "react/react-in-jsx-scope": "off"  // React 17+ JSX Transform
+  }
+}
+```
+
+### **Prettier 설정**
+```json
+{
+  "semi": true,
+  "trailingComma": "es5",
+  "singleQuote": true,
+  "printWidth": 80,
+  "tabWidth": 2
+}
+```
+
+## 🧪 테스트 환경
+
+### **Jest 설정**
+```javascript
+// jest.config.js
+module.exports = {
+  testEnvironment: 'jsdom',
+  transform: {
+    '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', {
+      presets: [
+        ['@babel/preset-env', { targets: { node: 'current' } }],
+        '@babel/preset-typescript'
+      ]
+    }]
+  }
+}
+```
+
+### **Babel 설정**
+```json
+{
+  "presets": [
+    ["@babel/preset-env", {
+      "targets": {
+        "browsers": ["last 2 versions", "ie >= 11"]
+      }
+    }],
+    "@babel/preset-typescript"
+  ]
+}
+```
+
+## 📦 빌드 최적화
+
+### **Vite 빌드 설정**
+```typescript
+// vite.config.ts
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+  build: {
+    target: 'es2015',  // ES6 타겟
+    minify: 'esbuild',  // 빠른 빌드를 위한 esbuild 사용
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // 코드 스플리팅 설정
+          vendor: ['react', 'react-dom'],
+          router: ['react-router-dom'],
+        },
+      },
+    },
+  },
+})
+```
+
+### **폴리필 설정**
+```typescript
+// src/main.tsx 또는 src/index.tsx
+// Vite는 자동으로 필요한 폴리필을 처리하므로 별도 설정 불필요
+// 필요시 vite-plugin-polyfill-node 사용
+```
+
+## 🎯 ES6 호환성 체크리스트
+
+### ✅ **개발 시 체크사항**
+- [ ] Optional Chaining (`?.`) 사용하지 않음
+- [ ] Nullish Coalescing (`??`) 사용하지 않음
+- [ ] Private Fields (`#`) 사용하지 않음
+- [ ] Top-level Await 사용하지 않음
+- [ ] Array.at() 메서드 사용하지 않음
+- [ ] ES6 기능만 사용 (Arrow Functions, Template Literals, Destructuring 등)
+
+### ✅ **빌드 시 체크사항**
+- [ ] TypeScript 컴파일 타겟이 ES2015로 설정됨
+- [ ] Vite 빌드가 성공적으로 완료됨
+- [ ] 번들 크기가 적절함
+- [ ] 모든 브라우저에서 동작 확인
+
+### ✅ **배포 시 체크사항**
+- [ ] 프로덕션 빌드가 ES6 호환
+- [ ] 폴리필이 필요시 포함됨
+- [ ] 성능 최적화 적용됨
+- [ ] 크로스 브라우저 테스트 완료
+
+## 🚀 성능 최적화
+
+### **ES6 기능 활용**
+```typescript
+// ✅ 효율적인 ES6 코드
+const processEmployees = (employees: Employee[]) => {
+  return employees
+    .filter(emp => emp.active)
+    .map(emp => ({
+      ...emp,
+      fullName: `${emp.firstName} ${emp.lastName}`
+    }))
+    .sort((a, b) => a.fullName.localeCompare(b.fullName));
+};
+```
+
+### **메모리 효율성**
+```typescript
+// ✅ ES6 메모리 효율적 패턴
+const createEmployeeMap = (employees: Employee[]) => {
+  const map = new Map();
+  employees.forEach(emp => {
+    map.set(emp.id, emp);
+  });
+  return map;
+};
+```
+
+이 규칙을 따르면 ES6 호환성을 보장하면서도 현대적인 JavaScript 기능을 효과적으로 활용할 수 있습니다.

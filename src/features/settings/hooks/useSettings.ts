@@ -2,7 +2,6 @@
  * 설정 관리 훅
  */
 
-'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/features/auth/store/authStore';
@@ -188,5 +187,6 @@ export const useSettings = (): UseSettingsReturn => {
     refreshSettings,
   };
 };
+
 
 

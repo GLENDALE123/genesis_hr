@@ -1,7 +1,5 @@
-'use client';
-
 import React from 'react';
-import Link from 'next/link';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { Button } from '@/shared/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
@@ -37,7 +35,6 @@ import {
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { logout } from '@/shared/services/firebase';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { cn } from '@/shared/lib/utils';
 import { getUserDisplayName, getUserInitial, getUserRoleText } from '@/shared/utils/userUtils';
 import { useDevStore } from '@/app/store';
@@ -63,9 +60,10 @@ const AppHeaderComponent: React.FC<AppHeaderProps> = ({
   onMenuClick 
 }) => {
   const { user, userProfile } = useAuthStore();
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const pathname = location.pathname;
+  const searchParams = new URLSearchParams(location.search);
   const { theme, setTheme, resolvedTheme } = useTheme();
   const { dummyRole, setDummyRole, clearDummyRole } = useDevStore();
   const { isSmartphone } = useDeviceType();
@@ -85,7 +83,7 @@ const AppHeaderComponent: React.FC<AppHeaderProps> = ({
   const pageTitle = React.useMemo(() => {
     // 설정 페이지인 경우 탭에 따라 다른 제목 표시
     if (pathname === '/settings') {
-      const tab = searchParams?.get('tab');
+      const tab = searchParams.get('tab');
       const tabTitles: Record<string, string> = {
         'profile': '프로필',
         'notifications': '알림',
@@ -101,7 +99,7 @@ const AppHeaderComponent: React.FC<AppHeaderProps> = ({
   const PageIcon = React.useMemo(() => {
     // 설정 페이지인 경우 탭에 따라 다른 아이콘 표시
     if (pathname === '/settings') {
-      const tab = searchParams?.get('tab');
+      const tab = searchParams.get('tab');
       const tabIcons: Record<string, React.ComponentType<{ className?: string }>> = {
         'profile': User,
         'notifications': Bell,
@@ -169,7 +167,7 @@ const AppHeaderComponent: React.FC<AppHeaderProps> = ({
   const handleLogout = async () => {
     try {
       await logout();
-      router.push('/login');
+      navigate('/login', { replace: true });
     } catch (error) {
       console.error('로그아웃 실패:', error);
     }
@@ -397,7 +395,7 @@ const AppHeaderComponent: React.FC<AppHeaderProps> = ({
                 />
               </div>
               {/* Settings menu */}
-              <DropdownMenuItem onClick={() => router.push('/settings')}>
+              <DropdownMenuItem onClick={() => navigate('/settings')}>
                 <Settings className="mr-2 h-4 w-4" />
                 <span>설정</span>
               </DropdownMenuItem>
@@ -472,3 +470,4 @@ AppHeaderComponent.displayName = 'AppHeader';
 // AppHeader는 pathname과 searchParams 변경에 따라 리렌더링되어야 하므로
 // React.memo를 사용하지 않고 내부에서 최적화
 export const AppHeader = AppHeaderComponent;
+

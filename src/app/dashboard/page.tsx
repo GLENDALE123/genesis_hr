@@ -1,4 +1,3 @@
-'use client';
 
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 import { useIsAdmin } from '@/features/auth/hooks';
@@ -36,3 +35,4 @@ export default function DashboardPage() {
     </ProtectedRoute>
   );
 }
+

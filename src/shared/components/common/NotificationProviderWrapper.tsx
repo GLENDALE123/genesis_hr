@@ -1,4 +1,3 @@
-'use client';
 
 import React from 'react';
 import { ElectronNotificationProvider } from './ElectronNotificationProvider';
@@ -43,4 +42,6 @@ export const NotificationProviderWrapper: React.FC<NotificationProviderWrapperPr
 };
 
 export default NotificationProviderWrapper;
+
+
 

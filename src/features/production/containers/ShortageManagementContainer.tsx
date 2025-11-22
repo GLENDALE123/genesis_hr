@@ -1,7 +1,6 @@
-'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,9 +25,9 @@ import { useShortageRequests } from '@/features/production/hooks/useShortageRequ
 import { Skeleton } from '@/shared/components/ui/skeleton';
 
 const ShortageManagementContainerComponent: React.FC = () => {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const navigate = useNavigate();
   const { user, userProfile } = useAuthStore();
   
   const {
@@ -220,7 +219,7 @@ const ShortageManagementContainerComponent: React.FC = () => {
               // URL 업데이트 (딥링크 지원)
               const params = new URLSearchParams(searchParams?.toString() || '');
               params.set('requestId', request.id);
-              router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+              navigate(`${pathname}?${params.toString()}`, { scroll: false });
             }}
             onCloseDetail={() => {
               // URL을 먼저 업데이트
@@ -228,7 +227,7 @@ const ShortageManagementContainerComponent: React.FC = () => {
                 const params = new URLSearchParams(searchParams.toString());
                 params.delete('requestId');
                 const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
-                router.replace(newUrl, { scroll: false });
+                navigate(newUrl, { scroll: false });
               }
               // 상태 업데이트 - 모달 닫기
               setSelectedRequest(null);
@@ -263,4 +262,7 @@ const ShortageManagementContainerComponent: React.FC = () => {
 
 // React.memo로 최적화하여 불필요한 리렌더링 방지
 export const ShortageManagementContainer = React.memo(ShortageManagementContainerComponent);
+
+
+
 

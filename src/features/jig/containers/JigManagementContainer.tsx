@@ -1,7 +1,6 @@
-'use client';
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { JigRequestTable, JigRequestCard, JigRequestKanban, JigRequestDetail, JigRequestForm, JigRequestFilterSection } from '../components';
 import { JigStatus, JigRequest, CreateJigRequestData } from '../types';
 import { useJigRequests } from '../hooks/useJigRequests';
@@ -19,9 +18,9 @@ import { Table, Grid3X3, Kanban } from 'lucide-react';
 import { Badge } from '@/shared/components/ui/badge';
 
 export const JigManagementContainer: React.FC = () => {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const navigate = useNavigate();
   const { requests, isLoading, error, updateRequestStatus, createRequest, updateRequest, updateRequestQuantity, deleteRequest } = useJigRequests();
   const userRole = useUserRole() || 'Member';
   const { user, userProfile } = useAuthStore();
@@ -190,8 +189,8 @@ export const JigManagementContainer: React.FC = () => {
     // URL 업데이트 (딥링크 지원)
     const params = new URLSearchParams(searchParams?.toString() || '');
     params.set('requestId', request.id);
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [searchParams, pathname, router]);
+    navigate(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [searchParams, pathname, navigate]);
 
   const handleCloseDetailModal = useCallback(() => {
     // URL을 먼저 업데이트
@@ -199,13 +198,13 @@ export const JigManagementContainer: React.FC = () => {
       const params = new URLSearchParams(searchParams.toString());
       params.delete('requestId');
       const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
-      router.replace(newUrl, { scroll: false });
+      navigate(newUrl, { scroll: false });
     }
     
     // 상태 업데이트 - 모달 닫기
     setIsDetailModalOpen(false);
     setSelectedRequest(null);
-  }, [searchParams, pathname, router]);
+  }, [searchParams, pathname, navigate]);
 
   const handleDeleteRequest = useCallback(async (requestId: string) => {
     try {
@@ -438,3 +437,6 @@ export const JigManagementContainer: React.FC = () => {
     </div>
   );
 };
+
+
+

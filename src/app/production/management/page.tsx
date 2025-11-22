@@ -1,4 +1,3 @@
-'use client';
 
 import { ProductionManagementCenter } from '@/features/production';
 import { ProtectedRoute } from '@/shared/components/auth';
@@ -12,4 +11,6 @@ export default function ProductionManagementPage() {
     </ProtectedRoute>
   );
 }
+
+
 

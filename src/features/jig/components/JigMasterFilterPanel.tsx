@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/shared/components/ui/card';
@@ -197,4 +196,6 @@ export const JigMasterFilterPanel: React.FC<JigMasterFilterPanelProps> = ({
     </Card>
   );
 };
+
+
 

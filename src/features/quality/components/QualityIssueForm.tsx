@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useState, useRef, useCallback } from 'react';
 import { Button } from '@/shared/components/ui/button';
@@ -682,3 +681,5 @@ export const QualityIssueForm: React.FC<QualityIssueFormProps> = ({
     </form>
   );
 };
+
+

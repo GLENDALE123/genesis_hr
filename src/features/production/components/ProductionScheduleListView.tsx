@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useState, useMemo } from 'react';
 import { ProductionSchedule } from '@/features/production/types';
@@ -631,4 +630,6 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
     </div>
   );
 };
+
+
 

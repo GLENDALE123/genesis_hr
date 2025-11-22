@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
@@ -461,3 +460,5 @@ export const NotificationContainer: React.FC<{
 };
 
 export default CustomNotification;
+
+

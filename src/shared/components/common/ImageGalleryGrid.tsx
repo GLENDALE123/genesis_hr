@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ImageLightbox } from './ImageLightbox';
@@ -356,4 +355,6 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
     </>
   );
 };
+
+
 

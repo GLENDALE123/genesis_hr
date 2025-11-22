@@ -1,4 +1,3 @@
-'use client';
 
 import React from 'react';
 import { Search, Filter, Plus } from 'lucide-react';
@@ -158,3 +157,4 @@ export const JigRequestFilterSection: React.FC<JigRequestFilterSectionProps> = (
     </div>
   );
 };
+

@@ -3,7 +3,6 @@
  * HS-Jig SampleCenter 대시보드 뷰 참고
  */
 
-'use client';
 
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
@@ -193,4 +192,5 @@ export const SampleDashboard: React.FC<SampleDashboardProps> = ({
     </div>
   );
 };
+
 

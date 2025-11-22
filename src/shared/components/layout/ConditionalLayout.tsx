@@ -1,7 +1,5 @@
-'use client';
-
 import React, { useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { useLocation } from 'react-router-dom';
 import { AppLayout } from '@/shared/components/layout/AppLayout';
 import { TitleBar } from '@/shared/components/layout/TitleBar';
 import { useAuthStore } from '@/features/auth/store/authStore';
@@ -14,7 +12,8 @@ export const ConditionalLayout: React.FC<ConditionalLayoutProps> = ({
   children 
 }) => {
   // 모든 훅을 항상 호출하여 훅의 개수를 일관되게 유지
-  const pathname = usePathname();
+  const location = useLocation();
+  const pathname = location.pathname;
   const { user, isLoading } = useAuthStore();
   const [mounted, setMounted] = useState(false);
   // Electron 환경 감지 (타이틀바가 fixed일 때만 여백 필요)
@@ -90,3 +89,4 @@ export const ConditionalLayout: React.FC<ConditionalLayoutProps> = ({
     </AppLayout>
   );
 };
+

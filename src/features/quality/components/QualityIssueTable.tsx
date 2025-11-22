@@ -355,3 +355,4 @@ export const QualityIssueTable: React.FC<QualityIssueTableProps> = ({
     </Card>
   );
 };
+

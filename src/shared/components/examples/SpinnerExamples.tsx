@@ -3,7 +3,6 @@
  * shadcn/ui 공식 문서 기반 다양한 형태 제공
  */
 
-'use client';
 
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
@@ -207,3 +206,4 @@ export const SpinnerExamples: React.FC = () => {
     </div>
   );
 };
+

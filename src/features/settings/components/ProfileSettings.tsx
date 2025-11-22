@@ -2,7 +2,6 @@
  * 프로필 설정 탭
  */
 
-'use client';
 
 import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
@@ -700,4 +699,5 @@ export const ProfileSettings: React.FC = () => {
     </div>
   );
 };
+
 

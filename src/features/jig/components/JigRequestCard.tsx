@@ -1,4 +1,3 @@
-'use client';
 
 import React from 'react';
 import { JigRequest } from '../types';
@@ -47,3 +46,5 @@ export const JigRequestCard: React.FC<JigRequestCardProps> = ({ request, onSelec
     </Card>
   );
 };
+
+

@@ -3,7 +3,6 @@
  * HS-Jig SampleRequestTable 참고, Shadcn UI Table 사용
  */
 
-'use client';
 
 import React from 'react';
 import {
@@ -177,4 +176,5 @@ export const SampleRequestTable: React.FC<SampleRequestTableProps> = ({
     </div>
   );
 };
+
 

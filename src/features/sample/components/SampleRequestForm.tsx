@@ -3,7 +3,6 @@
  * HS-Jig SampleRequestForm 참고, Shadcn Dialog + Sheet 사용
  */
 
-'use client';
 
 import React, { useRef } from 'react';
 import {
@@ -491,3 +490,5 @@ export const SampleRequestForm: React.FC<SampleRequestFormProps> = ({
     </>
   );
 };
+
+

@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useState, useRef, useEffect, memo } from 'react';
 import { cn } from '@/shared/lib/utils';
@@ -147,3 +146,5 @@ const LazyImageComponent: React.FC<LazyImageProps> = ({
 
 // 메모이제이션 적용
 export const LazyImage = memo(LazyImageComponent);
+
+

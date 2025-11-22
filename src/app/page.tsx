@@ -1,12 +1,11 @@
-'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { LoadingSpinner } from '@/shared/components/common';
 
 export default function Home() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { user, isLoading: loading } = useAuthStore();
   const [isClient, setIsClient] = useState(false);
   const [triedFallback, setTriedFallback] = useState(false);
@@ -27,9 +26,9 @@ export default function Home() {
 
     // 로그인 상태에 따라 리다이렉트
     if (user) {
-      router.replace('/dashboard/');
+      navigate('/dashboard', { replace: true });
     } else {
-      router.replace('/login/');
+      navigate('/login', { replace: true });
       // Next 라우터가 실패하는 경우를 대비한 강제 폴백 (Electron/file 환경 안전성 향상)
       if (!triedFallback) {
         setTriedFallback(true);
@@ -46,7 +45,7 @@ export default function Home() {
         }, 600);
       }
     }
-  }, [user, loading, router, isClient, triedFallback]);
+  }, [user, loading, navigate, isClient, triedFallback]);
 
   // 서버와 클라이언트에서 동일한 초기 렌더링을 위해 고정된 label 사용
   return (
@@ -57,3 +56,6 @@ export default function Home() {
     />
   );
 }
+
+
+

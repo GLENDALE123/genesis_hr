@@ -1,4 +1,3 @@
-'use client';
 
 import React, { memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
@@ -706,3 +705,4 @@ export const InspectionCard: React.FC<InspectionCardProps> = memo(({
 });
 
 InspectionCard.displayName = 'InspectionCard';
+

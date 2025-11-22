@@ -1,4 +1,3 @@
-'use client';
 
 import React from 'react';
 import { Dialog, DialogContent, DialogTitle } from '@/shared/components/ui/dialog';
@@ -132,5 +131,6 @@ export const ShortageRequestDetail: React.FC<ShortageRequestDetailProps> = ({
     </Dialog>
   );
 };
+
 
 

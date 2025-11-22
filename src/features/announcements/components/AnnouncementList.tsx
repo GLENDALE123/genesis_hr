@@ -1,4 +1,3 @@
-'use client';
 
 import React from 'react';
 import { Calendar, User, Image as ImageIcon, Edit, Trash2 } from 'lucide-react';
@@ -156,3 +155,4 @@ export const AnnouncementList: React.FC<AnnouncementListProps> = ({
     </div>
   );
 };
+

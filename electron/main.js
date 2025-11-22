@@ -74,17 +74,18 @@ function ensureInside(baseDir, targetPath) {
 
 function startStaticOutServer() {
   return new Promise((resolve) => {
-    const outDir = path.join(__dirname, '../electron-out');
+    const outDir = process.env.ELECTRON_BUILD === 'true' 
+      ? path.join(__dirname, '../electron-out')
+      : path.join(__dirname, '../dist');
     const server = http.createServer((req, res) => {
       try {
         const url = new URL(req.url, 'http://127.0.0.1');
         let pathname = decodeURIComponent(url.pathname);
         
-        // Next.js 정적 파일 경로 정규화: /_next/는 항상 루트에 있음
-        // /production/_next/ -> /_next/, /dashboard/_next/ -> /_next/ 등
-        if (pathname.includes('/_next/')) {
-          const nextIndex = pathname.indexOf('/_next/');
-          pathname = pathname.substring(nextIndex); // /_next/부터 시작
+        // Vite 빌드 파일 경로 정규화: /assets/는 항상 루트에 있음
+        if (pathname.includes('/assets/')) {
+          const assetsIndex = pathname.indexOf('/assets/');
+          pathname = pathname.substring(assetsIndex); // /assets/부터 시작
         }
         
         // Windows 경로 구분자 처리: URL 경로를 파일 시스템 경로로 변환

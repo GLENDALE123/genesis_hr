@@ -1,4 +1,3 @@
-'use client';
 
 /**
  * 지그 마스터 관리 훅
@@ -276,3 +275,4 @@ export const useJigMaster = (
     getMastersByDateRange
   };
 };
+

@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
@@ -341,3 +340,5 @@ export const InputSelect: React.FC<InputSelectProps> = ({
     </div>
   );
 };
+
+

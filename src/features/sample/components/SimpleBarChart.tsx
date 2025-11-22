@@ -3,7 +3,6 @@
  * HS-Jig SimpleBarChart 참고
  */
 
-'use client';
 
 import React from 'react';
 
@@ -43,4 +42,6 @@ export const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
     </div>
   );
 };
+
+
 

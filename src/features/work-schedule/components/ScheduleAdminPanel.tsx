@@ -100,3 +100,4 @@ export const ScheduleAdminPanel: React.FC<ScheduleAdminPanelProps> = ({
     </div>
   );
 };
+

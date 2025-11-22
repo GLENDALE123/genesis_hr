@@ -2,7 +2,6 @@
  * 유저 관리 설정 탭 (관리자 전용)
  */
 
-'use client';
 
 import React, { useTransition, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
@@ -272,3 +271,4 @@ export const UserManagementSettings: React.FC = () => {
     </div>
   );
 };
+

@@ -1,4 +1,3 @@
-'use client';
 
 import React from 'react';
 import { Card, CardContent } from '@/shared/components/ui/card';
@@ -143,4 +142,5 @@ export const SampleFilterPanel: React.FC<SampleFilterPanelProps> = ({
     </Card>
   );
 };
+
 

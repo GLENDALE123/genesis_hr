@@ -1,4 +1,3 @@
-'use client';
 
 import { useState, useEffect } from 'react';
 import { ref, getDownloadURL, getMetadata } from 'firebase/storage';
@@ -103,4 +102,5 @@ export function useFirebaseMobileRelease() {
     error,
   };
 }
+
 

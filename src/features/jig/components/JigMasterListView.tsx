@@ -1,4 +1,3 @@
-'use client';
 
 import React, { memo, useCallback, useMemo } from 'react';
 import { JigMasterItem, UserProfile } from '../types';

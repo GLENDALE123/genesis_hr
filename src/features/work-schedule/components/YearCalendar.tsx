@@ -78,3 +78,4 @@ export const YearCalendar: React.FC<YearCalendarProps> = ({ year, schedules }) =
     </div>
   );
 };
+

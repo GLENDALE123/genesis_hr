@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -199,4 +198,5 @@ export const ProcessConditionsModal: React.FC<ProcessConditionsModalProps> = ({
     </Dialog>
   );
 };
+
 

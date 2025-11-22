@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useRef } from 'react';
 import { useAuthStore } from '@/features/auth';
@@ -132,4 +131,6 @@ export const WorkScheduleContainer: React.FC = () => {
     </>
   );
 };
+
+
 

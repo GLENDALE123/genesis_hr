@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/shared/components/ui/button';
@@ -280,4 +279,6 @@ const ProductionRequestFormModalComponent: React.FC<ProductionRequestFormModalPr
 
 // React.memo로 최적화하여 불필요한 리렌더링 방지
 export const ProductionRequestFormModal = React.memo(ProductionRequestFormModalComponent);
+
+
 

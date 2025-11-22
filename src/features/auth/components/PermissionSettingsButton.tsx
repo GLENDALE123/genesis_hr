@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/shared/components/ui/button';
@@ -489,4 +488,5 @@ const PermissionSettingsButtonComponent: React.FC<PermissionSettingsButtonProps>
 
 // React.memo로 최적화하여 불필요한 리렌더링 방지
 export const PermissionSettingsButton = React.memo(PermissionSettingsButtonComponent);
+
 

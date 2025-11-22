@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useState, useRef, ChangeEvent, useCallback } from 'react';
 import { JigMasterItem, UserProfile } from '../types';
@@ -574,3 +573,4 @@ export const JigMasterDetail: React.FC<JigMasterDetailProps> = ({
     </>
   );
 };
+

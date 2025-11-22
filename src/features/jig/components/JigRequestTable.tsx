@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useState, useMemo, useCallback, memo } from 'react';
 import {
@@ -250,3 +249,4 @@ export const JigRequestTable: React.FC<JigRequestTableProps> = ({
     </div>
   );
 };
+

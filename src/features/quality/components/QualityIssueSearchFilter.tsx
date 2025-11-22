@@ -38,3 +38,4 @@ export const QualityIssueSearchFilter: React.FC<QualityIssueSearchFilterProps> =
   );
 };
 
+

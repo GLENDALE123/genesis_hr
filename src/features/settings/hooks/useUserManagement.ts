@@ -2,7 +2,6 @@
  * 유저 관리 훅
  */
 
-'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { toast } from 'sonner';
@@ -269,4 +268,5 @@ export const useUserManagement = () => {
     loadUsers,
   };
 };
+
 

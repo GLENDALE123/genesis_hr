@@ -1,4 +1,3 @@
-'use client';
 
 import { useAuthStore } from '../store/authStore';
 import { useDevStore } from '@/app/store';
@@ -49,4 +48,5 @@ export const useIsAdmin = (): boolean => {
 export const useIsManager = (): boolean => {
   return useHasRole(['Admin', 'Manager']);
 };
+
 

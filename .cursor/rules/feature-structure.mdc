@@ -1,0 +1,278 @@
+---
+alwaysApply: true
+---
+# 피처 기반 프로젝트 구조 규칙
+
+## 🏗️ 피처 기반 아키텍처 원칙
+
+### 📁 디렉토리 구조 예시
+```
+src/
+├── app/                        # 앱 레벨 설정
+│   ├── routes/                # 중앙 집중식 라우트 정의
+│   │   └── index.tsx          # 모든 라우트 통합 관리
+│   ├── pages/                 # 페이지 컴포넌트
+│   │   ├── Home.tsx
+│   │   ├── Login.tsx
+│   │   ├── Dashboard.tsx
+│   │   └── ...
+│   ├── providers/             # 전역 Provider 컴포넌트
+│   ├── config/                # 앱 설정
+│   └── store/                 # 전역 상태 관리
+├── features/                   # 피처별 모듈
+│   ├── auth/                  # 인증 피처
+│   │   ├── components/        # 피처 전용 컴포넌트
+│   │   ├── hooks/            # 피처 전용 훅
+│   │   ├── services/         # 피처 전용 서비스
+│   │   ├── types/            # 피처 전용 타입
+│   │   ├── utils/            # 피처 전용 유틸리티
+│   │   └── index.ts          # 피처 진입점
+│   ├── dashboard/            # 대시보드 피처
+│   ├── employees/            # 직원 관리 피처
+│   ├── payroll/              # 급여 관리 피처
+│   └── reports/              # 보고서 피처
+├── shared/                     # 공유 모듈
+│   ├── components/            # 공통 UI 컴포넌트
+│   │   ├── ui/               # Shadcn/ui 컴포넌트
+│   │   ├── layout/           # 레이아웃 컴포넌트
+│   │   └── common/           # 공통 컴포넌트
+│   ├── hooks/                # 공통 훅
+│   ├── services/             # 공통 서비스
+│   ├── types/                # 공통 타입
+│   ├── utils/                # 공통 유틸리티
+│   └── constants/            # 상수
+├── lib/                       # 라이브러리 설정
+│   ├── firebase/             # Firebase 설정
+│   ├── utils/                # 유틸리티 함수
+│   └── hooks/                # 커스텀 훅
+└── public/                    # 정적 자산
+    ├── images/
+    ├── icons/
+    └── favicon.ico
+```
+
+## 🎯 피처 모듈 구조
+
+### 각 피처는 다음 구조를 가져야 함:
+```
+features/[feature-name]/
+├── components/           # 피처 전용 컴포넌트
+│   ├── [ComponentName].tsx
+│   └── index.ts
+├── hooks/               # 피처 전용 훅
+│   ├── use[FeatureName].ts
+│   └── index.ts
+├── services/            # 피처 전용 서비스
+│   ├── [serviceName].ts
+│   └── index.ts
+├── store/               # 피처 전용 상태 관리
+│   ├── [featureName]Store.ts
+│   └── index.ts
+├── types/               # 피처 전용 타입
+│   ├── [featureName].types.ts
+│   └── index.ts
+├── utils/               # 피처 전용 유틸리티
+│   ├── [utilityName].ts
+│   └── index.ts
+├── constants/           # 피처 전용 상수
+│   └── index.ts
+└── index.ts            # 피처 진입점 (모든 export)
+```
+
+## 📋 피처 개발 규칙
+
+### 1. **피처 독립성**
+- 각 피처는 독립적으로 동작해야 함
+- 다른 피처에 직접 의존하지 않음
+- 공통 기능은 `shared/` 모듈 사용
+
+### 2. **Import 규칙**
+```typescript
+// ✅ 올바른 import
+import { Button } from '@/shared/components/ui/button';
+import { useAuth } from '@/features/auth';
+import { formatDate } from '@/shared/utils/date';
+
+// ❌ 잘못된 import (피처 간 직접 의존)
+import { EmployeeCard } from '@/features/employees/components/EmployeeCard';
+```
+
+### 3. **Export 규칙**
+```typescript
+// features/auth/index.ts
+export { default as LoginForm } from './components/LoginForm';
+export { useAuth, useAuthContext } from './hooks/useAuth';
+export { login, logout, register } from './services/authService';
+export type { User, AuthState } from './types/auth.types';
+```
+
+### 4. **컴포넌트 네이밍**
+- 피처 컴포넌트: `[FeatureName][ComponentName]`
+- 예: `AuthLoginForm`, `EmployeeCard`, `PayrollCalculator`
+
+### 5. **훅 네이밍**
+- 피처 훅: `use[FeatureName][HookName]`
+- 예: `useAuth`, `useEmployeeList`, `usePayrollCalculation`
+
+### 6. **Store 네이밍 및 구조**
+```typescript
+// features/auth/store/authStore.ts
+import { create } from 'zustand';
+import { devtools, persist } from 'zustand/middleware';
+
+interface AuthState {
+  user: User | null;
+  isLoading: boolean;
+  error: string | null;
+}
+
+interface AuthActions {
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  setUser: (user: User | null) => void;
+  setLoading: (loading: boolean) => void;
+  setError: (error: string | null) => void;
+}
+
+export const useAuthStore = create<AuthState & AuthActions>()(
+  devtools(
+    persist(
+      (set, get) => ({
+        // State
+        user: null,
+        isLoading: false,
+        error: null,
+        
+        // Actions
+        login: async (email, password) => {
+          set({ isLoading: true, error: null });
+          try {
+            // 로그인 로직
+          } catch (error) {
+            set({ error: error.message });
+          } finally {
+            set({ isLoading: false });
+          }
+        },
+        
+        logout: async () => {
+          set({ isLoading: true });
+          try {
+            // 로그아웃 로직
+            set({ user: null });
+          } catch (error) {
+            set({ error: error.message });
+          } finally {
+            set({ isLoading: false });
+          }
+        },
+        
+        setUser: (user) => set({ user }),
+        setLoading: (isLoading) => set({ isLoading }),
+        setError: (error) => set({ error }),
+      }),
+      {
+        name: 'auth-store',
+        partialize: (state) => ({ user: state.user }), // user만 persist
+      }
+    ),
+    { name: 'auth-store' }
+  )
+);
+```
+
+### 7. **Store 사용 규칙**
+- 피처별 독립적인 store 생성
+- 전역 상태는 `app/store/` 에서 관리
+- Store는 피처의 `index.ts`에서 export
+- Zustand devtools와 persist 미들웨어 활용
+
+
+## 🔄 마이그레이션 계획
+
+### Phase 1: React Router 구조 설정
+1. `src/app/routes/` 디렉토리 생성
+2. 중앙 집중식 라우트 파일 `index.tsx` 생성
+3. `src/app/pages/` 디렉토리에 페이지 컴포넌트 생성
+
+### Phase 2: 공유 모듈 분리
+1. `src/shared/` 디렉토리 생성
+2. 기존 `components/ui/` → `shared/components/ui/` 이동
+3. 기존 `hooks/`, `lib/` → `shared/` 이동
+
+### Phase 3: 피처 모듈 생성
+1. `src/features/auth/` 생성 (인증 관련)
+2. `src/features/dashboard/` 생성 (대시보드)
+3. `src/features/employees/` 생성 (직원 관리)
+4. 기존 컴포넌트들을 적절한 피처로 이동
+
+### Phase 4: 라우팅 및 페이지 구성
+1. React Router 기반 라우트 정의 (`src/app/routes/index.tsx`)
+2. `App.tsx`에 `BrowserRouter` 설정
+3. 레이아웃 컴포넌트 분리
+4. 로딩 및 에러 상태 처리
+
+## 🎨 UI 컴포넌트 분류
+
+### Shared Components (`shared/components/`)
+- **ui/**: Shadcn/ui 기반 기본 컴포넌트
+- **layout/**: 레이아웃 관련 컴포넌트
+- **common/**: 범용 컴포넌트 (Button, Input 등)
+
+### Feature Components (`features/[name]/components/`)
+- 피처에 특화된 비즈니스 로직 컴포넌트
+- 피처 내에서만 사용되는 컴포넌트
+
+## 🔧 개발 가이드라인
+
+### 1. **새 피처 추가 시**
+```bash
+# 1. 피처 디렉토리 생성
+mkdir -p src/features/[feature-name]/{components,hooks,services,types,utils,constants,store}
+
+# 2. index.ts 파일 생성
+touch src/features/[feature-name]/index.ts
+
+# 3. 페이지 컴포넌트 생성 (필요시)
+touch src/app/pages/[FeatureName]Page.tsx
+
+# 4. 라우트 추가 (src/app/routes/index.tsx)
+# {
+#   path: '/[feature-name]',
+#   element: <[FeatureName]Page />,
+# }
+
+# 5. 피처 진입점에서 export 설정
+```
+
+### 2. **컴포넌트 생성 시**
+- 피처 컴포넌트는 해당 피처의 `components/` 디렉토리에 생성
+- 공통 컴포넌트는 `shared/components/` 디렉토리에 생성
+
+### 3. **Import 경로 규칙**
+```typescript
+// 절대 경로 사용 (tsconfig.json의 path mapping 활용)
+import { Button } from '@/shared/components/ui/button';
+import { useAuth } from '@/features/auth';
+import { formatCurrency } from '@/shared/utils/format';
+```
+
+## 📊 장점
+
+### 1. **유지보수성**
+- 관련 코드가 한 곳에 모여있어 수정이 용이
+- 피처별 독립적 개발 가능
+
+### 2. **확장성**
+- 새 피처 추가 시 기존 코드에 영향 없음
+- 팀별 피처 담당 가능
+
+### 3. **재사용성**
+- 공통 컴포넌트는 `shared/`에서 관리
+- 피처별 특화 컴포넌트는 해당 피처에서 관리
+
+### 4. **테스트 용이성**
+- 피처별 독립적 테스트 가능
+- Mock 데이터 관리 용이
+
+이 구조는 대규모 React 애플리케이션에서 코드의 가독성, 유지보수성, 확장성을 크게 향상시킵니다.

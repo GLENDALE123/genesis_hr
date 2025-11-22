@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/shared/components/ui/dialog';
@@ -422,4 +421,6 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
     </Dialog>
   );
 };
+
+
 

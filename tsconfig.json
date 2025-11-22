@@ -3,24 +3,22 @@
     "target": "ES2015",
     "lib": [
       "ES2015",
-      "DOM"
+      "DOM",
+      "DOM.Iterable"
     ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
     "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "node",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "react-jsx",
-    "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
+    "allowImportingTsExtensions": true,
+    "moduleDetection": "force",
+    "forceConsistentCasingInFileNames": true,
     "paths": {
       "@/*": [
         "./src/*"
@@ -30,21 +28,14 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
-    ".next/types/**/*.ts",
-    "next-env.d.ts",
-    "out/types/**/*.ts",
-    "out\\dev/types/**/*.ts",
-    "out\\dev/types/**/*.ts",
-    "out/dev/types/**/*.ts",
-    ".next/dev/types/**/*.ts",
-    ".next\\dev/types/**/*.ts",
-    ".next\\dev/types/**/*.ts"
+    "index.html"
   ],
   "exclude": [
     "node_modules",
     "MobileApp",
     "dist",
     "electron-out",
-    "out"
+    "out",
+    ".next"
   ]
 }

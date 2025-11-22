@@ -3,7 +3,6 @@
  * HS-Jig SampleRequestCard 참고
  */
 
-'use client';
 
 import React from 'react';
 import { Card, CardContent } from '@/shared/components/ui/card';
@@ -85,4 +84,6 @@ export const SampleRequestCard: React.FC<SampleRequestCardProps> = ({
     </Card>
   );
 };
+
+
 

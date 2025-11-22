@@ -2,7 +2,6 @@
  * 알림 설정 탭
  */
 
-'use client';
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
@@ -606,4 +605,5 @@ export const NotificationSettings: React.FC = () => {
     </div>
   );
 };
+
 

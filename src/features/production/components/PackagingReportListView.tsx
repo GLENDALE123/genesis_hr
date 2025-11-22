@@ -1,4 +1,3 @@
-'use client';
 
 import React from 'react';
 import { Card, CardContent } from '@/shared/components/ui/card';
@@ -1054,3 +1053,4 @@ const PackagingReportListViewComponent: React.FC<PackagingReportListViewProps> =
 
 // React.memo로 최적화하여 불필요한 리렌더링 방지
 export const PackagingReportListView = React.memo(PackagingReportListViewComponent);
+

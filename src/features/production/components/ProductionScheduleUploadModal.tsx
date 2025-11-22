@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useState, useCallback, useMemo } from 'react';
 import { ProductionSchedule } from '@/features/production/types';
@@ -277,4 +276,5 @@ export const ProductionScheduleUploadModal: React.FC<ProductionScheduleUploadMod
     </Sheet>
   );
 };
+
 

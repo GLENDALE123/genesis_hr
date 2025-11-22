@@ -1,7 +1,6 @@
-'use client';
 
 import React from 'react';
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
@@ -419,4 +418,6 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
     </div>
   );
 };
+
+
 

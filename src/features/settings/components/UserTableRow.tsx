@@ -2,7 +2,6 @@
  * 유저 테이블 행 컴포넌트 (메모이제이션)
  */
 
-'use client';
 
 import React, { useCallback, memo, useMemo } from 'react';
 import { TableRow, TableCell } from '@/shared/components/ui/table';
@@ -229,4 +228,5 @@ export const UserTableRow = memo<UserTableRowProps>(({
 });
 
 UserTableRow.displayName = 'UserTableRow';
+
 

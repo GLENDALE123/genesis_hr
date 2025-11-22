@@ -1,4 +1,3 @@
-'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import { usePermissionsStore } from '../store/permissionsStore';
@@ -172,3 +171,4 @@ export const useHasCustomPermission = (pageId: PageIdentifier, customPermissionK
   const { hasCustomPermission } = usePagePermissions(pageId);
   return hasCustomPermission(customPermissionKey);
 };
+

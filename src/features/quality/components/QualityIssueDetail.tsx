@@ -470,3 +470,4 @@ export const QualityIssueDetail: React.FC<QualityIssueDetailProps> = ({
     </Dialog>
   );
 };
+

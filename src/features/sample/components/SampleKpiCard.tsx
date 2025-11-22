@@ -3,7 +3,6 @@
  * HS-Jig KpiCard 참고
  */
 
-'use client';
 
 import React from 'react';
 import { Card, CardContent } from '@/shared/components/ui/card';
@@ -55,5 +54,7 @@ export const SampleKpiCard: React.FC<SampleKpiCardProps> = ({
     </Card>
   );
 };
+
+
 
 

@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
@@ -1110,3 +1109,4 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     </>
   );
 };
+

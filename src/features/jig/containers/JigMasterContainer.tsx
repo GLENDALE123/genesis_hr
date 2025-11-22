@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { JigMasterListView, JigMasterDetail, JigListForm, JigMasterFilterPanel } from '../components';
@@ -195,3 +194,4 @@ export const JigMasterContainer: React.FC = () => {
     </div>
   );
 };
+

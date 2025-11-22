@@ -1,7 +1,5 @@
-'use client';
-
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
 import { AuthService } from '@/features/auth/services';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { Button } from '@/shared/components/ui/button';
@@ -66,15 +64,15 @@ export function LoginForm({ initialEmail }: LoginFormProps = {} as LoginFormProp
   const [shakeConfirmPassword, setShakeConfirmPassword] = useState(false);
   const [shakePhoneNumber, setShakePhoneNumber] = useState(false);
   
-  const router = useRouter();
+  const navigate = useNavigate();
   const { user, refreshUserProfile, userProfile } = useAuthStore();
 
   // 이미 로그인된 사용자는 홈으로 리다이렉트
   useEffect(() => {
     if (user) {
-      router.push('/');
+      navigate('/', { replace: true });
     }
-  }, [user, router]);
+  }, [user, navigate]);
 
   // initialEmail이 있으면 이메일 필드에 설정
   useEffect(() => {
@@ -219,7 +217,7 @@ export function LoginForm({ initialEmail }: LoginFormProps = {} as LoginFormProp
           description: '환영합니다. 로그인되었습니다.',
           duration: 1500,
         });
-        router.push('/dashboard');
+        navigate('/dashboard', { replace: true });
       } else {
         // 로그인 필드 검증
         const emailValidation = validateEmail(email);
@@ -298,7 +296,7 @@ export function LoginForm({ initialEmail }: LoginFormProps = {} as LoginFormProp
           toast.success('로그인되었습니다!', {
             duration: 1500,
           });
-          router.push('/dashboard');
+          navigate('/dashboard', { replace: true });
         } catch (loginError: unknown) {
           throw loginError;
         }

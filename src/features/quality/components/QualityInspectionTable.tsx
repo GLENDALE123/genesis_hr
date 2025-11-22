@@ -1,4 +1,3 @@
-'use client';
 
 import React, { memo } from 'react';
 import { Card, CardContent } from '@/shared/components/ui/card';
@@ -207,4 +206,5 @@ const QualityInspectionTableComponent: React.FC<QualityInspectionTableProps> = (
 
 // 메모이제이션 적용
 export const QualityInspectionTable = memo(QualityInspectionTableComponent);
+
 

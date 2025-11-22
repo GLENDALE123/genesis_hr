@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useState, useEffect } from 'react';
 import { Plus, Grid3X3, List, Search } from 'lucide-react';
@@ -340,3 +339,4 @@ export const AnnouncementContainer: React.FC<AnnouncementContainerProps> = ({
     </div>
   );
 };
+

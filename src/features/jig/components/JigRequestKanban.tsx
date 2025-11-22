@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useMemo } from 'react';
 import { JigRequest, JigStatus } from '../types';
@@ -47,3 +46,4 @@ export const JigRequestKanban: React.FC<JigRequestKanbanProps> = ({ requests, on
     </ScrollArea>
   );
 };
+

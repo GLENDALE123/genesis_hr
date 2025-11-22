@@ -1,6 +1,5 @@
-'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { CommentsService } from '@/shared/services/comments/commentsService';
 import { Button } from '@/shared/components/ui/button';
 import { Label } from '@/shared/components/ui/label';
@@ -13,13 +12,9 @@ import {
 import { Textarea } from '@/shared/components/ui/textarea';
 import { ProcessingHistory } from '@/shared/components/common/ProcessingHistory';
 import { ImageGalleryGrid } from '@/shared/components/common/ImageGalleryGrid';
-import dynamic from 'next/dynamic';
 
-// 무거운 컴포넌트들을 동적 임포트로 분할
-const DynamicCommentsSection = dynamic(() => import('@/shared/components/common/CommentsSection'), {
-  ssr: false,
-  loading: () => <div className="p-4 text-center text-muted-foreground">댓글 로딩 중...</div>
-});
+// 무거운 컴포넌트들을 동적 임포트로 분할 (Vite에서는 React.lazy 사용)
+const DynamicCommentsSection = lazy(() => import('@/shared/components/common/CommentsSection'));
 import {
   ProductionRequestStatus,
   type ProductionRequest,
@@ -290,15 +285,17 @@ const ProductionRequestDetailModalComponent: React.FC<ProductionRequestDetailMod
             />
 
             {/* 댓글 섹션 - 동적 로딩 */}
-            <DynamicCommentsSection
-              comments={request.comments || []}
-              onAddComment={handleAddComment}
-              onEditComment={handleEditComment}
-              onDeleteComment={handleDeleteComment}
-              canComment={canManage}
-              currentUserUid={currentUserUid}
-              isAdmin={isAdmin}
-            />
+            <Suspense fallback={<div className="p-4 text-center text-muted-foreground">댓글 로딩 중...</div>}>
+              <DynamicCommentsSection
+                comments={request.comments || []}
+                onAddComment={handleAddComment}
+                onEditComment={handleEditComment}
+                onDeleteComment={handleDeleteComment}
+                canComment={canManage}
+                currentUserUid={currentUserUid}
+                isAdmin={isAdmin}
+              />
+            </Suspense>
           </div>
         </DialogContent>
       </Dialog>
@@ -356,4 +353,7 @@ const ProductionRequestDetailModalComponent: React.FC<ProductionRequestDetailMod
 
 // React.memo로 최적화하여 불필요한 리렌더링 방지
 export const ProductionRequestDetailModal = React.memo(ProductionRequestDetailModalComponent);
+
+
+
 

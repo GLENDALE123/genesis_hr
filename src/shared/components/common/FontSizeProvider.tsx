@@ -3,7 +3,6 @@
  * 설정에 따라 CSS 변수를 업데이트
  */
 
-'use client';
 
 import { useFontSize } from '@/shared/hooks/useFontSize';
 
@@ -13,3 +12,5 @@ export const FontSizeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   
   return <>{children}</>;
 };
+
+

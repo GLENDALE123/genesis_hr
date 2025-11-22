@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useState } from 'react';
 import { Check, ChevronsUpDown, X } from 'lucide-react';
@@ -171,3 +170,4 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
     </div>
   );
 };
+

@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
 import {
@@ -457,5 +456,7 @@ export const JigRequestDetail: React.FC<JigRequestDetailProps> = ({
     </>
   );
 };
+
+
 
 

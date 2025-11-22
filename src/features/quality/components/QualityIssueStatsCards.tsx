@@ -134,3 +134,4 @@ export const QualityIssueStatsCards: React.FC<QualityIssueStatsCardsProps> = ({ 
     </div>
   );
 };
+

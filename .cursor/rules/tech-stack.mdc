@@ -1,0 +1,131 @@
+---
+alwaysApply: true
+---
+# HS_HR 프로젝트 기술 스택
+
+## 🏗️ 핵심 프레임워크 & 런타임
+- **Vite 7.2.2** - 빠른 빌드 도구 및 개발 서버
+- **React 19.2.0** - 최신 React 버전 사용
+- **TypeScript 5.7.2** - 타입 안전성을 위한 정적 타입 검사
+- **Node.js** - ES2020 타겟, ESM 모듈 시스템
+
+## 🎨 UI & 스타일링
+- **Tailwind CSS 3.4.18** - 유틸리티 퍼스트 CSS 프레임워크
+- **Shadcn/ui** - Radix UI 기반 컴포넌트 라이브러리
+- **Radix UI** - 접근성이 뛰어난 헤드리스 UI 컴포넌트들
+- **Lucide React** - 아이콘 라이브러리
+- **next-themes** - 다크/라이트 테마 지원 (Vite 환경에서도 사용 가능)
+- **tailwindcss-animate** - Tailwind 애니메이션 확장
+
+## 🔥 백엔드 & 데이터베이스
+- **Firebase 12.3.0** - BaaS (Backend as a Service)
+  - **Firebase v9 SDK** - 모듈러 SDK 사용 (Tree Shaking 지원)
+  - **Firebase Auth** - 사용자 인증
+  - **Firestore** - NoSQL 데이터베이스
+  - **Firebase Storage** - 파일 저장소
+
+## 🧭 라우팅 & 상태 관리
+- **React Router v7** - 클라이언트 사이드 라우팅 (중앙 집중식 라우트 관리)
+- **Zustand 5.0.8** - 경량 상태 관리 라이브러리
+- **React Hook Form 7.66.0** - 폼 상태 관리 및 검증
+
+## 🧪 테스팅 & 개발 도구
+- **Vitest 3.2.4** - 빠른 단위 테스트 프레임워크
+- **Playwright 1.55.1** - E2E 테스팅
+- **ESLint 9.37.0** - 코드 품질 검사
+- **Prettier 3.6.2** - 코드 포맷팅
+
+## 📊 차트 & 데이터 시각화
+- **Recharts 2.15.4** - React 차트 라이브러리
+
+## 🔧 유틸리티 라이브러리
+- **Zod 4.1.11** - 런타임 타입 검증
+- **date-fns 4.1.0** - 날짜 조작 라이브러리
+- **clsx & tailwind-merge** - 조건부 클래스명 관리
+- **class-variance-authority** - 컴포넌트 variant 관리
+- **Sonner 2.0.7** - 토스트 알림
+
+## 🎯 프로젝트 구조
+```
+src/
+├── app/                    # 앱 레벨 설정
+│   ├── routes/            # 중앙 집중식 라우트 정의
+│   │   └── index.tsx      # 모든 라우트 통합 관리
+│   ├── pages/             # 페이지 컴포넌트
+│   │   ├── Home.tsx
+│   │   ├── Login.tsx
+│   │   ├── Dashboard.tsx
+│   │   └── ...
+│   ├── providers/         # 전역 Provider 컴포넌트
+│   ├── config/            # 앱 설정
+│   └── store/             # 전역 상태 관리
+├── features/               # 피처별 모듈
+│   ├── auth/              # 인증 피처
+│   │   ├── components/
+│   │   ├── hooks/
+│   │   ├── services/
+│   │   ├── store/
+│   │   └── types/
+│   ├── dashboard/         # 대시보드 피처
+│   ├── employees/         # 직원 관리 피처
+│   └── ...
+├── shared/                 # 공유 모듈
+│   ├── components/        # 공통 UI 컴포넌트
+│   │   ├── ui/           # Shadcn/ui 컴포넌트들
+│   │   ├── layout/       # 레이아웃 컴포넌트
+│   │   │   ├── Header.tsx
+│   │   │   ├── Sidebar.tsx
+│   │   │   └── Footer.tsx
+│   │   └── common/       # 공통 컴포넌트
+│   │       ├── LoadingSpinner.tsx
+│   │       └── ErrorBoundary.tsx
+│   ├── hooks/            # 공통 커스텀 훅
+│   ├── utils/            # 공통 유틸리티
+│   ├── types/            # 공통 타입
+│   └── constants/        # 상수
+├── firebase/              # Firebase 설정
+│   ├── config.ts
+│   ├── auth.ts
+│   ├── firestore.ts
+│   └── storage.ts
+├── lib/                   # 라이브러리 설정
+│   └── utils.ts           # 유틸리티 함수 (cn 등)
+├── App.tsx                # 루트 컴포넌트 (BrowserRouter 포함)
+├── main.tsx               # 진입점
+├── index.css              # 전역 스타일
+└── public/                # 정적 파일
+    ├── images/
+    ├── icons/
+    └── favicon.ico
+```
+
+## ⚙️ 개발 환경 설정
+- **ES6 타겟** - ES6 호환성 보장 (배포 환경 호환)
+- **Strict TypeScript** - 엄격한 타입 검사 활성화
+- **Path Mapping** - `@/*` 별칭으로 `./src/*` 경로 단축
+- **CSS Variables** - 다크/라이트 테마 지원
+- **HMR (Hot Module Replacement)** - Vite 개발 중 실시간 업데이트
+- **React Router** - 중앙 집중식 라우트 관리 (`src/app/routes/index.tsx`)
+
+## 🚀 빌드 & 배포
+- **Vite 빌드** - 최적화된 프로덕션 빌드 (Rollup 기반)
+- **TypeScript 컴파일** - 타입 검사 후 빌드
+- **Tree Shaking** - 사용하지 않는 코드 제거
+- **Code Splitting** - 동적 import를 통한 코드 분할
+- **Static Site Generation** - 정적 파일 생성 (SPA)
+- **ESM 모듈** - 최신 ES 모듈 시스템 사용
+
+## 📋 개발 스크립트
+- `npm run dev` - Vite 개발 서버 실행 (포트 5173)
+- `npm run build` - Vite 프로덕션 빌드
+- `npm run preview` - 프로덕션 빌드 미리보기
+- `npm run lint` - ESLint 검사
+- `npm run format` - Prettier 포맷팅
+
+## 🎨 디자인 시스템
+- **Shadcn/ui New York 스타일** - 모던하고 깔끔한 디자인
+- **CSS Variables 기반 테마** - 동적 테마 변경 지원
+- **접근성 우선** - Radix UI 기반으로 WCAG 준수
+- **반응형 디자인** - 모바일 퍼스트 접근
+
+이 기술 스택은 현대적인 Vite + React 개발에 필요한 모든 도구들을 포함하고 있으며, 확장성과 유지보수성을 고려하여 선택되었습니다.

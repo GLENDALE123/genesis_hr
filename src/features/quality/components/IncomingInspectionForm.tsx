@@ -1,4 +1,3 @@
-'use client';
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
@@ -182,3 +181,5 @@ export const IncomingInspectionForm: React.FC<IncomingInspectionFormProps> = ({
     </Card>
   );
 };
+
+

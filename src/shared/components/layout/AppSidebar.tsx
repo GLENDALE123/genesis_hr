@@ -1,11 +1,8 @@
-'use client';
-
 import React from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Badge } from '@/shared/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
-import Image from 'next/image';
 import { ROUTE_ICONS } from '@/shared/constants/navigation';
 import { useGlobalStore } from '@/app/store';
 import {
@@ -100,8 +97,9 @@ const AppSidebarComponent = ({
   collapsed?: boolean;
   onMobileClose?: () => void;
 }) => {
-  const pathname = usePathname();
-  const router = useRouter();
+  const location = useLocation();
+  const pathname = location.pathname;
+  const navigate = useNavigate();
   const [isHovered, setIsHovered] = React.useState(false);
   const { updatePreferences } = useGlobalStore();
   
@@ -162,11 +160,11 @@ const AppSidebarComponent = ({
     return map;
   }, [checkIsActive]);
 
-  // 클릭 핸들러 (router.push로 명시적 네비게이션)
+  // 클릭 핸들러 (navigate로 명시적 네비게이션)
   const handleLinkClick = React.useCallback((href: string, event: React.MouseEvent) => {
     const isTablet = !isMobile && !isDesktop;
     
-    // 항상 기본 동작 방지하고 router.push로 명시적 네비게이션
+    // 항상 기본 동작 방지하고 navigate로 명시적 네비게이션
     event.preventDefault();
     event.stopPropagation();
     
@@ -186,25 +184,25 @@ const AppSidebarComponent = ({
     if (onMobileClose && isMobile) {
       onMobileClose();
       setTimeout(() => {
-        router.push(href);
+        navigate(href);
       }, 50);
     } else if (onMobileClose && !isMobile) {
       // 태블릿/데스크톱: 사이드바 닫기와 네비게이션 동시 처리
       requestAnimationFrame(() => {
         onMobileClose();
-        router.push(href);
+        navigate(href);
       });
     } else if (isTablet) {
       // 태블릿: 네비게이션 후 사이드바 접기
-      router.push(href);
+      navigate(href);
       setTimeout(() => {
         updatePreferences({ sidebarCollapsed: true });
       }, 100);
     } else {
       // 데스크톱: 네비게이션만 처리
-      router.push(href);
+      navigate(href);
     }
-  }, [pathname, isMobile, isDesktop, onMobileClose, updatePreferences, router]);
+  }, [pathname, isMobile, isDesktop, onMobileClose, updatePreferences, navigate]);
 
   // 성능 최적화: 자식 메뉴 확인 함수 메모이제이션
   const checkChildActive = React.useCallback((children: NavItem[] | undefined) => {
@@ -323,7 +321,7 @@ const AppSidebarComponent = ({
         {isExpanded ? (
           <div className="flex items-center gap-2 min-w-0">
             <div className="h-7 w-7 rounded flex items-center justify-center flex-shrink-0 overflow-hidden">
-              <Image 
+              <img 
                 src="/tms-logo.png" 
                 alt="TMS 로고" 
                 width={28} 
@@ -434,3 +432,4 @@ export const AppSidebar = React.memo(AppSidebarComponent, (prevProps, nextProps)
          prevProps.className === nextProps.className &&
          prevProps.onMobileClose === nextProps.onMobileClose;
 });
+

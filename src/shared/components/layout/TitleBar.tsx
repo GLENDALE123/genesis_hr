@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useEffect, useState } from 'react';
 import { Minus, Square, Copy, X, Camera, Crop, MousePointer } from 'lucide-react';
@@ -207,4 +206,6 @@ export const TitleBar: React.FC<TitleBarProps> = ({ className }) => {
     </div>
   );
 };
+
+
 

@@ -1,4 +1,3 @@
-'use client';
 
 import React from 'react';
 import { Calendar, User, Edit, Trash2, X } from 'lucide-react';
@@ -154,3 +153,5 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
     </Dialog>
   );
 };
+
+

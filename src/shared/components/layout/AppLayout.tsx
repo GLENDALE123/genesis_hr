@@ -1,4 +1,3 @@
-'use client';
 
 import React from 'react';
 import { TitleBar } from '@/shared/components/layout/TitleBar';
@@ -207,3 +206,5 @@ const AppLayoutComponent: React.FC<AppLayoutProps> = ({
 AppLayoutComponent.displayName = 'AppLayout';
 
 export const AppLayout = React.memo(AppLayoutComponent);
+
+

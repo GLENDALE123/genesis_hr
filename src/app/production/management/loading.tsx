@@ -1,4 +1,3 @@
-'use client';
 
 import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
 import { useEffect } from 'react';
@@ -18,4 +17,5 @@ export default function ProductionManagementLoading() {
     />
   );
 }
+
 

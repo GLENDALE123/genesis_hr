@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useState, useMemo, useEffect, memo } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
@@ -408,4 +407,5 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
 
 // 메모이제이션 적용
 export const QualityInspectionDetail = memo(QualityInspectionDetailComponent);
+
 

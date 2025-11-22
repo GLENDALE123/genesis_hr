@@ -1,8 +1,6 @@
-'use client';
 
 import React, { useState, useEffect } from 'react';
 import { X, Download, Clock } from 'lucide-react';
-import Image from 'next/image';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
 import { Progress } from '@/shared/components/ui/progress';
@@ -172,4 +170,7 @@ export const UpdateNotification: React.FC<UpdateNotificationProps> = ({
     </>
   );
 };
+
+
+
 

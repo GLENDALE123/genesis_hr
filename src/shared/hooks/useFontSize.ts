@@ -3,7 +3,6 @@
  * CSS 변수를 통해 동적으로 폰트 크기를 변경
  */
 
-'use client';
 
 import React, { useEffect } from 'react';
 import { useSettings } from '@/features/settings/hooks/useSettings';
@@ -39,3 +38,4 @@ export const useFontSize = () => {
     scale,
   };
 };
+

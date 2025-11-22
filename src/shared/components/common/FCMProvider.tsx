@@ -1,4 +1,3 @@
-'use client';
 
 import React, { createContext, useContext, useEffect, ReactNode, useState, useRef } from 'react';
 import { toast } from '@/shared/hooks/use-toast';
@@ -580,3 +579,4 @@ export const useFCMContext = (): FCMContextType => {
 };
 
 export default FCMProvider;
+

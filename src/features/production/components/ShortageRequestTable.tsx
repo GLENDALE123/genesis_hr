@@ -1,4 +1,3 @@
-'use client';
 
 import React from 'react';
 import {
@@ -93,5 +92,6 @@ export const ShortageRequestTable: React.FC<ShortageRequestTableProps> = ({
     </div>
   );
 };
+
 
 

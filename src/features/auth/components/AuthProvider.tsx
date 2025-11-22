@@ -1,8 +1,6 @@
-'use client';
-
 import React, { useEffect, useRef } from 'react';
 import { useAuthStore } from '../store';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
 import { getKoreaDateString, getKoreaTimeInfo } from '@/shared/utils/dateUtils';
 import { onSessionChange, clearSession } from '../services/sessionService';
 import { getDeviceId } from '../utils/savedAccounts';
@@ -17,7 +15,7 @@ const LAST_LOGIN_DATE_KEY = 'last-login-date';
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const { initializeAuth, user, isLoading, logout } = useAuthStore();
-  const router = useRouter();
+  const navigate = useNavigate();
   const logoutCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastCheckedDateRef = useRef<string>('');
   const sessionUnsubscribeRef = useRef<(() => void) | null>(null);
@@ -118,7 +116,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               // 로그아웃 처리
               await logout();
               
-              router.push('/login');
+              navigate('/login', { replace: true });
             } catch (error) {
               console.error('❌ [AuthProvider] 자동 로그아웃 실패:', error);
             }
@@ -138,7 +136,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         sessionUnsubscribeRef.current = null;
       }
     };
-  }, [user, isLoading, logout, router]);
+  }, [user, isLoading, logout, navigate]);
 
   // 자동 로그아웃 체크 로직 (한국 시간대 기준)
   useEffect(() => {
@@ -185,7 +183,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             console.log('🔄 [AuthProvider] 날짜 변경 감지 - 새벽 01시(한국 시간) 자동 로그아웃 실행');
             await logout();
             localStorage.removeItem(LAST_LOGIN_DATE_KEY);
-            router.push('/login');
+            navigate('/login', { replace: true });
           } catch (error) {
             console.error('❌ [AuthProvider] 자동 로그아웃 실패:', error);
           }
@@ -212,7 +210,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         logoutCheckIntervalRef.current = null;
       }
     };
-  }, [user, isLoading, logout, router]);
+  }, [user, isLoading, logout, navigate]);
 
   return <>{children}</>;
 };
+

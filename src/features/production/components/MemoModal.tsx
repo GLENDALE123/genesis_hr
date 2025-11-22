@@ -1,4 +1,3 @@
-'use client';
 
 import React from 'react';
 import {
@@ -65,4 +64,5 @@ export const MemoModal: React.FC<MemoModalProps> = ({
     </Dialog>
   );
 };
+
 

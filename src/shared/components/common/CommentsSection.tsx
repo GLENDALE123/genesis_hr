@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useState, useEffect } from 'react';
 import { MoreVertical, Reply, Copy, Trash2, Edit2, X, Check } from 'lucide-react';
@@ -404,3 +403,5 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 };
 
 export default CommentsSection;
+
+

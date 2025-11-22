@@ -1,4 +1,3 @@
-'use client';
 
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
@@ -144,4 +143,5 @@ export const usePermissionsStore = create<PermissionsState & PermissionsActions>
     { name: 'permissions-store' }
   )
 );
+
 

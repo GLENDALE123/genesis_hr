@@ -1,6 +1,4 @@
-'use client';
 
-import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 import { ProductionScheduleListView } from '@/features/production/components/ProductionScheduleListView';
@@ -69,7 +67,7 @@ const ProductionSchedulePageContent = () => {
   );
 };
 
-// SSR 비활성화하여 window 객체 접근 오류 방지
-export default dynamic(() => Promise.resolve(ProductionSchedulePageContent), {
-  ssr: false,
-});
+// Vite에서는 SSR이 없으므로 직접 export
+export default ProductionSchedulePageContent;
+
+

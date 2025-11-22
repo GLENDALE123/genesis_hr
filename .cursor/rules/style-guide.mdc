@@ -1,0 +1,472 @@
+---
+alwaysApply: true
+---
+# HS_HR 프로젝트 스타일 가이드
+
+## 🎨 디자인 시스템 원칙
+
+### 1. **일관성 (Consistency)**
+- 모든 UI 요소는 동일한 디자인 언어 사용
+- 색상, 타이포그래피, 간격의 일관된 사용
+- 컴포넌트 간 통일된 스타일 패턴
+
+### 2. **접근성 (Accessibility)**
+- WCAG 2.1 AA 기준 준수
+- 색상 대비율 4.5:1 이상 유지
+- 키보드 네비게이션 지원
+- 스크린 리더 호환성
+
+### 3. **반응형 (Responsive)**
+- 모바일 퍼스트 접근 방식
+- 브레이크포인트: sm(640px), md(768px), lg(1024px), xl(1280px)
+- 터치 친화적 인터페이스 (최소 44px 터치 영역)
+
+## 🎯 색상 시스템
+
+### **CSS Variables 기반 색상 관리**
+```css
+/* 기본 색상 팔레트 */
+--primary: 217 91% 59%        /* 파란색 계열 메인 컬러 */
+--secondary: 0 0% 96%         /* 회색 계열 보조 색상 */
+--accent: 202 100% 93%        /* 연한 파란색 강조 색상 */
+--destructive: 0 86% 61%      /* 빨간색 경고/삭제 색상 */
+--muted: 0 0% 97%             /* 연한 회색 뮤트 색상 */
+```
+
+### **색상 사용 규칙**
+```tsx
+// ✅ 올바른 색상 사용
+<div className="bg-primary text-primary-foreground">
+  <button className="bg-secondary text-secondary-foreground">
+    Secondary Button
+  </button>
+</div>
+
+// ❌ 하드코딩된 색상 사용 금지
+<div className="bg-[#6366f1] text-[#ffffff]">
+  <button className="bg-[#64748b] text-[#ffffff]">
+    Hardcoded Colors
+  </button>
+</div>
+```
+
+### **다크/라이트 테마**
+- CSS Variables를 통한 동적 테마 변경
+- `next-themes` 라이브러리 활용
+- 자동 시스템 테마 감지 지원
+
+## 📝 타이포그래피
+
+### **폰트 시스템**
+```css
+--font-sans: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+--font-serif: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', serif;
+--font-mono: 'JetBrains Mono', 'SF Mono', Monaco, 'Inconsolata', 'Roboto Mono', 'Source Code Pro', monospace;
+```
+
+### **타이포그래피 규칙**
+```tsx
+// ✅ 올바른 타이포그래피 사용
+<h1 className="text-3xl font-bold text-foreground">제목</h1>
+<h2 className="text-2xl font-semibold text-foreground">부제목</h2>
+<p className="text-base text-muted-foreground">본문</p>
+<code className="text-sm font-mono bg-muted px-2 py-1 rounded">코드</code>
+
+// ❌ 인라인 스타일 사용 금지
+<h1 style={{ fontSize: '24px', fontWeight: 'bold' }}>제목</h1>
+```
+
+### **한국어 폰트 지원**
+- **Pretendard Variable** - 한국어 최적화 가변 폰트
+- **Apple SD Gothic Neo** - macOS 한국어 폰트
+- **Noto Sans KR** - Google 한국어 폰트
+- **Malgun Gothic** - Windows 한국어 폰트
+- 폰트 스택에서 한국어 지원을 위한 폴백 시스템 구축
+
+## 📏 간격 및 크기 시스템
+
+### **단위 사용 규칙**
+
+#### **1. CSS Variables에서 단위 사용**
+```css
+/* ✅ 올바른 단위 사용 */
+--radius: 0.375rem;           /* rem 단위 사용 */
+--font-size-base: 1rem;       /* 기본 폰트 크기 */
+--spacing-unit: 0.25rem;      /* 간격 단위 */
+
+/* ❌ 잘못된 단위 사용 */
+--radius: 6px;                /* px 단위 사용 금지 */
+--font-size-base: 16px;       /* px 단위 사용 금지 */
+```
+
+#### **2. Tailwind 클래스에서 단위 사용**
+```tsx
+// ✅ Tailwind 기본 단위 시스템 사용
+<div className="p-4">          /* 1rem (16px) */
+<div className="p-6">          /* 1.5rem (24px) */
+<div className="p-8">          /* 2rem (32px) */
+<div className="text-sm">      /* 0.875rem (14px) */
+<div className="text-base">    /* 1rem (16px) */
+<div className="text-lg">      /* 1.125rem (18px) */
+
+// ❌ 커스텀 단위 사용 금지
+<div className="p-[16px]">     /* 하드코딩된 px 값 금지 */
+<div className="text-[14px]">  /* 하드코딩된 px 값 금지 */
+```
+
+#### **3. 반응형 단위 사용**
+```tsx
+// ✅ 반응형 단위 사용
+<div className="text-sm md:text-base lg:text-lg">     /* 반응형 텍스트 */
+<div className="p-4 md:p-6 lg:p-8">                   /* 반응형 패딩 */
+<div className="w-full md:w-1/2 lg:w-1/3">            /* 반응형 너비 */
+
+// ❌ 고정 단위 사용 금지
+<div className="text-[14px] md:text-[16px] lg:text-[18px]">
+```
+
+### **Border Radius**
+```css
+--radius: 0.375rem;  /* 기본 6px, rem 단위 사용 */
+```
+
+### **Shadow 시스템**
+```css
+/* Shadow 단계별 정의 */
+--shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);   /* 가장 작은 그림자 */
+--shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);    /* 매우 작은 그림자 */
+--shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 1px 2px -1px hsl(0 0% 0% / 0.10);  /* 작은 그림자 */
+--shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 1px 2px -1px hsl(0 0% 0% / 0.10);     /* 기본 그림자 */
+--shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 2px 4px -1px hsl(0 0% 0% / 0.10);  /* 중간 그림자 */
+--shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 4px 6px -1px hsl(0 0% 0% / 0.10);  /* 큰 그림자 */
+--shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 8px 10px -1px hsl(0 0% 0% / 0.10); /* 매우 큰 그림자 */
+--shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);   /* 가장 큰 그림자 */
+```
+
+### **간격 규칙**
+```tsx
+// ✅ Tailwind 간격 시스템 사용
+<div className="p-4 md:p-6 lg:p-8">        /* 패딩 */
+<div className="m-4 md:m-6 lg:m-8">        /* 마진 */
+<div className="space-y-4">                 /* 자식 요소 간격 */
+<div className="gap-4">                     /* Flex/Grid 간격 */
+
+// ❌ 하드코딩된 간격 사용 금지
+<div style={{ padding: '16px', margin: '24px' }}>
+<div className="p-[16px] m-[24px]">        /* 하드코딩된 Tailwind 값 금지 */
+```
+
+### **Shadow 사용 규칙**
+```tsx
+// ✅ Shadow 클래스 사용
+<div className="shadow-2xs">    /* 가장 작은 그림자 */
+<div className="shadow-xs">     /* 매우 작은 그림자 */
+<div className="shadow-sm">     /* 작은 그림자 */
+<div className="shadow">        /* 기본 그림자 */
+<div className="shadow-md">     /* 중간 그림자 */
+<div className="shadow-lg">     /* 큰 그림자 */
+<div className="shadow-xl">     /* 매우 큰 그림자 */
+<div className="shadow-2xl">    /* 가장 큰 그림자 */
+
+// ❌ 인라인 box-shadow 사용 금지
+<div style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+```
+
+## 🧩 컴포넌트 스타일링 규칙
+
+### 1. **Shadcn/ui 컴포넌트 우선 사용**
+```tsx
+// ✅ Shadcn/ui 컴포넌트 사용
+import { Button } from '@/shared/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
+
+<Card>
+  <CardHeader>
+    <CardTitle>제목</CardTitle>
+  </CardHeader>
+  <CardContent>
+    <Button variant="default">기본 버튼</Button>
+    <Button variant="secondary">보조 버튼</Button>
+  </CardContent>
+</Card>
+```
+
+### 2. **커스텀 컴포넌트 스타일링**
+```tsx
+// ✅ Tailwind 클래스 조합 사용
+const CustomCard = ({ children, className }) => {
+  return (
+    <div className={cn(
+      "bg-card text-card-foreground rounded-lg border p-6",
+      className
+    )}>
+      {children}
+    </div>
+  );
+};
+
+// ❌ 인라인 스타일 사용 금지
+const BadCard = ({ children }) => {
+  return (
+    <div style={{
+      backgroundColor: 'white',
+      padding: '24px',
+      borderRadius: '8px',
+      border: '1px solid #e5e7eb'
+    }}>
+      {children}
+    </div>
+  );
+};
+```
+
+### 3. **조건부 스타일링**
+```tsx
+// ✅ clsx와 tailwind-merge 사용
+import { cn } from '@/shared/lib/utils';
+
+const Button = ({ variant, size, className, ...props }) => {
+  return (
+    <button
+      className={cn(
+        "inline-flex items-center justify-center rounded-md font-medium transition-colors",
+        {
+          "bg-primary text-primary-foreground": variant === "default",
+          "bg-secondary text-secondary-foreground": variant === "secondary",
+          "h-10 px-4 py-2": size === "default",
+          "h-9 px-3": size === "sm",
+        },
+        className
+      )}
+      {...props}
+    />
+  );
+};
+```
+
+## 📱 반응형 디자인 규칙
+
+### **모바일 퍼스트 접근**
+```tsx
+// ✅ 모바일 퍼스트 스타일링
+<div className="w-full md:w-1/2 lg:w-1/3 xl:w-1/4">
+  <div className="p-4 md:p-6 lg:p-8">
+    <h1 className="text-lg md:text-xl lg:text-2xl xl:text-3xl">제목</h1>
+    <p className="text-sm md:text-base lg:text-lg">본문</p>
+  </div>
+</div>
+
+// ❌ 데스크톱 퍼스트 접근
+<div className="w-1/4 md:w-1/2 sm:w-full">
+```
+
+### **터치 친화적 인터페이스**
+```tsx
+// ✅ 최소 44px 터치 영역
+<button className="h-11 px-4 py-2 min-w-[44px]">버튼</button>
+
+// ❌ 너무 작은 터치 영역
+<button className="h-6 px-2 py-1">작은 버튼</button>
+```
+
+## 🎭 애니메이션 및 전환 효과
+
+### **애니메이션 규칙**
+```tsx
+// ✅ Tailwind 애니메이션 사용
+<div className="transition-all duration-200 ease-in-out">
+<div className="animate-pulse">로딩 상태</div>
+<div className="hover:scale-105 transition-transform">호버 효과</div>
+
+// ❌ CSS 애니메이션 직접 작성 금지
+<div style={{
+  transition: 'all 0.2s ease-in-out',
+  animation: 'pulse 2s infinite'
+}}>
+```
+
+### **전환 효과**
+```tsx
+// ✅ 일관된 전환 시간 사용
+<div className="transition-colors duration-200">색상 전환</div>
+<div className="transition-transform duration-300">변형 전환</div>
+<div className="transition-opacity duration-150">투명도 전환</div>
+```
+
+## 🎨 테마 관리 규칙
+
+### **CSS Variables 활용**
+```css
+/* style.css에서 테마 변수 정의 */
+:root {
+  --background: 0 0% 100%;        /* 라이트 모드 배경 */
+  --foreground: 0 0% 20%;         /* 라이트 모드 전경 */
+  --primary: 217 91% 59%;         /* 파란색 메인 컬러 */
+  --secondary: 0 0% 96%;          /* 회색 보조 컬러 */
+  --accent: 202 100% 93%;         /* 연한 파란색 강조 */
+  --destructive: 0 86% 61%;       /* 빨간색 경고 */
+  --muted: 0 0% 97%;              /* 연한 회색 뮤트 */
+  /* ... */
+}
+
+.dark {
+  --background: 0 0% 9%;          /* 다크 모드 배경 */
+  --foreground: 0 0% 89%;         /* 다크 모드 전경 */
+  --primary: 217 91% 59%;         /* 파란색 메인 컬러 (동일) */
+  --secondary: 0 0% 15%;          /* 어두운 회색 보조 */
+  --accent: 225 64% 33%;          /* 어두운 파란색 강조 */
+  --destructive: 0 86% 61%;       /* 빨간색 경고 (동일) */
+  --muted: 0 0% 15%;              /* 어두운 회색 뮤트 */
+  /* ... */
+}
+```
+
+### **테마 전환**
+```tsx
+// ✅ next-themes 사용
+import { useTheme } from 'next-themes';
+
+const ThemeToggle = () => {
+  const { theme, setTheme } = useTheme();
+  
+  return (
+    <Button
+      variant="outline"
+      onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+    >
+      {theme === 'dark' ? '라이트 모드' : '다크 모드'}
+    </Button>
+  );
+};
+```
+
+## 📐 단위 시스템 상세 규칙
+
+### **1. CSS Variables 단위 규칙**
+```css
+/* ✅ 올바른 단위 사용 */
+--radius: 0.375rem;           /* rem 단위 - 사용자 설정에 따라 조정 */
+--font-size-base: 1rem;       /* 기본 폰트 크기 */
+--spacing-unit: 0.25rem;      /* 간격 단위 (4px) */
+--border-width: 0.0625rem;    /* 테두리 두께 (1px) */
+
+/* ❌ 잘못된 단위 사용 */
+--radius: 6px;                /* px 단위 - 접근성 문제 */
+--font-size-base: 16px;       /* px 단위 - 사용자 설정 무시 */
+--spacing-unit: 4px;          /* px 단위 - 확장성 문제 */
+```
+
+### **2. Tailwind 클래스 단위 규칙**
+```tsx
+// ✅ Tailwind 기본 단위 시스템 사용
+<div className="p-4">          /* 1rem (16px) */
+<div className="p-6">          /* 1.5rem (24px) */
+<div className="p-8">          /* 2rem (32px) */
+<div className="text-sm">      /* 0.875rem (14px) */
+<div className="text-base">    /* 1rem (16px) */
+<div className="text-lg">      /* 1.125rem (18px) */
+<div className="rounded-md">   /* 0.375rem (6px) */
+<div className="rounded-lg">   /* 0.5rem (8px) */
+
+// ❌ 커스텀 단위 사용 금지
+<div className="p-[16px]">     /* 하드코딩된 px 값 금지 */
+<div className="text-[14px]">  /* 하드코딩된 px 값 금지 */
+<div className="rounded-[6px]"> /* 하드코딩된 px 값 금지 */
+```
+
+### **3. 반응형 단위 규칙**
+```tsx
+// ✅ 반응형 단위 사용
+<div className="text-sm md:text-base lg:text-lg xl:text-xl">
+<div className="p-4 md:p-6 lg:p-8 xl:p-10">
+<div className="w-full md:w-1/2 lg:w-1/3 xl:w-1/4">
+<div className="rounded-sm md:rounded-md lg:rounded-lg">
+
+// ❌ 고정 단위 사용 금지
+<div className="text-[14px] md:text-[16px] lg:text-[18px]">
+<div className="p-[16px] md:p-[24px] lg:p-[32px]">
+```
+
+### **4. 특수 상황 단위 규칙**
+```tsx
+// ✅ 특수 상황에서만 px 사용 허용
+<div className="border-[1px]">        /* 1px 테두리 - 디자인 요구사항 */
+<div className="w-[1px]">             /* 1px 구분선 - 정확한 픽셀 필요 */
+<div className="h-[1px]">             /* 1px 구분선 - 정확한 픽셀 필요 */
+
+// ✅ vw, vh 단위 사용 (반응형 디자인)
+<div className="w-screen h-screen">   /* 전체 화면 */
+<div className="w-full h-full">       /* 부모 요소 전체 */
+
+// ❌ 잘못된 특수 단위 사용
+<div className="w-[200px]">           /* 고정 너비 - 반응형 문제 */
+<div className="h-[100px]">           /* 고정 높이 - 반응형 문제 */
+```
+
+## 🚫 금지 사항
+
+### **절대 사용하지 말 것**
+1. **인라인 스타일** - `style` 속성 사용 금지
+2. **하드코딩된 색상값** - `#ffffff`, `rgb(255,255,255)` 등
+3. **하드코딩된 크기값** - `width: 200px` 등 (특수 상황 제외)
+4. **CSS 파일 직접 작성** - Tailwind 클래스 사용
+5. **!important 사용** - CSS 우선순위 강제 금지
+6. **px 단위 남용** - rem, em, % 우선 사용
+
+### **피해야 할 패턴**
+```tsx
+// ❌ 잘못된 스타일링 예시
+<div style={{ backgroundColor: '#fff', padding: '16px' }}>
+  <button style={{ color: '#000', fontSize: '14px' }}>
+    잘못된 버튼
+  </button>
+</div>
+
+// ✅ 올바른 스타일링 예시
+<div className="bg-background p-4">
+  <button className="text-foreground text-sm">
+    올바른 버튼
+  </button>
+</div>
+```
+
+## 📋 스타일 체크리스트
+
+### ✅ 컴포넌트 스타일링 체크리스트
+- [ ] Shadcn/ui 컴포넌트를 우선 사용했는가?
+- [ ] CSS Variables를 사용했는가?
+- [ ] Tailwind 클래스를 사용했는가?
+- [ ] 인라인 스타일을 사용하지 않았는가?
+- [ ] 반응형 디자인을 고려했는가?
+- [ ] 접근성을 고려했는가?
+
+### ✅ 색상 사용 체크리스트
+- [ ] CSS Variables 기반 색상을 사용했는가?
+- [ ] 다크/라이트 테마를 고려했는가?
+- [ ] 색상 대비율이 충분한가?
+- [ ] 색상만으로 정보를 전달하지 않았는가?
+
+### ✅ 타이포그래피 체크리스트
+- [ ] 일관된 폰트 크기를 사용했는가?
+- [ ] 적절한 폰트 웨이트를 사용했는가?
+- [ ] 가독성을 고려했는가?
+- [ ] 계층 구조가 명확한가?
+
+### ✅ 단위 사용 체크리스트
+- [ ] CSS Variables에서 rem 단위를 사용했는가?
+- [ ] Tailwind 기본 단위 시스템을 사용했는가?
+- [ ] 하드코딩된 px 값을 사용하지 않았는가?
+- [ ] 반응형 단위를 적절히 사용했는가?
+- [ ] 특수 상황(1px 테두리 등)에서만 px를 사용했는가?
+- [ ] 접근성을 고려한 단위를 선택했는가?
+
+## 🎯 스타일 가이드 요약
+
+1. **일관성**: 모든 UI 요소는 동일한 디자인 언어 사용
+2. **접근성**: WCAG 2.1 AA 기준 준수
+3. **반응형**: 모바일 퍼스트 접근 방식
+4. **CSS Variables**: 동적 테마 변경 지원
+5. **Tailwind 우선**: 유틸리티 퍼스트 CSS 사용
+6. **Shadcn/ui**: 기존 컴포넌트 우선 사용
+
+이 가이드를 따르면 일관되고 접근 가능하며 유지보수하기 쉬운 UI를 구축할 수 있습니다.

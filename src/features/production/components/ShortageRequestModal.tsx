@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -211,4 +210,5 @@ export const ShortageRequestModal: React.FC<ShortageRequestModalProps> = ({
     </Dialog>
   );
 };
+
 

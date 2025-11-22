@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useEffect, useRef } from 'react';
 import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
@@ -43,4 +42,6 @@ export const NetworkStatusProvider: React.FC<NetworkStatusProviderProps> = ({ ch
 
   return <>{children}</>;
 };
+
+
 

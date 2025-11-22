@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useState, useRef, useEffect, KeyboardEvent } from 'react';
 import { Button } from '@/shared/components/ui/button';
@@ -430,4 +429,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 };
 
 export default ChatInput;
+
+
 

@@ -1,4 +1,3 @@
-'use client';
 
 import React from 'react';
 import { Clock, CalendarIcon, Minus, Plus } from 'lucide-react';
@@ -448,3 +447,5 @@ export const PackagingReportForm: React.FC<PackagingReportFormProps> = ({
     </form>
   );
 };
+
+

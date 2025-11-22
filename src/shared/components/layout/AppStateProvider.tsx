@@ -1,4 +1,3 @@
-'use client';
 
 import { useAppState } from '@/shared/hooks/useAppState';
 
@@ -11,5 +10,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 };
 
 export default AppStateProvider;
+
+
 
 

@@ -2,7 +2,6 @@
  * 알림 권한 관리 훅
  */
 
-'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import { detectPlatform } from '@/shared/utils/platform';
@@ -136,5 +135,6 @@ export const useNotificationPermission = (): UseNotificationPermissionReturn => 
     checkPermission,
   };
 };
+
 
 

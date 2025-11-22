@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -498,3 +497,4 @@ export const JigListForm: React.FC<JigListFormProps> = ({
     </>
   );
 };
+
