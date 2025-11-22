@@ -3,8 +3,8 @@
 import React, { useEffect, useRef } from 'react';
 import { useAuthStore } from '../store';
 import { useRouter } from 'next/navigation';
-import { getKoreaDateString, getKoreaTimeInfo } from '@/shared/utils/dateUtils';
-import { onSessionChange, clearSession } from '../services/sessionService';
+// 자동 로그아웃은 Firebase Functions에서 처리하므로 dateUtils import 제거
+import { onSessionChange } from '../services/sessionService';
 import { getDeviceId } from '../utils/savedAccounts';
 import { toast } from 'sonner';
 
@@ -12,14 +12,11 @@ interface AuthProviderProps {
   children: React.ReactNode;
 }
 
-// localStorage 키
-const LAST_LOGIN_DATE_KEY = 'last-login-date';
+// 자동 로그아웃은 Firebase Functions에서 처리
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const { initializeAuth, user, isLoading, logout } = useAuthStore();
   const router = useRouter();
-  const logoutCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const lastCheckedDateRef = useRef<string>('');
   const sessionUnsubscribeRef = useRef<(() => void) | null>(null);
   const sessionRegistrationTimeRef = useRef<number>(0); // 현재 기기 세션 등록 시간
 
@@ -81,8 +78,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       user.uid,
       currentDeviceId,
       async (session) => {
-        // session이 null이면 세션이 삭제된 것이므로 무시
+        // session이 null이면 세션이 삭제된 것 (Firebase Functions에서 새벽 1시 자동 로그아웃 또는 수동 삭제)
         if (!session) {
+          try {
+            console.log('🔄 [AuthProvider] 세션 삭제 감지 - 자동 로그아웃 실행 (새벽 1시 또는 수동 삭제)');
+            toast.warning('세션이 만료되어 로그아웃되었습니다.');
+            
+            // 로그아웃 처리
+            await logout();
+            
+            router.push('/login');
+          } catch (error) {
+            console.error('❌ [AuthProvider] 세션 삭제로 인한 자동 로그아웃 실패:', error);
+          }
           return;
         }
         
@@ -140,79 +148,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, [user, isLoading, logout, router]);
 
-  // 자동 로그아웃 체크 로직 (한국 시간대 기준)
-  useEffect(() => {
-    // 로그인된 사용자가 없거나 로딩 중이면 스킵
-    if (isLoading || !user) {
-      // 기존 체크 인터벌 정리
-      if (logoutCheckIntervalRef.current) {
-        clearInterval(logoutCheckIntervalRef.current);
-        logoutCheckIntervalRef.current = null;
-      }
-      return;
-    }
-
-    // 로그인 날짜 저장 (최초 로그인 시에만) - 한국 시간대 기준
-    const saveLoginDate = () => {
-      const today = getKoreaDateString(); // 한국 시간대 기준 날짜
-      const savedDate = localStorage.getItem(LAST_LOGIN_DATE_KEY);
-      
-      // 저장된 날짜가 없거나 오늘과 다르면 오늘 날짜 저장
-      if (!savedDate || savedDate !== today) {
-        localStorage.setItem(LAST_LOGIN_DATE_KEY, today);
-        lastCheckedDateRef.current = today;
-      } else {
-        lastCheckedDateRef.current = savedDate;
-      }
-    };
-
-    // 초기 로그인 날짜 저장
-    saveLoginDate();
-
-    // 자동 로그아웃 체크 함수 (한국 시간대 기준)
-    const checkAutoLogout = async () => {
-      // 한국 시간대의 현재 시간 정보
-      const koreaTimeInfo = getKoreaTimeInfo();
-      const currentHour = koreaTimeInfo.hours;
-      const currentDate = getKoreaDateString();
-      const savedDate = localStorage.getItem(LAST_LOGIN_DATE_KEY);
-
-      // 저장된 날짜가 있고 오늘 날짜와 다른 경우
-      if (savedDate && savedDate !== currentDate) {
-        // 날짜가 변경되었고 현재 시간이 01시 00분~01시 59분 사이인 경우 로그아웃
-        if (currentHour === 1) {
-          try {
-            console.log('🔄 [AuthProvider] 날짜 변경 감지 - 새벽 01시(한국 시간) 자동 로그아웃 실행');
-            await logout();
-            localStorage.removeItem(LAST_LOGIN_DATE_KEY);
-            router.push('/login');
-          } catch (error) {
-            console.error('❌ [AuthProvider] 자동 로그아웃 실패:', error);
-          }
-        }
-        // 날짜는 변경되었지만 01시가 아닌 경우, 새 날짜로 업데이트
-        // 이렇게 하면 사용자는 그날 계속 사용할 수 있고, 다음 날 01시에 로그아웃됨
-        else {
-          localStorage.setItem(LAST_LOGIN_DATE_KEY, currentDate);
-          lastCheckedDateRef.current = currentDate;
-        }
-      }
-    };
-
-    // 초기 체크
-    checkAutoLogout();
-
-    // 매 분마다 체크 (01시 정확히 감지하기 위함)
-    logoutCheckIntervalRef.current = setInterval(checkAutoLogout, 60000); // 1분 = 60000ms
-
-    // cleanup: 컴포넌트 언마운트 시 인터벌 정리
-    return () => {
-      if (logoutCheckIntervalRef.current) {
-        clearInterval(logoutCheckIntervalRef.current);
-        logoutCheckIntervalRef.current = null;
-      }
-    };
-  }, [user, isLoading, logout, router]);
+  // 자동 로그아웃은 Firebase Functions에서 처리
+  // 새벽 1시에 Functions가 모든 세션을 삭제하면,
+  // onSessionChange 리스너가 이를 감지하여 자동 로그아웃 처리
+  // 클라이언트에서는 별도의 시간 체크가 필요 없음
 
   return <>{children}</>;
 };
