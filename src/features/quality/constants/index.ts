@@ -28,11 +28,11 @@ export const DEPARTMENT_COLORS = {
 
 // 상태별 색상 상수
 export const STATUS_COLORS = {
-  '미해결': 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200',
+  '대기중': 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-200',
   '진행중': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200',
   '해결완료': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200',
   // 영어 상태값도 추가
-  'open': 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200',
+  'open': 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-200',
   'in-progress': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200',
   'resolved': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200',
   'closed': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200',
@@ -153,6 +153,7 @@ export const DEFECT_REASON_OPTIONS = [
 export const INJECTION_MATERIAL_OPTIONS = [
   'ABS',
   'AS',
+  'SAN',
   'P.P',
   'PC',
   'PET',
@@ -170,6 +171,7 @@ export const INJECTION_COLOR_OPTIONS = [
 export const POST_PROCESS_OPTIONS = [
   '디지털프린팅',
   '레이져컷팅',
+  'NC가공',
   '인쇄',
   '인쇄/박',
   '전사',

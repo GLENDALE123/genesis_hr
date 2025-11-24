@@ -1,11 +1,33 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { LoginForm } from "@/features/auth"
+import { AccountSelection } from "@/features/auth/components/AccountSelection";
 import { useAuthStore } from '@/features/auth/store/authStore';
+import { getSavedAccount } from '@/features/auth/utils/savedAccounts';
 
-export default function Page() {
-  const { user } = useAuthStore();
+function LoginPageContent() {
+  const { user, isLoading } = useAuthStore();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const mode = searchParams.get('mode');
+  const emailParam = searchParams.get('email');
+  const [hasSavedAccount, setHasSavedAccount] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    // 저장된 계정 확인 (user가 변경될 때마다 다시 확인)
+    // 모바일에서도 계정 선택 페이지 표시
+    const savedAccount = getSavedAccount();
+    setHasSavedAccount(!!savedAccount);
+  }, [user]); // user가 변경될 때마다 다시 확인
+
+  // 로그인된 사용자는 즉시 대시보드로 리다이렉트
+  useEffect(() => {
+    if (!isLoading && user) {
+      router.replace('/dashboard');
+    }
+  }, [user, isLoading, router]);
 
   useEffect(() => {
     // 로그인되지 않은 경우에만 작은 윈도우로 조정
@@ -21,11 +43,49 @@ export default function Page() {
     }
   }, [user]);
 
+  // 로그인된 사용자는 아무것도 렌더링하지 않음 (리다이렉트 중)
+  if (!isLoading && user) {
+    return null;
+  }
+
+  // 저장된 계정 확인 중이면 로딩
+  if (hasSavedAccount === null) {
+    return (
+      <div className="flex h-full w-full items-center justify-center p-6 md:p-10 overflow-y-auto">
+        <div className="w-full max-w-sm my-auto">
+          <div className="text-center">로딩 중...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // mode가 signin/signup이거나 저장된 계정이 없으면 LoginForm 표시
+  // 저장된 계정이 있고 mode가 지정되지 않았으면 AccountSelection 표시
+  const showAccountSelection = hasSavedAccount && !mode;
+
   return (
-    <div className="flex h-full w-full items-center justify-center p-6 md:p-10 overflow-y-auto">
-      <div className="w-full max-w-sm my-auto">
-        <LoginForm />
+    <div className="flex h-screen w-full items-center justify-center p-6 md:p-10 overflow-hidden">
+      <div className="w-full max-w-sm">
+        {showAccountSelection ? (
+          <AccountSelection />
+        ) : (
+          <LoginForm initialEmail={emailParam || undefined} />
+        )}
       </div>
     </div>
-  )
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-full w-full items-center justify-center p-6 md:p-10 overflow-y-auto">
+        <div className="w-full max-w-sm my-auto">
+          <div className="text-center">로딩 중...</div>
+        </div>
+      </div>
+    }>
+      <LoginPageContent />
+    </Suspense>
+  );
 }

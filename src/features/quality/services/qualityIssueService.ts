@@ -91,7 +91,8 @@ export const createQualityIssue = async (
   userProfile?: {
     displayName?: string;
     email?: string;
-  } | null
+  } | null,
+  issueItems?: Array<{ content: string; status: string; createdAt?: string }>
 ): Promise<string> => {
   try {
     // 이미지 파일들을 Firebase Storage에 업로드
@@ -111,13 +112,37 @@ export const createQualityIssue = async (
     // Firestore에 저장할 데이터 준비
     // 모든 이슈에 작성시간 추가
     const currentTime = new Date().toISOString();
-    const issuesWithTimestamp = formData.issues
-      .filter(issue => issue.trim() !== '') // 빈 이슈 제거
-      .map((issue) => ({
-        content: issue.trim(),
-        createdAt: currentTime,
-        status: 'in-progress'
-      }));
+    
+    // issueItems가 있으면 상태 정보 포함하여 생성
+    let issuesWithTimestamp: Array<{ content: string; createdAt: string; status: string }>;
+    if (issueItems && issueItems.length > 0) {
+      // status 매핑 (한국어 -> 영어)
+        const statusMapping: Record<string, string> = {
+          '대기중': 'open',
+          '진행중': 'in-progress',
+          '해결완료': 'resolved',
+        };
+      
+      issuesWithTimestamp = issueItems
+        .filter(item => item.content.trim() !== '')
+        .map((item) => {
+          const englishStatus = statusMapping[item.status] || item.status || 'in-progress';
+          return {
+            content: item.content.trim(),
+            createdAt: item.createdAt || currentTime,
+            status: englishStatus
+          };
+        });
+    } else {
+      // 기존 로직 (호환성 유지)
+      issuesWithTimestamp = formData.issues
+        .filter(issue => issue.trim() !== '') // 빈 이슈 제거
+        .map((issue) => ({
+          content: issue.trim(),
+          createdAt: currentTime,
+          status: 'in-progress'
+        }));
+    }
 
     const qualityIssueData = {
       ...formData,
@@ -240,6 +265,7 @@ export const subscribeToQualityIssues = (
             ...data,
             // Firestore Timestamp를 ISO 문자열로 변환
             createdAt: convertCreatedAt(data.createdAt),
+            updatedAt: data.updatedAt ? convertCreatedAt(data.updatedAt) : undefined,
           } as QualityIssue;
         });
         callback(issues);
@@ -268,6 +294,7 @@ export const getQualityIssue = async (docId: string): Promise<QualityIssue | nul
         id: docSnap.id,
         ...data,
         createdAt: convertCreatedAt(data.createdAt),
+        updatedAt: data.updatedAt ? convertCreatedAt(data.updatedAt) : undefined,
       } as QualityIssue;
     }
     return null;
@@ -369,13 +396,13 @@ export const addIssueItem = async (
     };
 
     const updateData: Record<string, unknown> = {
-      issues: arrayUnion(newIssueObject)
+      issues: arrayUnion(newIssueObject),
+      updatedAt: new Date().toISOString() // 이슈사항 추가 시 항상 수정일 업데이트
     };
 
     // 상태가 제공된 경우 전체 이슈의 상태도 업데이트
     if (newStatus) {
       updateData.status = newStatus;
-      updateData.updatedAt = new Date().toISOString();
     }
 
     await updateDoc(issueRef, updateData);

@@ -10,7 +10,7 @@ export const useQualityIssues = () => {
   const { user } = useAuthStore();
   const [mounted, setMounted] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('진행중');
+  const [statusFilter, setStatusFilter] = useState<string>('');
   
   // Zustand 스토어 사용
   const {
@@ -127,18 +127,23 @@ export const useQualityIssues = () => {
   }, [mounted, user, getCachedIssues, setIssues, setError, setFetching, setLoading]);
 
   // 검색 및 상태 필터링
+  const getCurrentStatus = useCallback((issue: QualityIssue) => {
+    const lastIssue = issue.issues[issue.issues.length - 1];
+    if (lastIssue && typeof lastIssue === 'object' && lastIssue.status) {
+      return lastIssue.status;
+    }
+    return issue.status || '해결완료';
+  }, []);
+
   const filteredIssues = issues
     .filter(issue => {
       // 상태 필터링
       if (statusFilter) {
-        const lastIssue = issue.issues[issue.issues.length - 1];
-        const currentStatus = lastIssue && typeof lastIssue === 'object' && lastIssue.status 
-          ? lastIssue.status 
-          : issue.status || '해결완료';
+        const currentStatus = getCurrentStatus(issue);
         
         const statusMatch = 
           currentStatus === statusFilter ||
-          (statusFilter === '미해결' && currentStatus === 'open') ||
+          (statusFilter === '대기중' && currentStatus === 'open') ||
           (statusFilter === '진행중' && currentStatus === 'in-progress') ||
           (statusFilter === '해결완료' && (currentStatus === 'resolved' || currentStatus === 'closed'));
         
@@ -187,27 +192,47 @@ export const useQualityIssues = () => {
       );
     })
     .sort((a, b) => {
-      // createdAt 기준으로 내림차순 정렬 (최신이 위에)
-      const dateA = new Date(a.createdAt).getTime();
-      const dateB = new Date(b.createdAt).getTime();
+      // 최근 업데이트 날짜 계산 (updatedAt 우선, 없으면 최근 이슈사항 추가일, 없으면 원래 작성일)
+      const getLastUpdatedAt = (issue: QualityIssue) => {
+        // 1순위: updatedAt (전체 이슈의 수정일)
+        if (issue.updatedAt) {
+          return new Date(issue.updatedAt).getTime();
+        }
+        // 2순위: 최근 이슈사항 추가일
+        const lastIssue = issue.issues[issue.issues.length - 1];
+        if (lastIssue && typeof lastIssue === 'object' && lastIssue.createdAt) {
+          return new Date(lastIssue.createdAt).getTime();
+        }
+        // 3순위: 원래 작성일
+        return new Date(issue.createdAt).getTime();
+      };
+      
+      // 최근 업데이트 기준으로 내림차순 정렬 (최신이 위에)
+      const dateA = getLastUpdatedAt(a);
+      const dateB = getLastUpdatedAt(b);
       return dateB - dateA;
     });
 
   // 통계 계산
   const stats = {
     total: issues.length,
-    unresolved: issues.filter(issue => 
-      issue.status === '미해결' || issue.status === 'open'
-    ).length,
-    inProgress: issues.filter(issue => 
-      issue.status === '진행중' || issue.status === 'in-progress'
-    ).length,
-    resolved: issues.filter(issue => 
-      issue.status === '해결완료' || 
-      issue.status === 'resolved' || 
-      issue.status === 'closed' ||
-      !issue.status // undefined 상태도 해결완료로 처리
-    ).length,
+    unresolved: issues.filter(issue => {
+      const currentStatus = getCurrentStatus(issue);
+      return currentStatus === '대기중' || currentStatus === 'open';
+    }).length,
+    inProgress: issues.filter(issue => {
+      const currentStatus = getCurrentStatus(issue);
+      return currentStatus === '진행중' || currentStatus === 'in-progress';
+    }).length,
+    resolved: issues.filter(issue => {
+      const currentStatus = getCurrentStatus(issue);
+      return (
+        currentStatus === '해결완료' ||
+        currentStatus === 'resolved' ||
+        currentStatus === 'closed' ||
+        !currentStatus
+      );
+    }).length,
   };
 
   return {

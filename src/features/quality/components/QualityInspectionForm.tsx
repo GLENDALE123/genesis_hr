@@ -26,6 +26,7 @@ import {
   updateProgressToast, 
   createTimeoutPromise
 } from '@/shared/components/common/ProgressToast';
+import { getLocalDateString } from '@/shared/utils/dateUtils';
 
 // 재시도 로직을 포함한 업로드 함수 (직접 정의)
 const createRetryableUploadPromise = (
@@ -135,6 +136,8 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     specifications: [],
     injectionCompanies: [],
     shippingWaitTypes: [],
+    injectionPackagings: [],
+    postProcessPackagings: [],
     lastUpdated: ''
   });
   
@@ -182,6 +185,9 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
 
     // 생성 모드이고 initialData가 있는 경우 (추가입력)
     if (isCreateMode && initialData) {
+      // initialData에서 검사일시를 제외 (항상 오늘 날짜 사용)
+      const { inspectionDate, ...initialDataWithoutDate } = initialData;
+      
       return {
         // 기본값 먼저 설정
         orderNumber: 'T',
@@ -195,7 +201,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
         postProcess: '',
         injectionCompany: '',
         inspector: defaultInspectorName,
-        inspectionDate: new Date().toISOString().split('T')[0],
+        inspectionDate: getLocalDateString(), // 항상 오늘 날짜 사용
         imageUrls: [] as string[],
         
         // 수입검사 필드
@@ -229,8 +235,8 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
         reinspectionKeyword: '',
         reinspectionContent: '',
         
-        // initialData로 덮어쓰기
-        ...initialData,
+        // initialData로 덮어쓰기 (검사일시 제외)
+        ...initialDataWithoutDate,
         // 중요한 기본값들은 보호 - initialData에 값이 없으면 기본값 사용
         reliabilityTestResult: initialData.reliabilityTestResult || { result: '양호', action: '', decisionMaker: '' } as TestResultDetail,
         colorCheckResult: initialData.colorCheckResult || { result: '견본과 색상동일', action: '', decisionMaker: '' } as TestResultDetail,
@@ -251,7 +257,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     postProcess: '',
     injectionCompany: '',
       inspector: defaultInspectorName,
-    inspectionDate: new Date().toISOString().split('T')[0],
+    inspectionDate: getLocalDateString(),
     imageUrls: [] as string[],
     
     // 수입검사 필드
@@ -314,55 +320,6 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     }
   }, [isEditMode, inspectionData]);
 
-
-  // 임시저장 키 생성 (useRef로 안정화)
-  const tempSaveKeyRef = useRef(`temp_${activeTab}_inspection_anonymous`);
-  
-  // activeTab이 변경될 때만 키 업데이트
-  useEffect(() => {
-    tempSaveKeyRef.current = `temp_${activeTab}_inspection_anonymous`;
-  }, [activeTab]);
-  
-  // 임시저장 데이터 저장 (이미지 URL 제외)
-  const saveTempData = useCallback((data: Record<string, unknown>) => {
-    try {
-      // 이미지 URL과 관련된 필드들을 제외하고 저장
-      const { imageUrls, ...dataWithoutImages } = data;
-      localStorage.setItem(tempSaveKeyRef.current, JSON.stringify(dataWithoutImages));
-    } catch (error) {
-      console.error('임시저장 데이터 저장 실패:', error);
-    }
-  }, []);
-  
-  // 임시저장 데이터 삭제
-  const clearTempData = useCallback(() => {
-    try {
-      localStorage.removeItem(tempSaveKeyRef.current);
-    } catch (error) {
-      console.error('임시저장 데이터 삭제 실패:', error);
-    }
-  }, []);
-
-  // 임시저장 데이터 로드 (안정화된 함수)
-  const loadTempData = useCallback(() => {
-    try {
-      const savedData = localStorage.getItem(tempSaveKeyRef.current);
-      if (savedData) {
-        const parsedData = JSON.parse(savedData);
-        return parsedData;
-      }
-    } catch (error) {
-      console.error('임시저장 데이터 로드 실패:', error);
-    }
-    return null;
-  }, []);
-
-  // 자동 임시저장을 위한 디바운스 타이머
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  
-  // 이전 formData를 추적하여 실제 변경이 있을 때만 임시저장
-  const prevFormDataRef = useRef<Partial<QualityInspection> | undefined>(undefined);
-  
   // autocompleteData 구독
   useEffect(() => {
     const unsubscribe = subscribeToAutocompleteData((data) => {
@@ -375,6 +332,8 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
           specifications: data.specifications || [],
           injectionCompanies: data.injectionCompanies || [],
           shippingWaitTypes: data.shippingWaitTypes || [],
+          injectionPackagings: data.injectionPackagings || [],
+          postProcessPackagings: data.postProcessPackagings || [],
           lastUpdated: data.lastUpdated || ''
         });
       } else {
@@ -387,6 +346,8 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
           specifications: [],
           injectionCompanies: [],
           shippingWaitTypes: [],
+          injectionPackagings: [],
+          postProcessPackagings: [],
           lastUpdated: ''
         });
       }
@@ -394,38 +355,59 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
 
     return () => unsubscribe();
   }, []);
-  
-  // formData 변경시 자동 임시저장 (생성 모드에서만)
-  useEffect(() => {
-    // 수정 모드에서는 임시저장하지 않음
-    if (mode === 'edit') return;
-    
-    // 초기 로드 시에는 임시저장하지 않음 (무한 루프 방지)
-    if (!isOpen) return;
-    
-    // 이전 데이터와 비교하여 실제 변경이 있는지 확인
-    const prevData = prevFormDataRef.current;
-    if (prevData && JSON.stringify(prevData) === JSON.stringify(formData)) {
-      return; // 변경사항이 없으면 임시저장하지 않음
-    }
-    
-    // 현재 데이터를 이전 데이터로 저장
-    prevFormDataRef.current = { ...formData };
-    
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-    
-    saveTimeoutRef.current = setTimeout(() => {
-      saveTempData(formData);
-    }, 1000); // 1초 후 저장
-    
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
+
+  // 기본 폼 데이터 생성 함수
+  const getDefaultFormData = useCallback((): Partial<QualityInspection> => {
+    return {
+      // 공통 필드
+      orderNumber: 'T',
+      supplier: '',
+      productName: '',
+      partName: '',
+      orderQuantity: '',
+      injectionMaterial: '',
+      injectionColor: '',
+      specification: '',
+      postProcess: '',
+      injectionCompany: '',
+      inspector: defaultInspectorName,
+      inspectionDate: getLocalDateString(),
+      imageUrls: [] as string[],
+      
+      // 수입검사 필드
+      packagingInfo: '',
+      appearanceHistory: '',
+      functionHistory: '',
+      result: '합격' as InspectionResult,
+      resultReason: '',
+      finalConsultationDept: '',
+      finalConsultationName: '',
+      finalConsultationRank: '',
+      
+      // 공정검사 필드
+      jigUsed1: '',
+      jigUsed2: '',
+      internalJigLower: '',
+      internalJigUpper: '',
+      dryerUsed: '미사용' as '사용' | '미사용' | '',
+      flameTreatment: '미사용' as '사용' | '미사용' | '',
+      processLines: [{ workLine: '', lineSpeed: '', lineConditions: [{ type: '하도' as const, value: 0 }, { type: '상도' as const, value: 0 }], lampUsage: [] }] as ProcessLineData[],
+      reliabilityTestResult: { result: '양호', action: '', decisionMaker: '' } as TestResultDetail,
+      colorCheckResult: { result: '견본과 색상동일', action: '', decisionMaker: '' } as TestResultDetail,
+      injectionPackaging: '',
+      postProcessPackaging: '',
+      preInspectionHistory: '',
+      inProcessInspectionHistory: '',
+      keywordPairs: [{ process: '', defect: '' }] as KeywordPair[],
+      
+      // 출하검사 필드
+      workerCount: '1',
+      workers: [{ name: '', totalInspected: 0, defectQuantity: 0, result: '합격' as '합격' | '불합격', defectReasons: [], directInputResult: '', action: '', decisionMaker: '' }] as WorkerInspectionData[],
+      reliabilityReview: { method: '' as ReliabilityReview['method'], result: '양호' as ReliabilityReview['result'], action: '', decisionMaker: '' } as ReliabilityReview,
+      reinspectionKeyword: '',
+      reinspectionContent: ''
     };
-  }, [formData, saveTempData, mode, isOpen]);
+  }, [defaultInspectorName]);
 
   // 모달이 열릴 때 기본 초기화
   useEffect(() => {
@@ -433,9 +415,6 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       // 모달이 열릴 때 기본 초기화
       setIsSaving(false);
       imagesInitializedRef.current = false;
-      
-      // 이전 formData 추적 초기화
-      prevFormDataRef.current = undefined;
       
       // 수정 모드가 아닌 경우에만 이미지 초기화
       if (mode !== 'edit') {
@@ -449,34 +428,25 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
         imageUploadHook.cancelUpload();
       }
       
-      // 수정 모드가 아닌 경우에만 탭 설정 및 임시저장 데이터 로드
+      // 수정 모드가 아닌 경우에만 탭 설정 및 폼 초기화
       if (mode !== 'edit') {
         if (initialTab) {
           setActiveTab(initialTab);
         }
         
-        // 생성 모드에서만 임시저장 데이터 로드 (initialData가 없는 경우에만)
+        // 생성 모드에서 모달이 다시 열릴 때 폼 데이터 초기화 (initialData가 없는 경우에만)
         if (mode === 'create' && !initialData) {
-          // 약간의 지연을 두어 초기화가 완료된 후 로드
-          const loadTimer = setTimeout(() => {
-            const tempData = loadTempData();
-            if (tempData) {
-              setFormData(prev => {
-                const restoredData = {
-                  ...prev,
-                  ...tempData,
-                  // 중요한 기본값들은 보호
-                  reliabilityTestResult: tempData.reliabilityTestResult || { result: '양호', action: '', decisionMaker: '' } as TestResultDetail,
-                  colorCheckResult: tempData.colorCheckResult || { result: '견본과 색상동일', action: '', decisionMaker: '' } as TestResultDetail,
-                };
-                // 복원된 데이터를 이전 데이터로 설정하여 즉시 임시저장되지 않도록 함
-                prevFormDataRef.current = { ...restoredData };
-                return restoredData;
-              });
-            }
-          }, 100); // 100ms 지연
-          
-          return () => clearTimeout(loadTimer);
+          const defaultData = getDefaultFormData();
+          setFormData(defaultData);
+        }
+        
+        // 생성 모드인 경우 검사일시를 항상 오늘 날짜로 업데이트
+        if (mode === 'create') {
+          const today = getLocalDateString();
+          setFormData((prev) => ({
+            ...prev,
+            inspectionDate: today
+          }));
         }
       }
     }
@@ -487,7 +457,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
         toast.dismiss('image-upload-progress');
       }
     };
-  }, [isOpen, mode, initialTab, loadTempData, initialData]);
+  }, [isOpen, mode, initialTab, initialData, getDefaultFormData]);
 
 
 
@@ -666,7 +636,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
         postProcess: formData.postProcess || '',
         injectionCompany: formData.injectionCompany || '',
         inspector: formData.inspector || defaultInspectorName,
-        inspectionDate: formData.inspectionDate || new Date().toISOString().split('T')[0],
+        inspectionDate: formData.inspectionDate || getLocalDateString(),
         imageUrls: [], // 먼저 빈 배열로 생성
         
         // 수입검사 필드
@@ -787,10 +757,11 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
         partName: formData.partName,
         injectionColor: formData.injectionColor,
         specification: formData.specification,
-        injectionCompany: formData.injectionCompany
+        injectionCompany: formData.injectionCompany,
+        injectionPackaging: formData.injectionPackaging,
+        postProcessPackaging: formData.postProcessPackaging,
+        packagingInfo: formData.packagingInfo
       });
-      
-      clearTempData();
       
       toast.success('등록 완료');
       
@@ -816,68 +787,9 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     setTimeout(() => {
       toast.dismiss('image-upload-progress');
     }, 100);
-    
-    // 폼 데이터 초기화
-    setFormData({
-      orderNumber: 'T',
-      supplier: '',
-      productName: '',
-      partName: '',
-      orderQuantity: '',
-      injectionMaterial: '',
-      injectionColor: '',
-      specification: '',
-      postProcess: '',
-      injectionCompany: '',
-      inspector: '',
-      inspectionDate: new Date().toISOString().split('T')[0],
-      imageUrls: [],
-      packagingInfo: '',
-      appearanceHistory: '',
-      functionHistory: '',
-      result: '합격' as InspectionResult,
-      resultReason: '',
-      finalConsultationDept: '',
-      finalConsultationName: '',
-      finalConsultationRank: '',
-      jigUsed1: '',
-      jigUsed2: '',
-      internalJigLower: '',
-      internalJigUpper: '',
-      dryerUsed: '미사용' as '사용' | '미사용' | '',
-      flameTreatment: '미사용' as '사용' | '미사용' | '',
-      processLines: [{ workLine: '', lineSpeed: '', lineConditions: [{ type: '하도' as const, value: 0 }, { type: '상도' as const, value: 0 }], lampUsage: [] }],
-      reliabilityTestResult: { result: '양호', action: '', decisionMaker: '' },
-      colorCheckResult: { result: '견본과 색상동일', action: '', decisionMaker: '' },
-      injectionPackaging: '',
-      postProcessPackaging: '',
-      preInspectionHistory: '',
-      inProcessInspectionHistory: '',
-      keywordPairs: [{ process: '', defect: '' }],
-      workerCount: '1',
-      workers: [{ name: '', totalInspected: 0, defectQuantity: 0, result: '합격' as '합격' | '불합격', defectReasons: [], directInputResult: '', action: '', decisionMaker: '' }],
-      reliabilityReview: { method: '' as ReliabilityReview['method'], result: '양호' as ReliabilityReview['result'], action: '', decisionMaker: '' },
-      reinspectionKeyword: '',
-      reinspectionContent: ''
-    });
-    
-    // 이미지 상태 완전 정리 (업로드 진행 상태 포함)
-    imageUploadHook.clearImages();
-    imageUploadHook.clearDeletedUrls();
-    
-    // 업로드 진행 상태 강제 초기화 (추가 안전장치)
-    if (imageUploadHook.isUploading) {
-      imageUploadHook.cancelUpload();
-    }
-    
-    // 임시저장 데이터 삭제
-    clearTempData();
-    
-    // 모달 닫기
+
     onClose();
   };
-
-
   const renderFormFields = () => {
     const specificFields = () => {
       switch (activeTab) {

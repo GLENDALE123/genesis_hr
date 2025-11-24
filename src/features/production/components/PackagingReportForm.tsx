@@ -380,7 +380,8 @@ export const PackagingReportForm: React.FC<PackagingReportFormProps> = ({
               />
               
               <Select
-                value={box.type}
+                key={`box-type-${index}-${box.type || 'empty'}`}
+                value={box.type || undefined}
                 onValueChange={(value) => handleBoxChange(index, 'type', value)}
               >
                 <SelectTrigger className="w-full">

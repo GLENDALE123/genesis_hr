@@ -147,5 +147,97 @@ export const formatDateRangeKorean = (startDate: Date | string, endDate: Date | 
   return `${startFormatted}~${endFormatted}`;
 };
 
+// ============================================================================
+// 한국 시간대 (Asia/Seoul) 관련 유틸리티
+// ============================================================================
+
+/**
+ * 한국 시간대(Asia/Seoul)의 현재 시간을 반환
+ * 
+ * @returns 한국 시간대의 Date 객체
+ * 
+ * @example
+ * const koreaTime = getKoreaTime();
+ */
+export const getKoreaTime = (): Date => {
+  const now = new Date();
+  // 한국 시간대의 현재 시간을 문자열로 얻어서 다시 Date 객체로 변환
+  const koreaTimeString = now.toLocaleString('en-US', { timeZone: 'Asia/Seoul' });
+  return new Date(koreaTimeString);
+};
+
+/**
+ * 한국 시간대(Asia/Seoul)의 날짜 문자열 반환 (YYYY-MM-DD 형식)
+ * 
+ * @param date - Date 객체 (기본값: 현재 시간)
+ * @returns 한국 시간대 기준 날짜 문자열
+ * 
+ * @example
+ * const koreaDate = getKoreaDateString();
+ * // => "2024-01-01"
+ */
+export const getKoreaDateString = (date: Date = new Date()): string => {
+  // 한국 시간대의 날짜 정보 추출
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  return formatter.format(date);
+};
+
+/**
+ * 한국 시간대(Asia/Seoul)의 시간 정보 반환
+ * 
+ * @param date - Date 객체 (기본값: 현재 시간)
+ * @returns 한국 시간대의 시간 정보 (년, 월, 일, 시, 분, 초)
+ * 
+ * @example
+ * const { year, month, day, hours, minutes, seconds } = getKoreaTimeInfo();
+ */
+export const getKoreaTimeInfo = (date: Date = new Date()) => {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+
+  const parts = formatter.formatToParts(date);
+  const partMap: Record<string, string> = {};
+  parts.forEach(part => {
+    partMap[part.type] = part.value;
+  });
+
+  return {
+    year: parseInt(partMap.year || '0'),
+    month: parseInt(partMap.month || '0'),
+    day: parseInt(partMap.day || '0'),
+    hours: parseInt(partMap.hour || '0'),
+    minutes: parseInt(partMap.minute || '0'),
+    seconds: parseInt(partMap.second || '0'),
+  };
+};
+
+/**
+ * 한국 시간대(Asia/Seoul)의 날짜 객체 반환 (시간은 00:00:00)
+ * 
+ * @param date - Date 객체 (기본값: 현재 시간)
+ * @returns 한국 시간대 기준 날짜 객체
+ * 
+ * @example
+ * const koreaDate = getKoreaDate();
+ */
+export const getKoreaDate = (date: Date = new Date()): Date => {
+  const timeInfo = getKoreaTimeInfo(date);
+  // 한국 시간대의 날짜를 UTC Date 객체로 생성
+  return new Date(Date.UTC(timeInfo.year, timeInfo.month - 1, timeInfo.day));
+};
+
 
 

@@ -308,6 +308,10 @@ export const InspectionCard: React.FC<InspectionCardProps> = memo(({
                       {inspection.workers.map((worker, idx) => (
                         <div key={idx} className="p-3 bg-muted rounded-md text-xs space-y-1">
                           <p><strong>작업자:</strong> {worker.name}</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <p><strong>총 검사 수량:</strong> {worker.totalInspected ? worker.totalInspected.toLocaleString() : '0'} ea</p>
+                            <p><strong>불량 수량:</strong> {worker.defectQuantity ? worker.defectQuantity.toLocaleString() : '0'} ea</p>
+                          </div>
                           <div className="flex items-center gap-2">
                             <strong>결과:</strong>
                             <Badge 
@@ -321,6 +325,18 @@ export const InspectionCard: React.FC<InspectionCardProps> = memo(({
                           </div>
                           {worker.defectReasons && worker.defectReasons.length > 0 && (
                             <p><strong>불량 사유:</strong> {worker.defectReasons.join(', ')}</p>
+                          )}
+                          {worker.result === '불합격' && worker.action && (
+                            <p><strong>처리:</strong> {worker.action}</p>
+                          )}
+                          {worker.result === '불합격' && worker.decisionMaker && (
+                            <p><strong>결정자:</strong> {worker.decisionMaker}</p>
+                          )}
+                          {worker.directInputResult && (
+                            <div className="mt-2 pt-2 border-t">
+                              <p><strong>직접 입력 결과:</strong></p>
+                              <p className="mt-1 whitespace-pre-wrap">{worker.directInputResult}</p>
+                            </div>
                           )}
                         </div>
                       ))}
@@ -616,6 +632,10 @@ export const InspectionCard: React.FC<InspectionCardProps> = memo(({
                         {inspection.workers.map((worker, idx) => (
                           <div key={idx} className="p-3 bg-muted rounded-md text-xs space-y-1">
                             <p><strong>작업자:</strong> {worker.name}</p>
+                            <div className="grid grid-cols-2 gap-2">
+                              <p><strong>총 검사 수량:</strong> {worker.totalInspected ? worker.totalInspected.toLocaleString() : '0'} ea</p>
+                              <p><strong>불량 수량:</strong> {worker.defectQuantity ? worker.defectQuantity.toLocaleString() : '0'} ea</p>
+                            </div>
                             <div className="flex items-center gap-2">
                               <strong>결과:</strong>
                               <Badge 
@@ -629,6 +649,18 @@ export const InspectionCard: React.FC<InspectionCardProps> = memo(({
                             </div>
                             {worker.defectReasons && worker.defectReasons.length > 0 && (
                               <p><strong>불량 사유:</strong> {worker.defectReasons.join(', ')}</p>
+                            )}
+                            {worker.result === '불합격' && worker.action && (
+                              <p><strong>처리:</strong> {worker.action}</p>
+                            )}
+                            {worker.result === '불합격' && worker.decisionMaker && (
+                              <p><strong>결정자:</strong> {worker.decisionMaker}</p>
+                            )}
+                            {worker.directInputResult && (
+                              <div className="mt-2 pt-2 border-t">
+                                <p><strong>직접 입력 결과:</strong></p>
+                                <p className="mt-1 whitespace-pre-wrap">{worker.directInputResult}</p>
+                              </div>
                             )}
                           </div>
                         ))}

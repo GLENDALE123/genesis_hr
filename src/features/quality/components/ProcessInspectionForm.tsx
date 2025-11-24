@@ -474,19 +474,21 @@ export const ProcessInspectionForm: React.FC<ProcessInspectionFormProps> = ({
 
           <div className="space-y-2">
             <Label>사출포장</Label>
-            <Input
-              value={formData.packagingInfo || ''}
-              onChange={(e) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, packagingInfo: e.target.value }))}
-              placeholder="사출포장 정보를 입력하세요"
+            <InputSelect
+              value={formData.injectionPackaging || ''}
+              onChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, injectionPackaging: value }))}
+              options={autocompleteData.injectionPackagings || []}
+              placeholder="사출포장 정보를 입력하거나 선택하세요"
             />
           </div>
 
           <div className="space-y-2">
             <Label>후가공포장</Label>
-            <Input
+            <InputSelect
               value={formData.postProcessPackaging || ''}
-              onChange={(e) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, postProcessPackaging: e.target.value }))}
-              placeholder="후가공포장 정보를 입력하세요"
+              onChange={(value) => setFormData((prev: Partial<QualityInspection>) => ({ ...prev, postProcessPackaging: value }))}
+              options={autocompleteData.postProcessPackagings || []}
+              placeholder="후가공포장 정보를 입력하거나 선택하세요"
             />
           </div>
         </div>

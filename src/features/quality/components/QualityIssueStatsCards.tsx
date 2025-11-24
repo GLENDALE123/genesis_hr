@@ -102,31 +102,31 @@ export const QualityIssueStatsCards: React.FC<QualityIssueStatsCardsProps> = ({ 
          </CardContent>
       </Card>
       
-      {/* 미해결 */}
+      {/* 대기중 */}
       <Card 
-        className={onFilterByStatus ? `cursor-pointer xl:hover:bg-muted/50 transition-colors ${currentFilter === '미해결' ? 'ring-2 ring-red-500 bg-red-50/50 dark:bg-red-950/20' : ''}` : ""}
-        onClick={() => onFilterByStatus?.('미해결')}
+        className={onFilterByStatus ? `cursor-pointer xl:hover:bg-muted/50 transition-colors ${currentFilter === '대기중' ? 'ring-2 ring-gray-500 bg-gray-50/50 dark:bg-gray-950/20' : ''}` : ""}
+        onClick={() => onFilterByStatus?.('대기중')}
       >
          <CardContent className="p-3 md:p-6">
            {/* 모바일 레이아웃 */}
            <div className="flex flex-col items-center text-center md:hidden">
              <div className="flex items-center gap-1 mb-2">
-               <p className="text-xs font-medium text-muted-foreground whitespace-nowrap">미해결</p>
-               <div className="h-3 w-3 rounded-full bg-red-100 flex items-center justify-center">
-                 <AlertCircle className="h-2 w-2 text-red-600" />
+               <p className="text-xs font-medium text-muted-foreground whitespace-nowrap">대기중</p>
+               <div className="h-3 w-3 rounded-full bg-gray-100 flex items-center justify-center">
+                 <AlertCircle className="h-2 w-2 text-gray-600" />
                </div>
              </div>
-             <p className="text-lg font-bold text-red-600">{stats.unresolved}</p>
+             <p className="text-lg font-bold text-gray-600">{stats.unresolved}</p>
            </div>
            
            {/* 데스크톱 레이아웃 */}
            <div className="hidden md:flex items-center justify-between">
              <div>
-               <p className="text-sm font-medium text-muted-foreground">미해결</p>
-               <p className="text-2xl font-bold text-red-600">{stats.unresolved}</p>
+               <p className="text-sm font-medium text-muted-foreground">대기중</p>
+               <p className="text-2xl font-bold text-gray-600">{stats.unresolved}</p>
              </div>
-             <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center">
-               <AlertCircle className="h-4 w-4 text-red-600" />
+             <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
+               <AlertCircle className="h-4 w-4 text-gray-600" />
              </div>
            </div>
          </CardContent>
