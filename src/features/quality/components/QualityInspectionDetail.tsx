@@ -192,12 +192,12 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
     summary: historySummary,
     isLoading: isHistoryLoading,
     isAnalyzing: isHistoryAnalyzing
-  } = useInspectionHistory(
-    currentGroup?.common.supplier || '',
-    currentGroup?.common.productName || '',
-    currentGroup?.common.partName || '',
-    isOpen && !!currentGroup // 모달이 열려있고 그룹이 있을 때만 활성화
-  );
+  } = useInspectionHistory({
+    supplier: currentGroup?.common.supplier || '',
+    productName: currentGroup?.common.productName || '',
+    partName: currentGroup?.common.partName || '',
+    enabled: isOpen && !!currentGroup // 모달이 열려있고 그룹이 있을 때만 활성화
+  });
 
   // 모달이 열릴 때마다 최신 검사 상태 초기화
   useEffect(() => {
@@ -422,8 +422,91 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
                     출하검사 데이터가 없습니다
                   </div>
                 )}
-              </TabsContent>
-            </div>
+                  </TabsContent>
+                </div>
+              </div>
+            ) : (
+              /* 모바일: 기존 레이아웃 유지 */
+              <div className="flex-1 overflow-auto mt-2">
+                <TabsContent value="incoming" className="mt-0">
+                  {tabData.incoming.length > 0 ? (
+                    <div className="space-y-4">
+                      {tabData.incoming.map((inspection, index) => (
+                        <InspectionCard
+                          key={inspection.id}
+                          inspection={inspection}
+                          index={index}
+                          totalCount={tabData.incoming.length}
+                          isCollapsed={collapsedInspections[inspection.id] ?? (index !== 0)}
+                          onToggle={toggleInspection}
+                          onEdit={onEditInspection}
+                          onDelete={onDeleteInspection}
+                          canEdit={canEdit}
+                          canDelete={canDelete}
+                          formatDate={formatDate}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 text-muted-foreground">
+                      수입검사 데이터가 없습니다
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="inProcess" className="mt-0">
+                  {tabData.inProcess.length > 0 ? (
+                    <div className="space-y-4">
+                      {tabData.inProcess.map((inspection, index) => (
+                        <InspectionCard
+                          key={inspection.id}
+                          inspection={inspection}
+                          index={index}
+                          totalCount={tabData.inProcess.length}
+                          isCollapsed={collapsedInspections[inspection.id] ?? (index !== 0)}
+                          onToggle={toggleInspection}
+                          onEdit={onEditInspection}
+                          onDelete={onDeleteInspection}
+                          canEdit={canEdit}
+                          canDelete={canDelete}
+                          formatDate={formatDate}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 text-muted-foreground">
+                      공정검사 데이터가 없습니다
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="outgoing" className="mt-0">
+                  {tabData.outgoing.length > 0 ? (
+                    <div className="space-y-4">
+                      {tabData.outgoing.map((inspection, index) => (
+                        <InspectionCard
+                          key={inspection.id}
+                          inspection={inspection}
+                          index={index}
+                          totalCount={tabData.outgoing.length}
+                          isCollapsed={collapsedInspections[inspection.id] ?? (index !== 0)}
+                          onToggle={toggleInspection}
+                          onEdit={onEditInspection}
+                          onDelete={onDeleteInspection}
+                          canEdit={canEdit}
+                          canDelete={canDelete}
+                          formatDate={formatDate}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 text-muted-foreground">
+                      출하검사 데이터가 없습니다
+                    </div>
+                  )}
+                </TabsContent>
+              </div>
+            )}
           </Tabs>
         </DialogContent>
       </Dialog>
