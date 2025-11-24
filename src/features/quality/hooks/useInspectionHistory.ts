@@ -8,6 +8,7 @@ interface UseInspectionHistoryParams {
   supplier?: string;
   productName?: string;
   partName?: string;
+  orderNumber?: string; // 발주번호 (묶음 검사 포함 조회용)
   enabled?: boolean; // 조회 활성화 여부
 }
 
@@ -26,6 +27,7 @@ export function useInspectionHistory({
   supplier,
   productName,
   partName,
+  orderNumber,
   enabled = true,
 }: UseInspectionHistoryParams): UseInspectionHistoryReturn {
   const [inspections, setInspections] = useState<QualityInspection[]>([]);
@@ -38,6 +40,7 @@ export function useInspectionHistory({
   const [debouncedSupplier] = useDebounce(supplier, 500);
   const [debouncedProductName] = useDebounce(productName, 500);
   const [debouncedPartName] = useDebounce(partName, 500);
+  const [debouncedOrderNumber] = useDebounce(orderNumber, 500);
 
   // 이력 조회
   useEffect(() => {
@@ -67,7 +70,31 @@ export function useInspectionHistory({
       debouncedProductName,
       debouncedPartName,
       (data) => {
-        setInspections(data);
+        // 발주번호가 주어진 경우, 발주번호가 포함된 검사들 필터링
+        let filteredData = data;
+        
+        if (debouncedOrderNumber && debouncedOrderNumber.trim()) {
+          const targetOrderNumber = debouncedOrderNumber.trim();
+          
+          filteredData = data.filter((inspection) => {
+            // 1. 정확히 일치하는 경우 (개별 작성)
+            if (inspection.orderNumber === targetOrderNumber) {
+              return true;
+            }
+            
+            // 2. orderNumber에 발주번호가 포함된 경우 (묶음 작성)
+            // 예: "T10955-1, T10956-1" 같은 형식
+            if (inspection.orderNumber && inspection.orderNumber.includes(targetOrderNumber)) {
+              // 쉼표나 공백으로 구분된 발주번호 목록에서 확인
+              const orderNumbers = inspection.orderNumber.split(/[,\s]+/).map(s => s.trim());
+              return orderNumbers.includes(targetOrderNumber);
+            }
+            
+            return false;
+          });
+        }
+        
+        setInspections(filteredData);
         setIsLoading(false);
       },
       (err) => {
@@ -80,7 +107,7 @@ export function useInspectionHistory({
     return () => {
       unsubscribe();
     };
-  }, [enabled, debouncedSupplier, debouncedProductName, debouncedPartName]);
+  }, [enabled, debouncedSupplier, debouncedProductName, debouncedPartName, debouncedOrderNumber]);
 
   // Gemini API 분석 (이력 조회 후 1초 추가 지연)
   useEffect(() => {

@@ -41,6 +41,10 @@ export interface InspectionSummary {
   summary: string;
   warnings: string[];
   checklist: string[];
+  defectStats?: {
+    defectTypes: Array<{ name: string; count: number }>;
+    defectRates: Array<{ type: string; rate: number; failed: number; total: number }>;
+  };
 }
 
 /**
@@ -161,6 +165,9 @@ export async function analyzeInspectionHistory(
 8. **위치 정보 포함** (예: "내측 가스", "윗면 수축", "하단부 수축").
 9. **비교 정보 포함** (예: "기존대비 빨려보임", "기존대비 진해보임").
 10. **조치사항 포함** (예: "에어불어주기", "군포사출방 공유완료").
+11. **defectStats 필수 포함**: 
+    - defectTypes: 불량유형별 발생 건수 (상위 10개, name은 "공정-불량" 형식)
+    - defectRates: 검사 타입별(수입/공정/출하) 불량률 계산 (rate는 백분율, failed는 불합격 건수, total은 전체 건수)
 
 JSON 응답 예시 (이 형식을 따를 것):
 {
@@ -176,7 +183,19 @@ JSON 응답 예시 (이 형식을 따를 것):
     "윗면·하단부 수축 기존대비 변화 추적",
     "게이트플로우마크 기존대비 진함 확인",
     "에어불어주기 작업 철저히 수행"
-  ]
+  ],
+  "defectStats": {
+    "defectTypes": [
+      { "name": "사출-가스/일자웰드", "count": 3 },
+      { "name": "사출-웰드형상", "count": 2 },
+      { "name": "사출-흑점", "count": 1 }
+    ],
+    "defectRates": [
+      { "type": "수입검사", "rate": 15, "failed": 3, "total": 20 },
+      { "type": "공정검사", "rate": 8, "failed": 2, "total": 25 },
+      { "type": "출하검사", "rate": 5, "failed": 1, "total": 20 }
+    ]
+  }
 }`;
 
     // 타임아웃 설정 (10초로 단축 - 빠른 응답 유도)

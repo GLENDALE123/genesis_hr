@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect, memo } from 'react';
+import React, { useState, useMemo, useEffect, useRef, memo } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { Badge } from '@/shared/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
@@ -27,6 +27,8 @@ interface QualityInspectionDetailProps {
   onCreateInspection?: (inspection: Omit<QualityInspection, 'id' | 'createdAt' | 'updatedAt'>) => Promise<string>;
   // 강제 리렌더링용
   refreshTrigger?: number;
+  // 다른 발주번호의 그룹 열기
+  onOpenGroupByOrderNumber?: (orderNumber: string, inspectionType?: 'incoming' | 'inProcess' | 'outgoing') => void;
 }
 
 /**
@@ -43,7 +45,8 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
   onEditInspection,
   onDeleteInspection,
   onCreateInspection,
-  refreshTrigger
+  refreshTrigger,
+  onOpenGroupByOrderNumber
 }) => {
   const { user, userProfile } = useAuthStore();
   const { isSmartphone } = useDeviceType();
@@ -54,6 +57,9 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
   
   // 추가입력 모달 상태
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  
+  // 검사 카드 ref 저장 (스크롤용)
+  const inspectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   // 실시간 구독으로 최신 데이터 가져오기
   const { filteredGroupedInspections } = useQualityInspections({
@@ -166,6 +172,40 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
     }));
   };
 
+  // 검사 클릭 핸들러 (요약에서 검사 클릭 시)
+  const handleInspectionClick = (inspection: QualityInspection) => {
+    // 발주번호가 다른 경우 다른 모달 열기
+    if (currentGroup && inspection.orderNumber !== currentGroup.orderNumber) {
+      if (onOpenGroupByOrderNumber) {
+        onOpenGroupByOrderNumber(inspection.orderNumber, inspection.inspectionType);
+      }
+      return;
+    }
+    
+    // 같은 발주번호인 경우 현재 모달에서 이동
+    // 1. 해당 검사의 타입에 맞는 탭으로 전환
+    setActiveTab(inspection.inspectionType);
+    
+    // 2. 해당 검사 카드를 펼침
+    setCollapsedInspections(prev => ({
+      ...prev,
+      [inspection.id]: false
+    }));
+    
+    // 3. 약간의 지연 후 스크롤 (탭 전환 및 상태 업데이트 대기)
+    setTimeout(() => {
+      const element = inspectionRefs.current[inspection.id];
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // 하이라이트 효과
+        element.classList.add('ring-2', 'ring-primary', 'ring-offset-2');
+        setTimeout(() => {
+          element.classList.remove('ring-2', 'ring-primary', 'ring-offset-2');
+        }, 2000);
+      }
+    }, 150);
+  };
+
 
   // 검사 데이터를 최신순으로 정렬하는 함수 (최신 것이 먼저)
   const sortInspectionsByDate = (inspections: QualityInspection[]) => {
@@ -186,7 +226,7 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
     };
   }, [currentGroup]);
 
-  // AI 이력 분석 훅 (발주처, 제품명, 부속명 기반)
+  // AI 이력 분석 훅 (발주처, 제품명, 부속명, 발주번호 기반)
   const {
     inspections: historyInspections,
     summary: historySummary,
@@ -196,6 +236,7 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
     supplier: currentGroup?.common.supplier || '',
     productName: currentGroup?.common.productName || '',
     partName: currentGroup?.common.partName || '',
+    orderNumber: currentGroup?.orderNumber || '', // 발주번호 추가 (묶음 검사 포함 조회)
     enabled: isOpen && !!currentGroup // 모달이 열려있고 그룹이 있을 때만 활성화
   });
 
@@ -257,7 +298,7 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent 
-          className={isSmartphone ? "overflow-hidden flex flex-col" : "w-[90vw] max-w-7xl h-[90vh] overflow-hidden flex flex-col"}
+          className={isSmartphone ? "overflow-hidden flex flex-col" : "w-[95vw] max-w-[1600px] h-[90vh] overflow-hidden flex flex-col"}
           stickyHeader={
             <DialogHeader>
               <DialogTitle className="flex items-center justify-between">
@@ -282,10 +323,171 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
               <DialogDescription className="text-sm text-muted-foreground mt-2">
                 발주처: {currentGroup?.common.supplier} | 부속명: {currentGroup?.common.partName}
               </DialogDescription>
+            </DialogHeader>
+          }
+        >
+          {/* 접근성을 위한 숨겨진 제목과 설명 */}
+          <DialogTitle className="sr-only">
+            {currentGroup?.common.productName} ({currentGroup?.common.orderNumber}) 품질검사 상세
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            발주처: {currentGroup?.common.supplier}, 부속명: {currentGroup?.common.partName}의 품질검사 상세 정보를 확인할 수 있습니다.
+          </DialogDescription>
+
+          {/* 데스크톱: 1:4 분할 레이아웃 (좌측: AI 분석, 우측: 검사 목록) */}
+          {!isSmartphone ? (
+            <div className="flex h-full gap-4">
+              {/* 좌측: AI 이력 분석 (25%) */}
+              <div className="w-1/4 border-r pr-4 overflow-y-auto">
+                <InspectionHistorySummary
+                  inspections={historyInspections}
+                  summary={historySummary}
+                  isLoading={isHistoryLoading}
+                  isAnalyzing={isHistoryAnalyzing}
+                  supplier={currentGroup?.common.supplier}
+                  productName={currentGroup?.common.productName}
+                  partName={currentGroup?.common.partName}
+                  onInspectionClick={handleInspectionClick}
+                />
+              </div>
               
-              {/* 탭 네비게이션 */}
-              <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'incoming' | 'inProcess' | 'outgoing')} className="mt-4">
-                <TabsList className="grid w-full grid-cols-3">
+              {/* 우측: 검사 목록 (67%) */}
+              <div className="flex-1 flex flex-col h-full">
+                <div className="flex-1 overflow-hidden">
+                  <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'incoming' | 'inProcess' | 'outgoing')} className="h-full flex flex-col">
+                    <TabsList className="grid w-full grid-cols-3 mb-4">
+                      <TabsTrigger value="incoming" className="relative">
+                        수입검사
+                        {tabData.incoming.length > 0 && (
+                          <Badge className="ml-2 h-5 min-w-5 flex items-center justify-center" variant="secondary">
+                            {tabData.incoming.length}
+                          </Badge>
+                        )}
+                      </TabsTrigger>
+                      <TabsTrigger value="inProcess" className="relative">
+                        공정검사
+                        {tabData.inProcess.length > 0 && (
+                          <Badge className="ml-2 h-5 min-w-5 flex items-center justify-center" variant="secondary">
+                            {tabData.inProcess.length}
+                          </Badge>
+                        )}
+                      </TabsTrigger>
+                      <TabsTrigger value="outgoing" className="relative">
+                        출하검사
+                        {tabData.outgoing.length > 0 && (
+                          <Badge className="ml-2 h-5 min-w-5 flex items-center justify-center" variant="secondary">
+                            {tabData.outgoing.length}
+                          </Badge>
+                        )}
+                      </TabsTrigger>
+                    </TabsList>
+
+                    <div className="flex-1 overflow-y-auto">
+                    <TabsContent value="incoming" className="mt-0">
+                {tabData.incoming.length > 0 ? (
+                  <div className="space-y-4">
+                    {tabData.incoming.map((inspection, index) => (
+                      <div
+                        key={inspection.id}
+                        ref={(el) => {
+                          inspectionRefs.current[inspection.id] = el;
+                        }}
+                      >
+                        <InspectionCard
+                          inspection={inspection}
+                          index={index}
+                          totalCount={tabData.incoming.length}
+                          isCollapsed={collapsedInspections[inspection.id] ?? (index !== 0)}
+                          onToggle={toggleInspection}
+                          onEdit={onEditInspection}
+                          onDelete={onDeleteInspection}
+                          canEdit={canEdit}
+                          canDelete={canDelete}
+                          formatDate={formatDate}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground">
+                    수입검사 데이터가 없습니다
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="inProcess" className="mt-0">
+                {tabData.inProcess.length > 0 ? (
+                  <div className="space-y-4">
+                    {tabData.inProcess.map((inspection, index) => (
+                      <div
+                        key={inspection.id}
+                        ref={(el) => {
+                          inspectionRefs.current[inspection.id] = el;
+                        }}
+                      >
+                        <InspectionCard
+                          inspection={inspection}
+                          index={index}
+                          totalCount={tabData.inProcess.length}
+                          isCollapsed={collapsedInspections[inspection.id] ?? (index !== 0)}
+                          onToggle={toggleInspection}
+                          onEdit={onEditInspection}
+                          onDelete={onDeleteInspection}
+                          canEdit={canEdit}
+                          canDelete={canDelete}
+                          formatDate={formatDate}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground">
+                    공정검사 데이터가 없습니다
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="outgoing" className="mt-0">
+                {tabData.outgoing.length > 0 ? (
+                  <div className="space-y-4">
+                    {tabData.outgoing.map((inspection, index) => (
+                      <div
+                        key={inspection.id}
+                        ref={(el) => {
+                          inspectionRefs.current[inspection.id] = el;
+                        }}
+                      >
+                        <InspectionCard
+                          inspection={inspection}
+                          index={index}
+                          totalCount={tabData.outgoing.length}
+                          isCollapsed={collapsedInspections[inspection.id] ?? (index !== 0)}
+                          onToggle={toggleInspection}
+                          onEdit={onEditInspection}
+                          onDelete={onDeleteInspection}
+                          canEdit={canEdit}
+                          canDelete={canDelete}
+                          formatDate={formatDate}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground">
+                    출하검사 데이터가 없습니다
+                  </div>
+                )}
+                    </TabsContent>
+                    </div>
+                  </Tabs>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* 모바일: 기존 레이아웃 유지 */
+            <div className="flex-1 overflow-auto mt-2">
+              <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'incoming' | 'inProcess' | 'outgoing')} className="flex-1 flex flex-col min-h-0">
+                <TabsList className="grid w-full grid-cols-3 mb-4">
                   <TabsTrigger value="incoming" className="relative">
                     수입검사
                     {tabData.incoming.length > 0 && (
@@ -311,140 +513,31 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
                     )}
                   </TabsTrigger>
                 </TabsList>
-              </Tabs>
-            </DialogHeader>
-          }
-        >
-          {/* 접근성을 위한 숨겨진 제목과 설명 */}
-          <DialogTitle className="sr-only">
-            {currentGroup?.common.productName} ({currentGroup?.common.orderNumber}) 품질검사 상세
-          </DialogTitle>
-          <DialogDescription className="sr-only">
-            발주처: {currentGroup?.common.supplier}, 부속명: {currentGroup?.common.partName}의 품질검사 상세 정보를 확인할 수 있습니다.
-          </DialogDescription>
 
-          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'incoming' | 'inProcess' | 'outgoing')} className="flex-1 flex flex-col min-h-0">
-            {/* 데스크톱: 1:2 분할 레이아웃 (좌측: AI 분석, 우측: 검사 목록) */}
-            {!isSmartphone ? (
-              <div className="flex-1 flex gap-4 mt-2 min-h-0">
-                {/* 좌측: AI 이력 분석 (33%) */}
-                <div className="w-1/3 border-r pr-4 overflow-hidden">
-                  <InspectionHistorySummary
-                    inspections={historyInspections}
-                    summary={historySummary}
-                    isLoading={isHistoryLoading}
-                    isAnalyzing={isHistoryAnalyzing}
-                    supplier={currentGroup?.common.supplier}
-                    productName={currentGroup?.common.productName}
-                    partName={currentGroup?.common.partName}
-                    onInspectionClick={(inspection) => {
-                      // 이력 클릭 시 해당 검사로 스크롤하거나 상세 보기
-                      // 필요시 구현
-                    }}
-                  />
-                </div>
-                
-                {/* 우측: 검사 목록 (67%) */}
-                <div className="flex-1 overflow-auto">
+                <div className="flex-1 overflow-y-auto">
                   <TabsContent value="incoming" className="mt-0">
-                {tabData.incoming.length > 0 ? (
-                  <div className="space-y-4">
-                    {tabData.incoming.map((inspection, index) => (
-                      <InspectionCard
-                        key={inspection.id}
-                        inspection={inspection}
-                        index={index}
-                        totalCount={tabData.incoming.length}
-                        isCollapsed={collapsedInspections[inspection.id] ?? (index !== 0)}
-                        onToggle={toggleInspection}
-                        onEdit={onEditInspection}
-                        onDelete={onDeleteInspection}
-                        canEdit={canEdit}
-                        canDelete={canDelete}
-                        formatDate={formatDate}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-12 text-muted-foreground">
-                    수입검사 데이터가 없습니다
-                  </div>
-                )}
-              </TabsContent>
-
-              <TabsContent value="inProcess" className="mt-0">
-                {tabData.inProcess.length > 0 ? (
-                  <div className="space-y-4">
-                    {tabData.inProcess.map((inspection, index) => (
-                      <InspectionCard
-                        key={inspection.id}
-                        inspection={inspection}
-                        index={index}
-                        totalCount={tabData.inProcess.length}
-                        isCollapsed={collapsedInspections[inspection.id] ?? (index !== 0)}
-                        onToggle={toggleInspection}
-                        onEdit={onEditInspection}
-                        onDelete={onDeleteInspection}
-                        canEdit={canEdit}
-                        canDelete={canDelete}
-                        formatDate={formatDate}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-12 text-muted-foreground">
-                    공정검사 데이터가 없습니다
-                  </div>
-                )}
-              </TabsContent>
-
-              <TabsContent value="outgoing" className="mt-0">
-                {tabData.outgoing.length > 0 ? (
-                  <div className="space-y-4">
-                    {tabData.outgoing.map((inspection, index) => (
-                      <InspectionCard
-                        key={inspection.id}
-                        inspection={inspection}
-                        index={index}
-                        totalCount={tabData.outgoing.length}
-                        isCollapsed={collapsedInspections[inspection.id] ?? (index !== 0)}
-                        onToggle={toggleInspection}
-                        onEdit={onEditInspection}
-                        onDelete={onDeleteInspection}
-                        canEdit={canEdit}
-                        canDelete={canDelete}
-                        formatDate={formatDate}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-12 text-muted-foreground">
-                    출하검사 데이터가 없습니다
-                  </div>
-                )}
-                  </TabsContent>
-                </div>
-              </div>
-            ) : (
-              /* 모바일: 기존 레이아웃 유지 */
-              <div className="flex-1 overflow-auto mt-2">
-                <TabsContent value="incoming" className="mt-0">
                   {tabData.incoming.length > 0 ? (
                     <div className="space-y-4">
                       {tabData.incoming.map((inspection, index) => (
-                        <InspectionCard
+                        <div
                           key={inspection.id}
-                          inspection={inspection}
-                          index={index}
-                          totalCount={tabData.incoming.length}
-                          isCollapsed={collapsedInspections[inspection.id] ?? (index !== 0)}
-                          onToggle={toggleInspection}
-                          onEdit={onEditInspection}
-                          onDelete={onDeleteInspection}
-                          canEdit={canEdit}
-                          canDelete={canDelete}
-                          formatDate={formatDate}
-                        />
+                          ref={(el) => {
+                            inspectionRefs.current[inspection.id] = el;
+                          }}
+                        >
+                          <InspectionCard
+                            inspection={inspection}
+                            index={index}
+                            totalCount={tabData.incoming.length}
+                            isCollapsed={collapsedInspections[inspection.id] ?? (index !== 0)}
+                            onToggle={toggleInspection}
+                            onEdit={onEditInspection}
+                            onDelete={onDeleteInspection}
+                            canEdit={canEdit}
+                            canDelete={canDelete}
+                            formatDate={formatDate}
+                          />
+                        </div>
                       ))}
                     </div>
                   ) : (
@@ -458,19 +551,25 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
                   {tabData.inProcess.length > 0 ? (
                     <div className="space-y-4">
                       {tabData.inProcess.map((inspection, index) => (
-                        <InspectionCard
+                        <div
                           key={inspection.id}
-                          inspection={inspection}
-                          index={index}
-                          totalCount={tabData.inProcess.length}
-                          isCollapsed={collapsedInspections[inspection.id] ?? (index !== 0)}
-                          onToggle={toggleInspection}
-                          onEdit={onEditInspection}
-                          onDelete={onDeleteInspection}
-                          canEdit={canEdit}
-                          canDelete={canDelete}
-                          formatDate={formatDate}
-                        />
+                          ref={(el) => {
+                            inspectionRefs.current[inspection.id] = el;
+                          }}
+                        >
+                          <InspectionCard
+                            inspection={inspection}
+                            index={index}
+                            totalCount={tabData.inProcess.length}
+                            isCollapsed={collapsedInspections[inspection.id] ?? (index !== 0)}
+                            onToggle={toggleInspection}
+                            onEdit={onEditInspection}
+                            onDelete={onDeleteInspection}
+                            canEdit={canEdit}
+                            canDelete={canDelete}
+                            formatDate={formatDate}
+                          />
+                        </div>
                       ))}
                     </div>
                   ) : (
@@ -484,19 +583,25 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
                   {tabData.outgoing.length > 0 ? (
                     <div className="space-y-4">
                       {tabData.outgoing.map((inspection, index) => (
-                        <InspectionCard
+                        <div
                           key={inspection.id}
-                          inspection={inspection}
-                          index={index}
-                          totalCount={tabData.outgoing.length}
-                          isCollapsed={collapsedInspections[inspection.id] ?? (index !== 0)}
-                          onToggle={toggleInspection}
-                          onEdit={onEditInspection}
-                          onDelete={onDeleteInspection}
-                          canEdit={canEdit}
-                          canDelete={canDelete}
-                          formatDate={formatDate}
-                        />
+                          ref={(el) => {
+                            inspectionRefs.current[inspection.id] = el;
+                          }}
+                        >
+                          <InspectionCard
+                            inspection={inspection}
+                            index={index}
+                            totalCount={tabData.outgoing.length}
+                            isCollapsed={collapsedInspections[inspection.id] ?? (index !== 0)}
+                            onToggle={toggleInspection}
+                            onEdit={onEditInspection}
+                            onDelete={onDeleteInspection}
+                            canEdit={canEdit}
+                            canDelete={canDelete}
+                            formatDate={formatDate}
+                          />
+                        </div>
                       ))}
                     </div>
                   ) : (
@@ -504,10 +609,11 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
                       출하검사 데이터가 없습니다
                     </div>
                   )}
-                </TabsContent>
-              </div>
-            )}
-          </Tabs>
+                  </TabsContent>
+                </div>
+              </Tabs>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
       

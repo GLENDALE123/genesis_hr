@@ -157,6 +157,14 @@ export default function QualityHistoryPage() {
           handleDeleteInspection(inspection.id);
         }}
         onCreateInspection={handleCreateInspection}
+        onOpenGroupByOrderNumber={(orderNumber, inspectionType) => {
+          // 발주번호로 그룹 찾기
+          const targetGroup = filteredGroupedInspections.find(g => g.orderNumber === orderNumber);
+          if (targetGroup) {
+            setSelectedGroup(targetGroup);
+            setSelectedInitialTab(inspectionType);
+          }
+        }}
       />
 
       {/* 수정 모달 */}

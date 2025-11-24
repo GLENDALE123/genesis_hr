@@ -1029,7 +1029,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       {!isMobileOrTablet && (
         <Dialog open={isOpen} onOpenChange={handleDialogChange}>
           <DialogContent 
-            className="w-[95vw] h-[95vh] max-w-[1400px] overflow-hidden pb-0"
+            className="w-[95vw] h-[95vh] max-w-[1600px] overflow-hidden pb-0"
             stickyHeader={
               <DialogHeader>
                 <div className="flex items-center justify-between gap-2">
