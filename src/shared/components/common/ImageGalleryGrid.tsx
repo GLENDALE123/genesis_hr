@@ -103,7 +103,9 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
   useEffect(() => {
     return () => {
       blobUrlsRef.current.forEach((url) => {
-        try { URL.revokeObjectURL(url); } catch {}
+        try { URL.revokeObjectURL(url); } catch {
+          // URL 해제 실패 시 무시
+        }
       });
       blobUrlsRef.current.clear();
     };
@@ -237,7 +239,9 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
         } catch (error) {
           reject(error);
         } finally {
-          try { URL.revokeObjectURL(tempUrl); } catch {}
+          try { URL.revokeObjectURL(tempUrl); } catch {
+            // URL 해제 실패 시 무시
+          }
         }
       };
       

@@ -5,7 +5,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { Badge } from '@/shared/components/ui/badge';
@@ -29,8 +29,8 @@ export const ChatRoomList: React.FC<ChatRoomListProps> = ({
   onRoomClick,
   onCreateRoomClick,
 }) => {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuthStore();
   const { chatRooms, isLoadingRooms, setChatRooms, setIsLoadingRooms, unreadCounts } =
     useChatStore();
@@ -121,7 +121,7 @@ export const ChatRoomList: React.FC<ChatRoomListProps> = ({
     if (onRoomClick) {
       onRoomClick(roomId);
     } else {
-      router.push(`/chat?room=${roomId}`);
+      navigate(`/chat?room=${roomId}`);
     }
   };
 
@@ -156,7 +156,7 @@ export const ChatRoomList: React.FC<ChatRoomListProps> = ({
     <ScrollArea className="h-full">
       <div className="p-2 space-y-1">
         {sortedRooms.map((room) => {
-          const isActive = searchParams?.get('room') === room.id;
+          const isActive = searchParams.get('room') === room.id;
           const unreadCount = getUnreadCount(room);
           const roomName = getChatRoomName(room);
 

@@ -171,8 +171,8 @@ export const usePackagingForm = ({ report, isEditMode = false }: UseProductionFo
       return digits; // 시만 입력 중
     }
     // HH:MM 구성 (분은 입력된 만큼만 표시)
-    let hh = digits.slice(0, 2);
-    let mm = digits.slice(2);
+    const hh = digits.slice(0, 2);
+    const mm = digits.slice(2);
     // 범위 보정 (부분 입력 시는 보정하지 않음, 최종 보정은 블러/제출에서)
     return mm ? `${hh}:${mm}` : `${hh}:`;
   };

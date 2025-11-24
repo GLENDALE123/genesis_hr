@@ -3,10 +3,8 @@
  * 네이버/구글 스타일의 저장된 계정 선택 UI
  */
 
-'use client';
-
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent } from '@/shared/components/ui/card';
@@ -36,7 +34,7 @@ import {
 } from '@/shared/components/ui/alert-dialog';
 
 export function AccountSelection() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { user, isLoading, refreshUserProfile } = useAuthStore();
   const [savedAccount, setSavedAccount] = useState<SavedAccount | null>(null);
   const [isAutoLoggingIn, setIsAutoLoggingIn] = useState(false);
@@ -48,16 +46,16 @@ export function AccountSelection() {
     
     // 저장된 계정이 없으면 로그인 페이지로
     if (!account) {
-      router.push('/login?mode=signin');
+      navigate('/login?mode=signin');
     }
-  }, [router]);
+  }, [navigate]);
 
   // 로그인된 사용자는 즉시 대시보드로 리다이렉트
   useEffect(() => {
     if (!isLoading && user) {
-      router.replace('/dashboard');
+      navigate('/dashboard', { replace: true });
     }
-  }, [user, isLoading, router]);
+  }, [user, isLoading, navigate]);
 
   // 로그인된 사용자는 아무것도 렌더링하지 않음 (리다이렉트 중)
   if (!isLoading && user) {
@@ -135,7 +133,7 @@ export function AccountSelection() {
       toast.success('로그인되었습니다!', {
         duration: 1500,
       });
-      router.replace('/dashboard');
+      navigate('/dashboard', { replace: true });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '자동 로그인에 실패했습니다.';
       toast.error('자동 로그인 실패', {
@@ -143,7 +141,7 @@ export function AccountSelection() {
       });
       
       // 자동 로그인 실패 시 일반 로그인 페이지로 이동 (이메일 자동 입력)
-      router.push(`/login?mode=signin&email=${encodeURIComponent(savedAccount.email)}`);
+      navigate(`/login?mode=signin&email=${encodeURIComponent(savedAccount.email)}`);
     } finally {
       setIsAutoLoggingIn(false);
     }
@@ -159,15 +157,15 @@ export function AccountSelection() {
     toast.success('로그인 기록이 삭제되었습니다.');
     
     // 일반 로그인 페이지로 이동
-    router.push('/login?mode=signin');
+    navigate('/login?mode=signin');
   };
 
   // 다른 계정으로 로그인
   const handleOtherAccount = () => {
     if (savedAccount) {
-      router.push(`/login?mode=signin&email=${encodeURIComponent(savedAccount.email)}`);
+      navigate(`/login?mode=signin&email=${encodeURIComponent(savedAccount.email)}`);
     } else {
-      router.push('/login?mode=signin');
+      navigate('/login?mode=signin');
     }
   };
 
@@ -274,7 +272,7 @@ export function AccountSelection() {
               <Button
                 variant="ghost"
                 className="w-full h-11 text-base font-medium"
-                onClick={() => router.push('/login?mode=signup')}
+                onClick={() => navigate('/login?mode=signup')}
                 disabled={isAutoLoggingIn}
               >
                 <UserPlus className="mr-2 h-4 w-4" />

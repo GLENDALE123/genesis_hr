@@ -1,8 +1,5 @@
-'use client';
-
 import React, { useState, useEffect } from 'react';
-import { X, Download, Clock } from 'lucide-react';
-import Image from 'next/image';
+import { X, Download } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
 import { Progress } from '@/shared/components/ui/progress';
@@ -82,7 +79,7 @@ export const UpdateNotification: React.FC<UpdateNotificationProps> = ({
                 {/* 제목 */}
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <Image
+                    <img
                       src="/tms-logo.png"
                       alt="TMS 로고"
                       width={20}
@@ -131,7 +128,7 @@ export const UpdateNotification: React.FC<UpdateNotificationProps> = ({
           <div className="relative w-[400px] aspect-square bg-background rounded-lg border border-border shadow-2xl p-8 flex flex-col items-center justify-center gap-6">
             {/* 로고 */}
             <div className="flex items-center gap-3">
-              <Image
+              <img
                 src="/tms-logo.png"
                 alt="TMS 로고"
                 width={32}

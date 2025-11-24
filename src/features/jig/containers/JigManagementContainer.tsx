@@ -1,7 +1,5 @@
-'use client';
-
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { JigRequestTable, JigRequestCard, JigRequestKanban, JigRequestDetail, JigRequestForm, JigRequestFilterSection } from '../components';
 import { JigStatus, JigRequest, CreateJigRequestData } from '../types';
 import { useJigRequests } from '../hooks/useJigRequests';
@@ -19,9 +17,9 @@ import { Table, Grid3X3, Kanban } from 'lucide-react';
 import { Badge } from '@/shared/components/ui/badge';
 
 export const JigManagementContainer: React.FC = () => {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
   const { requests, isLoading, error, updateRequestStatus, createRequest, updateRequest, updateRequestQuantity, deleteRequest } = useJigRequests();
   const userRole = useUserRole() || 'Member';
   const { user, userProfile } = useAuthStore();
@@ -59,7 +57,7 @@ export const JigManagementContainer: React.FC = () => {
 
   // URL 파라미터로 모달 열기 (딥링크 처리)
   useEffect(() => {
-    const requestId = searchParams?.get('requestId');
+    const requestId = searchParams.get('requestId');
     
     // URL에 requestId가 없으면 아무것도 하지 않음
     if (!requestId) {
@@ -188,24 +186,24 @@ export const JigManagementContainer: React.FC = () => {
     setSelectedRequest(request);
     setIsDetailModalOpen(true);
     // URL 업데이트 (딥링크 지원)
-    const params = new URLSearchParams(searchParams?.toString() || '');
+    const params = new URLSearchParams(searchParams.toString());
     params.set('requestId', request.id);
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [searchParams, pathname, router]);
+    navigate(`${pathname}?${params.toString()}`, { replace: true });
+  }, [searchParams, pathname, navigate]);
 
   const handleCloseDetailModal = useCallback(() => {
     // URL을 먼저 업데이트
-    if (searchParams?.get('requestId')) {
+    if (searchParams.get('requestId')) {
       const params = new URLSearchParams(searchParams.toString());
       params.delete('requestId');
       const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
-      router.replace(newUrl, { scroll: false });
+      navigate(newUrl, { replace: true });
     }
     
     // 상태 업데이트 - 모달 닫기
     setIsDetailModalOpen(false);
     setSelectedRequest(null);
-  }, [searchParams, pathname, router]);
+  }, [searchParams, pathname, navigate]);
 
   const handleDeleteRequest = useCallback(async (requestId: string) => {
     try {

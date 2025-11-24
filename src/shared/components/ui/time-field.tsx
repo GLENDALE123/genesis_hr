@@ -44,7 +44,7 @@ export const TimeField = React.forwardRef<HTMLDivElement, TimeFieldProps>(
       const [hour, minute] = (timePart || '').split(':');
 
       let parsedHour = hour || '';
-      let parsedMinute = minute || '';
+      const parsedMinute = minute || '';
       let parsedPeriod: 'AM' | 'PM' | undefined = period as 'AM' | 'PM' | undefined;
 
       // 12시간제 처리

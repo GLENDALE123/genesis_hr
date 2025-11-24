@@ -1,8 +1,6 @@
-'use client';
-
 import React, { useEffect, useRef } from 'react';
 import { useAuthStore } from '../store';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
 // 자동 로그아웃은 Firebase Functions에서 처리하므로 dateUtils import 제거
 import { onSessionChange } from '../services/sessionService';
 import { getDeviceId } from '../utils/savedAccounts';
@@ -16,14 +14,15 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const { initializeAuth, user, isLoading, logout } = useAuthStore();
-  const router = useRouter();
+  const navigate = useNavigate();
   const sessionUnsubscribeRef = useRef<(() => void) | null>(null);
   const sessionRegistrationTimeRef = useRef<number>(0); // 현재 기기 세션 등록 시간
 
   useEffect(() => {
     // 스크립트에서 이미 초기 상태가 설정되었다면 즉시 Firebase 인증 확인
-    if (window.__AUTH_INITIAL_STATE__) {
-    }
+    // if (window.__AUTH_INITIAL_STATE__) {
+    //   // 초기 상태 처리 로직이 필요한 경우 여기에 추가
+    // }
     
     // Auth 상태 초기화
     const unsubscribe = initializeAuth();
@@ -87,7 +86,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             // 로그아웃 처리
             await logout();
             
-            router.push('/login');
+            navigate('/login');
           } catch (error) {
             console.error('❌ [AuthProvider] 세션 삭제로 인한 자동 로그아웃 실패:', error);
           }
@@ -126,7 +125,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               // 로그아웃 처리
               await logout();
               
-              router.push('/login');
+              navigate('/login');
             } catch (error) {
               console.error('❌ [AuthProvider] 자동 로그아웃 실패:', error);
             }
@@ -146,7 +145,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         sessionUnsubscribeRef.current = null;
       }
     };
-  }, [user, isLoading, logout, router]);
+  }, [user, isLoading, logout, navigate]);
 
   // 자동 로그아웃은 Firebase Functions에서 처리
   // 새벽 1시에 Functions가 모든 세션을 삭제하면,

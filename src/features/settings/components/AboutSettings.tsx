@@ -11,7 +11,7 @@ import { Separator } from '@/shared/components/ui/separator';
 import { Badge } from '@/shared/components/ui/badge';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { logout } from '@/shared/services/firebase';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
 import { Info, LogOut, Package, Calendar, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { useFirebaseRelease } from '@/shared/hooks/useFirebaseRelease';
@@ -33,7 +33,7 @@ import {
 
 export const AboutSettings: React.FC = () => {
   const { user } = useAuthStore();
-  const router = useRouter();
+  const navigate = useNavigate();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   
   // 플랫폼 감지
@@ -53,7 +53,7 @@ export const AboutSettings: React.FC = () => {
       setIsLoggingOut(true);
       await logout();
       toast.success('로그아웃되었습니다.');
-      router.push('/login');
+      navigate('/login');
     } catch {
       toast.error('로그아웃에 실패했습니다.');
       setIsLoggingOut(false);

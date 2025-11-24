@@ -1,13 +1,10 @@
-'use client';
-
 import React from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Badge } from '@/shared/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
-import Image from 'next/image';
 import { ROUTE_ICONS } from '@/shared/constants/navigation';
-import { useGlobalStore } from '@/app/store';
+import { useGlobalStore } from '@/shared/store/globalStore';
 import {
   Factory,
   TestTube,
@@ -105,8 +102,8 @@ const AppSidebarComponent = ({
   collapsed?: boolean;
   onMobileClose?: () => void;
 }) => {
-  const pathname = usePathname();
-  const router = useRouter();
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
   const [isHovered, setIsHovered] = React.useState(false);
   const { updatePreferences } = useGlobalStore();
   
@@ -191,25 +188,25 @@ const AppSidebarComponent = ({
     if (onMobileClose && isMobile) {
       onMobileClose();
       setTimeout(() => {
-        router.push(href);
+        navigate(href);
       }, 50);
     } else if (onMobileClose && !isMobile) {
       // 태블릿/데스크톱: 사이드바 닫기와 네비게이션 동시 처리
       requestAnimationFrame(() => {
         onMobileClose();
-        router.push(href);
+        navigate(href);
       });
     } else if (isTablet) {
       // 태블릿: 네비게이션 후 사이드바 접기
-      router.push(href);
+      navigate(href);
       setTimeout(() => {
         updatePreferences({ sidebarCollapsed: true });
       }, 100);
     } else {
       // 데스크톱: 네비게이션만 처리
-      router.push(href);
+      navigate(href);
     }
-  }, [pathname, isMobile, isDesktop, onMobileClose, updatePreferences, router]);
+  }, [pathname, isMobile, isDesktop, onMobileClose, navigate, updatePreferences]);
 
   // 성능 최적화: 자식 메뉴 확인 함수 메모이제이션
   const checkChildActive = React.useCallback((children: NavItem[] | undefined) => {
@@ -328,7 +325,7 @@ const AppSidebarComponent = ({
         {isExpanded ? (
           <div className="flex items-center gap-2 min-w-0">
             <div className="h-7 w-7 rounded flex items-center justify-center flex-shrink-0 overflow-hidden">
-              <Image 
+              <img 
                 src="/tms-logo.png" 
                 alt="TMS 로고" 
                 width={28} 
@@ -340,7 +337,7 @@ const AppSidebarComponent = ({
           </div>
         ) : (
           <div className="h-7 w-7 rounded flex items-center justify-center overflow-hidden">
-            <Image 
+            <img 
               src="/tms-logo.png" 
               alt="TMS 로고" 
               width={28} 

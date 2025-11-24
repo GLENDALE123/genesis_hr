@@ -35,8 +35,7 @@ import { getUserInitial } from '@/shared/utils/userUtils';
 import { formatPhoneNumber } from '@/shared/utils/phoneUtils';
 import { uploadProfilePhoto, compressImage, deleteProfilePhoto } from '@/shared/services/firebase/storage';
 import { updateUserProfile, updateAuthProfile } from '@/shared/services/firebase';
-import Cropper from 'react-easy-crop';
-import { Area } from 'react-easy-crop/types';
+import Cropper, { Area } from 'react-easy-crop';
 import { DEPARTMENT_OPTIONS, normalizeDepartmentName } from '@/shared/constants/departments';
 
 export const ProfileSettings: React.FC = () => {

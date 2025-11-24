@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { CommentsService } from '@/shared/services/comments/commentsService';
 import { Button } from '@/shared/components/ui/button';
 import { Label } from '@/shared/components/ui/label';
@@ -13,13 +13,10 @@ import {
 import { Textarea } from '@/shared/components/ui/textarea';
 import { ProcessingHistory } from '@/shared/components/common/ProcessingHistory';
 import { ImageGalleryGrid } from '@/shared/components/common/ImageGalleryGrid';
-import dynamic from 'next/dynamic';
 
 // 무거운 컴포넌트들을 동적 임포트로 분할
-const DynamicCommentsSection = dynamic(() => import('@/shared/components/common/CommentsSection'), {
-  ssr: false,
-  loading: () => <div className="p-4 text-center text-muted-foreground">댓글 로딩 중...</div>
-});
+const CommentsSection = lazy(() => import('@/shared/components/common/CommentsSection'));
+
 import {
   ProductionRequestStatus,
   type ProductionRequest,
@@ -115,6 +112,7 @@ const ProductionRequestDetailModalComponent: React.FC<ProductionRequestDetailMod
           }
 
           if (unreadComments.length > 0) {
+            // 읽지 않은 댓글이 있을 때 처리 로직 (필요 시 추가)
           }
         } catch (error) {
           console.error('댓글 읽음 처리 실패:', error);
@@ -290,15 +288,17 @@ const ProductionRequestDetailModalComponent: React.FC<ProductionRequestDetailMod
             />
 
             {/* 댓글 섹션 - 동적 로딩 */}
-            <DynamicCommentsSection
-              comments={request.comments || []}
-              onAddComment={handleAddComment}
-              onEditComment={handleEditComment}
-              onDeleteComment={handleDeleteComment}
-              canComment={canManage}
-              currentUserUid={currentUserUid}
-              isAdmin={isAdmin}
-            />
+            <Suspense fallback={<div className="p-4 text-center text-muted-foreground">댓글 로딩 중...</div>}>
+              <CommentsSection
+                comments={request.comments || []}
+                onAddComment={handleAddComment}
+                onEditComment={handleEditComment}
+                onDeleteComment={handleDeleteComment}
+                canComment={canManage}
+                currentUserUid={currentUserUid}
+                isAdmin={isAdmin}
+              />
+            </Suspense>
           </div>
         </DialogContent>
       </Dialog>

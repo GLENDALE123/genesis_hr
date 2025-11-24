@@ -9,7 +9,7 @@ import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import { UserList } from './UserList';
 import { ChatRoomList } from './ChatRoomList';
-import { useRouter, usePathname } from 'next/navigation';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useDeviceType } from '@/shared/hooks/use-device';
 
 export interface ChatSidebarProps {
@@ -17,8 +17,8 @@ export interface ChatSidebarProps {
 }
 
 export const ChatSidebar: React.FC<ChatSidebarProps> = ({ className }) => {
-  const router = useRouter();
-  const pathname = usePathname();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
   const { isSmartphone } = useDeviceType();
   const isMobile = isSmartphone;
   const [activeTab, setActiveTab] = useState<'users' | 'rooms'>('rooms');
@@ -62,7 +62,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ className }) => {
   }, []);
 
   const handleRoomClick = (roomId: string) => {
-    router.push(`/chat?room=${roomId}`);
+    navigate(`/chat?room=${roomId}`);
   };
 
   return (

@@ -6,7 +6,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import { Button } from '@/shared/components/ui/button';
 import { ChevronDown } from 'lucide-react';
@@ -34,7 +34,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   onSearchResultsChange,
   hideInput = false,
 }) => {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { user, userProfile } = useAuthStore();
   const {
     messages,
@@ -229,7 +229,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
       // 임시 채팅방인 경우 저장된 채팅방 ID로 URL 업데이트
       if (tempRoom && result.roomId !== chatRoomId) {
-        router.push(`/chat?room=${result.roomId}`);
+        navigate(`/chat?room=${result.roomId}`);
       }
     } catch (error) {
       console.error('Failed to send message:', error);

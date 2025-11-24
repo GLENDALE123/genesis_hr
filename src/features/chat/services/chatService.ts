@@ -92,7 +92,7 @@ export class ChatService {
       participants: participants.map((p) => ({
         uid: p.uid,
         displayName: p.displayName || '',
-        photoURL: p.photoURL || null,
+        photoURL: p.photoURL || undefined,
         joinedAt: p.joinedAt || now,
       })),
       createdBy,
@@ -170,7 +170,7 @@ export class ChatService {
       participants: temporaryRoom.participants.map((p) => ({
         uid: p.uid,
         displayName: p.displayName || '',
-        photoURL: p.photoURL || null,
+        photoURL: p.photoURL || undefined,
         joinedAt: p.joinedAt || now,
       })),
       createdBy,
@@ -388,7 +388,7 @@ export class ChatService {
       sender: {
         uid: sender.uid,
         displayName: sender.displayName || '',
-        photoURL: sender.photoURL || null,
+        photoURL: sender.photoURL || undefined,
       },
       timestamp: now,
       status: MessageStatus.SENT,
@@ -450,7 +450,7 @@ export class ChatService {
           .map((doc) => ({
             id: doc.id,
             ...doc.data(),
-          }))
+          } as ChatMessage))
           .sort((a, b) => {
             // timestamp로 정렬 (오름차순: 가장 오래된 것부터)
             const aTime = a.timestamp || '';

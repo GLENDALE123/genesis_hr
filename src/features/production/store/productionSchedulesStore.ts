@@ -93,8 +93,8 @@ export const useProductionSchedulesStore = create<ProductionSchedulesState & Pro
             
             if (cacheAge < CACHE_DURATION) {
               return cache.schedules;
-            } else {
             }
+            // 캐시가 만료된 경우 계속 진행하여 새로 로드
           }
           
           return null;

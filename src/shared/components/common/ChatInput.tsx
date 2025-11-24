@@ -412,7 +412,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         </div>
 
         {/* placeholder 스타일 */}
-        <style jsx>{`
+        <style>{`
           [contenteditable]:empty:before {
             content: attr(data-placeholder);
             color: hsl(var(--muted-foreground));

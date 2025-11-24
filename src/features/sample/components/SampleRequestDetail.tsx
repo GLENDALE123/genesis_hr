@@ -3,9 +3,7 @@
  * HS-Jig SampleRequestDetail 참고, Shadcn Dialog + Carousel 사용
  */
 
-'use client';
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -26,13 +24,10 @@ import {
 } from '@/shared/components/ui/table';
 import { Separator } from '@/shared/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/components/ui/collapsible';
-import dynamic from 'next/dynamic';
 
 // 무거운 컴포넌트들을 동적 임포트로 분할
-const DynamicCommentsSection = dynamic(() => import('@/shared/components/common/CommentsSection'), {
-  ssr: false,
-  loading: () => <div className="p-4 text-center text-muted-foreground">댓글 로딩 중...</div>
-});
+const CommentsSection = lazy(() => import('@/shared/components/common/CommentsSection'));
+
 import { ImageGalleryGrid } from '@/shared/components/common/ImageGalleryGrid';
 import { useComments } from '@/shared/hooks/useComments';
 import { CommentsService } from '@/shared/services/comments/commentsService';
@@ -159,6 +154,7 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
           }
 
           if (unreadComments.length > 0) {
+            // 읽지 않은 댓글이 있을 때 처리 로직 (필요 시 추가)
           } else {
           }
         } catch (error) {
@@ -647,16 +643,18 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
           />
 
           {/* 댓글 섹션 (Card 밖에 별도 배치) - 동적 로딩 */}
-          <DynamicCommentsSection
-            comments={currentRequest?.comments || []}
-            onAddComment={handleAddComment}
-            onDeleteComment={(commentId) => comments.deleteComment(currentRequest?.id || '', commentId)}
-            onEditComment={(commentId, newText) =>
-              comments.updateComment(currentRequest?.id || '', commentId, newText)
-            }
-            currentUserUid={currentUserUid}
-            isAdmin={isAdmin}
-          />
+          <Suspense fallback={<div className="p-4 text-center text-muted-foreground">댓글 로딩 중...</div>}>
+            <CommentsSection
+              comments={currentRequest?.comments || []}
+              onAddComment={handleAddComment}
+              onDeleteComment={(commentId) => comments.deleteComment(currentRequest?.id || '', commentId)}
+              onEditComment={(commentId, newText) =>
+                comments.updateComment(currentRequest?.id || '', commentId, newText)
+              }
+              currentUserUid={currentUserUid}
+              isAdmin={isAdmin}
+            />
+          </Suspense>
         </div>
 
         {/* 삭제 확인 다이얼로그 */}

@@ -163,6 +163,7 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
           return newMap;
         });
       } catch (error) {
+        // 에러 발생 시 무시 (선택적 데이터 로딩)
       }
     };
 

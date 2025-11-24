@@ -1,7 +1,5 @@
-'use client';
-
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { AlertCircle, Plus, MessageSquare } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
@@ -34,9 +32,9 @@ import { isAdmin, isManager } from '@/shared/utils/userUtils';
 import { TABLE_CELL_STYLES, TABLE_HEAD_STYLES } from '../constants/tableStyles';
 
 const ProductionManagementCenterComponent: React.FC = () => {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [requestTypeFilter, setRequestTypeFilter] = useState<'all' | ProductionRequestType>('all');
   const { requests, isLoading, createRequest, updateRequestStatus, deleteRequest, addComment, editComment, deleteComment } = useProductionRequests();
   const { user, userProfile } = useAuthStore();
@@ -56,7 +54,7 @@ const ProductionManagementCenterComponent: React.FC = () => {
 
   // URL 파라미터로 모달 열기 (딥링크 처리)
   useEffect(() => {
-    const requestId = searchParams?.get('requestId');
+    const requestId = searchParams.get('requestId');
     
     // URL에 requestId가 없으면 아무것도 하지 않음
     if (!requestId) {
@@ -106,24 +104,24 @@ const ProductionManagementCenterComponent: React.FC = () => {
   const handleSelectRequest = useCallback((request: ProductionRequest) => {
     setSelectedRequest(request);
     // URL 업데이트 (딥링크 지원)
-    const params = new URLSearchParams(searchParams?.toString() || '');
+    const params = new URLSearchParams(searchParams.toString());
     params.set('requestId', request.id);
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [searchParams, pathname, router]);
+    navigate(`${pathname}?${params.toString()}`, { replace: true });
+  }, [searchParams, pathname, navigate]);
 
   // 모달 닫기 핸들러 (URL 쿼리 파라미터 제거)
   const handleCloseDetailModal = useCallback(() => {
     // URL을 먼저 업데이트
-    if (searchParams?.get('requestId')) {
+    if (searchParams.get('requestId')) {
       const params = new URLSearchParams(searchParams.toString());
       params.delete('requestId');
       const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
-      router.replace(newUrl, { scroll: false });
+      navigate(newUrl, { replace: true });
     }
     
     // 상태 업데이트 - 모달 닫기
     setSelectedRequest(null);
-  }, [searchParams, pathname, router]);
+  }, [searchParams, pathname, navigate]);
 
   const handleSaveRequest = useCallback(async (
     data: {

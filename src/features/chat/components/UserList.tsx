@@ -6,7 +6,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/shared/services/firebase/config';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
@@ -64,7 +64,7 @@ interface UserWithStatus extends UserManagementInfo {
 }
 
 export const UserList: React.FC<UserListProps> = ({ className }) => {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { user: currentUser } = useAuthStore();
   const { addTemporaryRoom } = useChatStore();
   const [users, setUsers] = useState<UserWithStatus[]>([]);
@@ -242,7 +242,7 @@ export const UserList: React.FC<UserListProps> = ({ className }) => {
           sessionStorage.setItem('chat-sidebar-tab', 'rooms');
           window.dispatchEvent(new Event('chat-sidebar-tab-change'));
         }
-        router.push(`/chat?room=${existingRoom.id}`);
+        navigate(`/chat?room=${existingRoom.id}`);
         return;
       }
 
@@ -280,7 +280,7 @@ export const UserList: React.FC<UserListProps> = ({ className }) => {
       }
 
       // 임시 채팅방으로 이동
-      router.push(`/chat?room=${tempRoomId}`);
+      navigate(`/chat?room=${tempRoomId}`);
     } catch (error) {
       console.error('Failed to start chat:', error);
       // 에러가 발생해도 임시 채팅방으로 이동
@@ -308,7 +308,7 @@ export const UserList: React.FC<UserListProps> = ({ className }) => {
         ],
         createdAt: new Date().toISOString(),
       });
-      router.push(`/chat?room=${tempRoomId}`);
+      navigate(`/chat?room=${tempRoomId}`);
     }
   };
 

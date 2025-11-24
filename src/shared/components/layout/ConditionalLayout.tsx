@@ -1,7 +1,5 @@
-'use client';
-
 import React, { useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { useLocation } from 'react-router-dom';
 import { AppLayout } from '@/shared/components/layout/AppLayout';
 import { TitleBar } from '@/shared/components/layout/TitleBar';
 import { useAuthStore } from '@/features/auth/store/authStore';
@@ -14,7 +12,7 @@ export const ConditionalLayout: React.FC<ConditionalLayoutProps> = ({
   children 
 }) => {
   // 모든 훅을 항상 호출하여 훅의 개수를 일관되게 유지
-  const pathname = usePathname();
+  const { pathname } = useLocation();
   const { user, isLoading } = useAuthStore();
   const [mounted, setMounted] = useState(false);
   // Electron 환경 감지 (타이틀바가 fixed일 때만 여백 필요)
@@ -34,6 +32,7 @@ export const ConditionalLayout: React.FC<ConditionalLayoutProps> = ({
   const isAuthPage = authPages.includes(pathname);
 
   // 서버 사이드에서는 항상 children만 렌더링 (hydration mismatch 방지)
+  // Vite는 CSR이므로 hydration mismatch는 없지만, 초기 마운트 전 깜빡임 방지
   if (!mounted) {
     return <>{children}</>;
   }
