@@ -12,12 +12,7 @@ export const ConditionalLayout: React.FC<ConditionalLayoutProps> = ({
   children 
 }) => {
   // 모든 훅을 항상 호출하여 훅의 개수를 일관되게 유지
-<<<<<<< HEAD
-  const location = useLocation();
-  const pathname = location.pathname;
-=======
   const { pathname } = useLocation();
->>>>>>> develop
   const { user, isLoading } = useAuthStore();
   const [mounted, setMounted] = useState(false);
   // Electron 환경 감지 (타이틀바가 fixed일 때만 여백 필요)
@@ -98,4 +93,3 @@ export const ConditionalLayout: React.FC<ConditionalLayoutProps> = ({
     </AppLayout>
   );
 };
-

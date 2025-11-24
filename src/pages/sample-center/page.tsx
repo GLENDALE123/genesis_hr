@@ -14,10 +14,6 @@ import { AlertCircle } from 'lucide-react';
 
 export default function SampleCenterPage() {
   const navigate = useNavigate();
-<<<<<<< HEAD:src/app/sample-center/page.tsx
-  const location = useLocation();
-=======
->>>>>>> develop:src/pages/sample-center/page.tsx
   const {
     requests,
     isLoading,
@@ -102,10 +98,4 @@ export default function SampleCenterPage() {
     </ProtectedRoute>
   );
 }
-
-
-
-
-
-
 

@@ -1,11 +1,5 @@
-<<<<<<< HEAD
-
-import React, { useState, useEffect } from 'react';
-import { X, Download, Clock } from 'lucide-react';
-=======
 import React, { useState, useEffect } from 'react';
 import { X, Download } from 'lucide-react';
->>>>>>> develop
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
 import { Progress } from '@/shared/components/ui/progress';
@@ -175,7 +169,4 @@ export const UpdateNotification: React.FC<UpdateNotificationProps> = ({
     </>
   );
 };
-
-
-
 

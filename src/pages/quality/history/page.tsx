@@ -1,7 +1,3 @@
-<<<<<<< HEAD:src/app/quality/history/page.tsx
-
-=======
->>>>>>> develop:src/pages/quality/history/page.tsx
 import React, { useState, useEffect } from 'react';
 import {
   QualityInspectionTable,
@@ -193,8 +189,4 @@ export default function QualityHistoryPage() {
     </ProtectedRoute>
   );
 }
-
-
-
-
 

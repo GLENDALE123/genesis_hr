@@ -2,14 +2,8 @@
  * 샘플 요청목록 페이지
  */
 
-<<<<<<< HEAD:src/app/sample-center/requests/page.tsx
-
-import React, { useState, useEffect, Suspense, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-=======
 import React, { useState, useEffect, Suspense, useCallback } from 'react';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
->>>>>>> develop:src/pages/sample-center/requests/page.tsx
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 import {
   SampleRequestTable,
@@ -31,14 +25,8 @@ import { useAuthStore } from '@/features/auth/store/authStore';
 
 function SampleRequestsContent() {
   const { user } = useAuthStore();
-<<<<<<< HEAD:src/app/sample-center/requests/page.tsx
-  const location = useLocation();
-  const searchParams = new URLSearchParams(location.search);
-  const pathname = location.pathname;
-=======
   const [searchParams] = useSearchParams();
   const { pathname } = useLocation();
->>>>>>> develop:src/pages/sample-center/requests/page.tsx
   const navigate = useNavigate();
   const {
     requests,
@@ -110,24 +98,14 @@ function SampleRequestsContent() {
   const handleSelectRequest = useCallback((request: SampleRequest) => {
     setSelectedRequest(request);
     // URL 업데이트 (딥링크 지원)
-<<<<<<< HEAD:src/app/sample-center/requests/page.tsx
-    const params = new URLSearchParams(searchParams?.toString() || '');
-    params.set('requestId', request.id);
-    navigate(`${pathname}?${params.toString()}`, { scroll: false });
-=======
     const params = new URLSearchParams(searchParams.toString());
     params.set('requestId', request.id);
     navigate(`${pathname}?${params.toString()}`, { replace: true });
->>>>>>> develop:src/pages/sample-center/requests/page.tsx
   }, [searchParams, pathname, navigate]);
 
   // URL 파라미터로 모달 열기 (딥링크 처리)
   useEffect(() => {
-<<<<<<< HEAD:src/app/sample-center/requests/page.tsx
-    const requestId = searchParams?.get('requestId');
-=======
     const requestId = searchParams.get('requestId');
->>>>>>> develop:src/pages/sample-center/requests/page.tsx
     
     // URL에 requestId가 없으면 아무것도 하지 않음
     if (!requestId) {
@@ -194,19 +172,11 @@ function SampleRequestsContent() {
     setSelectedRequest(null);
     
     // URL 업데이트 (나중에)
-<<<<<<< HEAD:src/app/sample-center/requests/page.tsx
-    if (searchParams?.get('requestId')) {
-      const params = new URLSearchParams(searchParams.toString());
-      params.delete('requestId');
-      const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
-      navigate(newUrl, { scroll: false });
-=======
     if (searchParams.get('requestId')) {
       const params = new URLSearchParams(searchParams.toString());
       params.delete('requestId');
       const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
       navigate(newUrl, { replace: true });
->>>>>>> develop:src/pages/sample-center/requests/page.tsx
     }
     
     // 짧은 딜레이 후 플래그 해제 (URL 업데이트 완료 대기)
@@ -356,8 +326,3 @@ export default function SampleRequestsPage() {
     </Suspense>
   );
 }
-
-
-
-
-

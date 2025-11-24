@@ -3,12 +3,7 @@
  * HS-Jig SampleRequestDetail 참고, Shadcn Dialog + Carousel 사용
  */
 
-<<<<<<< HEAD
-
-import React, { useState, useEffect, Suspense, lazy } from 'react';
-=======
 import React, { useState, useEffect, lazy, Suspense } from 'react';
->>>>>>> develop
 import {
   Dialog,
   DialogContent,
@@ -30,14 +25,9 @@ import {
 import { Separator } from '@/shared/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/components/ui/collapsible';
 
-<<<<<<< HEAD
-// 무거운 컴포넌트들을 동적 임포트로 분할 (Vite에서는 React.lazy 사용)
-const DynamicCommentsSection = lazy(() => import('@/shared/components/common/CommentsSection'));
-=======
 // 무거운 컴포넌트들을 동적 임포트로 분할
 const CommentsSection = lazy(() => import('@/shared/components/common/CommentsSection'));
 
->>>>>>> develop
 import { ImageGalleryGrid } from '@/shared/components/common/ImageGalleryGrid';
 import { useComments } from '@/shared/hooks/useComments';
 import { CommentsService } from '@/shared/services/comments/commentsService';
@@ -654,11 +644,7 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
 
           {/* 댓글 섹션 (Card 밖에 별도 배치) - 동적 로딩 */}
           <Suspense fallback={<div className="p-4 text-center text-muted-foreground">댓글 로딩 중...</div>}>
-<<<<<<< HEAD
-            <DynamicCommentsSection
-=======
             <CommentsSection
->>>>>>> develop
               comments={currentRequest?.comments || []}
               onAddComment={handleAddComment}
               onDeleteComment={(commentId) => comments.deleteComment(currentRequest?.id || '', commentId)}
@@ -717,8 +703,4 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
     </Dialog>
   );
 };
-
-
-
-
 

@@ -1,11 +1,5 @@
-<<<<<<< HEAD:src/app/quality/issues/page.tsx
-
-import React, { useEffect, useState, Suspense, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-=======
 import React, { useEffect, useState, Suspense, useCallback } from 'react';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
->>>>>>> develop:src/pages/quality/issues/page.tsx
 import { Button } from '@/shared/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/shared/components/ui/sheet';
@@ -38,16 +32,9 @@ function QualityIssuesPageContent() {
   const { user, userProfile } = useAuthStore();
   const { isSmartphone, isTablet } = useDeviceType();
   const isMobileOrTablet = isSmartphone || isTablet;
-<<<<<<< HEAD:src/app/quality/issues/page.tsx
-  const location = useLocation();
-  const searchParams = new URLSearchParams(location.search);
-  const navigate = useNavigate();
-  const pathname = location.pathname;
-=======
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { pathname } = useLocation();
->>>>>>> develop:src/pages/quality/issues/page.tsx
   
   // 상세 모달 상태 - 단순하게 관리
   const [selectedIssue, setSelectedIssue] = useState<QualityIssue | null>(null);
@@ -145,33 +132,19 @@ function QualityIssuesPageContent() {
   const handleSelectIssue = useCallback((issue: QualityIssue) => {
     setSelectedIssue(issue);
     // URL 업데이트 (딥링크 지원)
-<<<<<<< HEAD:src/app/quality/issues/page.tsx
-    const params = new URLSearchParams(searchParams?.toString() || '');
-    params.set('issueId', issue.id);
-    navigate(`${pathname}?${params.toString()}`, { scroll: false });
-=======
     const params = new URLSearchParams(searchParams.toString());
     params.set('issueId', issue.id);
     navigate(`${pathname}?${params.toString()}`, { replace: true });
->>>>>>> develop:src/pages/quality/issues/page.tsx
   }, [searchParams, pathname, navigate]);
 
   // 상세 모달 닫기
   const handleCloseDetailModal = useCallback(() => {
     // URL을 먼저 업데이트
-<<<<<<< HEAD:src/app/quality/issues/page.tsx
-    if (searchParams?.get('issueId')) {
-      const params = new URLSearchParams(searchParams.toString());
-      params.delete('issueId');
-      const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
-      navigate(newUrl, { scroll: false });
-=======
     if (searchParams.get('issueId')) {
       const params = new URLSearchParams(searchParams.toString());
       params.delete('issueId');
       const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
       navigate(newUrl, { replace: true });
->>>>>>> develop:src/pages/quality/issues/page.tsx
     }
     
     // 상태 업데이트 - 모달 닫기
@@ -180,11 +153,7 @@ function QualityIssuesPageContent() {
 
   // URL 쿼리(issueId)로 진입 시 상세 모달 자동 오픈 - 딥링크 지원
   useEffect(() => {
-<<<<<<< HEAD:src/app/quality/issues/page.tsx
-    const issueId = searchParams?.get('issueId');
-=======
     const issueId = searchParams.get('issueId');
->>>>>>> develop:src/pages/quality/issues/page.tsx
     
     // URL에 issueId가 없으면 아무것도 하지 않음
     if (!issueId) {
@@ -560,8 +529,3 @@ export default function QualityIssuesPage() {
     </Suspense>
   );
 }
-
-
-
-
-

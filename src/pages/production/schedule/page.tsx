@@ -1,7 +1,3 @@
-<<<<<<< HEAD:src/app/production/schedule/page.tsx
-
-=======
->>>>>>> develop:src/pages/production/schedule/page.tsx
 import { useState } from 'react';
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 import { ProductionScheduleListView } from '@/features/production/components/ProductionScheduleListView';
@@ -70,11 +66,4 @@ const ProductionSchedulePageContent = () => {
   );
 };
 
-<<<<<<< HEAD:src/app/production/schedule/page.tsx
-// Vite에서는 SSR이 없으므로 직접 export
 export default ProductionSchedulePageContent;
-
-
-=======
-export default ProductionSchedulePageContent;
->>>>>>> develop:src/pages/production/schedule/page.tsx

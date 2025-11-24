@@ -1,9 +1,6 @@
+'use client';
 
-<<<<<<< HEAD
-import React, { useState, useEffect, Suspense, lazy } from 'react';
-=======
 import React, { useState, useEffect, lazy, Suspense } from 'react';
->>>>>>> develop
 import { CommentsService } from '@/shared/services/comments/commentsService';
 import { Button } from '@/shared/components/ui/button';
 import { Label } from '@/shared/components/ui/label';
@@ -17,14 +14,9 @@ import { Textarea } from '@/shared/components/ui/textarea';
 import { ProcessingHistory } from '@/shared/components/common/ProcessingHistory';
 import { ImageGalleryGrid } from '@/shared/components/common/ImageGalleryGrid';
 
-<<<<<<< HEAD
-// 무거운 컴포넌트들을 동적 임포트로 분할 (Vite에서는 React.lazy 사용)
-const DynamicCommentsSection = lazy(() => import('@/shared/components/common/CommentsSection'));
-=======
 // 무거운 컴포넌트들을 동적 임포트로 분할
 const CommentsSection = lazy(() => import('@/shared/components/common/CommentsSection'));
 
->>>>>>> develop
 import {
   ProductionRequestStatus,
   type ProductionRequest,
@@ -297,11 +289,7 @@ const ProductionRequestDetailModalComponent: React.FC<ProductionRequestDetailMod
 
             {/* 댓글 섹션 - 동적 로딩 */}
             <Suspense fallback={<div className="p-4 text-center text-muted-foreground">댓글 로딩 중...</div>}>
-<<<<<<< HEAD
-              <DynamicCommentsSection
-=======
               <CommentsSection
->>>>>>> develop
                 comments={request.comments || []}
                 onAddComment={handleAddComment}
                 onEditComment={handleEditComment}
@@ -368,7 +356,4 @@ const ProductionRequestDetailModalComponent: React.FC<ProductionRequestDetailMod
 
 // React.memo로 최적화하여 불필요한 리렌더링 방지
 export const ProductionRequestDetailModal = React.memo(ProductionRequestDetailModalComponent);
-
-
-
 

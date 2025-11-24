@@ -96,7 +96,15 @@ export async function analyzeInspectionHistory(
       if (inspection.inspectionType === 'incoming') {
         baseData.결과 = inspection.result;
         if (inspection.resultReason) {
-          baseData.사유 = inspection.resultReason.substring(0, 80);
+          baseData.사유 = inspection.resultReason;
+        }
+        // 외관 이력 (상세한 불량 내용 포함)
+        if (inspection.appearanceHistory) {
+          baseData.외관이력 = inspection.appearanceHistory;
+        }
+        // 기능 이력
+        if (inspection.functionHistory) {
+          baseData.기능이력 = inspection.functionHistory;
         }
       }
 
@@ -111,10 +119,10 @@ export async function analyzeInspectionHistory(
       // 공정검사: 작업라인, 이력 내용, 불량률 중요
       if (inspection.inspectionType === 'inProcess') {
         if (inspection.workLine) baseData.라인 = inspection.workLine;
-        // 공정검사 이력 내용 요약
+        // 공정검사 이력 내용 (전체 포함 - 상세 정보 보존)
         const history = [inspection.preInspectionHistory, inspection.inProcessInspectionHistory]
           .filter(Boolean).join(' / ');
-        if (history) baseData.내용 = history.substring(0, 100);
+        if (history) baseData.내용 = history;
       }
 
       // 출하검사: 작업자별 불량 수량, 이력 내용 중요
@@ -127,10 +135,10 @@ export async function analyzeInspectionHistory(
             baseData.불량수 = totalDefect;
           }
         }
-        // 재검사 등 이력 내용
+        // 재검사 등 이력 내용 (전체 포함 - 상세 정보 보존)
         const history = [inspection.reinspectionContent, inspection.reinspectionKeyword]
           .filter(Boolean).join(' / ');
-        if (history) baseData.내용 = history.substring(0, 100);
+        if (history) baseData.내용 = history;
       }
 
       return baseData;
@@ -140,23 +148,34 @@ export async function analyzeInspectionHistory(
     const prompt = `품질검사 이력 분석. 아래 템플릿 양식을 그대로 채워서 응답해.
 
 역할: 사출물 코팅/증착 후공정 업체.
-데이터: ${JSON.stringify(inspectionData)}
+데이터: ${JSON.stringify(inspectionData, null, 2)}
 
 규칙:
-1. 모든 텍스트는 짧은 명사형 종결.
-2. 숫자를 적극 활용.
-3. **절대 데이터에 없는 일반적인 조언 금지** (예: "검사 철저", "협의 필요" 등 금지).
-4. 데이터에서 구체적인 행동 지침을 찾을 수 없으면 해당 항목은 "특이사항 없음" 또는 생략.
-5. **요약 시 "사출불량 6종" 같이 뭉뚱그리지 말고 "사출-찍힘(3), 사출-수축(3)" 처럼 구체적인 불량명 명시.**
+1. **외관이력, 기능이력, 내용 필드를 꼼꼼히 분석** - 여기에 상세한 불량 정보가 기록되어 있음.
+2. 불량률, 위치(내측/윗면/하단부 등), 비교 정보(기존대비 등)를 구체적으로 추출.
+3. 모든 텍스트는 짧은 명사형 종결.
+4. 숫자를 적극 활용 (예: "약30%", "약18%", "약5%" 등).
+5. **절대 데이터에 없는 일반적인 조언 금지** (예: "검사 철저", "협의 필요" 등 금지).
+6. 데이터에서 구체적인 행동 지침을 찾을 수 없으면 해당 항목은 "특이사항 없음" 또는 생략.
+7. **요약 시 "사출불량 6종" 같이 뭉뚱그리지 말고 "사출-가스/일자웰드(약30%), 사출-웰드형상(약18%), 사출-흑점(약5%)" 처럼 구체적인 불량명과 비율을 명시.**
+8. **위치 정보 포함** (예: "내측 가스", "윗면 수축", "하단부 수축").
+9. **비교 정보 포함** (예: "기존대비 빨려보임", "기존대비 진해보임").
+10. **조치사항 포함** (예: "에어불어주기", "군포사출방 공유완료").
 
 JSON 응답 예시 (이 형식을 따를 것):
 {
-  "summary": "[주요불량] 사출-수축(3건), 증착-이물(2건) / [불량률] 공정 5.2%",
+  "summary": "[주요불량] 내측 가스/일자웰드(약30%), 내측 웰드형상(약18%), 흑점(약5%), 내측 얼룩(약6%) / 윗면·하단부 수축(기존대비 빨려보임) / 게이트플로우마크(기존대비 진해보임) / 윗면 가스 산발적 검출 / 네측 먼지 다량 / [조치] 에어불어주기 필요(군포사출방 공유완료)",
   "warnings": [
-    "[공정] 이력에 기록된 '지그 오염' 주의"
+    "[수입] 내측 가스/일자웰드 약30% 검출 - 주의 필요",
+    "[수입] 내측 웰드형상 약18% 많이나오는 박스 존재",
+    "[수입] 네측 먼지 다량 검출 - 에어불어주기 철저히 필요"
   ],
   "checklist": [
-    "이력에 기록된 '진공도 5.0' 준수"
+    "명진 라인박 작업후 입고 확인",
+    "내측 가스/일자웰드 30% 수준 모니터링",
+    "윗면·하단부 수축 기존대비 변화 추적",
+    "게이트플로우마크 기존대비 진함 확인",
+    "에어불어주기 작업 철저히 수행"
   ]
 }`;
 

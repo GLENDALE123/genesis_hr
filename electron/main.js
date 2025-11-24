@@ -9,11 +9,7 @@ const notificationWindow = require('./notification-window');
 
 // 개발 서버 사용 여부를 명시적으로 제어
 // 패키지된 앱(설치본)에서는 무조건 로컬 정적 서버 사용
-<<<<<<< HEAD
-const DEV_SERVER_URL = process.env.ELECTRON_DEV_SERVER_URL || 'https://hs-jig-b2093.web.app';
-=======
 const DEV_SERVER_URL = process.env.ELECTRON_DEV_SERVER_URL || 'http://localhost:5173';
->>>>>>> develop
 // 패키지된 앱이면 웹 서버 사용 안 함, 아니면 환경 변수로 제어
 const preferDevServer = !app.isPackaged && process.env.ELECTRON_DEV !== 'false';
 const isDev = preferDevServer; // 개발자 도구/단축키 동작 기준
@@ -78,27 +74,12 @@ function ensureInside(baseDir, targetPath) {
 
 function startStaticOutServer() {
   return new Promise((resolve) => {
-<<<<<<< HEAD
-    const outDir = process.env.ELECTRON_BUILD === 'true' 
-      ? path.join(__dirname, '../electron-out')
-      : path.join(__dirname, '../dist');
-=======
     const outDir = path.join(__dirname, '../dist');
->>>>>>> develop
     const server = http.createServer((req, res) => {
       try {
         const url = new URL(req.url, 'http://127.0.0.1');
         let pathname = decodeURIComponent(url.pathname);
         
-<<<<<<< HEAD
-        // Vite 빌드 파일 경로 정규화: /assets/는 항상 루트에 있음
-        if (pathname.includes('/assets/')) {
-          const assetsIndex = pathname.indexOf('/assets/');
-          pathname = pathname.substring(assetsIndex); // /assets/부터 시작
-        }
-        
-=======
->>>>>>> develop
         // Windows 경로 구분자 처리: URL 경로를 파일 시스템 경로로 변환
         pathname = pathname.replace(/\//g, path.sep);
         // 선행 구분자 제거 (Windows 경로는 절대 경로가 아니므로)
@@ -150,13 +131,8 @@ function startStaticOutServer() {
           const ext = path.extname(originalPathname).toLowerCase();
           const isStaticResource = ['.js', '.css', '.json', '.png', '.jpg', '.jpeg', '.svg', '.ico', '.woff', '.woff2', '.ttf', '.eot', '.map'].includes(ext);
           
-<<<<<<< HEAD
-          if (isStaticResource || originalPathname.startsWith('/_next/')) {
-            // 정적 리소스나 _next 파일은 404 반환 (폴백 없음)
-=======
           if (isStaticResource) {
             // 정적 리소스는 404 반환 (폴백 없음)
->>>>>>> develop
             res.statusCode = 404;
             res.end('Not Found');
             return;

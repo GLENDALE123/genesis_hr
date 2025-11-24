@@ -1,17 +1,5 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-<<<<<<< HEAD
-import App from './App';
-import './app/globals.css';
-
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
-
-
-=======
 import { HashRouter, BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './globals.css';
@@ -29,4 +17,3 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
     </Router>
   </React.StrictMode>
 );
->>>>>>> develop

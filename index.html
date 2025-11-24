@@ -1,65 +1,3 @@
-<<<<<<< HEAD
-<!doctype html>
-<html lang="ko">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/tms-logo.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="TMS 통합관리시스템 - Vite app with Firebase integration" />
-    <title>TMS 통합관리시스템</title>
-    <!-- Pretendard Variable 폰트 -->
-    <link rel="preload" href="/fonts/PretendardVariable.woff2" as="font" type="font/woff2" crossorigin />
-    <!-- 테마 깜빡임 방지를 위한 스크립트 -->
-    <script>
-      // process 객체를 전역으로 정의 (Vite 환경에서 process.env 지원)
-      (function() {
-        if (typeof process === 'undefined') {
-          window.process = {
-            env: {},
-            platform: 'browser',
-            version: '',
-            versions: {}
-          };
-        }
-      })();
-      
-      (function() {
-        try {
-          // 테마 초기화 (hydration mismatch 방지)
-          const theme = localStorage.getItem('hs-next-theme') || 'system';
-          const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-          const resolvedTheme = theme === 'system' ? systemTheme : theme;
-          
-          // 즉시 적용하여 깜빡임 방지
-          if (resolvedTheme === 'dark') {
-            document.documentElement.classList.add('dark');
-          } else {
-            document.documentElement.classList.remove('dark');
-          }
-          
-          // 인증 상태 초기화
-          const authData = localStorage.getItem('auth-store');
-          if (authData) {
-            try {
-              const parsed = JSON.parse(authData);
-              if (parsed.state && parsed.state.user) {
-                window.__AUTH_INITIAL_STATE__ = {
-                  user: parsed.state.user,
-                  isLoading: false,
-                  error: null
-                };
-              }
-            } catch (e) {
-              // JSON 파싱 실패 무시
-            }
-          }
-        } catch (e) {
-          // localStorage 접근 실패 시 기본 테마 사용
-          document.documentElement.classList.remove('dark');
-        }
-      })();
-    </script>
-=======
 <!DOCTYPE html>
 <html lang="ko">
   <head>
@@ -68,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="TMS 통합관리시스템" />
     <title>TMS 통합관리시스템</title>
->>>>>>> develop
   </head>
   <body>
     <div id="root"></div>

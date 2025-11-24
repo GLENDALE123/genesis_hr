@@ -2,14 +2,8 @@
  * 설정 페이지
  */
 
-<<<<<<< HEAD:src/app/settings/page.tsx
-
-import React, { useState, useEffect, Suspense } from 'react';
-import { useLocation } from 'react-router-dom';
-=======
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'react-router-dom';
->>>>>>> develop:src/pages/settings/page.tsx
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import { NotificationSettings } from '@/features/settings/components/NotificationSettings';
 import { ProfileSettings } from '@/features/settings/components/ProfileSettings';
@@ -21,12 +15,7 @@ import { useIsAdmin } from '@/features/auth/hooks/useUserRole';
 import { UserManagementSettings } from '@/features/settings/components/UserManagementSettings';
 
 function SettingsContent() {
-<<<<<<< HEAD:src/app/settings/page.tsx
-  const location = useLocation();
-  const searchParams = new URLSearchParams(location.search);
-=======
   const [searchParams] = useSearchParams();
->>>>>>> develop:src/pages/settings/page.tsx
   const tabParam = searchParams.get('tab');
   const isAdmin = useIsAdmin();
   const [activeTab, setActiveTab] = useState('profile');
@@ -123,9 +112,5 @@ export default function SettingsPage() {
     </ProtectedRoute>
   );
 }
-
-
-
-
 
 

@@ -2,6 +2,7 @@
  * 정보 탭
  */
 
+'use client';
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
@@ -33,10 +34,6 @@ import {
 export const AboutSettings: React.FC = () => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
-<<<<<<< HEAD
-  const location = useLocation();
-=======
->>>>>>> develop
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   
   // 플랫폼 감지
@@ -327,8 +324,4 @@ export const AboutSettings: React.FC = () => {
     </div>
   );
 };
-
-
-
-
 

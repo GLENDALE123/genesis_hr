@@ -42,15 +42,12 @@ export const getDeviceId = (): string => {
   const DEVICE_ID_KEY = 'device-id';
   
   try {
-<<<<<<< HEAD
-=======
     // localStorage 접근 가능 여부 확인
     if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
       console.warn('⚠️ [SavedAccounts] localStorage 접근 불가 - 임시 ID 생성');
       return `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     }
 
->>>>>>> develop
     let deviceId = localStorage.getItem(DEVICE_ID_KEY);
     
     if (!deviceId) {
@@ -79,15 +76,12 @@ export const saveLoginAccount = async (
   photoURL?: string | null
 ): Promise<void> => {
   try {
-<<<<<<< HEAD
-=======
     // localStorage 접근 가능 여부 확인
     if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
       console.error('❌ [SavedAccounts] localStorage 접근 불가 - 계정 저장 실패');
       throw new Error('localStorage is not available');
     }
 
->>>>>>> develop
     const platform = getCurrentPlatform();
     const deviceId = getDeviceId();
     
@@ -121,10 +115,6 @@ export const saveLoginAccount = async (
  */
 export const getSavedAccount = (): SavedAccount | null => {
   try {
-<<<<<<< HEAD
-    const platform = getCurrentPlatform();
-    const key = getPlatformKey(platform);
-=======
     // localStorage 접근 가능 여부 확인
     if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
       console.warn('⚠️ [SavedAccounts] localStorage 접근 불가');
@@ -134,7 +124,6 @@ export const getSavedAccount = (): SavedAccount | null => {
     const platform = getCurrentPlatform();
     const key = getPlatformKey(platform);
     
->>>>>>> develop
     const saved = localStorage.getItem(key);
     
     if (!saved) {
@@ -202,15 +191,12 @@ export const getDecryptedPassword = (savedAccount: SavedAccount): string => {
  */
 export const clearSavedAccount = (): void => {
   try {
-<<<<<<< HEAD
-=======
     // localStorage 접근 가능 여부 확인
     if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
       console.warn('⚠️ [SavedAccounts] localStorage 접근 불가 - 계정 삭제 실패');
       return;
     }
 
->>>>>>> develop
     const platform = getCurrentPlatform();
     const key = getPlatformKey(platform);
     localStorage.removeItem(key);

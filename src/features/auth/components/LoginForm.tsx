@@ -70,11 +70,7 @@ export function LoginForm({ initialEmail }: LoginFormProps = {} as LoginFormProp
   // 이미 로그인된 사용자는 홈으로 리다이렉트
   useEffect(() => {
     if (user) {
-<<<<<<< HEAD
-      navigate('/', { replace: true });
-=======
       navigate('/');
->>>>>>> develop
     }
   }, [user, navigate]);
 
@@ -221,11 +217,7 @@ export function LoginForm({ initialEmail }: LoginFormProps = {} as LoginFormProp
           description: '환영합니다. 로그인되었습니다.',
           duration: 1500,
         });
-<<<<<<< HEAD
-        navigate('/dashboard', { replace: true });
-=======
         navigate('/dashboard');
->>>>>>> develop
       } else {
         // 로그인 필드 검증
         const emailValidation = validateEmail(email);
@@ -251,72 +243,6 @@ export function LoginForm({ initialEmail }: LoginFormProps = {} as LoginFormProp
         // auth.currentUser가 즉시 설정되므로 빠르게 프로필 가져오기
         let userProfile = null;
         try {
-<<<<<<< HEAD
-          const loggedInUser = await AuthService.signIn({
-            email: email.trim(),
-            password,
-          });
-          
-          // 로그인 성공 후 사용자 프로필 강제 새로고침
-          // auth.currentUser가 즉시 설정되므로 빠르게 프로필 가져오기
-          let userProfile = null;
-          try {
-            await refreshUserProfile();
-            // 프로필 재조회 (refreshUserProfile이 void를 반환하므로 store에서 가져오기)
-            await new Promise(resolve => setTimeout(resolve, 100));
-            userProfile = await refreshUserProfile();
-          } catch (profileError) {
-            console.warn('⚠️ [LoginForm] 프로필 로드 실패, 재시도 중...', profileError);
-            // 프로필 로드 실패 시 약간 대기 후 재시도
-            await new Promise(resolve => setTimeout(resolve, 200));
-            try {
-              await refreshUserProfile();
-            } catch (retryError) {
-              console.error('❌ [LoginForm] 프로필 재시도 실패:', retryError);
-            }
-          }
-          
-          // 로그인 성공 후 계정 저장 및 세션 등록
-          try {
-            const deviceId = getDeviceId();
-            
-            // 세션 등록 전에 약간 대기 (AuthProvider 리스너 등록 시간 확보)
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            // Firestore에 세션 등록 (다른 기기 세션 무효화)
-            await registerSession(loggedInUser.uid, deviceId);
-            
-            // 세션 등록 시간 기록 (로컬 스토리지에 임시 저장)
-            const sessionRegistrationTime = Date.now();
-            sessionStorage.setItem(`session-reg-time-${loggedInUser.uid}`, sessionRegistrationTime.toString());
-            
-            // 프로필을 다시 가져오기 위해 약간 대기 (store 업데이트 대기)
-            await new Promise(resolve => setTimeout(resolve, 300));
-            await refreshUserProfile();
-            const { userProfile: currentUserProfile, user: currentUser } = useAuthStore.getState();
-            
-            // 로컬에 계정 정보 저장 (프로필 사진 URL 포함)
-            await saveLoginAccount(
-              email.trim(),
-              loggedInUser.displayName || email.trim().split('@')[0],
-              currentUserProfile?.position,
-              password,
-              currentUser?.photoURL || loggedInUser.photoURL
-            );
-            
-            console.log('✅ [LoginForm] 로그인 기록 저장 완료');
-          } catch (saveError) {
-            console.error('⚠️ [LoginForm] 로그인 기록 저장 실패:', saveError);
-            // 저장 실패해도 로그인은 진행
-          }
-          
-          toast.success('로그인되었습니다!', {
-            duration: 1500,
-          });
-          navigate('/dashboard', { replace: true });
-        } catch (loginError: unknown) {
-          throw loginError;
-=======
           await refreshUserProfile();
           // 프로필 재조회 (refreshUserProfile이 void를 반환하므로 store에서 가져오기)
           await new Promise(resolve => setTimeout(resolve, 100));
@@ -330,7 +256,6 @@ export function LoginForm({ initialEmail }: LoginFormProps = {} as LoginFormProp
           } catch (retryError) {
             console.error('❌ [LoginForm] 프로필 재시도 실패:', retryError);
           }
->>>>>>> develop
         }
         
         // 로그인 성공 후 계정 저장 및 세션 등록

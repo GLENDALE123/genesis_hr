@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-
-=======
->>>>>>> develop
 import { useAuthStore } from '../store/authStore';
 import type { UserRole } from '@/features/auth/types';
 
@@ -43,8 +39,3 @@ export const useIsAdmin = (): boolean => {
 export const useIsManager = (): boolean => {
   return useHasRole(['Admin', 'Manager']);
 };
-<<<<<<< HEAD
-
-
-=======
->>>>>>> develop

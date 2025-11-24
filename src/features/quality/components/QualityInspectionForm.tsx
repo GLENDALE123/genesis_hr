@@ -1,3 +1,4 @@
+'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
@@ -26,11 +27,8 @@ import {
   createTimeoutPromise
 } from '@/shared/components/common/ProgressToast';
 import { getLocalDateString } from '@/shared/utils/dateUtils';
-<<<<<<< HEAD
-=======
 import { useInspectionHistory } from '../hooks/useInspectionHistory';
 import { InspectionHistorySummary } from './InspectionHistorySummary';
->>>>>>> develop
 
 // 재시도 로직을 포함한 업로드 함수 (직접 정의)
 const createRetryableUploadPromise = async (
@@ -357,8 +355,6 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     return () => unsubscribe();
   }, []);
 
-<<<<<<< HEAD
-=======
   // 이력 조회 및 분석 (생성 모드에서만 활성화)
   // formData가 선언된 이후에 호출되어야 함
   const {
@@ -373,7 +369,6 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     enabled: isCreateMode && isOpen, // 생성 모드이고 모달이 열려있을 때만 활성화
   });
 
->>>>>>> develop
   // 기본 폼 데이터 생성 함수
   const getDefaultFormData = useCallback((): Partial<QualityInspection> => {
     return {
@@ -1146,4 +1141,3 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     </>
   );
 };
-
