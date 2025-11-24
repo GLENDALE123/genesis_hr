@@ -35,7 +35,7 @@ export const useWorkSchedule = () => {
   const summary = useMemo((): ScheduleSummary => {
     const yearSchedules = Array.from(schedules.values());
     const daysInYear = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0 ? 366 : 365;
-    let totalDays = view === 'year' ? daysInYear : new Date(year, month + 1, 0).getDate();
+    const totalDays = view === 'year' ? daysInYear : new Date(year, month + 1, 0).getDate();
     
     let workDays = 0;
     const typeCounts = Object.keys(WORK_TYPES).reduce((acc, key) => ({ ...acc, [key]: 0 }), {} as Record<string, number>);

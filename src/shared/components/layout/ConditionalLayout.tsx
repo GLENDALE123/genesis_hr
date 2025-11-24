@@ -12,8 +12,12 @@ export const ConditionalLayout: React.FC<ConditionalLayoutProps> = ({
   children 
 }) => {
   // 모든 훅을 항상 호출하여 훅의 개수를 일관되게 유지
+<<<<<<< HEAD
   const location = useLocation();
   const pathname = location.pathname;
+=======
+  const { pathname } = useLocation();
+>>>>>>> develop
   const { user, isLoading } = useAuthStore();
   const [mounted, setMounted] = useState(false);
   // Electron 환경 감지 (타이틀바가 fixed일 때만 여백 필요)
@@ -33,6 +37,7 @@ export const ConditionalLayout: React.FC<ConditionalLayoutProps> = ({
   const isAuthPage = authPages.includes(pathname);
 
   // 서버 사이드에서는 항상 children만 렌더링 (hydration mismatch 방지)
+  // Vite는 CSR이므로 hydration mismatch는 없지만, 초기 마운트 전 깜빡임 방지
   if (!mounted) {
     return <>{children}</>;
   }
@@ -82,9 +87,13 @@ export const ConditionalLayout: React.FC<ConditionalLayoutProps> = ({
     );
   }
 
+  // 채팅 페이지는 여백 없이 렌더링
+  const chatPages = ['/chat'];
+  const isChatPage = chatPages.some((page) => pathname.startsWith(page));
+
   // 로그인된 사용자의 일반 페이지는 AppLayout과 함께 렌더링
   return (
-    <AppLayout>
+    <AppLayout noContentPadding={isChatPage}>
       {children}
     </AppLayout>
   );

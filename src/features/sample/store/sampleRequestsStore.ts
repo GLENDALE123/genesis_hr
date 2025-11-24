@@ -86,8 +86,8 @@ export const useSampleRequestsStore = create<SampleRequestsState & SampleRequest
           
           if (cacheAge < CACHE_DURATION) {
             return cache.requests;
-          } else {
           }
+          // 캐시가 만료된 경우 계속 진행하여 새로 로드
           
           return null;
         },

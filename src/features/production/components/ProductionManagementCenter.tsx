@@ -1,6 +1,11 @@
+<<<<<<< HEAD
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+=======
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
+>>>>>>> develop
 import { AlertCircle, Plus, MessageSquare } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
@@ -33,9 +38,15 @@ import { isAdmin, isManager } from '@/shared/utils/userUtils';
 import { TABLE_CELL_STYLES, TABLE_HEAD_STYLES } from '../constants/tableStyles';
 
 const ProductionManagementCenterComponent: React.FC = () => {
+<<<<<<< HEAD
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const navigate = useNavigate();
+=======
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+>>>>>>> develop
   const [requestTypeFilter, setRequestTypeFilter] = useState<'all' | ProductionRequestType>('all');
   const { requests, isLoading, createRequest, updateRequestStatus, deleteRequest, addComment, editComment, deleteComment } = useProductionRequests();
   const { user, userProfile } = useAuthStore();
@@ -55,7 +66,11 @@ const ProductionManagementCenterComponent: React.FC = () => {
 
   // URL 파라미터로 모달 열기 (딥링크 처리)
   useEffect(() => {
+<<<<<<< HEAD
     const requestId = searchParams?.get('requestId');
+=======
+    const requestId = searchParams.get('requestId');
+>>>>>>> develop
     
     // URL에 requestId가 없으면 아무것도 하지 않음
     if (!requestId) {
@@ -105,19 +120,33 @@ const ProductionManagementCenterComponent: React.FC = () => {
   const handleSelectRequest = useCallback((request: ProductionRequest) => {
     setSelectedRequest(request);
     // URL 업데이트 (딥링크 지원)
+<<<<<<< HEAD
     const params = new URLSearchParams(searchParams?.toString() || '');
     params.set('requestId', request.id);
     navigate(`${pathname}?${params.toString()}`, { scroll: false });
+=======
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('requestId', request.id);
+    navigate(`${pathname}?${params.toString()}`, { replace: true });
+>>>>>>> develop
   }, [searchParams, pathname, navigate]);
 
   // 모달 닫기 핸들러 (URL 쿼리 파라미터 제거)
   const handleCloseDetailModal = useCallback(() => {
     // URL을 먼저 업데이트
+<<<<<<< HEAD
     if (searchParams?.get('requestId')) {
       const params = new URLSearchParams(searchParams.toString());
       params.delete('requestId');
       const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
       navigate(newUrl, { scroll: false });
+=======
+    if (searchParams.get('requestId')) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('requestId');
+      const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+      navigate(newUrl, { replace: true });
+>>>>>>> develop
     }
     
     // 상태 업데이트 - 모달 닫기

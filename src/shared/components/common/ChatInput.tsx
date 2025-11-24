@@ -331,11 +331,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   }, [selectedMentionIndex]);
 
   return (
-    <div className="flex items-start gap-2.5">
-      <Avatar className="w-8 h-8">
-        <AvatarFallback className="bg-muted" />
-      </Avatar>
-      
+    <div className="flex items-end gap-2.5">
       <div className="flex-1 relative">
         {/* 답글 표시 */}
         {replyTo && onCancelReply && (
@@ -361,7 +357,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           contentEditable={!disabled}
           onInput={handleInput}
           onKeyDown={handleKeyDown}
-          className="w-full min-h-[72px] p-3 border border-border rounded-md bg-background text-foreground text-sm font-normal focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring overflow-y-auto"
+          className="w-full min-h-[72px] max-h-[300px] p-3 border border-border rounded-md bg-background text-foreground text-lg font-medium focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring overflow-y-auto"
           style={{
             whiteSpace: 'pre-wrap',
             wordWrap: 'break-word',
@@ -415,7 +411,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         </div>
 
         {/* placeholder 스타일 */}
-        <style jsx>{`
+        <style>{`
           [contenteditable]:empty:before {
             content: attr(data-placeholder);
             color: hsl(var(--muted-foreground));

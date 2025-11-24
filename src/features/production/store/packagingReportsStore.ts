@@ -85,8 +85,8 @@ export const usePackagingReportsStore = create<PackagingReportsState & Packaging
             
             if (cacheAge < CACHE_DURATION) {
               return cache.reports;
-            } else {
             }
+            // 캐시가 만료된 경우 계속 진행하여 새로 로드
           }
           
           return null;

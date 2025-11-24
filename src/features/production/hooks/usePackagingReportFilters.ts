@@ -223,12 +223,13 @@ export const usePackagingReportFilters = (
       case 'month':
         startDate = getMonthAgo();
         break;
-      case 'all':
+      case 'all': {
         // ✅ 전체 기간 조회: 최근 6개월 데이터 조회
         const sixMonthsAgo = new Date();
         sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
         startDate = formatDateForInput(sixMonthsAgo);
         break;
+      }
       default:
         startDate = today;
     }

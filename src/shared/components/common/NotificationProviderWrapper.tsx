@@ -24,6 +24,7 @@ export const NotificationProviderWrapper: React.FC<NotificationProviderWrapperPr
   
   React.useEffect(() => {
     if (isElectron) {
+      // Electron 환경 처리 (필요 시 추가)
     } else {
     }
   }, [isElectron]);

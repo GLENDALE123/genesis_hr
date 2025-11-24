@@ -1,7 +1,11 @@
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { LoadingSpinner } from '@/shared/components/common';
 import { useNavigate } from 'react-router-dom';
+<<<<<<< HEAD
 import { useEffect, useState } from 'react';
+=======
+import { useEffect } from 'react';
+>>>>>>> develop
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -14,12 +18,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 }) => {
   const { user, isLoading } = useAuthStore();
   const navigate = useNavigate();
+<<<<<<< HEAD
   const [isClient, setIsClient] = useState(false);
 
   // 클라이언트 사이드 렌더링 확인
   useEffect(() => {
     setIsClient(true);
   }, []);
+=======
+>>>>>>> develop
 
   useEffect(() => {
     // 로딩이 완료되고 사용자가 없으면 로그인 페이지로 리다이렉트
@@ -27,11 +34,14 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       navigate(redirectTo, { replace: true });
     }
   }, [user, isLoading, navigate, redirectTo]);
+<<<<<<< HEAD
 
   // 서버 사이드에서는 항상 자식 컴포넌트를 렌더링 (hydration 오류 방지)
   if (!isClient) {
     return <>{children}</>;
   }
+=======
+>>>>>>> develop
 
   // 클라이언트에서 로딩 중이면 로딩 스피너 표시
   if (isLoading) {

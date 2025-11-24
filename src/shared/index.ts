@@ -6,6 +6,5 @@ export * from './utils';
 export * from './hooks';
 
 // Store exports (중앙 집중식 관리)
-export { useGlobalStore } from '@/app/store';
 export { useAuthStore } from '@/features/auth';
 export { useDashboardStore } from '@/features/dashboard';

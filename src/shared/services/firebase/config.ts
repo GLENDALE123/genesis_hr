@@ -10,22 +10,22 @@ const isElectron = typeof window !== 'undefined' && (window as unknown as Record
 
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyB4nSpGhucC0NR57Zpu_syg86sjdFtLtaU',
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'hs-jig-b2093.firebaseapp.com',
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'hs-jig-b2093',
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'hs-jig-b2093.firebasestorage.app',
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '117861579792',
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '1:117861579792:web:93de9aeca7771940745e95',
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyB4nSpGhucC0NR57Zpu_syg86sjdFtLtaU',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'hs-jig-b2093.firebaseapp.com',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'hs-jig-b2093',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'hs-jig-b2093.firebasestorage.app',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '117861579792',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:117861579792:web:93de9aeca7771940745e95',
 };
 
 // Firebase Cloud Messaging VAPID Key
 // Firebase Console > Project Settings > Cloud Messaging > Web Push certificates에서 생성
-export const FIREBASE_VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || 'BCiXh2gG9sI7meQzRYxF6cm1gLDY94KPb_IV3tChfzW1nVQLjw7IAxCb253nNarOYpaqmVz5t0SEHY83P8DFph8';
+export const FIREBASE_VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY || 'BCiXh2gG9sI7meQzRYxF6cm1gLDY94KPb_IV3tChfzW1nVQLjw7IAxCb253nNarOYpaqmVz5t0SEHY83P8DFph8';
 
 // Firestore 데이터베이스 ID (환경변수로 설정 가능)
 // 기본값: tms-production (seoul 리전)
 // 주의: default 데이터베이스는 사용하지 않음 (완전 배제)
-export const FIREBASE_FIRESTORE_DATABASE_ID = process.env.NEXT_PUBLIC_FIREBASE_FIRESTORE_DATABASE_ID || 'tms-production';
+export const FIREBASE_FIRESTORE_DATABASE_ID = import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || 'tms-production';
 
 // Firebase 앱이 이미 초기화되어 있는지 확인
 let app: FirebaseApp;
@@ -96,7 +96,7 @@ export const storage = (() => {
 
 export const analytics = (() => {
   try {
-    const hasMeasurementId = !!process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID;
+    const hasMeasurementId = !!import.meta.env.VITE_FIREBASE_MEASUREMENT_ID;
     if (typeof window !== 'undefined' && !isElectron && hasMeasurementId) {
       const analyticsService = getAnalytics(app);
       return analyticsService;

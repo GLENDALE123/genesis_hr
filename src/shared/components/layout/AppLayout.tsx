@@ -4,7 +4,7 @@ import { TitleBar } from '@/shared/components/layout/TitleBar';
 import { AppHeader } from '@/shared/components/layout/AppHeader';
 import { AppSidebar } from '@/shared/components/layout/AppSidebar';
 import { cn } from '@/shared/lib/utils';
-import { useGlobalStore } from '@/app/store';
+import { useGlobalStore } from '@/shared/store/globalStore';
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from '@/shared/components/ui/sheet';
 import { VisuallyHidden } from '@/shared/components/ui/visually-hidden';
 import { useDeviceType } from '@/shared/hooks/use-device';
@@ -206,5 +206,8 @@ const AppLayoutComponent: React.FC<AppLayoutProps> = ({
 AppLayoutComponent.displayName = 'AppLayout';
 
 export const AppLayout = React.memo(AppLayoutComponent);
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> develop

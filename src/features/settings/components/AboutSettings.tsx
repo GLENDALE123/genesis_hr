@@ -33,7 +33,10 @@ import {
 export const AboutSettings: React.FC = () => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
+<<<<<<< HEAD
   const location = useLocation();
+=======
+>>>>>>> develop
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   
   // 플랫폼 감지

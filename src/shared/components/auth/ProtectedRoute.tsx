@@ -33,9 +33,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     const id = setTimeout(() => {
       try {
         if (!user && isLoading) {
+<<<<<<< HEAD
           navigate('/login', { replace: true });
+=======
+          navigate('/login/');
+>>>>>>> develop
         }
-      } catch {}
+      } catch {
+        // 네비게이션 실패 시 무시
+      }
     }, 4000);
     return () => clearTimeout(id);
   }, [mounted, timerStarted, user, isLoading, navigate]);
@@ -43,7 +49,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   useEffect(() => {
     // 로딩이 완료되고 사용자가 로그인되지 않은 경우 로그인 페이지로 리다이렉트
     if (!isLoading && !user) {
+<<<<<<< HEAD
       navigate('/login', { replace: true });
+=======
+      navigate('/login/');
+>>>>>>> develop
     }
   }, [user, isLoading, navigate]);
 

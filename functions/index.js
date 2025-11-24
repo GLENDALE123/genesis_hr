@@ -25,6 +25,7 @@ const imageTriggers = require('./triggers/imageOptimization');
 
 // Scheduled 트리거들
 const cleanupTriggers = require('./triggers/cleanupReadNotifications');
+const autoLogoutTriggers = require('./triggers/autoLogout');
 
 // HTTPS 함수들
 const notificationHttps = require('./https/notifications');
@@ -41,6 +42,7 @@ module.exports = {
   ...notificationTriggers,
   ...imageTriggers,
   ...cleanupTriggers,
+  ...autoLogoutTriggers,
   
   // HTTPS 함수들
   ...notificationHttps,

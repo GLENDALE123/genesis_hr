@@ -18,8 +18,13 @@ export const ElectronNavigationHandler: React.FC = () => {
       const unsubscribe = window.electron.onNavigateTo((link: string) => {
         try {
           console.log('🔗 [Electron Navigation] 페이지 이동:', link);
+<<<<<<< HEAD
           // Next.js 라우터로 이동
           navigate(link, { replace: true });
+=======
+          // React Router로 이동
+          navigate(link);
+>>>>>>> develop
         } catch (error) {
           console.error('❌ [Electron Navigation] 페이지 이동 실패:', error);
         }
@@ -38,7 +43,11 @@ export const ElectronNavigationHandler: React.FC = () => {
         const url = event.detail?.url;
         if (url) {
           console.log('🔗 [Mobile Navigation] 페이지 이동:', url);
+<<<<<<< HEAD
           navigate(url, { replace: true });
+=======
+          navigate(url);
+>>>>>>> develop
         }
       } catch (error) {
         console.error('❌ [Mobile Navigation] 페이지 이동 실패:', error);

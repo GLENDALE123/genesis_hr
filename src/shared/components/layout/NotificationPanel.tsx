@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 
+=======
+>>>>>>> develop
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/shared/components/ui/button';
@@ -211,7 +214,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             return (
               <Link
                 key={notif.id}
-                href={notif.link || '#'}
+                to={notif.link || '#'}
                 className={cn(
                   "block px-5 py-4 border-b cursor-pointer transition-colors",
                   notificationBgClass

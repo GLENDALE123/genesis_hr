@@ -131,7 +131,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
     
     // @[DisplayName](UID) 형태와 @username 형태 모두 지원
     // @[DisplayName](UID) 패턴을 먼저 찾고, 없으면 @username 패턴 사용
-    const mentionWithIdPattern = /@\[([^\]]+)\]\(([^\)]+)\)/g;
+    const mentionWithIdPattern = /@\[([^\]]+)\]\(([^)]+)\)/g;
     const simpleMentionPattern = /@([^\s\n]+)/g;
     
     const parts: Array<{ type: 'text' | 'mention'; content: string; userId?: string }> = [];

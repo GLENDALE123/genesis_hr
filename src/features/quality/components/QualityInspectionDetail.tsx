@@ -12,6 +12,8 @@ import { useQualityInspections } from '../hooks/useQualityInspections';
 import { QualityInspectionForm } from './QualityInspectionForm';
 import { InspectionCard } from './InspectionCard';
 import { useDeviceType } from '@/shared/hooks/use-device';
+import { useInspectionHistory } from '../hooks/useInspectionHistory';
+import { InspectionHistorySummary } from './InspectionHistorySummary';
 
 interface QualityInspectionDetailProps {
   group: GroupedInspectionData | null;
@@ -184,6 +186,19 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
     };
   }, [currentGroup]);
 
+  // AI 이력 분석 훅 (발주처, 제품명, 부속명 기반)
+  const {
+    inspections: historyInspections,
+    summary: historySummary,
+    isLoading: isHistoryLoading,
+    isAnalyzing: isHistoryAnalyzing
+  } = useInspectionHistory(
+    currentGroup?.common.supplier || '',
+    currentGroup?.common.productName || '',
+    currentGroup?.common.partName || '',
+    isOpen && !!currentGroup // 모달이 열려있고 그룹이 있을 때만 활성화
+  );
+
   // 모달이 열릴 때마다 최신 검사 상태 초기화
   useEffect(() => {
     if (isOpen && currentGroup && tabData) {
@@ -309,8 +324,29 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
           </DialogDescription>
 
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'incoming' | 'inProcess' | 'outgoing')} className="flex-1 flex flex-col min-h-0">
-            <div className="flex-1 overflow-auto mt-2">
-              <TabsContent value="incoming" className="mt-0">
+            {/* 데스크톱: 1:2 분할 레이아웃 (좌측: AI 분석, 우측: 검사 목록) */}
+            {!isSmartphone ? (
+              <div className="flex-1 flex gap-4 mt-2 min-h-0">
+                {/* 좌측: AI 이력 분석 (33%) */}
+                <div className="w-1/3 border-r pr-4 overflow-hidden">
+                  <InspectionHistorySummary
+                    inspections={historyInspections}
+                    summary={historySummary}
+                    isLoading={isHistoryLoading}
+                    isAnalyzing={isHistoryAnalyzing}
+                    supplier={currentGroup?.common.supplier}
+                    productName={currentGroup?.common.productName}
+                    partName={currentGroup?.common.partName}
+                    onInspectionClick={(inspection) => {
+                      // 이력 클릭 시 해당 검사로 스크롤하거나 상세 보기
+                      // 필요시 구현
+                    }}
+                  />
+                </div>
+                
+                {/* 우측: 검사 목록 (67%) */}
+                <div className="flex-1 overflow-auto">
+                  <TabsContent value="incoming" className="mt-0">
                 {tabData.incoming.length > 0 ? (
                   <div className="space-y-4">
                     {tabData.incoming.map((inspection, index) => (

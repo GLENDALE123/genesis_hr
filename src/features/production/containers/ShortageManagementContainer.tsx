@@ -1,6 +1,11 @@
+<<<<<<< HEAD
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+=======
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
+>>>>>>> develop
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,9 +30,15 @@ import { useShortageRequests } from '@/features/production/hooks/useShortageRequ
 import { Skeleton } from '@/shared/components/ui/skeleton';
 
 const ShortageManagementContainerComponent: React.FC = () => {
+<<<<<<< HEAD
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const navigate = useNavigate();
+=======
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+>>>>>>> develop
   const { user, userProfile } = useAuthStore();
   
   const {
@@ -75,7 +86,11 @@ const ShortageManagementContainerComponent: React.FC = () => {
 
   // URL 파라미터로 모달 열기 (딥링크 처리)
   useEffect(() => {
+<<<<<<< HEAD
     const requestId = searchParams?.get('requestId');
+=======
+    const requestId = searchParams.get('requestId');
+>>>>>>> develop
     
     // URL에 requestId가 없으면 아무것도 하지 않음
     if (!requestId) {
@@ -217,6 +232,7 @@ const ShortageManagementContainerComponent: React.FC = () => {
             onSelectRequest={(request) => {
               setSelectedRequest(request);
               // URL 업데이트 (딥링크 지원)
+<<<<<<< HEAD
               const params = new URLSearchParams(searchParams?.toString() || '');
               params.set('requestId', request.id);
               navigate(`${pathname}?${params.toString()}`, { scroll: false });
@@ -228,6 +244,19 @@ const ShortageManagementContainerComponent: React.FC = () => {
                 params.delete('requestId');
                 const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
                 navigate(newUrl, { scroll: false });
+=======
+              const params = new URLSearchParams(searchParams.toString());
+              params.set('requestId', request.id);
+              navigate(`${pathname}?${params.toString()}`, { replace: true });
+            }}
+            onCloseDetail={() => {
+              // URL을 먼저 업데이트
+              if (searchParams.get('requestId')) {
+                const params = new URLSearchParams(searchParams.toString());
+                params.delete('requestId');
+                const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+                navigate(newUrl, { replace: true });
+>>>>>>> develop
               }
               // 상태 업데이트 - 모달 닫기
               setSelectedRequest(null);

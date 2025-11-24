@@ -4,7 +4,7 @@ import { Badge } from '@/shared/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import { ROUTE_ICONS } from '@/shared/constants/navigation';
-import { useGlobalStore } from '@/app/store';
+import { useGlobalStore } from '@/shared/store/globalStore';
 import {
   Factory,
   TestTube,
@@ -86,6 +86,11 @@ const subNavigationItems: NavItem[] = [
     href: '/work-schedule',
     icon: ROUTE_ICONS['/work-schedule'],
   },
+  {
+    title: '메시지',
+    href: '/chat',
+    icon: ROUTE_ICONS['/chat'],
+  },
 ];
 
 const AppSidebarComponent = ({
@@ -97,8 +102,12 @@ const AppSidebarComponent = ({
   collapsed?: boolean;
   onMobileClose?: () => void;
 }) => {
+<<<<<<< HEAD
   const location = useLocation();
   const pathname = location.pathname;
+=======
+  const { pathname } = useLocation();
+>>>>>>> develop
   const navigate = useNavigate();
   const [isHovered, setIsHovered] = React.useState(false);
   const { updatePreferences } = useGlobalStore();
@@ -160,11 +169,19 @@ const AppSidebarComponent = ({
     return map;
   }, [checkIsActive]);
 
+<<<<<<< HEAD
   // 클릭 핸들러 (navigate로 명시적 네비게이션)
   const handleLinkClick = React.useCallback((href: string, event: React.MouseEvent) => {
     const isTablet = !isMobile && !isDesktop;
     
     // 항상 기본 동작 방지하고 navigate로 명시적 네비게이션
+=======
+  // 클릭 핸들러 (router.push로 명시적 네비게이션)
+  const handleLinkClick = React.useCallback((href: string, event: React.MouseEvent) => {
+    const isTablet = !isMobile && !isDesktop;
+    
+    // 항상 기본 동작 방지하고 router.push로 명시적 네비게이션
+>>>>>>> develop
     event.preventDefault();
     event.stopPropagation();
     
@@ -202,7 +219,11 @@ const AppSidebarComponent = ({
       // 데스크톱: 네비게이션만 처리
       navigate(href);
     }
+<<<<<<< HEAD
   }, [pathname, isMobile, isDesktop, onMobileClose, updatePreferences, navigate]);
+=======
+  }, [pathname, isMobile, isDesktop, onMobileClose, navigate, updatePreferences]);
+>>>>>>> develop
 
   // 성능 최적화: 자식 메뉴 확인 함수 메모이제이션
   const checkChildActive = React.useCallback((children: NavItem[] | undefined) => {
@@ -333,7 +354,7 @@ const AppSidebarComponent = ({
           </div>
         ) : (
           <div className="h-7 w-7 rounded flex items-center justify-center overflow-hidden">
-            <Image 
+            <img 
               src="/tms-logo.png" 
               alt="TMS 로고" 
               width={28} 
@@ -432,4 +453,7 @@ export const AppSidebar = React.memo(AppSidebarComponent, (prevProps, nextProps)
          prevProps.className === nextProps.className &&
          prevProps.onMobileClose === nextProps.onMobileClose;
 });
+<<<<<<< HEAD
 
+=======
+>>>>>>> develop

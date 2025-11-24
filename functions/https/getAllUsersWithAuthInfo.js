@@ -41,11 +41,27 @@ exports.getAllUsersWithAuthInfo = onCall({
   cors: true
 }, async (request) => {
   try {
-    const { db } = initializeFirebase();
+    // Firebase 초기화 (에러 처리 포함)
+    let db;
+    try {
+      const firebaseInit = initializeFirebase();
+      db = firebaseInit.db;
+      if (!db) {
+        throw new Error('Firestore database instance is null');
+      }
+      console.log('[getAllUsersWithAuthInfo] Firebase initialized successfully');
+    } catch (initError) {
+      console.error('[getAllUsersWithAuthInfo] Firebase initialization failed:', {
+        message: initError.message,
+        stack: initError.stack,
+        code: initError.code
+      });
+      throw new Error(`Firebase initialization failed: ${initError.message || 'Unknown error'}`);
+    }
     
     // 인증 확인
     if (!request.auth) {
-      console.error('Authentication required but not provided');
+      console.error('[getAllUsersWithAuthInfo] Authentication required but not provided');
       throw new Error('Unauthorized - Authentication required');
     }
     
@@ -53,7 +69,7 @@ exports.getAllUsersWithAuthInfo = onCall({
     const databaseId = process.env.FIREBASE_FIRESTORE_DATABASE_ID || 'tms-production';
     console.log(`[getAllUsersWithAuthInfo] Request from user: ${callerUid}, database: ${databaseId}`);
     
-    // 호출자가 관리자인지 확인
+    // 호출자가 인증된 사용자인지 확인 (모든 인증된 사용자 허용)
     try {
       const usersRef = db.collection('users');
       const callerDoc = await usersRef.doc(callerUid).get();
@@ -75,15 +91,9 @@ exports.getAllUsersWithAuthInfo = onCall({
         throw new Error('Unauthorized - User profile data is empty');
       }
       
-      if (callerData.role !== 'Admin') {
-        console.error(`[getAllUsersWithAuthInfo] Non-admin user attempted access:`, {
-          uid: callerUid,
-          role: callerData.role
-        });
-        throw new Error('Unauthorized - Admin access required');
-      }
-      
-      console.log(`[getAllUsersWithAuthInfo] Admin access confirmed for: ${callerUid}`);
+      // 모든 인증된 사용자가 사용자 목록을 볼 수 있도록 허용 (채팅 기능을 위해)
+      // Admin만 필요한 경우는 클라이언트에서 추가 필터링
+      console.log(`[getAllUsersWithAuthInfo] Access confirmed for: ${callerUid}, role: ${callerData.role || 'Member'}`);
     } catch (error) {
       // NOT_FOUND 에러인 경우 명확하게 처리
       if (error.code === 5 || error.message?.includes('NOT_FOUND') || error.message?.includes('not found')) {
@@ -196,20 +206,33 @@ exports.getAllUsersWithAuthInfo = onCall({
     return { users: userProfiles };
   } catch (error) {
     // 더 상세한 에러 로깅
-    console.error('[getAllUsersWithAuthInfo] Error details:', {
+    const errorDetails = {
       message: error.message,
       stack: error.stack,
       code: error.code,
-      details: error.details
-    });
+      details: error.details,
+      name: error.name,
+      timestamp: new Date().toISOString()
+    };
+    
+    console.error('[getAllUsersWithAuthInfo] Error details:', errorDetails);
+    
+    // Firebase Functions v2 onCall은 에러를 자동으로 처리하지만,
+    // 명시적으로 에러를 throw하여 클라이언트에 전달
+    const errorMessage = error.message || 'Unknown error occurred';
     
     // 에러 타입에 따라 적절한 메시지 반환
-    if (error.message.includes('Unauthorized')) {
-      throw new Error(error.message);
+    if (errorMessage.includes('Unauthorized') || errorMessage.includes('permission')) {
+      // 권한 관련 에러는 그대로 전달
+      throw new Error(errorMessage);
     }
     
-    // 다른 에러는 상세 정보와 함께 전달
-    throw new Error(`Failed to fetch users: ${error.message || 'Unknown error'}`);
+    // 기타 에러는 상세 정보와 함께 전달
+    // Firebase Functions는 자동으로 500 에러로 변환하므로,
+    // 여기서는 명확한 메시지만 제공
+    const finalErrorMessage = `Failed to fetch users: ${errorMessage}`;
+    console.error('[getAllUsersWithAuthInfo] Throwing error:', finalErrorMessage);
+    throw new Error(finalErrorMessage);
   }
 });
 

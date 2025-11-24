@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+<<<<<<< HEAD
     "target": "ES2015",
     "lib": [
       "ES2015",
@@ -13,29 +14,60 @@
     "esModuleInterop": true,
     "module": "ESNext",
     "moduleResolution": "bundler",
+=======
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+>>>>>>> develop
     "resolveJsonModule": true,
     "isolatedModules": true,
+    "noEmit": true,
     "jsx": "react-jsx",
+<<<<<<< HEAD
     "allowImportingTsExtensions": true,
     "moduleDetection": "force",
     "forceConsistentCasingInFileNames": true,
+=======
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true,
+    
+    "baseUrl": ".",
+>>>>>>> develop
     "paths": {
-      "@/*": [
-        "./src/*"
-      ]
-    }
+      "@/*": ["src/*"]
+    },
+    "types": ["vite/client"]
   },
+<<<<<<< HEAD
   "include": [
     "**/*.ts",
     "**/*.tsx",
     "index.html"
   ],
+=======
+  "include": ["src", "vite.config.ts"],
+>>>>>>> develop
   "exclude": [
     "node_modules",
-    "MobileApp",
     "dist",
+<<<<<<< HEAD
     "electron-out",
     "out",
     ".next"
+=======
+    "MobileApp",
+    "electron",
+    "functions"
+>>>>>>> develop
   ]
 }

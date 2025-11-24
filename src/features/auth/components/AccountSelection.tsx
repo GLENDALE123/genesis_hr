@@ -141,7 +141,11 @@ export function AccountSelection() {
       });
       
       // 자동 로그인 실패 시 일반 로그인 페이지로 이동 (이메일 자동 입력)
+<<<<<<< HEAD
       navigate(`/login?mode=signin&email=${encodeURIComponent(savedAccount.email)}`, { replace: true });
+=======
+      navigate(`/login?mode=signin&email=${encodeURIComponent(savedAccount.email)}`);
+>>>>>>> develop
     } finally {
       setIsAutoLoggingIn(false);
     }
@@ -163,7 +167,11 @@ export function AccountSelection() {
   // 다른 계정으로 로그인
   const handleOtherAccount = () => {
     if (savedAccount) {
+<<<<<<< HEAD
       navigate(`/login?mode=signin&email=${encodeURIComponent(savedAccount.email)}`, { replace: true });
+=======
+      navigate(`/login?mode=signin&email=${encodeURIComponent(savedAccount.email)}`);
+>>>>>>> develop
     } else {
       navigate('/login?mode=signin');
     }
@@ -272,7 +280,11 @@ export function AccountSelection() {
               <Button
                 variant="ghost"
                 className="w-full h-11 text-base font-medium"
+<<<<<<< HEAD
                 onClick={() => navigate('/login?mode=signup', { replace: true })}
+=======
+                onClick={() => navigate('/login?mode=signup')}
+>>>>>>> develop
                 disabled={isAutoLoggingIn}
               >
                 <UserPlus className="mr-2 h-4 w-4" />
@@ -309,5 +321,8 @@ export function AccountSelection() {
   );
 }
 
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> develop

@@ -368,8 +368,8 @@ export class SampleService {
       
       if (!response.ok) {
         console.error('샘플 요청 알림 전송 실패:', response.status);
-      } else {
       }
+      // 성공 시 추가 처리 로직 (필요 시 추가)
     } catch (error) {
       console.error('샘플 요청 알림 전송 중 오류:', error);
       throw error;
@@ -460,6 +460,7 @@ export class SampleService {
           
           // 댓글이 있는 요청 디버깅
           if (data.comments && data.comments.length > 0) {
+            // 디버깅 로직 (필요 시 추가)
           }
         });
         callback(requests);

@@ -1,8 +1,13 @@
 import React, { useEffect, useRef } from 'react';
 import { useAuthStore } from '../store';
 import { useNavigate } from 'react-router-dom';
+<<<<<<< HEAD
 import { getKoreaDateString, getKoreaTimeInfo } from '@/shared/utils/dateUtils';
 import { onSessionChange, clearSession } from '../services/sessionService';
+=======
+// 자동 로그아웃은 Firebase Functions에서 처리하므로 dateUtils import 제거
+import { onSessionChange } from '../services/sessionService';
+>>>>>>> develop
 import { getDeviceId } from '../utils/savedAccounts';
 import { toast } from 'sonner';
 
@@ -10,21 +15,29 @@ interface AuthProviderProps {
   children: React.ReactNode;
 }
 
+<<<<<<< HEAD
 // localStorage 키
 const LAST_LOGIN_DATE_KEY = 'last-login-date';
+=======
+// 자동 로그아웃은 Firebase Functions에서 처리
+>>>>>>> develop
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const { initializeAuth, user, isLoading, logout } = useAuthStore();
   const navigate = useNavigate();
+<<<<<<< HEAD
   const logoutCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastCheckedDateRef = useRef<string>('');
+=======
+>>>>>>> develop
   const sessionUnsubscribeRef = useRef<(() => void) | null>(null);
   const sessionRegistrationTimeRef = useRef<number>(0); // 현재 기기 세션 등록 시간
 
   useEffect(() => {
     // 스크립트에서 이미 초기 상태가 설정되었다면 즉시 Firebase 인증 확인
-    if (window.__AUTH_INITIAL_STATE__) {
-    }
+    // if (window.__AUTH_INITIAL_STATE__) {
+    //   // 초기 상태 처리 로직이 필요한 경우 여기에 추가
+    // }
     
     // Auth 상태 초기화
     const unsubscribe = initializeAuth();
@@ -79,8 +92,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       user.uid,
       currentDeviceId,
       async (session) => {
+<<<<<<< HEAD
         // session이 null이면 세션이 삭제된 것이므로 무시
         if (!session) {
+=======
+        // session이 null이면 세션이 삭제된 것 (Firebase Functions에서 새벽 1시 자동 로그아웃 또는 수동 삭제)
+        if (!session) {
+          try {
+            console.log('🔄 [AuthProvider] 세션 삭제 감지 - 자동 로그아웃 실행 (새벽 1시 또는 수동 삭제)');
+            toast.warning('세션이 만료되어 로그아웃되었습니다.');
+            
+            // 로그아웃 처리
+            await logout();
+            
+            navigate('/login');
+          } catch (error) {
+            console.error('❌ [AuthProvider] 세션 삭제로 인한 자동 로그아웃 실패:', error);
+          }
+>>>>>>> develop
           return;
         }
         
@@ -116,7 +145,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               // 로그아웃 처리
               await logout();
               
+<<<<<<< HEAD
               navigate('/login', { replace: true });
+=======
+              navigate('/login');
+>>>>>>> develop
             } catch (error) {
               console.error('❌ [AuthProvider] 자동 로그아웃 실패:', error);
             }
@@ -138,6 +171,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, [user, isLoading, logout, navigate]);
 
+<<<<<<< HEAD
   // 자동 로그아웃 체크 로직 (한국 시간대 기준)
   useEffect(() => {
     // 로그인된 사용자가 없거나 로딩 중이면 스킵
@@ -211,6 +245,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     };
   }, [user, isLoading, logout, navigate]);
+=======
+  // 자동 로그아웃은 Firebase Functions에서 처리
+  // 새벽 1시에 Functions가 모든 세션을 삭제하면,
+  // onSessionChange 리스너가 이를 감지하여 자동 로그아웃 처리
+  // 클라이언트에서는 별도의 시간 체크가 필요 없음
+>>>>>>> develop
 
   return <>{children}</>;
 };

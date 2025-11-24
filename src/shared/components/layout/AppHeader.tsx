@@ -1,5 +1,9 @@
 import React from 'react';
+<<<<<<< HEAD
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+=======
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+>>>>>>> develop
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { Button } from '@/shared/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
@@ -31,13 +35,20 @@ import {
   Palette,
   Info,
   Users,
+<<<<<<< HEAD
+=======
+  MessageSquare,
+>>>>>>> develop
   ArrowLeft
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { logout } from '@/shared/services/firebase';
 import { cn } from '@/shared/lib/utils';
 import { getUserDisplayName, getUserInitial, getUserRoleText } from '@/shared/utils/userUtils';
+<<<<<<< HEAD
 import { useDevStore } from '@/app/store';
+=======
+>>>>>>> develop
 import { toast } from 'sonner';
 import { getRouteIcon, getRouteTitle } from '@/shared/constants/navigation';
 import { useNotifications } from '@/shared/hooks/useNotifications';
@@ -61,11 +72,17 @@ const AppHeaderComponent: React.FC<AppHeaderProps> = ({
 }) => {
   const { user, userProfile } = useAuthStore();
   const navigate = useNavigate();
+<<<<<<< HEAD
   const location = useLocation();
   const pathname = location.pathname;
   const searchParams = new URLSearchParams(location.search);
   const { theme, setTheme, resolvedTheme } = useTheme();
   const { dummyRole, setDummyRole, clearDummyRole } = useDevStore();
+=======
+  const { pathname } = useLocation();
+  const [searchParams] = useSearchParams();
+  const { theme, setTheme, resolvedTheme } = useTheme();
+>>>>>>> develop
   const { isSmartphone } = useDeviceType();
   
   // 알림 관리 훅 사용
@@ -167,7 +184,11 @@ const AppHeaderComponent: React.FC<AppHeaderProps> = ({
   const handleLogout = async () => {
     try {
       await logout();
+<<<<<<< HEAD
       navigate('/login', { replace: true });
+=======
+      navigate('/login');
+>>>>>>> develop
     } catch (error) {
       console.error('로그아웃 실패:', error);
     }
@@ -252,6 +273,16 @@ const AppHeaderComponent: React.FC<AppHeaderProps> = ({
         {/* Right Section */}
         <div className="flex items-center gap-2">
           {/* Theme Customizer removed */}
+
+          {/* Messages */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/chat')}
+            className="relative"
+          >
+            <MessageSquare className="h-5 w-5" />
+          </Button>
 
           {/* Notifications */}
           {isSmartphone ? (
@@ -353,19 +384,14 @@ const AppHeaderComponent: React.FC<AppHeaderProps> = ({
                   </p>
                   <div className="flex items-center gap-2 mt-2">
                     <Badge variant="default">
-                      {getUserRoleText(dummyRole ? { role: dummyRole } : userProfile)}
+                      {getUserRoleText(userProfile)}
                     </Badge>
-                    {dummyRole && (
-                      <Badge variant="destructive" className="text-xs">
-                        테스트 모드
-                      </Badge>
-                    )}
                   </div>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link href="/settings?tab=profile">
+                <Link to="/settings?tab=profile">
                   <User className="mr-2 h-4 w-4" />
                   <span>프로필</span>
                 </Link>
@@ -401,58 +427,6 @@ const AppHeaderComponent: React.FC<AppHeaderProps> = ({
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               
-              {/* Admin 전용: 권한 테스트 모드 */}
-              {userProfile?.role === 'Admin' && (
-                <>
-                  <DropdownMenuLabel>
-                    <div className="flex items-center gap-2">
-                      <Shield className="h-4 w-4" />
-                      <span>권한 테스트 (개발용)</span>
-                    </div>
-                  </DropdownMenuLabel>
-                  <div className="px-2 py-2 space-y-2">
-                    <Button
-                      variant={dummyRole === 'Admin' ? 'default' : 'outline'}
-                      size="sm"
-                      className="w-full justify-start"
-                      onClick={() => setDummyRole(dummyRole === 'Admin' ? null : 'Admin')}
-                    >
-                      <Badge variant="default" className="mr-2">A</Badge>
-                      Admin으로 보기
-                    </Button>
-                    <Button
-                      variant={dummyRole === 'Manager' ? 'secondary' : 'outline'}
-                      size="sm"
-                      className="w-full justify-start"
-                      onClick={() => setDummyRole(dummyRole === 'Manager' ? null : 'Manager')}
-                    >
-                      <Badge variant="secondary" className="mr-2">M</Badge>
-                      Manager로 보기
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full justify-start"
-                      onClick={() => setDummyRole(dummyRole === 'Member' ? null : 'Member')}
-                    >
-                      <Badge variant="outline" className="mr-2">U</Badge>
-                      Member로 보기
-                    </Button>
-                    {dummyRole && (
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="w-full"
-                        onClick={() => clearDummyRole()}
-                      >
-                        원래 권한으로 복구
-                      </Button>
-                    )}
-                  </div>
-                  <DropdownMenuSeparator />
-                </>
-              )}
-              
               <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>로그아웃</span>
@@ -470,4 +444,7 @@ AppHeaderComponent.displayName = 'AppHeader';
 // AppHeader는 pathname과 searchParams 변경에 따라 리렌더링되어야 하므로
 // React.memo를 사용하지 않고 내부에서 최적화
 export const AppHeader = AppHeaderComponent;
+<<<<<<< HEAD
 
+=======
+>>>>>>> develop

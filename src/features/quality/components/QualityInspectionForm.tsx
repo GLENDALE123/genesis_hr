@@ -26,33 +26,35 @@ import {
   createTimeoutPromise
 } from '@/shared/components/common/ProgressToast';
 import { getLocalDateString } from '@/shared/utils/dateUtils';
+<<<<<<< HEAD
+=======
+import { useInspectionHistory } from '../hooks/useInspectionHistory';
+import { InspectionHistorySummary } from './InspectionHistorySummary';
+>>>>>>> develop
 
 // 재시도 로직을 포함한 업로드 함수 (직접 정의)
-const createRetryableUploadPromise = (
+const createRetryableUploadPromise = async (
   uploadFunction: () => Promise<string[]>,
   maxRetries: number = 3,
   delayMs: number = 1000
-) => {
-  return new Promise<string[]>(async (resolve, reject) => {
-    let lastError: any;
-    
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        const result = await uploadFunction();
-        resolve(result);
-        return;
-      } catch (error) {
-        lastError = error;
-        
-        if (attempt < maxRetries) {
-          // 재시도 전 대기
-          await new Promise(resolve => setTimeout(resolve, delayMs * attempt));
-        }
+): Promise<string[]> => {
+  let lastError: any;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await uploadFunction();
+      return result;
+    } catch (error) {
+      lastError = error;
+      
+      if (attempt < maxRetries) {
+        // 재시도 전 대기
+        await new Promise(resolve => setTimeout(resolve, delayMs * attempt));
       }
     }
-    
-    reject(lastError);
-  });
+  }
+  
+  throw lastError;
 };
 
 interface QualityInspectionFormProps {
@@ -355,6 +357,23 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     return () => unsubscribe();
   }, []);
 
+<<<<<<< HEAD
+=======
+  // 이력 조회 및 분석 (생성 모드에서만 활성화)
+  // formData가 선언된 이후에 호출되어야 함
+  const {
+    inspections: historyInspections,
+    summary: historySummary,
+    isLoading: isHistoryLoading,
+    isAnalyzing: isHistoryAnalyzing,
+  } = useInspectionHistory({
+    supplier: formData.supplier,
+    productName: formData.productName,
+    partName: formData.partName,
+    enabled: isCreateMode && isOpen, // 생성 모드이고 모달이 열려있을 때만 활성화
+  });
+
+>>>>>>> develop
   // 기본 폼 데이터 생성 함수
   const getDefaultFormData = useCallback((): Partial<QualityInspection> => {
     return {
@@ -836,54 +855,72 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
 
   // 폼 내용 추출 (데스크톱용)
   const FormContentDesktop = (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-hidden">
-        <Tabs value={activeTab} onValueChange={(value: string) => {
-          // 수정 모드에서는 탭 변경을 허용하지 않음 (해당 검사 타입만 수정 가능)
-          if (mode === 'edit') {
-            return;
-          }
-          
-          setActiveTab(value as InspectionType);
-        }} className="h-full flex flex-col">
-          <TabsList className="grid w-full grid-cols-3 mb-4">
-            <TabsTrigger 
-              value="incoming" 
-              disabled={mode === 'edit' && inspectionData?.inspectionType !== 'incoming'}
-            >
-              수입검사
-            </TabsTrigger>
-            <TabsTrigger 
-              value="inProcess" 
-              disabled={mode === 'edit' && inspectionData?.inspectionType !== 'inProcess'}
-            >
-              공정검사
-            </TabsTrigger>
-            <TabsTrigger 
-              value="outgoing" 
-              disabled={mode === 'edit' && inspectionData?.inspectionType !== 'outgoing'}
-            >
-              출하검사
-            </TabsTrigger>
-          </TabsList>
+    <div className="flex h-full gap-4">
+      {/* 좌측: 이력 요약 (33%) - 생성 모드에서만 표시 */}
+      {isCreateMode && (
+        <div className="w-1/3 border-r pr-4">
+          <InspectionHistorySummary
+            inspections={historyInspections}
+            summary={historySummary}
+            isLoading={isHistoryLoading}
+            isAnalyzing={isHistoryAnalyzing}
+            supplier={formData.supplier}
+            productName={formData.productName}
+            partName={formData.partName}
+          />
+        </div>
+      )}
+      
+      {/* 우측: 작성/수정 폼 (67% 또는 100%) */}
+      <div className={cn("flex flex-col h-full", isCreateMode ? "flex-1" : "w-full")}>
+        <div className="flex-1 overflow-hidden">
+          <Tabs value={activeTab} onValueChange={(value: string) => {
+            // 수정 모드에서는 탭 변경을 허용하지 않음 (해당 검사 타입만 수정 가능)
+            if (mode === 'edit') {
+              return;
+            }
+            
+            setActiveTab(value as InspectionType);
+          }} className="h-full flex flex-col">
+            <TabsList className="grid w-full grid-cols-3 mb-4">
+              <TabsTrigger 
+                value="incoming" 
+                disabled={mode === 'edit' && inspectionData?.inspectionType !== 'incoming'}
+              >
+                수입검사
+              </TabsTrigger>
+              <TabsTrigger 
+                value="inProcess" 
+                disabled={mode === 'edit' && inspectionData?.inspectionType !== 'inProcess'}
+              >
+                공정검사
+              </TabsTrigger>
+              <TabsTrigger 
+                value="outgoing" 
+                disabled={mode === 'edit' && inspectionData?.inspectionType !== 'outgoing'}
+              >
+                출하검사
+              </TabsTrigger>
+            </TabsList>
 
-          <div className="flex-1 overflow-y-auto">
-            <form 
-              id="quality-inspection-form" 
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (isEditMode) {
-                  handleUpdate(e);
-                } else {
-                  handleSubmit(e);
-                }
-              }} 
-              className="space-y-6"
-            >
-              {renderFormFields()}
-            </form>
-          </div>
-        </Tabs>
+            <div className="flex-1 overflow-y-auto">
+              <form 
+                id="quality-inspection-form" 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (isEditMode) {
+                    handleUpdate(e);
+                  } else {
+                    handleSubmit(e);
+                  }
+                }} 
+                className="space-y-6"
+              >
+                {renderFormFields()}
+              </form>
+            </div>
+          </Tabs>
+        </div>
       </div>
     </div>
   );

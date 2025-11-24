@@ -575,3 +575,101 @@ export const deepSearchGroupedData = (
   return false;
 };
 
+/**
+ * 발주처, 제품명, 부속명으로 품질검사 이력 조회 (실시간 구독)
+ * 빈 값은 필터링 조건에서 제외하며, 최소 2개 이상의 조건이 입력되어야 조회 수행
+ * 
+ * @param supplier - 발주처 (선택)
+ * @param productName - 제품명 (선택)
+ * @param partName - 부속명 (선택)
+ * @param callback - 데이터 수신 콜백
+ * @param onError - 에러 콜백
+ * @param limitCount - 조회할 최대 문서 수 (기본값: 500)
+ */
+export const subscribeToInspectionsByProductInfo = (
+  supplier: string | undefined,
+  productName: string | undefined,
+  partName: string | undefined,
+  callback: (inspections: QualityInspection[]) => void,
+  onError?: (error: Error) => void,
+  limitCount: number = 500
+): (() => void) => {
+  if (!db) {
+    const error = new Error('Firebase not initialized');
+    console.error('Firebase not initialized');
+    if (onError) {
+      onError(error);
+    }
+    callback([]);
+    return () => {};
+  }
+
+  // 최소 2개 이상의 조건이 입력되어야 조회 수행
+  const conditions = [supplier, productName, partName].filter(
+    (value) => value && value.trim() !== ''
+  );
+
+  if (conditions.length < 2) {
+    callback([]);
+    return () => {};
+  }
+
+  try {
+    // Firestore 쿼리 구성
+    let q = query(getCollectionRef());
+
+    // 조건 추가 (빈 값은 제외)
+    if (supplier && supplier.trim() !== '') {
+      q = query(q, where('supplier', '==', supplier.trim()));
+    }
+    if (productName && productName.trim() !== '') {
+      q = query(q, where('productName', '==', productName.trim()));
+    }
+    if (partName && partName.trim() !== '') {
+      q = query(q, where('partName', '==', partName.trim()));
+    }
+
+    // 제한 (orderBy는 복합 인덱스가 필요하므로 제거하고 클라이언트에서 정렬)
+    q = query(q, limit(limitCount));
+
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        try {
+          const inspections = snapshot.docs.map((doc) => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              ...data,
+              inspectionDate:
+                data.inspectionDate ||
+                (data.createdAt ? data.createdAt.split('T')[0] : undefined),
+              createdAt: data.createdAt || new Date().toISOString(),
+            } as QualityInspection;
+          });
+
+          // 클라이언트에서 날짜순 정렬 (최신순)
+          const sortedInspections = inspections.sort((a, b) => {
+            const dateA = new Date(a.createdAt).getTime();
+            const dateB = new Date(b.createdAt).getTime();
+            return dateB - dateA;
+          });
+
+          callback(sortedInspections);
+        } catch (error) {
+          console.error('Error processing inspection data:', error);
+          onError?.(error as Error);
+        }
+      },
+      (error) => {
+        console.error('Error subscribing to inspections by product info:', error);
+        onError?.(error);
+      }
+    );
+  } catch (error) {
+    console.error('Error setting up subscription:', error);
+    onError?.(error as Error);
+    return () => {}; // 빈 unsubscribe 함수 반환
+  }
+};
+
