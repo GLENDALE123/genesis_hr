@@ -1,5 +1,5 @@
 // 생산 요청 관리 커스텀 훅
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import {
   ProductionRequestService,
@@ -16,6 +16,14 @@ export const useProductionRequests = () => {
   const [requests, setRequests] = useState<ProductionRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     // 캐시가 있으면 즉시 표시하고 로딩 플래그를 건너뛴다
@@ -29,6 +37,7 @@ export const useProductionRequests = () => {
     // Firebase 실시간 구독
     const unsubscribe = ProductionRequestService.subscribeToRequests(
       (data) => {
+        if (!isMountedRef.current) return;
         setRequests(data);
         // 캐시 업데이트
         cachedRequests = data;
@@ -36,6 +45,7 @@ export const useProductionRequests = () => {
         setIsLoading(false);
       },
       (err) => {
+        if (!isMountedRef.current) return;
         setError(err);
         setIsLoading(false);
         toast.error('생산 요청 데이터를 불러오는 데 실패했습니다.');

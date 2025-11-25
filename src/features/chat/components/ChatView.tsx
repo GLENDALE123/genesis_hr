@@ -3,21 +3,33 @@
  * 메시지 목록 표시 및 실시간 구독
  */
 
-'use client';
-
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ScrollArea } from '@/shared/components/ui/scroll-area';
-import { Button } from '@/shared/components/ui/button';
-import { ChevronDown } from 'lucide-react';
+import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 import { useChatStore } from '../store/chatStore';
 import { ChatService } from '../services/chatService';
 import { ChatMessageComponent } from './ChatMessage';
-import { ChatInput } from '@/shared/components/common/ChatInput';
+import { ChatAttachmentPreviewBar } from '@/shared/components/common/ChatAttachmentPreviewBar';
+import { ChatComposer } from './ChatComposer';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
-import { SCROLL_CONFIG } from '../constants';
-import type { ChatMessage } from '../types/chat.types';
+import { MESSAGE_PAGINATION } from '../constants';
+import { getCachedMessages, setCachedMessages } from '../utils/chatCache';
+import type { ChatMessage, MessageAttachment } from '../types/chat.types';
+import type { UploadingImageItem } from '@/shared/components/common/UploadingImageGrid';
+import { cn } from '@/shared/lib/utils';
+import type {
+  PendingUpload,
+  PendingUploadPayload,
+  PendingUploadProgressPayload,
+} from '../types/pendingUpload.types';
+import { Loader2 } from 'lucide-react';
+import {
+  buildCombinedMessages,
+  CombinedMessageItem,
+  createMessageGroupingMap,
+  mergeHistoricalMessages,
+} from '../utils/chatMessageUtils';
 
 export interface ChatViewProps {
   chatRoomId: string;
@@ -25,7 +37,10 @@ export interface ChatViewProps {
   currentUserId: string;
   onSearchResultsChange?: (results: Array<{ id: string; index: number }>) => void;
   hideInput?: boolean;
+  pendingUploadsOverride?: PendingUpload[];
 }
+
+const START_INDEX = 1_000_000;
 
 export const ChatView: React.FC<ChatViewProps> = ({
   chatRoomId,
@@ -33,175 +48,493 @@ export const ChatView: React.FC<ChatViewProps> = ({
   currentUserId,
   onSearchResultsChange,
   hideInput = false,
+  pendingUploadsOverride,
 }) => {
   const navigate = useNavigate();
+// ... existing code ...
   const { user, userProfile } = useAuthStore();
   const {
     messages,
     setMessages,
-    addMessage,
     currentChatRoom,
-    setCurrentChatRoom,
     temporaryRooms,
   } = useChatStore();
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [composerAttachments, setComposerAttachments] = useState<UploadingImageItem[]>([]);
+  const [isUploadingAttachments, setIsUploadingAttachments] = useState(false);
+  const attachmentsRef = useRef<UploadingImageItem[]>([]);
+  const [internalPendingUploads, setInternalPendingUploads] = useState<PendingUpload[]>([]);
+  const internalPendingRef = useRef<PendingUpload[]>([]);
+  const pendingPreviewSetRef = useRef<Set<string>>(new Set());
+  const virtuosoRef = useRef<VirtuosoHandle | null>(null);
+  const isUsingExternalPending = typeof pendingUploadsOverride !== 'undefined';
+  const pendingUploads = isUsingExternalPending ? (pendingUploadsOverride ?? []) : internalPendingUploads;
+  const [historicalMessages, setHistoricalMessages] = useState<ChatMessage[]>([]);
+  const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
+  const [hasMoreOlderMessages, setHasMoreOlderMessages] = useState(true);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isAtBottom, setIsAtBottom] = useState(true);
-  const [showScrollButton, setShowScrollButton] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
+  // combinedMessages는 아래에서 정의되므로 초기값은 빈 배열로 설정하고 useEffect에서 동기화합니다.
+  const combinedMessagesRef = useRef<CombinedMessageItem[]>([]);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const currentUserDisplayName = useMemo(() => {
+    if (!user) return '사용자';
+    return getUserDisplayName(
+      { displayName: user.displayName, email: user.email },
+      { position: userProfile?.position },
+      '사용자'
+    );
+  }, [user, userProfile?.position]);
+  const currentUserPhotoURL = user?.photoURL || undefined;
+
+  const releasePreviews = useCallback((items: UploadingImageItem[]) => {
+    items.forEach((item) => {
+      if (item.preview && item.preview.startsWith('blob:')) {
+        URL.revokeObjectURL(item.preview);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    attachmentsRef.current = composerAttachments;
+  }, [composerAttachments]);
+
+  useEffect(() => {
+    return () => {
+      releasePreviews(attachmentsRef.current);
+    };
+  }, [releasePreviews]);
+
+  useEffect(() => {
+    internalPendingRef.current = internalPendingUploads;
+  }, [internalPendingUploads]);
+
+  useEffect(() => {
+    return () => {
+      if (!isUsingExternalPending) {
+        internalPendingRef.current.forEach((pending) => {
+          releasePreviews(pending.attachments);
+          pending.attachments.forEach((attachment) => {
+            if (attachment.preview) {
+              pendingPreviewSetRef.current.delete(attachment.preview);
+            }
+          });
+        });
+        internalPendingRef.current = [];
+        pendingPreviewSetRef.current.clear();
+      }
+    };
+  }, [isUsingExternalPending, releasePreviews]);
+
+  useEffect(() => {
+    if (isUsingExternalPending) return;
+    setInternalPendingUploads((prev) => {
+      if (prev.length > 0) {
+        prev.forEach((pending) => releasePreviews(pending.attachments));
+      }
+      return [];
+    });
+    setIsUploadingAttachments(false);
+    pendingPreviewSetRef.current.clear();
+  }, [chatRoomId, isUsingExternalPending, releasePreviews]);
+
+  const getActivePendingPreviews = useCallback((): Set<string> => {
+    const source = pendingUploads;
+    const previews = new Set<string>();
+    source.forEach((pending) => {
+      pending.attachments.forEach((attachment) => {
+        if (attachment.preview) {
+          previews.add(attachment.preview);
+        }
+      });
+    });
+    return previews;
+  }, [pendingUploads]);
+
+  const handleAttachmentsChange = useCallback(
+    (next: UploadingImageItem[]) => {
+      const activePendingPreviews = getActivePendingPreviews();
+      setComposerAttachments((prev) => {
+        prev.forEach((item) => {
+          const preview = item.preview;
+          if (
+            preview &&
+            preview.startsWith('blob:') &&
+            !next.some((n) => n.preview === preview) &&
+            !activePendingPreviews.has(preview) &&
+            !pendingPreviewSetRef.current.has(preview)
+          ) {
+            URL.revokeObjectURL(preview);
+          }
+        });
+        return next;
+      });
+    },
+    [getActivePendingPreviews]
+  );
+
+  const handleRemoveAttachment = useCallback(
+    (index: number) => {
+      if (isUploadingAttachments) return;
+      setComposerAttachments((prev) => {
+        const target = prev[index];
+        if (target?.preview && target.preview.startsWith('blob:')) {
+          URL.revokeObjectURL(target.preview);
+        }
+        return prev.filter((_, i) => i !== index);
+      });
+    },
+    [isUploadingAttachments]
+  );
+
+  useEffect(() => {
+    releasePreviews(attachmentsRef.current);
+    setComposerAttachments([]);
+    setIsUploadingAttachments(false);
+    setInternalPendingUploads((prev) => {
+      if (prev.length > 0) {
+        prev.forEach((pending) => releasePreviews(pending.attachments));
+      }
+      return [];
+    });
+    pendingPreviewSetRef.current.clear();
+    setHistoricalMessages([]);
+    setHasMoreOlderMessages(true);
+    setIsLoadingOlderMessages(false);
+    setIsInitialLoading(true);
+    setIsAtBottom(true);
+  }, [chatRoomId, isUsingExternalPending, releasePreviews]);
 
   const roomMessages = useMemo(() => {
     if (!chatRoomId || chatRoomId === 'new') return [];
     return messages[chatRoomId] || [];
   }, [messages, chatRoomId]);
 
+  const nonPendingMessages = useMemo(
+    () => mergeHistoricalMessages(historicalMessages, roomMessages),
+    [historicalMessages, roomMessages]
+  );
+
+  const { combinedMessages } = useMemo(
+    () =>
+      buildCombinedMessages({
+        nonPendingMessages,
+        pendingUploads,
+        chatRoomId,
+        currentUserId,
+        currentUserDisplayName,
+        currentUserPhotoURL,
+      }),
+    [
+      nonPendingMessages,
+      pendingUploads,
+      chatRoomId,
+      currentUserId,
+      currentUserDisplayName,
+      currentUserPhotoURL,
+    ]
+  );
+
+  useEffect(() => {
+    combinedMessagesRef.current = combinedMessages;
+  }, [combinedMessages]);
+
+  const START_INDEX = 1_000_000;
+
+  // Virtuoso firstItemIndex 계산 (역방향 스크롤 시 위치 유지를 위함)
+  const firstItemIndex = START_INDEX - combinedMessages.length;
+
+  const groupingMap = useMemo(
+    () => createMessageGroupingMap(nonPendingMessages),
+    [nonPendingMessages]
+  );
+
+  const handleAtBottomStateChange = useCallback((bottom: boolean) => {
+    setIsAtBottom(bottom);
+  }, []);
+
+  const scrollToIndex = useCallback(
+    (index: number, options?: { align?: 'start' | 'center' | 'end'; behavior?: 'auto' | 'smooth' }) => {
+      const targetIndex = index;
+      virtuosoRef.current?.scrollToIndex({
+        index: targetIndex,
+        align: options?.align ?? 'end',
+        behavior: options?.behavior ?? 'smooth',
+      });
+    },
+    []
+  );
+
+  const virtuosoComponents = useMemo(() => {
+    const Scroller = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+      ({ className, style, children, ...props }, ref) => (
+        <div
+          {...props}
+          ref={ref}
+          style={style}
+          className={cn('h-full w-full overflow-y-auto', className)}
+          data-chat-virtuoso-scroller
+        >
+          {children}
+        </div>
+      )
+    );
+    Scroller.displayName = 'ChatVirtuosoScroller';
+
+    const List = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+      ({ className, style, children, ...props }, ref) => (
+        <div
+          {...props}
+          ref={ref}
+          style={style}
+          className={cn('py-4 px-2 min-w-0', className)}
+        >
+          {children}
+        </div>
+      )
+    );
+    List.displayName = 'ChatVirtuosoList';
+
+    const Header: React.FC = () => {
+      if (isInitialLoading) {
+        return null;
+      }
+
+      if (isLoadingOlderMessages) {
+        return (
+          <div className="flex justify-center py-2 text-xs text-muted-foreground">
+            이전 메시지를 불러오는 중...
+          </div>
+        );
+      }
+
+      if (!hasMoreOlderMessages) {
+        return (
+          <div className="flex justify-center py-2 text-xs text-muted-foreground">
+            더 이상 이전 메시지가 없습니다
+          </div>
+        );
+      }
+
+      return null;
+    };
+
+    return { Scroller, List, Header };
+  }, [hasMoreOlderMessages, isInitialLoading, isLoadingOlderMessages]);
+
   // 검색 결과 추적 (2글자 이상일 때만)
   useEffect(() => {
     if (!onSearchResultsChange) return;
-    
+
     const trimmedQuery = searchQuery?.trim() || '';
     if (trimmedQuery.length >= 2) {
       const query = trimmedQuery.toLowerCase();
-      // 최신 메시지가 먼저 오도록 역순으로 검색
-      const results = roomMessages
+      const results = nonPendingMessages
         .slice()
-        .reverse() // 배열을 역순으로
+        .reverse()
         .map((msg, originalIndex) => {
-          // 역순으로 변환된 인덱스를 원래 인덱스로 변환
-          const actualIndex = roomMessages.length - 1 - originalIndex;
+          const actualIndex = nonPendingMessages.length - 1 - originalIndex;
           return { msg, index: actualIndex };
         })
         .filter(({ msg }) => msg.text.toLowerCase().includes(query))
         .map(({ msg, index }) => ({ id: msg.id, index }));
-      
+
       onSearchResultsChange(results);
     } else {
       onSearchResultsChange([]);
     }
-  }, [searchQuery, roomMessages, onSearchResultsChange]);
+  }, [searchQuery, nonPendingMessages, onSearchResultsChange]);
 
-  // 메시지 구독 및 읽음 처리
+  // 메시지 초기 로드 및 구독
   useEffect(() => {
-    if (!chatRoomId || chatRoomId.startsWith('temp_') || !isMounted || !currentUserId) {
+    if (!chatRoomId || chatRoomId === 'new') {
       setMessages(chatRoomId, []);
+      setIsInitialLoading(false);
       return;
     }
 
-    const unsubscribe = ChatService.subscribeToMessages(
-      chatRoomId,
-      async (newMessages) => {
-        setMessages(chatRoomId, newMessages);
-        
-        // 읽지 않은 메시지를 읽음 처리 (자신이 보낸 메시지 제외)
-        const unreadMessages = newMessages.filter(
-          (msg) => msg.sender.uid !== currentUserId && !msg.readBy.includes(currentUserId)
+    if (chatRoomId.startsWith('temp_')) {
+      setMessages(chatRoomId, []);
+      setIsInitialLoading(false);
+      return;
+    }
+
+    let unsubscribeFn: (() => void) | undefined;
+
+    setIsInitialLoading(true);
+
+    const cached = getCachedMessages(chatRoomId);
+    if (cached && cached.length > 0) {
+      setMessages(chatRoomId, cached);
+    }
+
+    const fetchAndSubscribe = async () => {
+      try {
+        const initialMessages = await ChatService.fetchInitialMessages(
+          chatRoomId,
+          MESSAGE_PAGINATION.INITIAL_BATCH
         );
         
-        // 읽지 않은 메시지가 있으면 읽음 처리
-        if (unreadMessages.length > 0) {
-          // 병렬로 읽음 처리 (성능 최적화)
-          const markAsReadPromises = unreadMessages.map((msg) =>
-            ChatService.markMessageAsRead(msg.id, currentUserId).catch((error) => {
-              // 개별 메시지 읽음 처리 실패는 조용히 처리
-              if (process.env.NODE_ENV === 'development') {
-                console.warn(`Failed to mark message ${msg.id} as read:`, error);
-              }
-            })
-          );
-          
-          await Promise.allSettled(markAsReadPromises);
+        if (!isMountedRef.current) return;
+
+        setMessages(chatRoomId, initialMessages);
+        setCachedMessages(chatRoomId, initialMessages);
+        setHasMoreOlderMessages(initialMessages.length === MESSAGE_PAGINATION.INITIAL_BATCH);
+        
+        // 초기 로드 후에도 컴포넌트가 여전히 마운트 상태인지 확인 후 구독 시작
+        if (!isMountedRef.current) return;
+
+        const unsub = ChatService.subscribeToMessages(
+          chatRoomId,
+          async (newMessages) => {
+            if (!isMountedRef.current) return;
+
+            setMessages(chatRoomId, newMessages);
+            setCachedMessages(chatRoomId, newMessages);
+
+            if (!currentUserId) return;
+            
+            const unreadMessages = newMessages.filter(
+              (msg) => msg.sender.uid !== currentUserId && !msg.readBy.includes(currentUserId)
+            );
+            
+            if (unreadMessages.length > 0) {
+              const markAsReadPromises = unreadMessages.map((msg) =>
+                ChatService.markMessageAsRead(chatRoomId, msg.id, currentUserId).catch((markError) => {
+                  if (process.env.NODE_ENV === 'development') {
+                    console.warn(`Failed to mark message ${msg.id} as read:`, markError);
+                  }
+                })
+              );
+              
+              await Promise.allSettled(markAsReadPromises);
+            }
+          },
+          (error) => {
+            console.error('Failed to subscribe to messages:', error);
+          },
+          MESSAGE_PAGINATION.INITIAL_BATCH
+        );
+
+        // 구독 함수 반환 직후 언마운트 체크
+        if (!isMountedRef.current) {
+          unsub();
+          return;
         }
-      },
-      (error) => {
-        console.error('Failed to subscribe to messages:', error);
-      }
-    );
 
-    return () => {
-      unsubscribe();
-    };
-  }, [chatRoomId, isMounted, currentUserId, setMessages]);
-
-  // 컴포넌트 마운트 확인
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  // 스크롤 위치 확인
-  useEffect(() => {
-    const checkScrollPosition = () => {
-      if (!scrollAreaRef.current) return;
-
-      const element = scrollAreaRef.current;
-      const scrollTop = element.scrollTop;
-      const scrollHeight = element.scrollHeight;
-      const clientHeight = element.clientHeight;
-
-      const atBottom =
-        scrollHeight - scrollTop - clientHeight < SCROLL_CONFIG.SCROLL_THRESHOLD;
-      setIsAtBottom(atBottom);
-      setShowScrollButton(!atBottom && roomMessages.length > 0);
-    };
-
-    const scrollElement = scrollAreaRef.current;
-    if (scrollElement) {
-      scrollElement.addEventListener('scroll', checkScrollPosition);
-      checkScrollPosition();
-    }
-
-    return () => {
-      if (scrollElement) {
-        scrollElement.removeEventListener('scroll', checkScrollPosition);
+        unsubscribeFn = unsub;
+        setIsInitialLoading(false);
+      } catch (error) {
+        if (isMountedRef.current && process.env.NODE_ENV === 'development') {
+          console.error('Failed to fetch initial messages:', error);
+        }
       }
     };
-  }, [roomMessages]);
 
-  // 새 메시지 도착 시 스크롤
-  useEffect(() => {
-    if (isAtBottom && roomMessages.length > 0) {
-      scrollToBottom();
-    } else if (roomMessages.length > 0) {
-      setShowScrollButton(true);
+    fetchAndSubscribe();
+
+    return () => {
+      if (unsubscribeFn) {
+        unsubscribeFn();
+      }
+    };
+  }, [chatRoomId, currentUserId, setMessages]);
+  const handleLoadOlderMessages = useCallback(async () => {
+    if (isLoadingOlderMessages || !hasMoreOlderMessages) return;
+    if (!chatRoomId) return;
+
+    const oldestMessage = nonPendingMessages[0];
+    if (!oldestMessage?.timestamp) {
+      setHasMoreOlderMessages(false);
+      return;
     }
-  }, [roomMessages, isAtBottom]);
 
-  // 검색 결과로 스크롤은 ChatRoomPageClient에서 처리하므로 제거
+    setIsLoadingOlderMessages(true);
+    try {
+      const olderMessages = await ChatService.fetchOlderMessages(
+        chatRoomId,
+        oldestMessage.timestamp,
+        MESSAGE_PAGINATION.OLDER_PAGE_SIZE
+      );
 
-  // 커스텀 이벤트 리스너 (검색 결과 클릭 시 스크롤)
+      if (!isMountedRef.current) return;
+
+      if (olderMessages.length === 0) {
+        setHasMoreOlderMessages(false);
+        return;
+      }
+
+      setHistoricalMessages((prev) => [...olderMessages, ...prev]);
+
+      if (olderMessages.length < MESSAGE_PAGINATION.OLDER_PAGE_SIZE) {
+        setHasMoreOlderMessages(false);
+      }
+    } catch (error) {
+      if (!isMountedRef.current) return;
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Failed to load older messages:', error);
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setIsLoadingOlderMessages(false);
+      }
+    }
+  }, [
+    chatRoomId,
+    hasMoreOlderMessages,
+    isLoadingOlderMessages,
+    nonPendingMessages,
+  ]);
+
+  const handleStartReached = useCallback(() => {
+    if (isInitialLoading || isLoadingOlderMessages || !hasMoreOlderMessages) {
+      return;
+    }
+
+    handleLoadOlderMessages();
+  }, [
+    handleLoadOlderMessages,
+    hasMoreOlderMessages,
+    isInitialLoading,
+    isLoadingOlderMessages,
+  ]);
+
   useEffect(() => {
     const handleScrollToMessage = (event: CustomEvent<{ messageId: string }>) => {
-      scrollToMessage(event.detail.messageId);
+      const currentCombinedMessages = combinedMessagesRef.current;
+      const targetIndex = currentCombinedMessages.findIndex(
+        (item) => item.message.id === event.detail.messageId
+      );
+      if (targetIndex >= 0) {
+        // 0-based index를 START_INDEX 기반 절대 인덱스로 변환
+        // START_INDEX는 컴포넌트 외부에 정의되어 있거나 상단에 정의됨 (1_000_000)
+        const currentFirstItemIndex = 1_000_000 - currentCombinedMessages.length;
+        scrollToIndex(targetIndex + currentFirstItemIndex, { align: 'center', behavior: 'smooth' });
+      }
     };
 
-    window.addEventListener(
-      'scroll-to-message',
-      handleScrollToMessage as EventListener
-    );
+    window.addEventListener('scroll-to-message', handleScrollToMessage as EventListener);
 
     return () => {
-      window.removeEventListener(
-        'scroll-to-message',
-        handleScrollToMessage as EventListener
-      );
+      window.removeEventListener('scroll-to-message', handleScrollToMessage as EventListener);
     };
-  }, []);
-
-  const scrollToBottom = () => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
-  const scrollToMessage = (messageId: string) => {
-    const messageElement = document.getElementById(`message-${messageId}`);
-    if (messageElement) {
-      messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  };
+  }, [scrollToIndex]);
 
   // 메시지 전송
-  const handleSendMessage = async (text: string) => {
-    if (!user || !text.trim()) return;
+  const handleSendMessage = async (
+    text: string,
+    mentionedUserIds?: string[],
+    attachments?: MessageAttachment[]
+  ) => {
+    if (!user || (!text.trim() && (!attachments || attachments.length === 0))) return;
 
     const tempRoom = temporaryRooms.find((r) => r.id === chatRoomId);
     
@@ -221,8 +554,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
           displayName: senderDisplayName,
           photoURL: user.photoURL || undefined,
         },
-        undefined,
-        undefined,
+        attachments,
+        mentionedUserIds,
         undefined,
         tempRoom
       );
@@ -236,101 +569,226 @@ export const ChatView: React.FC<ChatViewProps> = ({
     }
   };
 
-  // 연속된 메시지에서 아바타 표시 여부 결정
-  const shouldShowAvatar = (index: number): boolean => {
-    if (index === 0) return true;
-    const currentMessage = roomMessages[index];
-    const previousMessage = roomMessages[index - 1];
-    return (
-      currentMessage.sender.uid !== previousMessage.sender.uid ||
-      new Date(currentMessage.timestamp).getTime() -
-        new Date(previousMessage.timestamp).getTime() >
-        5 * 60 * 1000 // 5분 이상 차이
-    );
-  };
+  const handlePendingUploadStart = useCallback(
+    (payload: PendingUploadPayload) => {
+      if (!isMountedRef.current || isUsingExternalPending) return;
+      const normalizedAttachments = payload.attachments.map((attachment) => {
+        if (attachment.preview) {
+          return attachment;
+        }
+        if (attachment.file) {
+          return {
+            ...attachment,
+            preview: URL.createObjectURL(attachment.file),
+          };
+        }
+        return attachment;
+      });
+      normalizedAttachments.forEach((attachment) => {
+        if (attachment.preview) {
+          pendingPreviewSetRef.current.add(attachment.preview);
+        }
+      });
+      setInternalPendingUploads((prev) => [
+        ...prev,
+        {
+          id: payload.id,
+          attachments: normalizedAttachments,
+          text: payload.text,
+          mentionedUserIds: payload.mentionedUserIds,
+          completed: 0,
+          total: Math.max(normalizedAttachments.length, 1),
+          createdAt: Date.now(),
+          status: 'uploading',
+          error: null,
+          errorCode: null,
+          timeoutAt: payload.timeoutAt ?? null,
+          retryCount: payload.isRetry ? 1 : 0,
+          totalBytes: payload.totalBytes ?? null,
+          lastUpdatedAt: Date.now(),
+        },
+      ]);
+    },
+    [isUsingExternalPending]
+  );
 
-  // 연속된 메시지 그룹 판단 (1분 기준)
-  const isFirstInGroup = (index: number): boolean => {
-    if (index === 0) return true;
-    const currentMessage = roomMessages[index];
-    const previousMessage = roomMessages[index - 1];
-    return (
-      currentMessage.sender.uid !== previousMessage.sender.uid ||
-      new Date(currentMessage.timestamp).getTime() -
-        new Date(previousMessage.timestamp).getTime() >
-        60 * 1000 // 1분 이상 차이
-    );
-  };
+  const handlePendingUploadProgress = useCallback(
+    (payload: PendingUploadProgressPayload) => {
+      if (!isMountedRef.current || isUsingExternalPending) return;
+      setInternalPendingUploads((prev) =>
+        prev.map((item) =>
+          item.id === payload.id
+            ? {
+                ...item,
+                completed: Math.max(
+                  item.completed,
+                  Math.min(payload.total || item.total, payload.completed)
+                ),
+                total: payload.total || item.total,
+              }
+            : item
+        )
+      );
+    },
+    [isUsingExternalPending]
+  );
 
-  // 연속된 메시지 그룹의 마지막 메시지인지 판단 (1분 기준)
-  const isLastInGroup = (index: number): boolean => {
-    if (index === roomMessages.length - 1) return true;
-    const currentMessage = roomMessages[index];
-    const nextMessage = roomMessages[index + 1];
-    return (
-      currentMessage.sender.uid !== nextMessage.sender.uid ||
-      new Date(nextMessage.timestamp).getTime() -
-        new Date(currentMessage.timestamp).getTime() >
-        60 * 1000 // 1분 이상 차이
-    );
-  };
+  const removePendingUpload = useCallback(
+    (id: string) => {
+      if (!isMountedRef.current) return;
+      setInternalPendingUploads((prev) => {
+        const target = prev.find((item) => item.id === id);
+        if (target) {
+          const attachmentsToRelease = target.attachments;
+          requestAnimationFrame(() => {
+            releasePreviews(attachmentsToRelease);
+          });
+          attachmentsToRelease.forEach((attachment) => {
+            if (attachment.preview) {
+              pendingPreviewSetRef.current.delete(attachment.preview);
+            }
+          });
+        }
+        return prev.filter((item) => item.id !== id);
+      });
+    },
+    [releasePreviews]
+  );
+
+  const handlePendingUploadComplete = useCallback(
+    ({ id }: { id: string }) => {
+      if (isUsingExternalPending) return;
+      removePendingUpload(id);
+    },
+    [isUsingExternalPending, removePendingUpload]
+  );
+
+  const handlePendingUploadError = useCallback(
+    ({ id }: { id: string }) => {
+      if (isUsingExternalPending) return;
+      removePendingUpload(id);
+    },
+    [isUsingExternalPending, removePendingUpload]
+  );
+
+  const hasMessages = combinedMessages.length > 0;
+  const virtuosoKey = `${chatRoomId}-${hasMessages ? 'ready' : 'empty'}`;
+  const followOutputMode = isAtBottom ? 'auto' : false;
 
   return (
     <div className="flex flex-col h-full min-w-0 relative overflow-hidden">
-      {/* 메시지 영역 */}
-      <ScrollArea className="flex-1 min-h-0 min-w-0" ref={scrollAreaRef}>
-        <div className="py-4 space-y-0.5 min-w-0">
-          {roomMessages.length === 0 ? (
-            <div className="flex items-center justify-center h-full text-muted-foreground">
+      <div className="flex-1 min-h-0 min-w-0 relative">
+        {isInitialLoading && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center gap-2 bg-background">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">메시지를 불러오는 중...</span>
+          </div>
+        )}
+        {!isInitialLoading ? (
+          combinedMessages.length === 0 ? (
+            <div className="flex h-full items-center justify-center text-muted-foreground">
               <p>첫 메시지를 보내 채팅을 시작하세요</p>
             </div>
           ) : (
-            roomMessages.map((message, index) => (
-              <div
-                key={message.id}
-                id={`message-${message.id}`}
-                className="min-w-0"
-              >
-                <ChatMessageComponent
-                  message={message}
-                  currentUserId={currentUserId}
-                  showAvatar={shouldShowAvatar(index)}
-                  searchQuery={searchQuery}
-                  participants={currentChatRoom?.participants || []}
-                  isFirstInGroup={isFirstInGroup(index)}
-                  isLastInGroup={isLastInGroup(index)}
-                />
-              </div>
-            ))
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-      </ScrollArea>
+            <div className="h-full">
+              <Virtuoso<CombinedMessageItem>
+                key={virtuosoKey}
+                ref={virtuosoRef}
+                style={{ height: '100%' }}
+                data={combinedMessages}
+                components={virtuosoComponents}
+                followOutput={followOutputMode}
+                increaseViewportBy={{ top: 400, bottom: 400 }}
+                startReached={handleStartReached}
+                firstItemIndex={firstItemIndex}
+                initialTopMostItemIndex={START_INDEX - 1}
+                atBottomStateChange={handleAtBottomStateChange}
+                itemContent={(index: number, item: CombinedMessageItem) => {
+                  const currentMessage = item.message;
+                  const isPending = item.type === 'pending';
+                  const pendingAttachments = isPending ? item.pending.attachments : undefined;
+                  const grouping = groupingMap.get(currentMessage.id);
 
-      {/* 하단 스크롤 버튼 */}
-      {showScrollButton && (
-        <div className="absolute bottom-20 right-4 z-10">
-          <Button
-            onClick={scrollToBottom}
-            size="icon"
-            className="rounded-full w-10 h-10 shadow-lg"
-          >
-            <ChevronDown className="size-5" />
-          </Button>
-        </div>
-      )}
+                  const showAvatar = isPending ? false : grouping?.showAvatar ?? true;
+                  const isFirstInGroup = isPending ? true : grouping?.isFirstInGroup ?? true;
+                  const isLastInGroup = isPending ? true : grouping?.isLastInGroup ?? true;
+
+                  const pendingProgress = (() => {
+                    if (!isPending || !item.pending) {
+                      return { completed: 0, total: 0 };
+                    }
+                    const total =
+                      item.pending.total || Math.max(item.pending.attachments.length, 1);
+                    const completed = Math.min(item.pending.completed, total);
+                    return { completed, total };
+                  })();
+
+                  return (
+                    <div
+                      key={currentMessage.id}
+                      id={`message-${currentMessage.id}`}
+                      className="min-w-0 py-0.5"
+                    >
+                      <ChatMessageComponent
+                        message={currentMessage}
+                        currentUserId={currentUserId}
+                        showAvatar={showAvatar}
+                        searchQuery={searchQuery}
+                        participants={currentChatRoom?.participants || []}
+                        isFirstInGroup={isFirstInGroup}
+                        isLastInGroup={isLastInGroup}
+                        pendingUpload={
+                          isPending
+                            ? {
+                                completed: pendingProgress.completed,
+                                total: pendingProgress.total,
+                              }
+                            : undefined
+                        }
+                        pendingAttachments={pendingAttachments}
+                      />
+                    </div>
+                  );
+                }}
+                computeItemKey={(index, item) => item.message.id}
+              />
+            </div>
+          )
+        ) : null}
+      </div>
 
       {/* 입력 영역 */}
       {!hideInput && (
-        <div className="flex-shrink-0 border-t bg-background p-4 min-w-0 sticky bottom-0 z-10">
-          <ChatInput
-            onSubmit={handleSendMessage}
-            placeholder="메시지를 입력하세요..."
-            disabled={!user}
-            users={[]} // TODO: 채팅방 참여자 목록 전달
-            currentUserUid={user?.uid}
-          />
-        </div>
+        <>
+          {composerAttachments.length > 0 && (
+            <div className="border-t border-b bg-background px-4 py-2 min-w-0">
+              <ChatAttachmentPreviewBar
+                items={composerAttachments}
+                onRemove={handleRemoveAttachment}
+                disableRemove={isUploadingAttachments}
+              />
+            </div>
+          )}
+          <div
+            className="flex-shrink-0 border-t bg-background p-4 min-w-0 sticky bottom-0 z-10"
+          >
+            <ChatComposer
+              onSubmit={handleSendMessage}
+              placeholder="메시지를 입력하세요..."
+              disabled={!user}
+              users={[]} // TODO: 채팅방 참여자 목록 전달
+              currentUserUid={user?.uid}
+              attachments={composerAttachments}
+              onAttachmentsChange={handleAttachmentsChange}
+              uploadFolder={`chat/messages/${chatRoomId}`}
+              onUploadingStateChange={setIsUploadingAttachments}
+              onPendingUploadStart={isUsingExternalPending ? undefined : handlePendingUploadStart}
+              onUploadProgress={isUsingExternalPending ? undefined : handlePendingUploadProgress}
+              onUploadComplete={isUsingExternalPending ? undefined : handlePendingUploadComplete}
+              onUploadError={isUsingExternalPending ? undefined : handlePendingUploadError}
+            />
+          </div>
+        </>
       )}
     </div>
   );

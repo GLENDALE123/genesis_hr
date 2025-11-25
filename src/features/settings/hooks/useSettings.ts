@@ -3,7 +3,7 @@
  */
 
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { settingsService } from '@/shared/services/settings/settingsService';
 import type {
@@ -35,24 +35,34 @@ export const useSettings = (): UseSettingsReturn => {
   const { user } = useAuthStore();
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   // 설정 로드
   const loadSettings = useCallback(async () => {
     if (!user?.uid) {
-      setSettings(DEFAULT_SETTINGS);
-      setIsLoading(false);
+      if (isMounted.current) {
+        setSettings(DEFAULT_SETTINGS);
+        setIsLoading(false);
+      }
       return;
     }
 
     try {
-      setIsLoading(true);
+      if (isMounted.current) setIsLoading(true);
       const loadedSettings = await settingsService.getSettings(user.uid);
-      setSettings(loadedSettings);
+      if (isMounted.current) setSettings(loadedSettings);
     } catch (err) {
       console.error('❌ 설정 로드 실패:', err);
-      setSettings(DEFAULT_SETTINGS);
+      if (isMounted.current) setSettings(DEFAULT_SETTINGS);
     } finally {
-      setIsLoading(false);
+      if (isMounted.current) setIsLoading(false);
     }
   }, [user?.uid]);
 
@@ -71,6 +81,8 @@ export const useSettings = (): UseSettingsReturn => {
     const unsubscribe = settingsService.subscribeToSettings(
       user.uid,
       (updatedSettings) => {
+        if (!isMounted.current) return;
+
         // 설정이 실제로 변경된 경우에만 업데이트 (불필요한 리렌더링 방지)
         setSettings(prevSettings => {
           // JSON 비교로 실제 변경 여부 확인

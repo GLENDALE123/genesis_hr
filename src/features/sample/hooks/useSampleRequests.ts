@@ -18,6 +18,7 @@ import { getUserDisplayName } from '@/shared/utils/userUtils';
 export const useSampleRequests = () => {
   const { user, userProfile } = useAuthStore();
   const [mounted, setMounted] = useState(false);
+  const isMountedRef = useRef(true);
   
   // 실시간 구독 관리용
   const unsubscribeRef = useRef<(() => void) | null>(null);
@@ -39,6 +40,10 @@ export const useSampleRequests = () => {
   // 클라이언트 사이드에서만 실행
   useEffect(() => {
     setMounted(true);
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
   // ✅ 초기 마운트 시 실시간 구독 시작
@@ -74,21 +79,19 @@ export const useSampleRequests = () => {
       try {
         // 실시간 구독 시작
         const unsubscribe = SampleService.subscribeToSampleRequests((newRequests) => {
-          if (!isCancelled) {
-            setCachedRequests(newRequests);
-            setLoading(false);
-            setFetching(false);
-          }
+          if (!isMountedRef.current || isCancelled) return;
+          setCachedRequests(newRequests);
+          setLoading(false);
+          setFetching(false);
         });
 
         unsubscribeRef.current = unsubscribe;
       } catch (err) {
         console.error('❌ 실시간 구독 실패:', err);
-        if (!isCancelled) {
-          setError(err instanceof Error ? err : new Error('구독 실패'));
-          setLoading(false);
-          setFetching(false);
-        }
+        if (!isMountedRef.current || isCancelled) return;
+        setError(err instanceof Error ? err : new Error('구독 실패'));
+        setLoading(false);
+        setFetching(false);
       }
     };
 

@@ -18,14 +18,30 @@ export const TitleBar: React.FC<TitleBarProps> = ({ className }) => {
   const [isElectron, setIsElectron] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
   const { isSelecting, startElementCapture, stopElementCapture } = useElementCapture();
+  const isMountedRef = React.useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     // Electron 환경 체크: contextBridge로 노출된 window.electron 존재 여부만 확인
     if (typeof window !== 'undefined' && (window as any).electron) {
       setIsElectron(true);
-      (window as any).electron.window.isMaximized().then(setIsMaximized);
+      (window as any).electron.window.isMaximized().then((maximized: boolean) => {
+        if (isMountedRef.current) {
+          setIsMaximized(maximized);
+        }
+      });
       const handleResize = () => {
-        (window as any).electron?.window.isMaximized().then(setIsMaximized);
+        (window as any).electron?.window.isMaximized().then((maximized: boolean) => {
+          if (isMountedRef.current) {
+            setIsMaximized(maximized);
+          }
+        });
       };
       window.addEventListener('resize', handleResize);
       return () => {

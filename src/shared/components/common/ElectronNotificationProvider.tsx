@@ -26,6 +26,18 @@ const getRecentNotificationIds = () => {
 
 export const ElectronNotificationProvider: React.FC<ElectronNotificationProviderProps> = ({ children }) => {
   const { user } = useAuthStore();
+  const isMountedRef = React.useRef(true);
+  const timeoutRefsRef = React.useRef<Set<NodeJS.Timeout>>(new Set());
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      // 모든 타이머 정리
+      timeoutRefsRef.current.forEach(timer => clearTimeout(timer));
+      timeoutRefsRef.current.clear();
+    };
+  }, []);
 
   useEffect(() => {
     // Electron 환경 체크
@@ -75,13 +87,19 @@ export const ElectronNotificationProvider: React.FC<ElectronNotificationProvider
 
           // 중복 방지 목록에 추가
           recentIds.add(notificationId);
-          setTimeout(() => {
-            recentIds.delete(notificationId);
+          const timer = setTimeout(() => {
+            if (isMountedRef.current) {
+              recentIds.delete(notificationId);
+            }
+            timeoutRefsRef.current.delete(timer);
           }, 5000);
+          timeoutRefsRef.current.add(timer);
 
           // 설정 기반 필터링
           try {
             const settings = await settingsService.getSettings(user.uid);
+            if (!isMountedRef.current) return;
+            
             const notificationType = notification.type || notification.metadata?.type || 'system';
             const timestamp = notification.createdAt?.toDate ? notification.createdAt.toDate() : new Date();
             
@@ -96,9 +114,12 @@ export const ElectronNotificationProvider: React.FC<ElectronNotificationProvider
               return; // 알림 표시 안 함
             }
           } catch (error) {
+            if (!isMountedRef.current) return;
             console.error('❌ [Electron] 설정 확인 실패, 알림 표시:', error);
             // 설정 확인 실패 시에도 알림 표시 (안전장치)
           }
+
+          if (!isMountedRef.current) return;
 
           // Electron 네이티브 알림창 표시 (인앱 알림 제거 - 중복 방지)
           try {

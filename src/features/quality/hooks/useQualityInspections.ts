@@ -37,6 +37,14 @@ export const useQualityInspections = (
   
   // 검색어 디바운싱 (300ms)
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
   
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -104,10 +112,12 @@ export const useQualityInspections = (
         rangeStartDate,
         rangeEndDate,
         (newInspections) => {
+          if (!isMountedRef.current) return;
           setInspections(newInspections, rangeStartDate, rangeEndDate);
           setFetching(false);
         },
         (err) => {
+          if (!isMountedRef.current) return;
           console.error('❌ 백그라운드 동기화 실패:', err);
           setFetching(false);
         },

@@ -2,14 +2,16 @@
  * 채팅 메시지 컴포넌트
  */
 
-'use client';
-
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { formatChatDateTime } from '../utils/dateFormat';
 import { getUserInitial } from '@/shared/utils/userUtils';
 import { getUserInfo, globalUsersRef } from './UserList';
-import { Image as ImageIcon, File } from 'lucide-react';
+import { File } from 'lucide-react';
+import { ImageLightbox } from '@/shared/components/common/ImageLightbox';
+import { cn } from '@/shared/lib/utils';
+import type { UploadingImageItem } from '@/shared/components/common/UploadingImageGrid';
+import { Progress } from '@/shared/components/ui/progress';
 import type { ChatMessage } from '../types/chat.types';
 import type { User } from 'firebase/auth';
 
@@ -21,9 +23,14 @@ export interface ChatMessageProps {
   participants?: Array<{ uid: string }>; // 채팅방 참여자 목록
   isFirstInGroup?: boolean; // 연속 메시지 그룹의 첫 번째 메시지인지
   isLastInGroup?: boolean; // 연속 메시지 그룹의 마지막 메시지인지
+  pendingUpload?: {
+    completed: number;
+    total: number;
+  };
+  pendingAttachments?: UploadingImageItem[];
 }
 
-export const ChatMessageComponent: React.FC<ChatMessageProps> = ({
+export const ChatMessageComponent = React.memo<ChatMessageProps>(({
   message,
   currentUserId,
   showAvatar = true,
@@ -31,8 +38,11 @@ export const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   participants = [],
   isFirstInGroup = true,
   isLastInGroup = true,
+  pendingUpload,
+  pendingAttachments,
 }) => {
   const isOwnMessage = message.sender.uid === currentUserId;
+  const isPendingUpload = Boolean(pendingUpload);
   
   // 보낸 사람 이름 (이미 이름+직급이 포함되어 있음)
   const senderDisplayName = isOwnMessage ? '' : (message.sender.displayName || '사용자');
@@ -162,59 +172,88 @@ export const ChatMessageComponent: React.FC<ChatMessageProps> = ({
     );
   };
 
-  // 첨부파일 렌더링 (썸네일 그리드)
-  const renderAttachments = () => {
-    if (!message.attachments || message.attachments.length === 0) {
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+
+  const imageAttachments = message.attachments?.filter((attachment) => attachment.type === 'image') ?? [];
+  const fileAttachments = message.attachments?.filter((attachment) => attachment.type === 'file') ?? [];
+  const pendingImageAttachments = pendingAttachments ?? [];
+  const sanitizedText = (message.text || '').replace(/\u200B/g, '');
+  const hasText = sanitizedText.trim().length > 0;
+  const displayImageCount = isPendingUpload ? pendingImageAttachments.length : imageAttachments.length;
+  const hasImages = displayImageCount > 0;
+  const imageColumns = displayImageCount <= 1 ? 1 : displayImageCount === 2 ? 2 : 3;
+  const imageRemainder = displayImageCount > 0 ? displayImageCount % imageColumns : 0;
+  const pendingPercent = pendingUpload && pendingUpload.total > 0
+    ? (pendingUpload.completed / pendingUpload.total) * 100
+    : 0;
+
+  const getImageFlexBasis = (index: number) => {
+    if (imageColumns <= 1) {
+      return 'flex-[1_0_100%]';
+    }
+
+    if (imageColumns === 2) {
+      return 'flex-[1_0_50%]';
+    }
+
+    // imageColumns === 3
+    if (imageRemainder !== 0 && index >= displayImageCount - imageRemainder) {
+      if (imageRemainder === 1) {
+        return 'flex-[1_0_100%]';
+      }
+      if (imageRemainder === 2) {
+        return 'flex-[1_0_50%]';
+      }
+    }
+
+    return 'flex-[1_0_33.3333%]';
+  };
+
+  const getImageAspectClass = (index: number) => {
+    if (imageColumns <= 1) {
+      return 'aspect-square';
+    }
+
+    if (imageColumns === 2) {
+      return 'aspect-square';
+    }
+
+    // imageColumns === 3
+    if (imageRemainder !== 0 && index >= displayImageCount - imageRemainder) {
+      if (imageRemainder === 1) {
+        return 'aspect-[3/1]';
+      }
+      if (imageRemainder === 2) {
+        return 'aspect-[3/2]';
+      }
+    }
+
+    return 'aspect-square';
+  };
+
+  const renderFileAttachments = () => {
+    if (fileAttachments.length === 0) {
       return null;
     }
 
-    const images = message.attachments.filter((a) => a.type === 'image');
-    const files = message.attachments.filter((a) => a.type === 'file');
-
     return (
-      <div className="space-y-2">
-        {images.length > 0 && (
-          <div
-            className={`grid gap-2 ${
-              images.length === 1 ? 'grid-cols-1' : images.length === 2 ? 'grid-cols-2' : 'grid-cols-3'
-            }`}
+      <div className="mt-2 space-y-1 w-full">
+        {fileAttachments.map((file) => (
+          <a
+            key={file.id}
+            href={file.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 p-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
           >
-            {images.map((image) => (
-              <a
-                key={image.id}
-                href={image.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="relative aspect-square rounded-lg overflow-hidden bg-muted"
-              >
-                <img
-                  src={image.thumbnailUrl || image.url}
-                  alt={image.name}
-                  className="w-full h-full object-cover"
-                />
-              </a>
-            ))}
-          </div>
-        )}
-        {files.length > 0 && (
-          <div className="space-y-1">
-            {files.map((file) => (
-              <a
-                key={file.id}
-                href={file.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 p-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
-              >
-                <File className="size-4" />
-                <span className="flex-1 truncate text-sm">{file.name}</span>
-                <span className="text-xs text-muted-foreground">
-                  {(file.size / 1024).toFixed(1)}KB
-                </span>
-              </a>
-            ))}
-          </div>
-        )}
+            <File className="size-4" />
+            <span className="flex-1 truncate text-sm">{file.name}</span>
+            <span className="text-xs text-muted-foreground">
+              {(file.size / 1024).toFixed(1)}KB
+            </span>
+          </a>
+        ))}
       </div>
     );
   };
@@ -228,9 +267,12 @@ export const ChatMessageComponent: React.FC<ChatMessageProps> = ({
       {/* 아바타 (상대방 메시지만, showAvatar가 true일 때) */}
       {!isOwnMessage && showAvatar && (
         <div className="flex-shrink-0">
-          <Avatar className="size-8">
+          <Avatar
+            className="[width:var(--avatar-size,2rem)] [height:var(--avatar-size,2rem)]"
+            style={{ '--avatar-size': '2rem' } as React.CSSProperties}
+          >
             <AvatarImage src={message.sender.photoURL} alt={message.sender.displayName} />
-            <AvatarFallback>
+            <AvatarFallback className="flex items-center justify-center font-medium text-muted-foreground [font-size:calc(var(--avatar-size,2rem)*0.4)]">
               {getUserInitial(message.sender, message.sender.displayName.charAt(0))}
             </AvatarFallback>
           </Avatar>
@@ -239,36 +281,105 @@ export const ChatMessageComponent: React.FC<ChatMessageProps> = ({
       {!isOwnMessage && !showAvatar && <div className="w-8" />}
 
       {/* 메시지 내용 */}
-      <div className={`flex items-end gap-2 ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'} max-w-[70%]`}>
-        <div className={`flex flex-col gap-1 ${isOwnMessage ? 'items-end' : 'items-start'}`}>
+      <div className={`flex items-end gap-2 ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'} max-w-[70%] md:max-w-[60%]`}>
+        <div className={`flex flex-col gap-0 ${isOwnMessage ? 'items-end' : 'items-start'}`}>
           {!isOwnMessage && isFirstInGroup && (
-            <span className="text-xs text-muted-foreground px-1">
+            <span className="text-base font-semibold text-muted-foreground">
               {senderDisplayName}
             </span>
           )}
-          <div
-            className={`px-3 py-2 border break-words overflow-wrap-anywhere ${
-              isOwnMessage
-                ? `bg-yellow-400 dark:bg-yellow-500 text-foreground border-yellow-400 dark:border-yellow-500 ${
-                    isFirstInGroup ? 'rounded-s-xl rounded-ee-xl' : 'rounded-xl'
-                  }`
-                : `bg-card text-foreground border-border ${
-                    isFirstInGroup ? 'rounded-e-xl rounded-es-xl' : 'rounded-xl'
-                  }`
-            }`}
-          >
-            <div className="text-lg font-medium">
-              {renderMessageText(message.text, message.mentionedUserIds, searchQuery)}
+          {hasImages && (
+            <div className={cn('relative flex flex-wrap overflow-hidden rounded-lg w-60 sm:w-72 md:w-80', isPendingUpload ? 'border border-border/40' : undefined)}>
+              {isPendingUpload
+                ? pendingImageAttachments.map((item, index) => (
+                    <div
+                      key={`pending-${index}`}
+                      className={cn(
+                        'relative w-full block overflow-hidden bg-muted border border-border/40',
+                        getImageFlexBasis(index),
+                        index % imageColumns === 0 ? 'ml-0' : '-ml-px',
+                        index < imageColumns ? 'mt-0' : '-mt-px',
+                        getImageAspectClass(index)
+                      )}
+                    >
+                      {item.preview ? (
+                        <img
+                          src={item.preview}
+                          alt={item.file?.name || '이미지 업로드 중'}
+                          className="h-full w-full object-cover"
+                          draggable={false}
+                        />
+                      ) : (
+                        <div className="h-full w-full animate-pulse bg-muted-foreground/20" />
+                      )}
+                    </div>
+                  ))
+                : imageAttachments.map((image, index) => (
+                    <button
+                      type="button"
+                      key={image.id}
+                      onClick={() => {
+                        setLightboxIndex(index);
+                        setLightboxOpen(true);
+                      }}
+                      className={cn(
+                        'relative w-full block overflow-hidden bg-muted focus:outline-none border border-border/40',
+                        getImageFlexBasis(index),
+                        index % imageColumns === 0 ? 'ml-0' : '-ml-px',
+                        index < imageColumns ? 'mt-0' : '-mt-px',
+                        getImageAspectClass(index)
+                      )}
+                    >
+                      <img
+                        src={image.thumbnailUrl || image.url}
+                        alt={image.name || '이미지 첨부'}
+                        className="absolute inset-0 w-full h-full object-cover"
+                        loading="eager"
+                        decoding="async"
+                      />
+                    </button>
+                  ))}
+
+              {isPendingUpload && pendingUpload && (
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-black/60 text-white p-4">
+                  <Progress value={pendingPercent} className="w-24 h-2" />
+                  <span className="text-sm font-medium">{Math.round(pendingPercent)}%</span>
+                  <span className="text-xs font-medium">
+                    {pendingUpload.completed} / {pendingUpload.total}
+                  </span>
+                </div>
+              )}
             </div>
-            {renderAttachments()}
-          </div>
+          )}
+          {(hasText || fileAttachments.length > 0) && (
+            <div
+              className={cn(
+                'px-3 py-2 border break-words overflow-wrap-anywhere',
+                hasImages && 'mt-2',
+                isOwnMessage
+                  ? `bg-yellow-400 dark:bg-yellow-500 text-foreground dark:text-black border-yellow-400 dark:border-yellow-500 ${
+                      isFirstInGroup ? 'rounded-s-xl rounded-ee-xl' : 'rounded-xl'
+                    }`
+                  : `bg-card dark:bg-muted text-foreground border-border dark:border-muted ${
+                      isFirstInGroup ? 'rounded-e-xl rounded-es-xl' : 'rounded-xl'
+                    }`
+              )}
+            >
+              {hasText && (
+                <div className="text-lg font-medium">
+                  {renderMessageText(sanitizedText, message.mentionedUserIds, searchQuery)}
+                </div>
+              )}
+              {renderFileAttachments()}
+            </div>
+          )}
         </div>
         {/* 시간 표시는 그룹의 마지막 메시지에만 표시 (1분 이내 연속 메시지) */}
         {isLastInGroup && (
           <div className={`flex flex-col items-end gap-0.5 flex-shrink-0 ${isOwnMessage ? '' : 'items-start'}`}>
             {/* 읽지 않은 사람 수 (내 메시지만) */}
             {isOwnMessage && unreadCount > 0 && (
-              <span className="text-xs text-primary whitespace-nowrap">
+              <span className="text-xs font-semibold text-primary whitespace-nowrap">
                 {unreadCount}
               </span>
             )}
@@ -283,7 +394,17 @@ export const ChatMessageComponent: React.FC<ChatMessageProps> = ({
           </div>
         )}
       </div>
+      {!isPendingUpload && imageAttachments.length > 0 && (
+        <ImageLightbox
+          images={imageAttachments.map((image) => image.url)}
+          initialIndex={lightboxIndex}
+          open={lightboxOpen}
+          onClose={() => setLightboxOpen(false)}
+        />
+      )}
     </div>
   );
-};
+});
+
+ChatMessageComponent.displayName = 'ChatMessageComponent';
 

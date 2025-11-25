@@ -1,0 +1,21 @@
+'use client';
+
+import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
+import { useEffect } from 'react';
+
+export default function ProductionManagementLoading() {
+  useEffect(() => {
+    return () => {
+    };
+  }, []);
+
+  return (
+    <LoadingSpinner 
+      label="생산관리부 데이터 로딩 중..."
+      loadingVariant="card"
+      className="min-h-[400px]"
+      size="lg"
+    />
+  );
+}
+

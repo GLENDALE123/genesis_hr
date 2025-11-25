@@ -97,13 +97,14 @@ export const InputSelect: React.FC<InputSelectProps> = ({
     };
 
     if (isOpen) {
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         document.addEventListener('mousedown', handleClickOutside);
       }, 100);
       window.addEventListener('scroll', handleScroll, true);
       window.addEventListener('resize', handleScroll);
       
       return () => {
+        clearTimeout(timer);
         document.removeEventListener('mousedown', handleClickOutside);
         window.removeEventListener('scroll', handleScroll, true);
         window.removeEventListener('resize', handleScroll);

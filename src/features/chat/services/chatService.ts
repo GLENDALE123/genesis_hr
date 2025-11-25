@@ -16,6 +16,8 @@ import {
   where,
   orderBy,
   limit,
+  limitToLast,
+  endBefore,
   onSnapshot,
   Timestamp,
   arrayUnion,
@@ -25,7 +27,7 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '@/shared/services/firebase/config';
-import { CHAT_COLLECTIONS, MESSAGE_LIMITS } from '../constants';
+import { CHAT_COLLECTIONS, MESSAGE_LIMITS, MESSAGE_PAGINATION } from '../constants';
 import { MessageStatus } from '../types/chat.types';
 
 // undefined 값을 재귀적으로 제거하는 유틸리티 함수
@@ -92,7 +94,7 @@ export class ChatService {
       participants: participants.map((p) => ({
         uid: p.uid,
         displayName: p.displayName || '',
-        photoURL: p.photoURL || undefined,
+        photoURL: p.photoURL ?? undefined,
         joinedAt: p.joinedAt || now,
       })),
       createdBy,
@@ -170,7 +172,7 @@ export class ChatService {
       participants: temporaryRoom.participants.map((p) => ({
         uid: p.uid,
         displayName: p.displayName || '',
-        photoURL: p.photoURL || undefined,
+        photoURL: p.photoURL ?? undefined,
         joinedAt: p.joinedAt || now,
       })),
       createdBy,
@@ -388,7 +390,7 @@ export class ChatService {
       sender: {
         uid: sender.uid,
         displayName: sender.displayName || '',
-        photoURL: sender.photoURL || undefined,
+        photoURL: sender.photoURL ?? undefined,
       },
       timestamp: now,
       status: MessageStatus.SENT,
@@ -401,10 +403,14 @@ export class ChatService {
     // undefined 필드 재귀적으로 제거
     const sanitizedMessageData = removeUndefinedValues(messageData) as Omit<ChatMessage, 'id'>;
 
-    const docRef = await addDoc(
-      collection(db, CHAT_COLLECTIONS.MESSAGES),
-      sanitizedMessageData
+    const messagesRef = collection(
+      db,
+      CHAT_COLLECTIONS.ROOMS,
+      chatRoomId,
+      CHAT_COLLECTIONS.MESSAGES
     );
+
+    const docRef = await addDoc(messagesRef, sanitizedMessageData);
 
     // 채팅방의 lastMessage 업데이트
     await this.updateChatRoom(
@@ -430,34 +436,26 @@ export class ChatService {
     chatRoomId: string,
     callback: (messages: ChatMessage[]) => void,
     onError?: (error: Error) => void,
-    limitCount: number = 100
+    limitCount: number = MESSAGE_PAGINATION.INITIAL_BATCH
   ): () => void {
     if (!db) throw new Error('Firestore is not initialized');
 
-    const messagesRef = collection(db, CHAT_COLLECTIONS.MESSAGES);
-    // Firestore 인덱스가 필요한 쿼리이므로, 인덱스 없이도 작동하도록 수정
-    // 먼저 chatRoomId로 필터링한 후 클라이언트에서 정렬
-    const q = query(
-      messagesRef,
-      where('chatRoomId', '==', chatRoomId),
-      limit(limitCount * 2) // 정렬을 위해 더 많이 가져옴
+    const messagesRef = collection(
+      db,
+      CHAT_COLLECTIONS.ROOMS,
+      chatRoomId,
+      CHAT_COLLECTIONS.MESSAGES
     );
+    const q = query(messagesRef, orderBy('timestamp', 'asc'), limitToLast(limitCount));
 
     return onSnapshot(
       q,
       (snapshot) => {
-        const messages = snapshot.docs
-          .map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          } as ChatMessage))
-          .sort((a, b) => {
-            // timestamp로 정렬 (오름차순: 가장 오래된 것부터)
-            const aTime = a.timestamp || '';
-            const bTime = b.timestamp || '';
-            return aTime.localeCompare(bTime);
-          })
-          .slice(-limitCount) as ChatMessage[]; // 최신 limitCount개만 사용
+        const messages = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as ChatMessage[];
+
         callback(messages);
       },
       (error) => {
@@ -469,16 +467,82 @@ export class ChatService {
     );
   }
 
+  static async fetchInitialMessages(
+    chatRoomId: string,
+    limitCount: number = MESSAGE_PAGINATION.INITIAL_BATCH
+  ): Promise<ChatMessage[]> {
+    if (!db) throw new Error('Firestore is not initialized');
+    if (!chatRoomId) return [];
+
+    const messagesRef = collection(
+      db,
+      CHAT_COLLECTIONS.ROOMS,
+      chatRoomId,
+      CHAT_COLLECTIONS.MESSAGES
+    );
+
+    const snapshot = await getDocs(
+      query(messagesRef, orderBy('timestamp', 'asc'), limitToLast(limitCount))
+    );
+
+    const messages = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as ChatMessage[];
+
+    return messages;
+  }
+
+  /**
+   * 이전 메시지 페이지네이션 로드
+   */
+  static async fetchOlderMessages(
+    chatRoomId: string,
+    beforeTimestamp: string,
+    limitCount: number = MESSAGE_PAGINATION.OLDER_PAGE_SIZE
+  ): Promise<ChatMessage[]> {
+    if (!db) throw new Error('Firestore is not initialized');
+    if (!beforeTimestamp) return [];
+
+    const messagesRef = collection(
+      db,
+      CHAT_COLLECTIONS.ROOMS,
+      chatRoomId,
+      CHAT_COLLECTIONS.MESSAGES
+    );
+
+    const constraints = [
+      orderBy('timestamp', 'asc'),
+      endBefore(beforeTimestamp),
+      limitToLast(limitCount),
+    ] as const;
+
+    const snapshot = await getDocs(query(messagesRef, ...constraints));
+    const messages = snapshot.docs.map((docSnap) => ({
+      id: docSnap.id,
+      ...docSnap.data(),
+    })) as ChatMessage[];
+
+    return messages;
+  }
+
   /**
    * 메시지 읽음 처리
    */
   static async markMessageAsRead(
+    chatRoomId: string,
     messageId: string,
     userId: string
   ): Promise<void> {
     if (!db) throw new Error('Firestore is not initialized');
 
-    const docRef = doc(db, CHAT_COLLECTIONS.MESSAGES, messageId);
+    const docRef = doc(
+      db,
+      CHAT_COLLECTIONS.ROOMS,
+      chatRoomId,
+      CHAT_COLLECTIONS.MESSAGES,
+      messageId
+    );
     const docSnap = await getDoc(docRef);
 
     if (!docSnap.exists()) {
@@ -498,13 +562,20 @@ export class ChatService {
    * 메시지 수정
    */
   static async editMessage(
+    chatRoomId: string,
     messageId: string,
     newText: string,
     userId: string
   ): Promise<void> {
     if (!db) throw new Error('Firestore is not initialized');
 
-    const docRef = doc(db, CHAT_COLLECTIONS.MESSAGES, messageId);
+    const docRef = doc(
+      db,
+      CHAT_COLLECTIONS.ROOMS,
+      chatRoomId,
+      CHAT_COLLECTIONS.MESSAGES,
+      messageId
+    );
     const docSnap = await getDoc(docRef);
 
     if (!docSnap.exists()) {
@@ -525,10 +596,20 @@ export class ChatService {
   /**
    * 메시지 삭제
    */
-  static async deleteMessage(messageId: string, userId: string): Promise<void> {
+  static async deleteMessage(
+    chatRoomId: string,
+    messageId: string,
+    userId: string
+  ): Promise<void> {
     if (!db) throw new Error('Firestore is not initialized');
 
-    const docRef = doc(db, CHAT_COLLECTIONS.MESSAGES, messageId);
+    const docRef = doc(
+      db,
+      CHAT_COLLECTIONS.ROOMS,
+      chatRoomId,
+      CHAT_COLLECTIONS.MESSAGES,
+      messageId
+    );
     const docSnap = await getDoc(docRef);
 
     if (!docSnap.exists()) {

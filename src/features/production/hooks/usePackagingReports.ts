@@ -23,6 +23,7 @@ export const usePackagingReports = () => {
     email: user?.email || ''
   }), [user, userProfile]);
   const [mounted, setMounted] = useState(false);
+  const isMountedRef = useRef(true);
   
   // 현재 구독 중인 날짜 범위 (실시간 구독 관리용)
   const [currentDateRange, setCurrentDateRange] = useState<{ startDate: string; endDate: string } | null>(null);
@@ -46,6 +47,10 @@ export const usePackagingReports = () => {
   // 클라이언트 사이드에서만 실행되도록 보장
   useEffect(() => {
     setMounted(true);
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
   // ✅ 초기 마운트 시 오늘 날짜로 실시간 구독 시작 (한국 시간 기준)
@@ -105,26 +110,24 @@ export const usePackagingReports = () => {
         startDate,
         endDate,
         (newReports) => {
-          if (!isCancelled) {
-            // Zustand 스토어에 저장
-            const store = usePackagingReportsStore.getState();
-            store.setReports(newReports, startDate, endDate);
-          }
+          if (!isMountedRef.current || isCancelled) return;
+          // Zustand 스토어에 저장
+          const store = usePackagingReportsStore.getState();
+          store.setReports(newReports, startDate, endDate);
         },
         (err) => {
-          if (!isCancelled) {
-            console.error('❌ 생산일보 데이터 로드 실패:', err);
-            const errorMessage = err instanceof Error ? err.message : '';
-            
-            if (errorMessage.includes('permission') || errorMessage.includes('insufficient')) {
-              console.warn('⚠️ 권한 에러 발생:', errorMessage);
-              setError(new Error('생산일보 데이터를 불러올 권한이 없습니다. 관리자에게 문의하세요.'));
-            } else {
-              setError(err);
-            }
-            setLoading(false);
-            setFetching(false);
+          if (!isMountedRef.current || isCancelled) return;
+          console.error('❌ 생산일보 데이터 로드 실패:', err);
+          const errorMessage = err instanceof Error ? err.message : '';
+          
+          if (errorMessage.includes('permission') || errorMessage.includes('insufficient')) {
+            console.warn('⚠️ 권한 에러 발생:', errorMessage);
+            setError(new Error('생산일보 데이터를 불러올 권한이 없습니다. 관리자에게 문의하세요.'));
+          } else {
+            setError(err);
           }
+          setLoading(false);
+          setFetching(false);
         }
       );
     };

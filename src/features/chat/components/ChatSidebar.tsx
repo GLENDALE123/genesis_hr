@@ -3,8 +3,6 @@
  * 사용자 목록과 채팅방 목록 탭 전환
  */
 
-'use client';
-
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import { UserList } from './UserList';
@@ -18,7 +16,7 @@ export interface ChatSidebarProps {
 
 export const ChatSidebar: React.FC<ChatSidebarProps> = ({ className }) => {
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const location = useLocation();
   const { isSmartphone } = useDeviceType();
   const isMobile = isSmartphone;
   const [activeTab, setActiveTab] = useState<'users' | 'rooms'>('rooms');

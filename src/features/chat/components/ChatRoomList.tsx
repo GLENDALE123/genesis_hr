@@ -2,16 +2,14 @@
  * 채팅방 목록 컴포넌트
  */
 
-'use client';
-
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { Badge } from '@/shared/components/ui/badge';
 import { Spinner } from '@/shared/components/ui/spinner';
 import { Button } from '@/shared/components/ui/button';
-import { Plus } from 'lucide-react';
+import { Plus, Search, LogOut } from 'lucide-react';
 import { useChatStore } from '../store/chatStore';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { ChatService } from '../services/chatService';
@@ -19,6 +17,23 @@ import { formatChatDate } from '../utils/dateFormat';
 import { getUserInfo } from './UserList';
 import { getUserDisplayName, getUserInitial } from '@/shared/utils/userUtils';
 import type { ChatRoom } from '../types/chat.types';
+import { Input } from '@/shared/components/ui/input';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/shared/components/ui/context-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/shared/components/ui/alert-dialog';
 
 export interface ChatRoomListProps {
   onRoomClick?: (roomId: string) => void;
@@ -32,29 +47,53 @@ export const ChatRoomList: React.FC<ChatRoomListProps> = ({
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuthStore();
-  const { chatRooms, isLoadingRooms, setChatRooms, setIsLoadingRooms, unreadCounts } =
-    useChatStore();
+  const {
+    chatRooms,
+    isLoadingRooms,
+    setChatRooms,
+    setIsLoadingRooms,
+    unreadCounts,
+    removeChatRoom: removeRoomFromStore,
+  } = useChatStore();
   const [usersLoaded, setUsersLoaded] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [leavingRoomId, setLeavingRoomId] = useState<string | null>(null);
+  const [roomToLeave, setRoomToLeave] = useState<ChatRoom | null>(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // 사용자 정보 로드 확인
   useEffect(() => {
+    let checkInterval: NodeJS.Timeout;
+    let timeoutId: NodeJS.Timeout;
+
     const checkUsersLoaded = () => {
-      // UserList의 globalUsersRef를 확인
-      const checkInterval = setInterval(() => {
+      checkInterval = setInterval(() => {
+        if (!isMountedRef.current) return;
         if (typeof window !== 'undefined') {
-          // globalUsersRef는 ref이므로 직접 접근 불가
-          // 대신 UserList가 로드될 때까지 대기
-          setUsersLoaded(true); // 일단 true로 설정 (나중에 개선 가능)
+          setUsersLoaded(true);
         }
       }, 100);
 
-      setTimeout(() => {
+      timeoutId = setTimeout(() => {
+        if (!isMountedRef.current) return;
         clearInterval(checkInterval);
         setUsersLoaded(true);
       }, 2000);
     };
 
     checkUsersLoaded();
+
+    return () => {
+      if (checkInterval) clearInterval(checkInterval);
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, []);
 
   // 채팅방 목록 구독
@@ -65,10 +104,12 @@ export const ChatRoomList: React.FC<ChatRoomListProps> = ({
     const unsubscribe = ChatService.subscribeToChatRooms(
       user.uid,
       (rooms) => {
+        if (!isMountedRef.current) return;
         setChatRooms(rooms);
         setIsLoadingRooms(false);
       },
       (error) => {
+        if (!isMountedRef.current) return;
         console.error('Failed to load chat rooms:', error);
         setIsLoadingRooms(false);
       }
@@ -125,122 +166,215 @@ export const ChatRoomList: React.FC<ChatRoomListProps> = ({
     }
   };
 
-  if (isLoadingRooms) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <Spinner className="size-6" />
-      </div>
-    );
-  }
+  const handleLeaveRoom = async (roomId: string) => {
+    if (!user?.uid) return;
+    try {
+      setLeavingRoomId(roomId);
+      await ChatService.leaveChatRoom(roomId, user.uid);
+      removeRoomFromStore(roomId);
 
-  if (sortedRooms.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4">
-        <p className="text-sm text-center">첫 메시지를 보내 채팅을 시작하세요</p>
-        {onCreateRoomClick && (
-          <Button
-            onClick={onCreateRoomClick}
-            className="mt-4"
-            size="sm"
-            variant="outline"
-          >
-            <Plus className="mr-2 size-4" />
-            새 채팅방 만들기
-          </Button>
-        )}
-      </div>
-    );
-  }
+      if (searchParams?.get('room') === roomId) {
+        navigate('/chat');
+      }
+    } catch (error) {
+      console.error('Failed to leave chat room:', error);
+    } finally {
+      setLeavingRoomId((current) => (current === roomId ? null : current));
+    }
+  };
+
+  const openLeaveDialog = (room: ChatRoom) => {
+    setRoomToLeave(room);
+  };
+
+  const handleConfirmLeave = async () => {
+    if (!roomToLeave) return;
+    await handleLeaveRoom(roomToLeave.id);
+    setRoomToLeave(null);
+  };
+
+  const handleCloseLeaveDialog = (open: boolean) => {
+    if (!open) {
+      setRoomToLeave(null);
+    }
+  };
+
+  const filteredRooms = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) {
+      return sortedRooms;
+    }
+
+    return sortedRooms.filter((room) => {
+      const roomName = getChatRoomName(room).toLowerCase();
+      const lastMessageText = room.lastMessage?.text?.toLowerCase() || '';
+      return roomName.includes(query) || lastMessageText.includes(query);
+    });
+  }, [sortedRooms, searchQuery, usersLoaded]);
 
   return (
-    <ScrollArea className="h-full">
-      <div className="p-2 space-y-1">
-        {sortedRooms.map((room) => {
-          const isActive = searchParams.get('room') === room.id;
-          const unreadCount = getUnreadCount(room);
-          const roomName = getChatRoomName(room);
-
-          // 1:1 채팅의 경우 상대방 아바타
-          const otherParticipant =
-            room.type === 'direct'
-              ? room.participants.find((p) => p.uid !== user?.uid)
-              : null;
-
-          const avatarUrl = otherParticipant
-            ? getUserInfo(otherParticipant.uid)?.photoURL || otherParticipant.photoURL
-            : undefined;
-          const avatarName = otherParticipant
-            ? getUserInfo(otherParticipant.uid)?.displayName || otherParticipant.displayName
-            : roomName;
-
-          return (
-            <div
-              key={room.id}
-              onClick={() => handleRoomClick(room.id)}
-              className={`
-                flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors
-                ${isActive ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}
-              `}
-            >
-              <div className="relative flex-shrink-0">
-                {room.type === 'direct' ? (
-                  <Avatar className="size-12">
-                    <AvatarImage src={avatarUrl} alt={avatarName} />
-                    <AvatarFallback>
-                      {getUserInitial(
-                        { displayName: avatarName },
-                        getUserInitial(otherParticipant || { displayName: roomName }, 'U')
-                      )}
-                    </AvatarFallback>
-                  </Avatar>
-                ) : (
-                  <Avatar className="size-12">
-                    <AvatarFallback>
-                      {roomName.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                )}
-                {unreadCount > 0 && (
-                  <Badge
-                    variant="destructive"
-                    className="absolute -top-1 -right-1 size-5 rounded-full p-0 flex items-center justify-center text-xs"
-                  >
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </Badge>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                  <span
-                    className={`font-medium truncate ${isActive ? 'text-primary-foreground' : ''}`}
-                  >
-                    {roomName}
-                  </span>
-                  {room.lastMessage && (
-                    <span
-                      className={`text-xs whitespace-nowrap ${
-                        isActive ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                      }`}
-                    >
-                      {formatChatDate(room.lastMessage.timestamp)}
-                    </span>
-                  )}
-                </div>
-                {room.lastMessage && (
-                  <p
-                    className={`text-sm truncate mt-1 ${
-                      isActive ? 'text-primary-foreground/80' : 'text-muted-foreground'
-                    }`}
-                  >
-                    {room.lastMessage.text}
-                  </p>
-                )}
-              </div>
-            </div>
-          );
-        })}
+    <div className="flex h-full flex-col">
+      <div className="flex-shrink-0 border-b p-2">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
+          <Input
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="채팅방 검색..."
+            className="pl-9"
+          />
+        </div>
       </div>
-    </ScrollArea>
+      <ScrollArea className="flex-1">
+        <div className="p-2 space-y-1">
+          {isLoadingRooms ? (
+            <div className="flex h-48 items-center justify-center text-muted-foreground">
+              <Spinner className="size-6" />
+            </div>
+          ) : filteredRooms.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-2 py-10 text-muted-foreground">
+              <p className="text-sm text-center">
+                {searchQuery.trim()
+                  ? '검색 결과가 없습니다.'
+                  : '첫 메시지를 보내 채팅을 시작하세요.'}
+              </p>
+              {!searchQuery.trim() && onCreateRoomClick && (
+                <Button onClick={onCreateRoomClick} className="mt-2" size="sm" variant="outline">
+                  <Plus className="mr-2 size-4" />
+                  새 채팅방 만들기
+                </Button>
+              )}
+            </div>
+          ) : (
+            filteredRooms.map((room) => {
+              const isActive = searchParams?.get('room') === room.id;
+              const unreadCount = getUnreadCount(room);
+              const roomName = getChatRoomName(room);
+
+              // 1:1 채팅의 경우 상대방 아바타
+              const otherParticipant =
+                room.type === 'direct'
+                  ? room.participants.find((p) => p.uid !== user?.uid)
+                  : null;
+
+              const avatarUrl = otherParticipant
+                ? getUserInfo(otherParticipant.uid)?.photoURL || otherParticipant.photoURL
+                : undefined;
+              const avatarName = otherParticipant
+                ? getUserInfo(otherParticipant.uid)?.displayName || otherParticipant.displayName
+                : roomName;
+
+              return (
+                <ContextMenu key={room.id}>
+                  <ContextMenuTrigger>
+                    <div
+                      onClick={() => handleRoomClick(room.id)}
+                      className={`
+                        flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors
+                        ${isActive ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}
+                      `}
+                    >
+                      <div className="relative flex-shrink-0">
+                    {room.type === 'direct' ? (
+                      <Avatar
+                        className="[width:var(--avatar-size,3rem)] [height:var(--avatar-size,3rem)]"
+                        style={{ '--avatar-size': '3rem' } as React.CSSProperties}
+                      >
+                        <AvatarImage src={avatarUrl} alt={avatarName} />
+                        <AvatarFallback className="flex items-center justify-center font-semibold text-muted-foreground [font-size:calc(var(--avatar-size,3rem)*0.35)]">
+                          {getUserInitial(
+                            { displayName: avatarName },
+                            getUserInitial(otherParticipant || { displayName: roomName }, 'U')
+                          )}
+                        </AvatarFallback>
+                      </Avatar>
+                    ) : (
+                      <Avatar
+                        className="[width:var(--avatar-size,3rem)] [height:var(--avatar-size,3rem)]"
+                        style={{ '--avatar-size': '3rem' } as React.CSSProperties}
+                      >
+                        <AvatarFallback className="flex items-center justify-center font-semibold text-muted-foreground [font-size:calc(var(--avatar-size,3rem)*0.35)]">
+                          {roomName.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    )}
+                    {unreadCount > 0 && (
+                      <Badge
+                        variant="destructive"
+                        className="absolute -top-1 -right-1 size-5 rounded-full p-0 flex items-center justify-center text-xs"
+                      >
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <span
+                        className={`font-medium truncate ${isActive ? 'text-primary-foreground' : ''}`}
+                      >
+                        {roomName}
+                      </span>
+                      {room.lastMessage && (
+                        <span
+                          className={`text-xs whitespace-nowrap ${
+                            isActive ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                          }`}
+                        >
+                          {formatChatDate(room.lastMessage.timestamp)}
+                        </span>
+                      )}
+                    </div>
+                    {room.lastMessage && (
+                      <p
+                        className={`mt-1 truncate text-sm ${
+                          isActive ? 'text-primary-foreground/80' : 'text-muted-foreground'
+                        }`}
+                      >
+                        {room.lastMessage.text}
+                      </p>
+                    )}
+                  </div>
+                    </div>
+                  </ContextMenuTrigger>
+                  <ContextMenuContent>
+                    <ContextMenuItem
+                      className="text-destructive focus:text-destructive"
+                      disabled={leavingRoomId === room.id}
+                      onClick={() => openLeaveDialog(room)}
+                    >
+                      <LogOut className="mr-2 size-4 text-destructive" />
+                      {leavingRoomId === room.id ? '나가는 중...' : '채팅방 나가기'}
+                    </ContextMenuItem>
+                  </ContextMenuContent>
+                </ContextMenu>
+              );
+            })
+          )}
+      </div>
+      </ScrollArea>
+      <AlertDialog open={!!roomToLeave} onOpenChange={handleCloseLeaveDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>채팅방 나가기</AlertDialogTitle>
+            <AlertDialogDescription>
+              {roomToLeave
+                ? `'${getChatRoomName(roomToLeave)}' 채팅방을 나가시겠습니까?`
+                : '선택한 채팅방을 나가시겠습니까?'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={!!leavingRoomId}>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmLeave}
+              disabled={!!leavingRoomId}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {leavingRoomId ? '나가는 중...' : '나가기'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 };
 

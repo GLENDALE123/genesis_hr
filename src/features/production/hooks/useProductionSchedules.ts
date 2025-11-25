@@ -32,6 +32,14 @@ const productionLineSortOrder = [
  */
 export const useProductionSchedules = () => {
   const [mounted, setMounted] = useState(false);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
   
   // 현재 구독 중인 날짜 범위
   const [currentDateRange, setCurrentDateRange] = useState<{ startDate: string; endDate: string } | null>(null);
@@ -112,17 +120,15 @@ export const useProductionSchedules = () => {
         startDate,
         endDate,
         (newSchedules) => {
-          if (!isCancelled) {
-            setSchedules(newSchedules, startDate, endDate);
-          }
+          if (!isMountedRef.current || isCancelled) return;
+          setSchedules(newSchedules, startDate, endDate);
         },
         (err) => {
-          if (!isCancelled) {
-            console.error('❌ 생산일정 데이터 로드 실패:', err);
-            setError(err);
-            setLoading(false);
-            setFetching(false);
-          }
+          if (!isMountedRef.current || isCancelled) return;
+          console.error('❌ 생산일정 데이터 로드 실패:', err);
+          setError(err);
+          setLoading(false);
+          setFetching(false);
         }
       );
     };

@@ -3,8 +3,6 @@
  * 우클릭 메뉴, 즐겨찾기 기능 포함
  */
 
-'use client';
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
@@ -72,6 +70,19 @@ export const UserList: React.FC<UserListProps> = ({ className }) => {
   const [userStatuses, setUserStatuses] = useState<Record<string, boolean>>({});
   const [favorites, setFavorites] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const isMountedRef = useRef(true);
+  const retryTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
+    };
+  }, []);
 
   // 전역 참조 업데이트
   const usersRef = useRef<{ users: UserManagementInfo[]; loaded: boolean }>({
@@ -94,6 +105,7 @@ export const UserList: React.FC<UserListProps> = ({ className }) => {
 
     // 초기 로드
     getDoc(favoritesRef).then((snap) => {
+      if (!isMountedRef.current) return;
       if (snap.exists()) {
         const data = snap.data();
         setFavorites(data.favoriteUserIds || []);
@@ -104,6 +116,7 @@ export const UserList: React.FC<UserListProps> = ({ className }) => {
     const unsubscribe = onSnapshot(
       favoritesRef,
       (snap) => {
+        if (!isMountedRef.current) return;
         if (snap.exists()) {
           const data = snap.data();
           setFavorites(data.favoriteUserIds || []);
@@ -153,6 +166,8 @@ export const UserList: React.FC<UserListProps> = ({ className }) => {
         cachedUsers = filteredUsers;
         hasCachedUsers = true;
 
+        if (!isMountedRef.current) return;
+
         setUsers(filteredUsers);
         usersRef.current = { users: filteredUsers, loaded: true };
         setUsersLoaded(true);
@@ -170,6 +185,7 @@ export const UserList: React.FC<UserListProps> = ({ className }) => {
             userStatusUnsubscribe = UserStatusService.subscribeToMultipleUserStatus(
               userIds,
               (statuses) => {
+                if (!isMountedRef.current) return;
                 const onlineMap: Record<string, boolean> = {};
                 Object.entries(statuses).forEach(([uid, status]) => {
                   onlineMap[uid] = status.status === 'online';
@@ -181,13 +197,20 @@ export const UserList: React.FC<UserListProps> = ({ className }) => {
           }
         } else {
           // 이미 구독 중이면 캐시된 상태 사용
-          setUserStatuses(cachedUserStatuses);
+          if (isMountedRef.current) {
+            setUserStatuses(cachedUserStatuses);
+          }
         }
       } catch (error) {
         console.error('Failed to load users:', error);
+        if (!isMountedRef.current) return;
         retryCount++;
         if (retryCount < maxRetries) {
-          setTimeout(loadUsers, 1000 * retryCount);
+          retryTimerRef.current = setTimeout(() => {
+            if (isMountedRef.current) {
+              loadUsers();
+            }
+          }, 1000 * retryCount);
         } else {
           setUsersLoaded(true); // 에러가 나도 로딩 상태는 해제
         }
@@ -419,7 +442,12 @@ export const UserList: React.FC<UserListProps> = ({ className }) => {
         </div>
       </div>
       {/* 사용자 목록 */}
-      <ScrollArea className="flex-1">
+      <ScrollArea
+        type="auto"
+        className="flex-1"
+        hideHorizontalScrollbar
+        overflowX="hidden"
+      >
         <div className="p-2">
         {filteredUsers.map((user, index) => {
           if (!user.uid) return null;
@@ -448,9 +476,14 @@ export const UserList: React.FC<UserListProps> = ({ className }) => {
                     }`}
                   >
                   <div className="relative">
-                    <Avatar className="size-10">
+                    <Avatar
+                      className="[width:var(--avatar-size,2.5rem)] [height:var(--avatar-size,2.5rem)]"
+                      style={{ '--avatar-size': '2.5rem' } as React.CSSProperties}
+                    >
                       <AvatarImage src={photoURL} alt={displayName} />
-                      <AvatarFallback>{getUserInitial(user, 'U')}</AvatarFallback>
+                      <AvatarFallback className="flex items-center justify-center font-medium text-muted-foreground [font-size:calc(var(--avatar-size,2.5rem)*0.4)]">
+                        {getUserInitial(user, 'U')}
+                      </AvatarFallback>
                     </Avatar>
                     {isOnline && (
                       <div className="absolute bottom-0 right-0 size-3 bg-green-500 border-2 border-background rounded-full" />

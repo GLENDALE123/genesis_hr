@@ -6,9 +6,9 @@
  * Firestore 컬렉션 이름
  */
 export const CHAT_COLLECTIONS = {
-  ROOMS: 'chat-rooms',
-  MESSAGES: 'chat-messages',
-  TYPING: 'chat-typing',
+  ROOMS: 'chat',
+  MESSAGES: 'messages',
+  TYPING: 'typing',
   USER_STATUS: 'user-status',
 } as const;
 
@@ -20,6 +20,14 @@ export const MESSAGE_LIMITS = {
   MAX_ATTACHMENTS: 10,
   MAX_ATTACHMENT_SIZE: 10 * 1024 * 1024, // 10MB
   MAX_IMAGE_SIZE: 5 * 1024 * 1024, // 5MB
+} as const;
+
+/**
+ * 메시지 페이지네이션 설정
+ */
+export const MESSAGE_PAGINATION = {
+  INITIAL_BATCH: 60,
+  OLDER_PAGE_SIZE: 40,
 } as const;
 
 /**

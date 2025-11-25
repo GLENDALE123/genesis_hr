@@ -1,9 +1,10 @@
-
 import React, { useState, useRef, useEffect, KeyboardEvent } from 'react';
 import { Button } from '@/shared/components/ui/button';
 import { Avatar, AvatarFallback } from '@/shared/components/ui/avatar';
 import { getUserDisplayName, getUserInitial } from '@/shared/utils/userUtils';
 import type { UserProfile } from '@/features/auth/types';
+import type { MessageAttachment } from '@/features/chat/types/chat.types';
+import { Image as ImageIcon, Paperclip } from 'lucide-react';
 
 interface UserWithUid extends UserProfile {
   uid: string;
@@ -12,7 +13,11 @@ interface UserWithUid extends UserProfile {
 }
 
 interface ChatInputProps {
-  onSubmit: (text: string, mentionedUserIds?: string[]) => void;
+  onSubmit: (
+    text: string,
+    mentionedUserIds?: string[],
+    attachments?: MessageAttachment[]
+  ) => Promise<void> | void;
   placeholder?: string;
   disabled?: boolean;
   users: UserWithUid[];
@@ -20,6 +25,8 @@ interface ChatInputProps {
   replyTo?: string | null;
   replyToUser?: UserWithUid | null;
   onCancelReply?: () => void;
+  onAttachImage?: () => void;
+  onAttachFile?: () => void;
 }
 
 interface MentionUser {
@@ -37,14 +44,19 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   replyTo,
   replyToUser,
   onCancelReply,
+  onAttachImage,
+  onAttachFile,
 }) => {
   const [showMentionList, setShowMentionList] = useState(false);
   const [mentionSearch, setMentionSearch] = useState('');
   const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
   const [mentionedUsers, setMentionedUsers] = useState<MentionUser[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   
   const editorRef = useRef<HTMLDivElement>(null);
   const mentionListRef = useRef<HTMLDivElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   // @ 뒤의 텍스트로 사용자 필터링 (자기 자신 제외)
   const filteredUsers = users.filter(user => 
@@ -91,7 +103,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   // 제출 처리
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!editorRef.current || disabled) return;
     
     const html = editorRef.current.innerHTML;
@@ -101,18 +113,33 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     
     const mentionedUserIds = extractMentionedUserIds(html);
     
-    onSubmit(text.trim(), mentionedUserIds);
+    try {
+      await onSubmit(text.trim(), mentionedUserIds);
     
-    // 입력창 초기화
     editorRef.current.innerHTML = '';
     setMentionedUsers([]);
     setShowMentionList(false);
     
-    // 답글 취소 (replyToUser 초기화)
     if (onCancelReply) {
       onCancelReply();
     }
+    } catch (error) {
+      console.error('Failed to submit chat message:', error);
+      setUploadError(error instanceof Error ? error.message : '메시지 전송에 실패했습니다.');
+    }
   };
+  const handleImageSelect = (files: FileList | null) => {
+    if (!files) return;
+    onAttachImage?.();
+    if (imageInputRef.current) {
+      imageInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveImage = () => {
+    // noop
+  };
+
 
   // 키 입력 처리
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -330,6 +357,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     }
   }, [selectedMentionIndex]);
 
+  useEffect(() => {
+    editorRef.current?.focus();
+  }, []);
+
   return (
     <div className="flex items-end gap-2.5">
       <div className="flex-1 relative">
@@ -348,6 +379,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             >
               <span className="text-xs">✕</span>
             </Button>
+          </div>
+        )}
+
+        {/* 이미지 미리보기 제거 */}
+
+        {uploadError && (
+          <div className="mb-2 rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            {uploadError}
           </div>
         )}
 
@@ -398,15 +437,15 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           </div>
         )}
 
-        {/* 제출 버튼 */}
-        <div className="flex justify-end mt-2">
+        {/* 액션 버튼 */}
+        <div className="mt-2 flex items-center justify-end gap-2">
           <Button
             type="button"
             size="sm"
             onClick={handleSubmit}
-            disabled={disabled}
+            disabled={disabled || isUploading}
           >
-            전송
+            {isUploading ? '업로드 중...' : '전송'}
           </Button>
         </div>
 
@@ -425,6 +464,4 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 };
 
 export default ChatInput;
-
-
 

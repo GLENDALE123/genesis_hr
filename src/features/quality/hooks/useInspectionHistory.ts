@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { QualityInspection } from '../types';
 import { subscribeToInspectionsByProductInfo } from '../services/qualityInspectionService';
 import { analyzeInspectionHistory, InspectionSummary } from '@/shared/services/gemini/geminiService';
@@ -35,6 +35,14 @@ export function useInspectionHistory({
   const [isLoading, setIsLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // 디바운싱: 입력 후 500ms 후 조회
   const [debouncedSupplier] = useDebounce(supplier, 500);
@@ -70,6 +78,7 @@ export function useInspectionHistory({
       debouncedProductName,
       debouncedPartName,
       (data) => {
+        if (!isMountedRef.current) return;
         // 발주번호가 주어진 경우, 발주번호가 포함된 검사들 필터링
         let filteredData = data;
         
@@ -98,6 +107,7 @@ export function useInspectionHistory({
         setIsLoading(false);
       },
       (err) => {
+        if (!isMountedRef.current) return;
         console.error('이력 조회 실패:', err);
         setError(err);
         setIsLoading(false);
@@ -132,17 +142,15 @@ export function useInspectionHistory({
           inspections
         );
         
-        if (!cancelled) {
-          setSummary(analysisResult);
-        }
+        if (!isMountedRef.current || cancelled) return;
+        setSummary(analysisResult);
       } catch (err) {
-        if (!cancelled) {
-          console.error('Gemini API 분석 실패:', err);
-          // API 실패는 에러로 처리하지 않고 기본 통계만 표시
-          setSummary(null);
-        }
+        if (!isMountedRef.current || cancelled) return;
+        console.error('Gemini API 분석 실패:', err);
+        // API 실패는 에러로 처리하지 않고 기본 통계만 표시
+        setSummary(null);
       } finally {
-        if (!cancelled) {
+        if (isMountedRef.current && !cancelled) {
           setIsAnalyzing(false);
         }
       }
