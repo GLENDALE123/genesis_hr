@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { subscribeToShortageRequests } from '../services/shortageService';
 import { ShortageRequest } from '../types';
 import { useAuthStore } from '@/features/auth/store/authStore';

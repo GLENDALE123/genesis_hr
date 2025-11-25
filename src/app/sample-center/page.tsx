@@ -2,10 +2,8 @@
  * 샘플센터 대시보드 페이지
  */
 
-'use client';
-
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 import { SampleDashboard, SampleRequestDetail } from '@/features/sample';
 import { useSampleRequests, useSampleFilters } from '@/features/sample/hooks';
@@ -15,7 +13,7 @@ import { Alert, AlertDescription } from '@/shared/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 
 export default function SampleCenterPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const {
     requests,
     isLoading,
@@ -30,7 +28,7 @@ export default function SampleCenterPage() {
 
   // 빠른 필터 적용 후 목록 페이지로 이동
   const handleQuickFilter = (status: SampleStatus, coatingMethod: string) => {
-    router.push(`/sample-center/requests?status=${encodeURIComponent(status)}&coating=${encodeURIComponent(coatingMethod)}`);
+    navigate(`/sample-center/requests?status=${encodeURIComponent(status)}&coating=${encodeURIComponent(coatingMethod)}`);
   };
 
   // 로딩 상태
@@ -86,7 +84,7 @@ export default function SampleCenterPage() {
             onDelete={deleteRequest}
             onEdit={() => {
               // 수정 기능 구현 (요청목록 페이지에서)
-              router.push('/sample-center/requests');
+              navigate('/sample-center/requests');
             }}
             onUpdateWorkData={updateWorkData}
             onUploadWorkImage={async (id: string, file: File) => {

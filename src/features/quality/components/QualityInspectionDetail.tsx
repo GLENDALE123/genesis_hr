@@ -226,7 +226,7 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
     };
   }, [currentGroup]);
 
-  // AI 이력 분석 훅 (발주처, 제품명, 부속명, 발주번호 기반)
+  // AI 이력 분석 훅 (발주처, 제품명, 부속명 기반 - 발주번호 무관하게 모든 이력 조회)
   const {
     inspections: historyInspections,
     summary: historySummary,
@@ -236,7 +236,7 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
     supplier: currentGroup?.common.supplier || '',
     productName: currentGroup?.common.productName || '',
     partName: currentGroup?.common.partName || '',
-    orderNumber: currentGroup?.orderNumber || '', // 발주번호 추가 (묶음 검사 포함 조회)
+    // orderNumber는 전달하지 않음 - 발주번호가 달라도 같은 제품이면 모든 이력 조회
     enabled: isOpen && !!currentGroup // 모달이 열려있고 그룹이 있을 때만 활성화
   });
 

@@ -1,6 +1,3 @@
-'use client';
-
-import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 import { ProductionScheduleListView } from '@/features/production/components/ProductionScheduleListView';
@@ -11,7 +8,7 @@ import { getUserDisplayName } from '@/shared/utils/userUtils';
 import { getLocalDateString } from '@/shared/utils/dateUtils';
 import { toast } from 'sonner';
 
-// SSR 비활성화 (Zustand persist 미들웨어가 localStorage 사용)
+// Zustand persist 미들웨어가 localStorage 사용
 const ProductionSchedulePageContent = () => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const { createSchedules, deleteSchedulesByDate } = useProductionSchedules();
@@ -69,7 +66,4 @@ const ProductionSchedulePageContent = () => {
   );
 };
 
-// SSR 비활성화하여 window 객체 접근 오류 방지
-export default dynamic(() => Promise.resolve(ProductionSchedulePageContent), {
-  ssr: false,
-});
+export default ProductionSchedulePageContent;

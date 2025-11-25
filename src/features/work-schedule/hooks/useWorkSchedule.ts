@@ -17,14 +17,6 @@ export const useWorkSchedule = () => {
   const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const isInitialLoad = useRef(true);
-  const isMountedRef = useRef(true);
-
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
 
   // 달력 데이터 메모이제이션
   const calendarData = useMemo(() => {
@@ -110,7 +102,6 @@ export const useWorkSchedule = () => {
     }
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (!isMountedRef.current) return;
       const newSchedules = new Map<string, WorkSchedule>();
       snapshot.forEach(doc => {
         newSchedules.set(doc.id, { id: doc.id, ...doc.data() } as WorkSchedule);

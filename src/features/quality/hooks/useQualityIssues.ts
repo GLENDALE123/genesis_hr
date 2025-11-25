@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { subscribeToQualityIssues } from '../services/qualityIssueService';
 import { QualityIssue } from '../types';
 import { useAuthStore } from '@/features/auth/store/authStore';

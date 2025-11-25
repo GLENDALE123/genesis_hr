@@ -134,11 +134,11 @@ export const UserList: React.FC<UserListProps> = ({ className }) => {
     };
   }, [currentUser?.uid]);
 
-  // 사용자 목록 로드 (캐시 활용)
+  // 사용자 목록 로드 (캐시 활용 및 백그라운드 업데이트)
   useEffect(() => {
     if (!currentUser?.uid) return;
 
-    // 캐시가 있으면 즉시 표시
+    // 캐시가 있으면 즉시 표시하고 백그라운드에서 업데이트
     if (hasCachedUsers && cachedUsers.length > 0) {
       setUsers(cachedUsers);
       setUserStatuses(cachedUserStatuses);
@@ -150,6 +150,51 @@ export const UserList: React.FC<UserListProps> = ({ className }) => {
         globalUsersRef.current.users = cachedUsers;
         globalUsersRef.current.loaded = true;
       }
+      
+      // 백그라운드에서 최신 정보 업데이트 (사용자 경험을 방해하지 않음)
+      getAllUsersWithAuthInfo()
+        .then((userList) => {
+          if (!isMountedRef.current) return;
+          const filteredUsers = userList.filter((u) => u.uid !== currentUser.uid);
+          cachedUsers = filteredUsers;
+          hasCachedUsers = true;
+          setUsers(filteredUsers);
+          usersRef.current = { users: filteredUsers, loaded: true };
+          if (globalUsersRef.current) {
+            globalUsersRef.current.users = filteredUsers;
+            globalUsersRef.current.loaded = true;
+          }
+        })
+        .catch((error) => {
+          if (process.env.NODE_ENV === 'development') {
+            console.error('Failed to update users in background:', error);
+          }
+        });
+      
+      // 사용자 상태 구독 (한 번만)
+      if (!userStatusUnsubscribe) {
+        const userIds = cachedUsers.map((u) => u.uid);
+        if (userIds.length > 0) {
+          userStatusUnsubscribe = UserStatusService.subscribeToMultipleUserStatus(
+            userIds,
+            (statuses) => {
+              if (!isMountedRef.current) return;
+              const onlineMap: Record<string, boolean> = {};
+              Object.entries(statuses).forEach(([uid, status]) => {
+                onlineMap[uid] = status.status === 'online';
+              });
+              cachedUserStatuses = onlineMap;
+              setUserStatuses(onlineMap);
+            }
+          );
+        }
+      } else {
+        // 이미 구독 중이면 캐시된 상태 사용
+        if (isMountedRef.current) {
+          setUserStatuses(cachedUserStatuses);
+        }
+      }
+      
       return;
     }
 

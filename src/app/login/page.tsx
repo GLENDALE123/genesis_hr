@@ -1,7 +1,5 @@
-'use client';
-
-import { useEffect, useState, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { LoginForm } from "@/features/auth"
 import { AccountSelection } from "@/features/auth/components/AccountSelection";
 import { useAuthStore } from '@/features/auth/store/authStore';
@@ -9,8 +7,8 @@ import { getSavedAccount } from '@/features/auth/utils/savedAccounts';
 
 function LoginPageContent() {
   const { user, isLoading } = useAuthStore();
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const mode = searchParams.get('mode');
   const emailParam = searchParams.get('email');
   const [hasSavedAccount, setHasSavedAccount] = useState<boolean | null>(null);
@@ -25,9 +23,9 @@ function LoginPageContent() {
   // 로그인된 사용자는 즉시 대시보드로 리다이렉트
   useEffect(() => {
     if (!isLoading && user) {
-      router.replace('/dashboard');
+      navigate('/dashboard', { replace: true });
     }
-  }, [user, isLoading, router]);
+  }, [user, isLoading, navigate]);
 
   useEffect(() => {
     // 로그인되지 않은 경우에만 작은 윈도우로 조정
@@ -77,15 +75,5 @@ function LoginPageContent() {
 }
 
 export default function Page() {
-  return (
-    <Suspense fallback={
-      <div className="flex h-full w-full items-center justify-center p-6 md:p-10 overflow-y-auto">
-        <div className="w-full max-w-sm my-auto">
-          <div className="text-center">로딩 중...</div>
-        </div>
-      </div>
-    }>
-      <LoginPageContent />
-    </Suspense>
-  );
+  return <LoginPageContent />;
 }

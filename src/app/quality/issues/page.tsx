@@ -1,7 +1,5 @@
-'use client';
-
-import React, { useEffect, useState, Suspense, useCallback } from 'react';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import React, { useEffect, useState, useCallback } from 'react';
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/shared/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/shared/components/ui/sheet';
@@ -34,9 +32,10 @@ function QualityIssuesPageContent() {
   const { user, userProfile } = useAuthStore();
   const { isSmartphone, isTablet } = useDeviceType();
   const isMobileOrTablet = isSmartphone || isTablet;
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const pathname = location.pathname;
   
   // 상세 모달 상태 - 단순하게 관리
   const [selectedIssue, setSelectedIssue] = useState<QualityIssue | null>(null);
@@ -134,28 +133,28 @@ function QualityIssuesPageContent() {
   const handleSelectIssue = useCallback((issue: QualityIssue) => {
     setSelectedIssue(issue);
     // URL 업데이트 (딥링크 지원)
-    const params = new URLSearchParams(searchParams?.toString() || '');
+    const params = new URLSearchParams(searchParams.toString());
     params.set('issueId', issue.id);
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [searchParams, pathname, router]);
+    navigate(`${pathname}?${params.toString()}`, { replace: true });
+  }, [searchParams, pathname, navigate]);
 
   // 상세 모달 닫기
   const handleCloseDetailModal = useCallback(() => {
     // URL을 먼저 업데이트
-    if (searchParams?.get('issueId')) {
+    if (searchParams.get('issueId')) {
       const params = new URLSearchParams(searchParams.toString());
       params.delete('issueId');
       const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
-      router.replace(newUrl, { scroll: false });
+      navigate(newUrl, { replace: true });
     }
     
     // 상태 업데이트 - 모달 닫기
     setSelectedIssue(null);
-  }, [searchParams, pathname, router]);
+  }, [searchParams, pathname, navigate]);
 
   // URL 쿼리(issueId)로 진입 시 상세 모달 자동 오픈 - 딥링크 지원
   useEffect(() => {
-    const issueId = searchParams?.get('issueId');
+    const issueId = searchParams.get('issueId');
     
     // URL에 issueId가 없으면 아무것도 하지 않음
     if (!issueId) {
@@ -514,20 +513,5 @@ function QualityIssuesPageContent() {
 }
 
 export default function QualityIssuesPage() {
-  return (
-    <Suspense fallback={
-      <ProtectedRoute>
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[...Array(4)].map((_, i) => (
-              <Skeleton key={i} className="h-24" />
-            ))}
-          </div>
-          <Skeleton className="h-96" />
-        </div>
-      </ProtectedRoute>
-    }>
-      <QualityIssuesPageContent />
-    </Suspense>
-  );
+  return <QualityIssuesPageContent />;
 }

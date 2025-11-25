@@ -68,32 +68,10 @@ export const ChatRoomList: React.FC<ChatRoomListProps> = ({
     };
   }, []);
 
-  // 사용자 정보 로드 확인
+  // 사용자 정보 로드 확인 (기본 정보로 먼저 표시 가능하도록 변경)
   useEffect(() => {
-    let checkInterval: NodeJS.Timeout;
-    let timeoutId: NodeJS.Timeout;
-
-    const checkUsersLoaded = () => {
-      checkInterval = setInterval(() => {
-        if (!isMountedRef.current) return;
-        if (typeof window !== 'undefined') {
-          setUsersLoaded(true);
-        }
-      }, 100);
-
-      timeoutId = setTimeout(() => {
-        if (!isMountedRef.current) return;
-        clearInterval(checkInterval);
-        setUsersLoaded(true);
-      }, 2000);
-    };
-
-    checkUsersLoaded();
-
-    return () => {
-      if (checkInterval) clearInterval(checkInterval);
-      if (timeoutId) clearTimeout(timeoutId);
-    };
+    // 사용자 정보가 로드되었는지 확인하지만, 기본 정보로 먼저 표시
+    setUsersLoaded(true); // 기본 정보(room.participants)로 먼저 표시
   }, []);
 
   // 채팅방 목록 구독
@@ -126,7 +104,7 @@ export const ChatRoomList: React.FC<ChatRoomListProps> = ({
     return unreadCounts[room.id] || 0;
   };
 
-  // 채팅방 이름 가져오기
+  // 채팅방 이름 가져오기 (기본 정보 우선, 사용자 정보는 나중에 업데이트)
   const getChatRoomName = (room: ChatRoom): string => {
     if (!user?.uid) return '채팅방';
 
@@ -134,14 +112,18 @@ export const ChatRoomList: React.FC<ChatRoomListProps> = ({
       const otherParticipant = room.participants.find((p) => p.uid !== user.uid);
       if (!otherParticipant) return '채팅방';
 
+      // 먼저 기본 정보(room.participants) 사용
+      let displayName = otherParticipant.displayName || '사용자';
+      
+      // 사용자 정보가 로드되었으면 더 상세한 정보로 업데이트 (선택적)
       if (usersLoaded) {
         const userInfo = getUserInfo(otherParticipant.uid);
         if (userInfo?.displayName) {
-          return userInfo.displayName;
+          displayName = userInfo.displayName;
         }
       }
 
-      return otherParticipant.displayName || '사용자';
+      return displayName;
     }
 
     // 그룹 채팅
@@ -251,18 +233,33 @@ export const ChatRoomList: React.FC<ChatRoomListProps> = ({
               const unreadCount = getUnreadCount(room);
               const roomName = getChatRoomName(room);
 
-              // 1:1 채팅의 경우 상대방 아바타
+              // 1:1 채팅의 경우 상대방 아바타 (기본 정보 우선 사용)
               const otherParticipant =
                 room.type === 'direct'
                   ? room.participants.find((p) => p.uid !== user?.uid)
                   : null;
 
-              const avatarUrl = otherParticipant
-                ? getUserInfo(otherParticipant.uid)?.photoURL || otherParticipant.photoURL
-                : undefined;
-              const avatarName = otherParticipant
-                ? getUserInfo(otherParticipant.uid)?.displayName || otherParticipant.displayName
-                : roomName;
+              // 기본 정보(room.participants)를 먼저 사용, 사용자 정보는 선택적으로 업데이트
+              let avatarUrl: string | undefined;
+              let avatarName: string;
+              
+              if (otherParticipant) {
+                avatarUrl = otherParticipant.photoURL || undefined;
+                avatarName = otherParticipant.displayName || '사용자';
+                
+                // 사용자 정보가 로드되었으면 더 상세한 정보로 업데이트 (선택적)
+                if (usersLoaded) {
+                  const userInfo = getUserInfo(otherParticipant.uid);
+                  if (userInfo?.photoURL) {
+                    avatarUrl = userInfo.photoURL;
+                  }
+                  if (userInfo?.displayName) {
+                    avatarName = userInfo.displayName;
+                  }
+                }
+              } else {
+                avatarName = roomName;
+              }
 
               return (
                 <ContextMenu key={room.id}>

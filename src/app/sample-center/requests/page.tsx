@@ -2,10 +2,8 @@
  * 샘플 요청목록 페이지
  */
 
-'use client';
-
-import React, { useState, useEffect, Suspense, useCallback } from 'react';
-import { useSearchParams, usePathname, useRouter } from 'next/navigation';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 import {
   SampleRequestTable,
@@ -27,9 +25,10 @@ import { useAuthStore } from '@/features/auth/store/authStore';
 
 function SampleRequestsContent() {
   const { user } = useAuthStore();
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
-  const router = useRouter();
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const pathname = location.pathname;
+  const navigate = useNavigate();
   const {
     requests,
     isLoading,
@@ -100,14 +99,14 @@ function SampleRequestsContent() {
   const handleSelectRequest = useCallback((request: SampleRequest) => {
     setSelectedRequest(request);
     // URL 업데이트 (딥링크 지원)
-    const params = new URLSearchParams(searchParams?.toString() || '');
+    const params = new URLSearchParams(searchParams.toString());
     params.set('requestId', request.id);
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [searchParams, pathname, router]);
+    navigate(`${pathname}?${params.toString()}`, { replace: true });
+  }, [searchParams, pathname, navigate]);
 
   // URL 파라미터로 모달 열기 (딥링크 처리)
   useEffect(() => {
-    const requestId = searchParams?.get('requestId');
+    const requestId = searchParams.get('requestId');
     
     // URL에 requestId가 없으면 아무것도 하지 않음
     if (!requestId) {
@@ -174,18 +173,18 @@ function SampleRequestsContent() {
     setSelectedRequest(null);
     
     // URL 업데이트 (나중에)
-    if (searchParams?.get('requestId')) {
+    if (searchParams.get('requestId')) {
       const params = new URLSearchParams(searchParams.toString());
       params.delete('requestId');
       const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
-      router.replace(newUrl, { scroll: false });
+      navigate(newUrl, { replace: true });
     }
     
     // 짧은 딜레이 후 플래그 해제 (URL 업데이트 완료 대기)
     setTimeout(() => {
       setIsClosingModal(false);
     }, 100);
-  }, [searchParams, pathname, router]);
+  }, [searchParams, pathname, navigate]);
 
   // 로딩 상태
   if (isLoading && requests.length === 0) {
@@ -317,14 +316,5 @@ function SampleRequestsContent() {
 }
 
 export default function SampleRequestsPage() {
-  return (
-    <Suspense fallback={
-      <div className="space-y-4">
-        <Skeleton className="h-12 w-64" />
-        <Skeleton className="h-96" />
-      </div>
-    }>
-      <SampleRequestsContent />
-    </Suspense>
-  );
+  return <SampleRequestsContent />;
 }

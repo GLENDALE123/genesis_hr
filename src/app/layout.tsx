@@ -1,32 +1,9 @@
-import type { Metadata } from "next";
-import "./globals.css";
 import React from "react";
-import { Inter } from 'next/font/google';
 import { AuthProvider } from "@/features/auth";
 import { Toaster } from "@/shared/components/ui/sonner";
 import { ConditionalLayout } from "@/shared/components/layout";
 import { ClientThemeProvider, NetworkStatusProvider, NotificationContainer, NotificationProviderWrapper, ElectronNavigationHandler, FontSizeProvider, UpdateNotificationContainer } from "@/shared/components/common";
 import { AppStateProvider } from "@/shared/components/layout/AppStateProvider";
-
-// 폰트 최적화 설정
-const inter = Inter({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-inter',
-  preload: true,
-});
-
-export const metadata: Metadata = {
-  title: "TMS 통합관리시스템",
-  description: "TMS 통합관리시스템 - Next.js app with Firebase integration",
-  icons: {
-    icon: '/tms-logo.png',
-    shortcut: '/tms-logo.png',
-    apple: '/tms-logo.png',
-  },
-};
-
-
 
 export default function RootLayout({
   children,
@@ -34,7 +11,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className={`overflow-x-hidden ${inter.variable}`} suppressHydrationWarning>
+    <html lang="ko" className="overflow-x-hidden" suppressHydrationWarning>
       <head>
         {/* 테마 깜빡임 방지를 위한 스크립트 */}
         <script

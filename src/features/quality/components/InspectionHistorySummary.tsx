@@ -237,7 +237,13 @@ export const InspectionHistorySummary: React.FC<InspectionHistorySummaryProps> =
               {summary.summary && (
                 <div>
                   <h4 className="text-xs font-medium mb-2 text-muted-foreground">요약</h4>
-                  <p className="text-sm leading-relaxed">{highlightText(summary.summary)}</p>
+                  <div className="text-sm leading-relaxed whitespace-pre-line space-y-1">
+                    {summary.summary.split('\\n').map((line, index) => (
+                      <div key={index} className="py-0.5">
+                        {highlightText(line)}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -266,13 +272,17 @@ export const InspectionHistorySummary: React.FC<InspectionHistorySummaryProps> =
                     <CheckCircle2 className="h-3 w-3 text-green-500" />
                     다음 작업 체크리스트
                   </h4>
-                  <ul className="space-y-1">
-                    {summary.checklist.map((item, index) => (
-                      <li key={index} className="text-sm flex items-start gap-2">
-                        <span className="text-green-500 mt-1">✓</span>
-                        <span>{highlightText(item)}</span>
-                      </li>
-                    ))}
+                  <ul className="space-y-2">
+                    {summary.checklist.map((item, index) => {
+                      // 날짜 패턴 제거 (예: "(2025-11-16 수입)" 같은 부분)
+                      const cleanItem = item.replace(/\s*\([0-9]{4}-[0-9]{2}-[0-9]{2}\s*[가-힣]+\)/g, '').trim();
+                      return (
+                        <li key={index} className="text-sm flex items-start gap-2 bg-green-50 dark:bg-green-900/10 p-2 rounded-md border border-green-200 dark:border-green-900/30">
+                          <span className="text-green-500 mt-0.5 font-bold">✓</span>
+                          <span className="flex-1">{highlightText(cleanItem)}</span>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               )}
