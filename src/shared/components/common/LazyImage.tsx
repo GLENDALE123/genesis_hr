@@ -13,6 +13,10 @@ interface LazyImageProps extends Omit<React.ImgHTMLAttributes<HTMLImageElement>,
   placeholderSrc?: string;
   useThumbnail?: boolean;
   lazy?: boolean;
+  thumbnailCheckOptions?: {
+    attempts?: number;
+    intervalMs?: number;
+  };
   onStatusChange?: (status: ThumbnailStatus) => void;
 }
 
@@ -24,6 +28,7 @@ export const LazyImage: React.FC<LazyImageProps> = ({
   placeholderSrc,
   useThumbnail = true,
   lazy = true,
+  thumbnailCheckOptions,
   className,
   onLoad,
   onError,
@@ -55,8 +60,8 @@ export const LazyImage: React.FC<LazyImageProps> = ({
 
       try {
         const available = await waitForThumbnailAvailability(normalizedSrc, {
-          attempts: 6,
-          intervalMs: 800
+          attempts: thumbnailCheckOptions?.attempts,
+          intervalMs: thumbnailCheckOptions?.intervalMs
         });
 
         if (!mounted) return;

@@ -110,6 +110,7 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
                 placeholderSrc={placeholder}
                 useThumbnail={useThumbnails}
                 lazy={enableLazyLoading}
+                thumbnailCheckOptions={{ attempts: 3, intervalMs: 1200 }}
                 className={`w-full ${imageClassName} object-cover border cursor-pointer hover:opacity-80 transition-opacity`}
                 style={{ borderRadius: 'var(--radius)' }}
                 alt={`이미지 ${index + 1}`}

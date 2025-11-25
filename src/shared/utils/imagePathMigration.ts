@@ -413,18 +413,64 @@ export const waitForThumbnailAvailability = async (
   imageUrl: string,
   options?: { attempts?: number; intervalMs?: number }
 ): Promise<boolean> => {
-  const attempts = options?.attempts ?? 5;
-  const intervalMs = options?.intervalMs ?? 1000;
-  
-  for (let attempt = 0; attempt < attempts; attempt++) {
-    const exists = await checkThumbnailExists(imageUrl);
-    if (exists) {
-      return true;
-    }
-    await new Promise(resolve => setTimeout(resolve, intervalMs));
+  const cacheKey = getThumbnailPath(extractStoragePathFromURL(imageUrl));
+  if (!cacheKey) {
+    return false;
   }
-  
-  return false;
+
+  const existingPromise = thumbnailAvailabilityCache.get(cacheKey);
+  if (existingPromise) {
+    return existingPromise;
+  }
+
+  const attempts = options?.attempts ?? DEFAULT_THUMBNAIL_ATTEMPTS;
+  const intervalMs = options?.intervalMs ?? DEFAULT_THUMBNAIL_INTERVAL_MS;
+
+  const checkPromise = runWithThumbnailSemaphore(async () => {
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      const exists = await checkThumbnailExists(imageUrl);
+      if (exists) {
+        return true;
+      }
+      if (attempt < attempts - 1) {
+        await delay(intervalMs);
+      }
+    }
+    return false;
+  }).finally(() => {
+    thumbnailAvailabilityCache.delete(cacheKey);
+  });
+
+  thumbnailAvailabilityCache.set(cacheKey, checkPromise);
+  return checkPromise;
+};
+
+const DEFAULT_THUMBNAIL_ATTEMPTS = 3;
+const DEFAULT_THUMBNAIL_INTERVAL_MS = 1200;
+const MAX_CONCURRENT_THUMBNAIL_CHECKS = 4;
+
+const thumbnailAvailabilityCache = new Map<string, Promise<boolean>>();
+let activeThumbnailChecks = 0;
+const thumbnailCheckQueue: Array<() => void> = [];
+
+const delay = (ms: number): Promise<void> =>
+  new Promise(resolve => setTimeout(resolve, ms));
+
+const runWithThumbnailSemaphore = async <T>(task: () => Promise<T>): Promise<T> => {
+  if (activeThumbnailChecks >= MAX_CONCURRENT_THUMBNAIL_CHECKS) {
+    await new Promise<void>(resolve => thumbnailCheckQueue.push(resolve));
+  }
+
+  activeThumbnailChecks++;
+  try {
+    return await task();
+  } finally {
+    activeThumbnailChecks--;
+    const next = thumbnailCheckQueue.shift();
+    if (next) {
+      next();
+    }
+  }
 };
 
 /**
