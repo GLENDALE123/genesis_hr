@@ -1,9 +1,9 @@
+'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ImageLightbox } from './ImageLightbox';
-import { LazyImage } from './LazyImage';
-import { ImageCache } from '@/shared/utils/imageUpload';
-import { getThumbnailURL, getResizedImageURL, convertStorageBucketURL } from '@/shared/utils/imagePathMigration';
+import { LazyImage, ThumbnailStatus } from './LazyImage';
+import { getResizedImageURL, convertStorageBucketURL } from '@/shared/utils/imagePathMigration';
 import { Spinner } from '../ui/spinner';
 
 interface ImageGalleryGridProps {
@@ -35,221 +35,37 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [cachedImages, setCachedImages] = useState<string[]>([]);
   const [loadedImages, setLoadedImages] = useState<boolean[]>([]);
-  const imageRefs = useRef<(HTMLImageElement | HTMLDivElement | null)[]>([]);
-  const blobUrlsRef = useRef<Set<string>>(new Set());
+  const [thumbnailStatuses, setThumbnailStatuses] = useState<ThumbnailStatus[]>([]);
 
   // 이미지 초기화 - Firebase Storage 크기 조정 쿼리 사용
   useEffect(() => {
-    if (images.length === 0) return;
+    if (images.length === 0) {
+      setCachedImages([]);
+      setLoadedImages([]);
+      setThumbnailStatuses([]);
+      return;
+    }
     
-    // 기존 버킷 URL을 새 버킷으로 변환 후 크기 조정
-    // Firebase Storage w 파라미터로 이미지 크기 제한 (300px)
     const convertedUrls = images.map(url => convertStorageBucketURL(url));
     const resizedUrls = convertedUrls.map(url => getResizedImageURL(url, 300));
     setCachedImages(resizedUrls);
-  }, [images.length]);
+    setLoadedImages(new Array(images.length).fill(false));
+    setThumbnailStatuses(new Array(images.length).fill('checking'));
+  }, [images]);
 
-  // 모든 이미지 로드 (지연 로딩 비활성화시)
-  const loadAllImages = useCallback(async () => {
-    const processedImages = await Promise.all(
-      images.map(async (originalUrl) => {
-        // 썸네일 우선 로드 (useThumbnails가 true일 때)
-        let targetUrl = originalUrl;
-        if (useThumbnails) {
-          const thumbnailUrl = getThumbnailURL(originalUrl);
-          try {
-            const thumbnailResponse = await fetch(thumbnailUrl, { method: 'HEAD' });
-            if (thumbnailResponse.ok) {
-              targetUrl = thumbnailUrl;
-            }
-          } catch {
-            // 썸네일 로드 실패시 원본 사용
-          }
-        }
-        
-        const cachedUrl = ImageCache.getImage(targetUrl);
-        if (cachedUrl) return cachedUrl;
-        
-        try {
-          const response = await fetch(targetUrl);
-          if (response.ok) {
-            const blob = await response.blob();
-            const objectUrl = URL.createObjectURL(blob);
-            ImageCache.setImage(targetUrl, { size: blob.size, type: blob.type });
-            return objectUrl;
-          }
-        } catch (error) {
-          console.warn('이미지 로드 실패:', targetUrl, error);
-        }
-        
-        return originalUrl;
-      })
-    );
-    
-    setCachedImages(processedImages);
-    setLoadedImages(new Array(images.length).fill(true));
-  }, [images, useThumbnails]);
-
-  // 생성된 blob URL 추적 (언마운트 시 정리)
-  useEffect(() => {
-    cachedImages.forEach((url) => {
-      if (url && typeof url === 'string' && url.indexOf('blob:') === 0) {
-        blobUrlsRef.current.add(url);
-      }
+  const handleImageLoaded = useCallback((index: number) => {
+    setLoadedImages(prev => {
+      const next = [...prev];
+      next[index] = true;
+      return next;
     });
-  }, [cachedImages]);
-
-  useEffect(() => {
-    return () => {
-      blobUrlsRef.current.forEach((url) => {
-        try { URL.revokeObjectURL(url); } catch {
-          // URL 해제 실패 시 무시
-        }
-      });
-      blobUrlsRef.current.clear();
-    };
   }, []);
 
-  // 개별 이미지 로드 (지연 로딩시) - 썸네일 우선, 실패시 원본 폴백
-  const loadImage = useCallback(async (index: number) => {
-    if (loadedImages[index]) return; // 이미 로드됨
-    
-    // 버킷 URL 변환 적용
-    const originalUrl = convertStorageBucketURL(images[index]);
-    
-    try {
-      // 캐시에서 먼저 확인 (가장 빠름)
-      const cachedUrl = ImageCache.getImage(originalUrl);
-      if (cachedUrl) {
-        setCachedImages(prev => {
-          const newImages = [...prev];
-          newImages[index] = cachedUrl;
-          return newImages;
-        });
-        setLoadedImages(prev => {
-          const newLoaded = [...prev];
-          newLoaded[index] = true;
-          return newLoaded;
-        });
-        return;
-      }
-      
-      // 썸네일 우선 시도 (useThumbnails가 true일 때만)
-      let finalUrl = originalUrl;
-      if (useThumbnails) {
-        const thumbnailUrl = getThumbnailURL(originalUrl);
-        // 썸네일 존재 여부 확인 (HEAD 요청)
-        try {
-          const thumbnailResponse = await fetch(thumbnailUrl, { method: 'HEAD' });
-          if (thumbnailResponse.ok) {
-            finalUrl = thumbnailUrl; // 썸네일 사용
-          }
-        } catch {
-          // 썸네일 확인 실패시 원본 사용 (finalUrl은 이미 originalUrl)
-        }
-      }
-      
-      // 캐시에 저장
-      ImageCache.setImage(originalUrl, { 
-        size: 0, 
-        type: finalUrl !== originalUrl ? 'image/webp' : 'image/jpeg' 
-      });
-      
-      setCachedImages(prev => {
-        const newImages = [...prev];
-        newImages[index] = finalUrl;
-        return newImages;
-      });
-      setLoadedImages(prev => {
-        const newLoaded = [...prev];
-        newLoaded[index] = true;
-        return newLoaded;
-      });
-      
-    } catch (error) {
-      console.warn(`❌ [ImageGallery] 이미지 로드 실패 (${index + 1}):`, originalUrl, error);
-      // 최종 실패시 원본 URL 사용
-      setCachedImages(prev => {
-        const newImages = [...prev];
-        newImages[index] = originalUrl;
-        return newImages;
-      });
-      setLoadedImages(prev => {
-        const newLoaded = [...prev];
-        newLoaded[index] = true;
-        return newLoaded;
-      });
-    }
-  }, [images, loadedImages, useThumbnails]);
-
-  // 원본 이미지를 썸네일 크기로 압축하는 함수
-  const compressImageToThumbnailSize = useCallback(async (blob: Blob): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      
-      if (!ctx) {
-        reject(new Error('Canvas context not available'));
-        return;
-      }
-      
-      img.onload = () => {
-        try {
-          // 썸네일 크기로 리사이즈 (300x300)
-          const maxSize = 300;
-          let { width, height } = img;
-          
-          if (width > height) {
-            if (width > maxSize) {
-              height = (height * maxSize) / width;
-              width = maxSize;
-            }
-          } else {
-            if (height > maxSize) {
-              width = (width * maxSize) / height;
-              height = maxSize;
-            }
-          }
-          
-          canvas.width = width;
-          canvas.height = height;
-          
-          // 고품질 리샘플링
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = 'high';
-          
-          // 이미지 그리기
-          ctx.drawImage(img, 0, 0, width, height);
-          
-          // WebP 또는 JPEG로 압축 (85% 품질)
-          canvas.toBlob(
-            (compressedBlob) => {
-              if (compressedBlob) {
-                const compressedUrl = URL.createObjectURL(compressedBlob);
-                resolve(compressedUrl);
-              } else {
-                reject(new Error('Failed to compress image'));
-              }
-            },
-            'image/webp', // WebP 우선 시도
-            0.85 // 85% 품질
-          );
-        } catch (error) {
-          reject(error);
-        } finally {
-          try { URL.revokeObjectURL(tempUrl); } catch {
-            // URL 해제 실패 시 무시
-          }
-        }
-      };
-      
-      img.onerror = () => {
-        try { URL.revokeObjectURL(tempUrl); } catch {}
-        reject(new Error('Failed to load image'));
-      };
-      const tempUrl = URL.createObjectURL(blob);
-      img.src = tempUrl;
+  const handleThumbnailStatus = useCallback((index: number, status: ThumbnailStatus) => {
+    setThumbnailStatuses(prev => {
+      const next = [...prev];
+      next[index] = status;
+      return next;
     });
   }, []);
 
@@ -270,79 +86,51 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
         onClick={(e) => e.stopPropagation()} // 부모 이벤트 전파 방지
       >
         {images.map((url, index) => {
-          const isLoaded = loadedImages[index];
+          const isLoaded = loadedImages[index] ?? false;
+          const thumbnailStatus = thumbnailStatuses[index] ?? 'checking';
+          const placeholder = cachedImages[index] || convertStorageBucketURL(url);
+
+          const statusLabel = (() => {
+            switch (thumbnailStatus) {
+              case 'checking':
+                return '썸네일 생성 중...';
+              case 'original':
+                return '원본 표시 중';
+              case 'error':
+                return '썸네일 오류';
+              default:
+                return null;
+            }
+          })();
           
           return (
             <div key={index} className="relative">
-              {enableLazyLoading ? (
-                <img
-                  src={cachedImages[index] || url}
-                  alt={`이미지 ${index + 1}`}
-                  className={`w-full ${imageClassName} object-cover border cursor-pointer hover:opacity-80 transition-opacity select-none`}
+              <LazyImage
+                originalSrc={url}
+                placeholderSrc={placeholder}
+                useThumbnail={useThumbnails}
+                lazy={enableLazyLoading}
+                className={`w-full ${imageClassName} object-cover border cursor-pointer hover:opacity-80 transition-opacity`}
+                style={{ borderRadius: 'var(--radius)' }}
+                alt={`이미지 ${index + 1}`}
+                onClick={(e) => handleImageClick(e, index)}
+                onLoad={() => handleImageLoaded(index)}
+                onError={() => handleImageLoaded(index)}
+                onStatusChange={(status) => handleThumbnailStatus(index, status)}
+              />
+
+              {!isLoaded && (
+                <div
+                  className="absolute inset-0 flex items-center justify-center rounded-md bg-white/40 dark:bg-black/40 pointer-events-none"
                   style={{ borderRadius: 'var(--radius)' }}
-                  onClick={(e) => handleImageClick(e, index)}
-                  loading="lazy"
-                  decoding="async"
-                  draggable={false}
-                  onDragStart={(e) => e.preventDefault()}
-                  onError={(e) => {
-                    // 썸네일 로드 실패시 원본 이미지로 폴백
-                    const currentSrc = (e.target as HTMLImageElement).src;
-                    const originalUrl = convertStorageBucketURL(url);
-                    
-                    // 현재 썸네일을 시도 중이었다면 원본으로 전환
-                    if (currentSrc !== originalUrl && useThumbnails) {
-                      setCachedImages(prev => {
-                        const newImages = [...prev];
-                        newImages[index] = originalUrl;
-                        return newImages;
-                      });
-                    }
-                  }}
-                />
-              ) : isLoaded ? (
-                <img
-                  ref={(el) => {
-                    imageRefs.current[index] = el;
-                  }}
-                  src={cachedImages[index] || url}
-                  alt={`이미지 ${index + 1}`}
-                  className={`w-full ${imageClassName} object-cover border cursor-pointer hover:opacity-80 transition-opacity select-none`}
-                  style={{ borderRadius: 'var(--radius)' }}
-                  onClick={(e) => handleImageClick(e, index)}
-                  draggable={false}
-                  onDragStart={(e) => e.preventDefault()}
-                  onError={(e) => {
-                    // 썸네일 로드 실패시 원본 이미지로 폴백
-                    const currentSrc = (e.target as HTMLImageElement).src;
-                    const originalUrl = convertStorageBucketURL(url);
-                    
-                    // 현재 썸네일을 시도 중이었다면 원본으로 전환
-                    if (currentSrc !== originalUrl && useThumbnails) {
-                      setCachedImages(prev => {
-                        const newImages = [...prev];
-                        newImages[index] = originalUrl;
-                        return newImages;
-                      });
-                    }
-                  }}
-                />
-              ) : (
-                <div 
-                  ref={(el) => {
-                    imageRefs.current[index] = el;
-                  }}
-                  className={`w-full ${imageClassName} bg-gray-200 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-md border cursor-pointer flex items-center justify-center relative`}
-                  style={{ borderRadius: 'var(--radius)' }}
-                  onClick={(e) => handleImageClick(e, index)}
                 >
-                  {/* 로딩 상태 UI */}
-                  <Spinner className="size-8 text-primary" />
-                  <div className="absolute bottom-2 left-2 right-2 text-center">
-                    <span className="text-xs text-gray-500 dark:text-gray-400 bg-white/80 dark:bg-black/80 px-2 py-1 rounded">
-                      로딩 중...
-                    </span>
-                  </div>
+                  <Spinner className="size-6 text-primary" />
+                </div>
+              )}
+
+              {statusLabel && (
+                <div className="absolute bottom-2 left-2 text-xs bg-white/85 dark:bg-black/70 px-2 py-1 rounded shadow pointer-events-none">
+                  {statusLabel}
                 </div>
               )}
             </div>
@@ -359,6 +147,4 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
     </>
   );
 };
-
-
 

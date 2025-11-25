@@ -136,19 +136,47 @@ export const getThumbnailPath = (imagePath: string): string => {
 
 /**
  * 이미지 URL에서 썸네일 URL 생성
+ * convertStorageBucketURL과 통합하여 일관된 URL 처리
  * @param imageUrl 원본 이미지 URL
  * @returns 썸네일 이미지 URL
  */
 export const getThumbnailURL = (imageUrl: string): string => {
-  const path = extractStoragePathFromURL(imageUrl);
-  const thumbnailPath = getThumbnailPath(path);
-  
-  // Firebase Storage URL 재구성
-  const url = new URL(imageUrl);
-  const encodedPath = encodeURIComponent(thumbnailPath);
-  url.pathname = `/v0/b/${url.pathname.split('/')[3]}/o/${encodedPath}`;
-  
-  return url.toString();
+  try {
+    // 먼저 버킷 URL 변환 적용
+    const convertedUrl = convertStorageBucketURL(imageUrl);
+    const url = new URL(convertedUrl);
+    
+    // Storage 경로 추출
+    const pathMatch = url.pathname.match(/\/v0\/b\/[^\/]+\/o\/(.+)/);
+    if (!pathMatch) {
+      return imageUrl; // 경로 추출 실패 시 원본 반환
+    }
+    
+    const originalPath = decodeURIComponent(pathMatch[1]);
+    const thumbnailPath = getThumbnailPath(originalPath);
+    
+    // 버킷 이름 추출 (더 안정적으로)
+    const bucketMatch = url.pathname.match(/\/v0\/b\/([^\/]+)\//);
+    if (!bucketMatch) {
+      return imageUrl; // 버킷 이름 추출 실패 시 원본 반환
+    }
+    
+    const bucketName = bucketMatch[1];
+    const encodedThumbnailPath = encodeURIComponent(thumbnailPath);
+    
+    // 새 URL 생성
+    const thumbnailUrl = new URL(`https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedThumbnailPath}`);
+    
+    // 기존 쿼리 파라미터 유지 (token, alt 등)
+    url.searchParams.forEach((value, key) => {
+      thumbnailUrl.searchParams.set(key, value);
+    });
+    
+    return thumbnailUrl.toString();
+  } catch (error) {
+    console.error('썸네일 URL 생성 실패:', error);
+    return imageUrl; // 에러 발생 시 원본 반환
+  }
 };
 
 /**
@@ -353,6 +381,50 @@ export const listStorageFiles = async (folderPath: string): Promise<string[]> =>
     console.error(`❌ Storage 폴더 조회 실패 (${folderPath}):`, error);
     return [];
   }
+};
+
+/**
+ * 썸네일 파일이 Storage에 존재하는지 확인
+ * @param imageUrl 원본 이미지 URL
+ * @returns 썸네일 존재 여부
+ */
+export const checkThumbnailExists = async (imageUrl: string): Promise<boolean> => {
+  try {
+    const { fileExists } = await import('@/shared/services/firebase/storage');
+    const thumbnailPath = getThumbnailPath(extractStoragePathFromURL(imageUrl));
+    
+    if (!thumbnailPath) {
+      return false;
+    }
+    
+    return await fileExists(thumbnailPath);
+  } catch (error) {
+    console.warn('썸네일 존재 확인 실패:', error);
+    return false;
+  }
+};
+
+/**
+ * 썸네일 생성이 완료될 때까지 대기
+ * @param imageUrl 원본 이미지 URL
+ * @param options 재시도 옵션
+ */
+export const waitForThumbnailAvailability = async (
+  imageUrl: string,
+  options?: { attempts?: number; intervalMs?: number }
+): Promise<boolean> => {
+  const attempts = options?.attempts ?? 5;
+  const intervalMs = options?.intervalMs ?? 1000;
+  
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    const exists = await checkThumbnailExists(imageUrl);
+    if (exists) {
+      return true;
+    }
+    await new Promise(resolve => setTimeout(resolve, intervalMs));
+  }
+  
+  return false;
 };
 
 /**

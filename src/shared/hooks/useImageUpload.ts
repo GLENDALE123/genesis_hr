@@ -208,16 +208,22 @@ export const useImageUpload = (): UseImageUploadReturn => {
 
           const uploadedUrls: string[] = [];
           
-          // 진행률 콜백이 있는 경우 사용
-          if (onProgress) {
-            // 병렬처리로 업로드 (진행률 포함, AbortController 전달)
-            const newUrls = await uploadImageFilesParallel(finalFiles, folder, onProgress, controller.signal);
-            uploadedUrls.push(...newUrls);
-          } else {
-            // 기존 방식 (진행률 없음, AbortController 전달)
-            const newUrls = await uploadImageFilesParallel(finalFiles, folder, undefined, controller.signal);
-            uploadedUrls.push(...newUrls);
-          }
+          // 진행률 토스트 자동 표시 (챗 제외)
+          const showToast = !folder.startsWith('chat/');
+          
+          const cancelHandler = () => {
+            controller.abort();
+          };
+          
+          const newUrls = await uploadImageFilesParallel(
+            finalFiles,
+            folder,
+            onProgress,
+            controller.signal,
+            showToast,
+            cancelHandler
+          );
+          uploadedUrls.push(...newUrls);
 
           console.log(`✅ 업로드 완료: ${uploadedUrls.length}개 파일`);
           resolve(uploadedUrls);
@@ -242,6 +248,7 @@ export const useImageUpload = (): UseImageUploadReturn => {
     // blob URL만 정리 (기존 이미지 URL은 정리하지 않음)
     // 현재 uploadingImages 상태를 직접 참조하여 무한 루프 방지
     setUploadingImages(currentImages => {
+      // Blob URL 정리 자동화
       currentImages.forEach(item => {
         if (item.preview && item.preview.startsWith('blob:')) {
           URL.revokeObjectURL(item.preview);
@@ -253,6 +260,19 @@ export const useImageUpload = (): UseImageUploadReturn => {
     setIsUploading(false);
     setUploadProgress(0);
   }, []); // 의존성 배열에서 uploadingImages 제거
+  
+  // 컴포넌트 언마운트 시 메모리 정리
+  useEffect(() => {
+    return () => {
+      // 언마운트 시 모든 Blob URL 정리
+      const currentImages = uploadingImagesRef.current;
+      currentImages.forEach(item => {
+        if (item.preview && item.preview.startsWith('blob:')) {
+          URL.revokeObjectURL(item.preview);
+        }
+      });
+    };
+  }, []);
 
   const cancelUpload = useCallback(() => {
     // AbortController가 있으면 실제 업로드 중단

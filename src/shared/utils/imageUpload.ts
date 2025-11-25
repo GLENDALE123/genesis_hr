@@ -1,6 +1,48 @@
 // 이미지 업로드 유틸리티 (클라이언트-서버 하이브리드)
-import { uploadFile } from '@/shared/services/firebase/storage';
 import imageCompression from 'browser-image-compression';
+import {
+  UploadError,
+  CompressionError,
+  UploadErrorCode,
+  RetryableStatus,
+  normalizeError,
+  UploadResult,
+  PartialUploadResult,
+  validateFile,
+  validateUploadConfig,
+  mergeImageUploadOptions,
+  ImageUploadOptions
+} from '@/shared/types/upload';
+
+type UploadFileFn = (file: File, path: string, maxRetries?: number) => Promise<string>;
+
+interface StorageDependencies {
+  uploadFile: UploadFileFn;
+}
+
+let storageDependencies: StorageDependencies | null = null;
+
+/**
+ * 이미지 업로드 모듈에 사용할 Storage 의존성을 주입합니다.
+ */
+export const setImageUploadStorageDeps = (deps: StorageDependencies): void => {
+  storageDependencies = deps;
+};
+
+/**
+ * Storage 의존성을 보장합니다 (필요 시 지연 로딩).
+ */
+const ensureStorageDependencies = async (): Promise<StorageDependencies> => {
+  if (storageDependencies) {
+    return storageDependencies;
+  }
+
+  const module = await import('@/shared/services/firebase/storage');
+  storageDependencies = {
+    uploadFile: module.uploadFile
+  };
+  return storageDependencies;
+};
 
 /**
  * 클라이언트에서 즉시 표시할 작은 썸네일 생성
@@ -69,48 +111,101 @@ const compressImageSmart = async (file: File): Promise<File> => {
     
     return compressedFile;
   } catch (error) {
-    console.error('이미지 압축 실패:', error);
-    return file; // 실패 시 원본 반환
+    // 압축 실패 시 에러 로깅
+    const compressionError = new CompressionError(
+      `이미지 압축 실패: ${file.name}`,
+      error instanceof Error ? error : undefined,
+      { fileName: file.name, fileSize: file.size, fileType: file.type }
+    );
+    
+    logError(compressionError);
+    
+    // 실패 시 원본 반환 (사용자 경험을 위해)
+    return file;
   }
 };
 
 /**
  * 여러 이미지를 병렬로 압축
  */
+const getCompressionPoolSize = (fileCount: number): number => {
+  if (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) {
+    return Math.max(2, Math.min(4, Math.floor(navigator.hardwareConcurrency / 2)));
+  }
+  return Math.max(1, Math.min(4, Math.ceil(fileCount / 2)));
+};
+
 const compressImagesParallel = async (files: File[]): Promise<File[]> => {
-  const compressPromises = files.map(file => compressImageSmart(file));
-  const results = await Promise.allSettled(compressPromises);
-  
-  return results.map((result, index) => {
-    if (result.status === 'fulfilled') {
-      return result.value;
-    } else {
-      console.warn(`파일 ${files[index].name} 압축 실패, 원본 사용`);
-      return files[index];
+  if (files.length === 0) {
+    return [];
+  }
+
+  const prioritizedQueue = files
+    .map((file, index) => ({ file, index }))
+    .sort((a, b) => b.file.size - a.file.size); // 큰 파일 우선 처리
+
+  const poolSize = Math.min(getCompressionPoolSize(files.length), prioritizedQueue.length);
+  const results: File[] = new Array(files.length);
+  let pointer = 0;
+
+  const worker = async (): Promise<void> => {
+    while (pointer < prioritizedQueue.length) {
+      const currentTask = prioritizedQueue[pointer++];
+      try {
+        const compressed = await compressImageSmart(currentTask.file);
+        results[currentTask.index] = compressed;
+      } catch (error) {
+        console.warn(`파일 ${currentTask.file.name} 압축 실패, 원본 사용`, error);
+        results[currentTask.index] = currentTask.file;
+      }
     }
-  });
+  };
+
+  const workers = Array.from({ length: poolSize }, () => worker());
+  await Promise.all(workers);
+
+  return results;
 };
 
 /**
  * 이미지 파일을 업로드합니다.
  * 
  * 처리 흐름:
- * 1. 클라이언트: browser-image-compression으로 압축
- * 2. 업로드: Firebase Storage에 저장
+ * 1. 파일/옵션 검증 (Zod)
+ * 2. 클라이언트: browser-image-compression으로 압축
+ * 3. 업로드: Firebase Storage에 저장
  * 
  * @param file - 업로드할 이미지 파일
  * @param folder - 저장할 폴더 경로
- * @param maxRetries - 최대 재시도 횟수 (기본값: 3)
+ * @param options - 업로드 옵션 (재시도 횟수 등)
  * @returns 업로드된 이미지의 다운로드 URL
+ * @throws UploadError - 업로드 실패 시
  */
 export const uploadImage = async (
   file: File, 
   folder: string, 
-  maxRetries: number = 3
+  options?: Partial<ImageUploadOptions>
 ): Promise<string> => {
-  let lastError: Error | null = null;
+  // 파일 타입 검증
+  const validation = validateFile(file);
+  if (!validation.valid && validation.error) {
+    throw validation.error;
+  }
   
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+  const mergedOptions = mergeImageUploadOptions(options);
+  
+  // 업로드 설정 검증
+  const configValidation = validateUploadConfig({ folder, maxRetries: mergedOptions.maxRetries });
+  if (!configValidation.valid && configValidation.error) {
+    throw configValidation.error;
+  }
+  
+  const startTime = Date.now();
+  let lastError: UploadError | null = null;
+  
+  const { uploadFile } = await ensureStorageDependencies();
+
+  for (let attempt = 1; attempt <= mergedOptions.maxRetries; attempt++) {
     try {
       // 1단계: 압축
       const compressedFile = await compressImageSmart(file);
@@ -122,82 +217,245 @@ export const uploadImage = async (
       // 2단계: 업로드
       const downloadURL = await uploadFile(compressedFile, path);
       
+      const duration = Date.now() - startTime;
+      logUploadSuccess(file.name, file.size, duration);
+      
       return downloadURL;
       
     } catch (error) {
-      lastError = error instanceof Error ? error : new Error('알 수 없는 오류');
+      const normalizedError = normalizeError(error, UploadErrorCode.UPLOAD_FAILED);
+      lastError = normalizedError;
       
-      if (attempt < maxRetries) {
-        const delay = Math.pow(2, attempt - 1) * 1000;
+      // 재시도 가능한 에러인지 확인
+      if (normalizedError.isRetryable() && attempt < mergedOptions.maxRetries) {
+        // 지능적 백오프: 지수 백오프 + jitter
+        const baseDelay = Math.pow(2, attempt - 1) * 1000;
+        const jitter = Math.random() * 1000; // 0-1초 랜덤 지터 추가
+        const delay = Math.min(baseDelay + jitter, 30000); // 최대 30초
+        logRetryAttempt(file.name, attempt, mergedOptions.maxRetries, delay, normalizedError);
         await new Promise(resolve => setTimeout(resolve, delay));
+      } else if (!normalizedError.isRetryable()) {
+        // 재시도 불가능한 에러는 즉시 중단
+        logError(normalizedError, { fileName: file.name, fileSize: file.size, attempt });
+        throw normalizedError;
       }
     }
   }
   
-  throw new Error(`이미지 업로드 실패 (${maxRetries}회 시도): ${lastError?.message}`);
+  // 모든 재시도 실패
+  const finalError = lastError || new UploadError(
+    UploadErrorCode.UPLOAD_FAILED,
+    `이미지 업로드 실패 (${mergedOptions.maxRetries}회 시도)`,
+    RetryableStatus.NON_RETRYABLE,
+    undefined,
+    { fileName: file.name, fileSize: file.size, maxRetries: mergedOptions.maxRetries }
+  );
+  
+  logError(finalError, { fileName: file.name, fileSize: file.size, maxRetries: mergedOptions.maxRetries });
+  throw finalError;
 };
 
 /**
+ * 동적 배치 크기 계산
+ * 네트워크 상태, 파일 크기, 브라우저 성능을 고려
+ */
+function calculateDynamicBatchSize(
+  fileCount: number,
+  totalSizeMB: number,
+  averageFileSizeMB: number
+): number {
+  // 기본 배치 크기
+  let batchSize = 6;
+  
+  // 파일 개수에 따른 조정
+  if (fileCount <= 2) {
+    batchSize = fileCount; // 적은 파일은 모두 동시 처리
+  } else if (fileCount <= 8) {
+    batchSize = Math.min(4, fileCount);
+  } else if (fileCount <= 20) {
+    batchSize = 6;
+  } else {
+    batchSize = 8; // 많은 파일은 더 큰 배치
+  }
+  
+  // 파일 크기에 따른 조정
+  if (totalSizeMB > 50) {
+    batchSize = Math.max(2, batchSize - 2); // 큰 파일은 배치 크기 감소
+  } else if (totalSizeMB < 5) {
+    batchSize = Math.min(10, batchSize + 2); // 작은 파일은 배치 크기 증가
+  }
+  
+  // 평균 파일 크기에 따른 조정
+  if (averageFileSizeMB > 5) {
+    batchSize = Math.max(2, batchSize - 1);
+  } else if (averageFileSizeMB < 0.5) {
+    batchSize = Math.min(12, batchSize + 2);
+  }
+  
+  return Math.max(1, Math.min(batchSize, fileCount));
+}
+
+/**
+ * 우선순위 기반 파일 정렬
+ * 작은 파일 우선, 큰 파일은 나중에 처리
+ */
+function prioritizeFiles(files: File[]): File[] {
+  return [...files].sort((a, b) => a.size - b.size);
+}
+
+/**
  * 여러 이미지 파일을 병렬로 일괄 업로드 (고성능)
+ * 동적 배치 크기 조정 및 지능적 큐 관리
+ * 부분 실패 시 상세한 에러 정보 제공
+ * 
+ * @param files - 업로드할 파일 배열
+ * @param folder - 저장 폴더
+ * @param onProgress - 진행률 콜백
+ * @param options - 업로드 옵션 (병렬 압축 사용 여부 등)
  */
 export const uploadImagesParallel = async (
   files: File[],
   folder: string,
   onProgress?: (current: number, total: number) => void,
-  useParallelCompression: boolean = true
+  options?: Partial<ImageUploadOptions>
 ): Promise<string[]> => {
+  const startTime = Date.now();
+  
   try {
+    const { uploadFile } = await ensureStorageDependencies();
+    const mergedOptions = mergeImageUploadOptions(options);
+
     // 1단계: 병렬 압축
     let processedFiles = files;
-    if (useParallelCompression) {
+    if (mergedOptions.useParallelCompression) {
       processedFiles = await compressImagesParallel(files);
     }
     
-    // 2단계: 병렬 업로드 (배치 처리 없이 Promise.all로 최대 성능)
-    // 파일 개수가 아주 많지 않다면(예: 20개 이하) 한꺼번에 요청하는 것이 가장 빠름
-    // 브라우저가 알아서 연결 제한을 관리함
+    // 2단계: 동적 배치 크기 계산
+    const totalSizeMB = processedFiles.reduce((sum, file) => sum + file.size, 0) / (1024 * 1024);
+    const averageFileSizeMB = totalSizeMB / processedFiles.length;
+    const batchSize = calculateDynamicBatchSize(processedFiles.length, totalSizeMB, averageFileSizeMB);
     
+    // 3단계: 우선순위 기반 정렬 (작은 파일 우선)
+    const prioritizedFiles = prioritizeFiles(processedFiles);
+    
+    // 4단계: 배치 단위로 업로드 (지능적 큐 관리)
     let completedCount = 0;
+    const results: UploadResult[] = [];
     
-    const uploadPromises = processedFiles.map(async (file) => {
-      try {
-        const url = await uploadImage(file, folder, 3); // 재시도 로직이 uploadImage에 포함됨 (이미 압축된 파일이지만 uploadImage 내부에서 크기 체크 후 건너뜀)
-        // 주의: uploadImage를 다시 호출하면 중복 압축 시도할 수 있음.
-        // 하지만 compressImageSmart는 크기 체크를 하므로 1MB 이하면 바로 리턴됨.
-        // 더 효율적으로 하려면 uploadFile을 직접 호출해야 함.
+    for (let i = 0; i < prioritizedFiles.length; i += batchSize) {
+      const batch = prioritizedFiles.slice(i, i + batchSize);
+      
+      // 배치 내에서 병렬 처리
+      const batchPromises = batch.map(async (file, batchIndex): Promise<UploadResult> => {
+        const fileStartTime = Date.now();
         
-        // uploadImage 내부에서 재압축을 피하기 위해 직접 uploadFile 사용
-        // (이미 processedFiles는 압축된 상태임)
-        const timestamp = Date.now();
-        const fileName = `${timestamp}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-        const path = `${folder}/${fileName}`;
-        const downloadURL = await uploadFile(file, path);
-        
-        completedCount++;
-        onProgress?.(completedCount, files.length);
-        return { success: true, url: downloadURL };
-      } catch (error) {
-        console.error(`❌ 업로드 실패: ${file.name}`, error);
-        completedCount++;
-        onProgress?.(completedCount, files.length);
-        return { success: false, url: null };
+        try {
+          // uploadImage 내부에서 재압축을 피하기 위해 직접 uploadFile 사용
+          // (이미 processedFiles는 압축된 상태임)
+          const timestamp = Date.now();
+          const fileName = `${timestamp}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+          const path = `${folder}/${fileName}`;
+          const downloadURL = await uploadFile(file, path);
+          
+          completedCount++;
+          onProgress?.(completedCount, files.length);
+          
+          const duration = Date.now() - fileStartTime;
+          return {
+            success: true,
+            url: downloadURL,
+            fileName: file.name,
+            fileSize: file.size,
+            duration
+          };
+        } catch (error) {
+          const normalizedError = normalizeError(error, UploadErrorCode.UPLOAD_FAILED);
+          const duration = Date.now() - fileStartTime;
+          
+          logError(normalizedError, {
+            fileName: file.name,
+            fileSize: file.size,
+            index: i + batchIndex,
+            duration
+          });
+          
+          completedCount++;
+          onProgress?.(completedCount, files.length);
+          
+          return {
+            success: false,
+            fileName: file.name,
+            fileSize: file.size,
+            error: normalizedError,
+            duration
+          };
+        }
+      });
+      
+      // 배치 완료 대기
+      const batchResults = await Promise.all(batchPromises);
+      results.push(...batchResults);
+      
+      // 네트워크 상태에 따른 자동 조정 (다음 배치 전 짧은 대기)
+      if (i + batchSize < prioritizedFiles.length) {
+        // 네트워크 부하를 줄이기 위한 짧은 대기 (선택적)
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
-    });
+    }
     
-    const results = await Promise.all(uploadPromises);
+    const duration = Date.now() - startTime;
     
-    const urls: string[] = [];
+    // 성공/실패 분리
+    const successful: UploadResult[] = [];
+    const failed: UploadResult[] = [];
+    
     results.forEach(result => {
       if (result.success && result.url) {
-        urls.push(result.url);
+        successful.push(result);
+      } else {
+        failed.push(result);
       }
     });
     
-    return urls;
+    // 부분 실패 시 상세한 에러 정보 제공
+    if (failed.length > 0) {
+      const partialResult: PartialUploadResult = {
+        successful,
+        failed,
+        totalCount: files.length,
+        successCount: successful.length,
+        failureCount: failed.length
+      };
+      
+      logPartialUploadFailure(partialResult, duration);
+      
+      // 일부 성공한 경우에도 URL 반환 (부분 성공 허용)
+      if (successful.length > 0) {
+        console.warn(`⚠️ 일부 파일 업로드 실패: ${failed.length}개 실패, ${successful.length}개 성공`);
+        return successful.map(r => r.url!);
+      } else {
+        // 모두 실패한 경우 에러 throw
+        const firstError = failed[0]?.error;
+        throw firstError || new UploadError(
+          UploadErrorCode.UPLOAD_FAILED,
+          '모든 파일 업로드에 실패했습니다.',
+          RetryableStatus.UNKNOWN
+        );
+      }
+    }
+    
+    // 모두 성공
+    logUploadBatchSuccess(files.length, duration);
+    return successful.map(r => r.url!);
     
   } catch (error) {
-    console.error(`❌ 병렬 업로드 실패:`, error);
-    throw error;
+    const normalizedError = normalizeError(error, UploadErrorCode.UPLOAD_FAILED);
+    logError(normalizedError, {
+      totalFiles: files.length,
+      duration: Date.now() - startTime
+    });
+    throw normalizedError;
   }
 };
 
@@ -315,6 +573,69 @@ export const uploadImages = async (
 };
 
 /**
+ * 에러 로깅 함수
+ */
+function logError(error: UploadError, metadata?: Record<string, unknown>): void {
+  const errorLog = {
+    timestamp: new Date().toISOString(),
+    errorCode: error.code,
+    message: error.message,
+    retryable: error.retryable,
+    fileName: metadata?.fileName,
+    fileSize: metadata?.fileSize,
+    metadata: { ...metadata, ...error.metadata }
+  };
+  
+  console.error('[UPLOAD_ERROR]', JSON.stringify(errorLog));
+  
+  // 사용자 친화적인 메시지도 로깅
+  console.error(`❌ ${error.getUserFriendlyMessage()}`);
+}
+
+/**
+ * 업로드 성공 로깅
+ */
+function logUploadSuccess(fileName: string, fileSize: number, duration: number): void {
+  console.log(`✅ 업로드 성공: ${fileName} (${(fileSize / 1024).toFixed(2)}KB, ${duration}ms)`);
+}
+
+/**
+ * 재시도 시도 로깅
+ */
+function logRetryAttempt(fileName: string, attempt: number, maxRetries: number, delay: number, error: UploadError): void {
+  console.warn(`⚠️ 재시도 ${attempt}/${maxRetries}: ${fileName} (${delay}ms 후 재시도)`, error.getUserFriendlyMessage());
+}
+
+/**
+ * 부분 업로드 실패 로깅
+ */
+function logPartialUploadFailure(result: PartialUploadResult, duration: number): void {
+  const errorLog = {
+    timestamp: new Date().toISOString(),
+    type: 'partial_upload_failure',
+    totalCount: result.totalCount,
+    successCount: result.successCount,
+    failureCount: result.failureCount,
+    duration,
+    failedFiles: result.failed.map(f => ({
+      fileName: f.fileName,
+      fileSize: f.fileSize,
+      errorCode: f.error?.code,
+      errorMessage: f.error?.getUserFriendlyMessage()
+    }))
+  };
+  
+  console.error('[PARTIAL_UPLOAD_FAILURE]', JSON.stringify(errorLog));
+}
+
+/**
+ * 배치 업로드 성공 로깅
+ */
+function logUploadBatchSuccess(fileCount: number, duration: number): void {
+  console.log(`✅ 배치 업로드 완료: ${fileCount}개 파일 (${duration}ms)`);
+}
+
+/**
  * 이미지 업로드 상태
  */
 export interface ImageUploadState {
@@ -349,6 +670,7 @@ export const createImagePreview = async (file: File): Promise<ImageUploadState> 
 
 /**
  * 이미지 업로드 및 상태 업데이트
+ * 업로드 완료 후 Blob URL 자동 정리
  */
 export const uploadImageWithState = async (
   state: ImageUploadState,
@@ -368,6 +690,11 @@ export const uploadImageWithState = async (
       progress: 100,
     };
     onStateChange?.(uploadedState);
+
+    // 업로드 완료 후 Blob URL 정리 (메모리 해제)
+    if (state.previewUrl && state.previewUrl.startsWith('blob:')) {
+      revokePreviewUrl(state.previewUrl);
+    }
 
     return uploadedState;
   } catch (error) {

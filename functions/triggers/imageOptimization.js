@@ -1,3 +1,8 @@
+/**
+ * Firebase Storage 트리거 - 이미지 업로드 시 썸네일 자동 생성
+ * 모든 이미지 파일에 대해 썸네일을 생성합니다 (예외 폴더 제외)
+ */
+
 const { onObjectFinalized } = require('firebase-functions/v2/storage');
 const admin = require('firebase-admin');
 const sharp = require('sharp');
@@ -5,22 +10,29 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 
+// 제외할 폴더 목록 (썸네일 생성하지 않음)
+const EXCLUDED_FOLDERS = [
+  'electron-releases',
+  'mobile-releases',
+  'public'
+];
+
+// 썸네일 설정
+const THUMBNAIL_CONFIG = {
+  width: 300,
+  height: 300,
+  quality: 80,
+  format: 'webp'
+};
+
 /**
- * Storage 트리거: 이미지 업로드 시 자동 처리
- * 
- * 처리 전략:
- * 1. HEIF/HEIC 파일: 변환 (HEIC → JPEG) + 썸네일 생성
- * 2. 일반 이미지: 썸네일 생성만
- * 
- * 최적화 전략:
- * - HEIF/HEIC: 서버에서 JPEG 변환 (1920px, 85% quality) + 썸네일 (300px, WebP, 80% quality)
- * - 일반 이미지: 클라이언트 압축 + 서버 썸네일 생성
- * - 총 파일: 2개 (변환된 JPEG + 썸네일) - 비용 효율적
+ * 썸네일 생성 트리거
+ * 모든 이미지 파일에 대해 자동으로 썸네일을 생성합니다
  */
-exports.generateImageThumbnail = onObjectFinalized({
-  region: 'asia-northeast3', // 한국 리전
-  memory: '1GiB', // HEIC 변환 시 메모리 증가
-  timeoutSeconds: 120, // HEIC 변환 시간 고려
+exports.generateThumbnail = onObjectFinalized({
+  region: 'asia-northeast3',
+  memory: '512MiB',
+  timeoutSeconds: 540
 }, async (event) => {
   const object = event.data;
   const fileBucket = object.bucket;
@@ -32,108 +44,130 @@ exports.generateImageThumbnail = onObjectFinalized({
     return null;
   }
   
-  // 이미 썸네일인지 확인 (무한 루프 방지)
-  if (filePath.includes('_thumb.webp')) {
+  // 이미 썸네일 파일인지 확인 (무한 루프 방지)
+  if (isThumbnailFile(filePath)) {
     return null;
   }
   
-  // 허용된 폴더만 처리 (비용 절약)
-  const allowedFolders = ['production-requests', 'packaging-reports', 'quality-issues', 'quality-inspections'];
-  const isAllowedFolder = allowedFolders.some(folder => filePath.startsWith(folder));
-  
-  if (!isAllowedFolder) {
+  // 제외 폴더 확인
+  if (isExcludedFolder(filePath)) {
     return null;
   }
   
-  // HEIF/HEIC 파일인지 확인
-  const isHeicFile = contentType.includes('heic') || contentType.includes('heif') || 
-                    filePath.toLowerCase().includes('.heic') || filePath.toLowerCase().includes('.heif');
+  const startTime = Date.now();
+  let errorDetails = null;
+  
   try {
+    // Storage에서 파일 다운로드
     const bucket = admin.storage().bucket(fileBucket);
     const fileName = path.basename(filePath);
-    const fileDir = path.dirname(filePath);
-    const fileNameWithoutExt = path.basename(fileName, path.extname(fileName));
+    const tempFilePath = path.join(os.tmpdir(), `thumb_${Date.now()}_${fileName}`);
     
-    // 임시 파일 경로
-    const tempFilePath = path.join(os.tmpdir(), fileName);
-    const tempThumbPath = path.join(os.tmpdir(), `${fileNameWithoutExt}_thumb.webp`);
-    
-    // Storage에서 파일 다운로드
     await bucket.file(filePath).download({ destination: tempFilePath });
-    let processedImageBuffer;
-    let finalFilePath = filePath;
     
-    if (isHeicFile) {
-      // HEIC → JPEG 변환
-      processedImageBuffer = await sharp(tempFilePath)
-        .jpeg({ quality: 85 })
-        .resize(1920, 1920, {
-          fit: 'inside',
-          withoutEnlargement: true
-        })
-        .toBuffer();
-      // 변환된 JPEG 파일을 원본 위치에 저장 (원본 HEIC 파일 덮어쓰기)
-      const jpegFileName = fileName.replace(/\.(heic|heif)$/i, '.jpg');
-      const jpegFilePath = path.join(fileDir, jpegFileName);
-      
-      await bucket.file(jpegFilePath).save(processedImageBuffer, {
-        metadata: {
-          contentType: 'image/jpeg',
-          metadata: {
-            originalFormat: contentType,
-            convertedFrom: 'heic',
-            convertedAt: new Date().toISOString(),
-            processedBy: 'cloud-function'
-          }
-        }
-      });
-      // 원본 HEIC 파일 삭제
-      await bucket.file(filePath).delete();
-      finalFilePath = jpegFilePath;
-    } else {
-      // 일반 이미지는 원본 사용
-      processedImageBuffer = fs.readFileSync(tempFilePath);
-    }
+    // 썸네일 생성
+    const thumbnailPath = getThumbnailPath(filePath);
+    const tempThumbnailPath = path.join(os.tmpdir(), `thumb_${Date.now()}_thumb.webp`);
     
-    // 썸네일 생성 (300px, WebP, 80% quality)
-    await sharp(processedImageBuffer)
-      .resize(300, 300, {
+    await sharp(tempFilePath)
+      .resize(THUMBNAIL_CONFIG.width, THUMBNAIL_CONFIG.height, {
         fit: 'inside',
         withoutEnlargement: true
       })
-      .webp({ quality: 80 })
-      .toFile(tempThumbPath);
-    // 썸네일을 Storage에 업로드
-    const thumbPath = path.join(fileDir, `${fileNameWithoutExt}_thumb.webp`);
-    await bucket.upload(tempThumbPath, {
-      destination: thumbPath,
+      .webp({ quality: THUMBNAIL_CONFIG.quality })
+      .toFile(tempThumbnailPath);
+    
+    // Storage에 썸네일 업로드
+    await bucket.upload(tempThumbnailPath, {
+      destination: thumbnailPath,
       metadata: {
         contentType: 'image/webp',
         metadata: {
-          originalImage: finalFilePath,
-          thumbnailSize: '300x300',
-          generatedBy: 'cloud-function',
-          generatedAt: new Date().toISOString(),
-          convertedFrom: isHeicFile ? 'heic' : 'original'
+          originalImage: filePath,
+          generatedAt: new Date().toISOString()
         }
       }
     });
-    // 임시 파일 삭제
-    if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
-    if (fs.existsSync(tempThumbPath)) fs.unlinkSync(tempThumbPath);
     
-    return { 
-      success: true, 
-      thumbnailPath: thumbPath,
-      converted: isHeicFile,
-      finalImagePath: finalFilePath
+    // 임시 파일 정리
+    if (fs.existsSync(tempFilePath)) {
+      fs.unlinkSync(tempFilePath);
+    }
+    if (fs.existsSync(tempThumbnailPath)) {
+      fs.unlinkSync(tempThumbnailPath);
+    }
+    
+    const duration = Date.now() - startTime;
+    console.log(`✅ 썸네일 생성 완료: ${filePath} (${duration}ms)`);
+    
+    return {
+      success: true,
+      originalPath: filePath,
+      thumbnailPath: thumbnailPath,
+      duration: duration
     };
     
   } catch (error) {
-    console.error('이미지 처리 실패:', error);
+    errorDetails = {
+      message: error.message,
+      stack: error.stack,
+      code: error.code || 'UNKNOWN'
+    };
+    
+    const duration = Date.now() - startTime;
+    console.error(`❌ 썸네일 생성 실패: ${filePath}`, {
+      error: errorDetails,
+      duration: duration
+    });
+    
+    // 에러 통계 로깅
+    logErrorStatistics(filePath, errorDetails, duration);
+    
     return null;
   }
 });
 
+/**
+ * 썸네일 파일인지 확인
+ */
+function isThumbnailFile(filePath) {
+  const fileName = path.basename(filePath);
+  return fileName.includes('_thumb.webp') || fileName.endsWith('_thumb.webp');
+}
 
+/**
+ * 제외 폴더인지 확인
+ */
+function isExcludedFolder(filePath) {
+  return EXCLUDED_FOLDERS.some(folder => filePath.startsWith(folder + '/'));
+}
+
+/**
+ * 썸네일 경로 생성
+ */
+function getThumbnailPath(originalPath) {
+  const pathParts = originalPath.split('/');
+  const fileName = pathParts[pathParts.length - 1];
+  const fileNameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.'));
+  const thumbnailFileName = `${fileNameWithoutExt}_thumb.webp`;
+  
+  pathParts[pathParts.length - 1] = thumbnailFileName;
+  return pathParts.join('/');
+}
+
+/**
+ * 에러 통계 로깅
+ */
+function logErrorStatistics(filePath, errorDetails, duration) {
+  // 에러 통계를 로깅 (향후 모니터링 시스템에 전송 가능)
+  const errorLog = {
+    timestamp: new Date().toISOString(),
+    filePath: filePath,
+    error: errorDetails,
+    duration: duration,
+    type: 'thumbnail_generation_error'
+  };
+  
+  console.error('[ERROR_STATISTICS]', JSON.stringify(errorLog));
+}
 
