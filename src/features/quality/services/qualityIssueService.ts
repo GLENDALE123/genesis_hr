@@ -8,6 +8,7 @@ import {
   query,
   orderBy,
   limit,
+  where,
   onSnapshot,
   arrayUnion
 } from 'firebase/firestore';
@@ -275,6 +276,88 @@ export const subscribeToQualityIssues = (
       }
     );
   } catch (error) {
+    onError?.(error as Error);
+    return () => {}; // 빈 unsubscribe 함수 반환
+  }
+};
+
+/**
+ * 발주처, 제품명, 부속명으로 품질이슈 조회 (실시간 구독)
+ * 최소 2개 이상의 조건이 입력되어야 조회 수행
+ */
+export const subscribeToQualityIssuesByProductInfo = (
+  supplier: string | undefined,
+  productName: string | undefined,
+  partName: string | undefined,
+  callback: (issues: QualityIssue[]) => void,
+  onError?: (error: Error) => void
+) => {
+  try {
+    if (!db) {
+      throw new Error('Firestore is not initialized');
+    }
+
+    // 최소 2개 이상의 조건이 입력되어야 조회 수행
+    const conditions = [supplier, productName, partName].filter(
+      (value) => value && value.trim() !== ''
+    );
+
+    if (conditions.length < 2) {
+      callback([]);
+      return () => {}; // 빈 unsubscribe 함수 반환
+    }
+
+    let q = query(getCollectionRef());
+
+    // 조건 추가 (빈 값은 제외)
+    if (supplier && supplier.trim() !== '') {
+      q = query(q, where('supplier', '==', supplier.trim()));
+    }
+    if (productName && productName.trim() !== '') {
+      q = query(q, where('productName', '==', productName.trim()));
+    }
+    if (partName && partName.trim() !== '') {
+      q = query(q, where('partName', '==', partName.trim()));
+    }
+
+    // 제한 (최대 500개)
+    q = query(q, limit(500));
+
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        try {
+          const issues = snapshot.docs.map((doc) => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              ...data,
+              // Firestore Timestamp를 ISO 문자열로 변환
+              createdAt: convertCreatedAt(data.createdAt),
+              updatedAt: data.updatedAt ? convertCreatedAt(data.updatedAt) : undefined,
+            } as QualityIssue;
+          });
+
+          // 클라이언트에서 날짜순 정렬 (최신순)
+          const sortedIssues = issues.sort((a, b) => {
+            const dateA = new Date(a.createdAt).getTime();
+            const dateB = new Date(b.createdAt).getTime();
+            return dateB - dateA;
+          });
+
+          callback(sortedIssues);
+        } catch (error) {
+          console.error('Error processing quality issue data:', error);
+          onError?.(error as Error);
+        }
+      },
+      (error) => {
+        console.error('Error subscribing to quality issues by product info:', error);
+        onError?.(error);
+      }
+    );
+  } catch (error) {
+    console.error('Error subscribing to quality issues by product info:', error);
     onError?.(error as Error);
     return () => {}; // 빈 unsubscribe 함수 반환
   }

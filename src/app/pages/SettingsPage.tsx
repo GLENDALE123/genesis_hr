@@ -1,3 +1,7 @@
+/**
+ * 설정 페이지
+ */
+
 import React, { useState, useEffect, Suspense } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
@@ -28,84 +32,73 @@ function SettingsContent() {
 
   return (
     <>
-      <style>{`
-        .settings-page div[class*="space-y-1.5"].p-6,
-        .settings-page div.p-6[class*="space-y"] {
-          padding: 0.75rem !important;
-        }
-        @media (min-width: 768px) {
-          .settings-page div[class*="space-y-1.5"].p-6,
-          .settings-page div.p-6[class*="space-y"] {
-            padding: 1.5rem !important;
-          }
-        }
-        .settings-page div.p-6.pt-0 {
-          padding: 0.75rem !important;
-          padding-top: 0 !important;
-        }
-        @media (min-width: 768px) {
-          .settings-page div.p-6.pt-0 {
-            padding: 1.5rem !important;
-            padding-top: 0 !important;
-          }
-        }
-      `}</style>
-      <div className="settings-page space-y-6 max-w-7xl mx-auto p-6">
-        <div>
-          <h1 className="text-3xl font-bold">설정</h1>
-          <p className="text-muted-foreground">
-            계정 설정 및 환경설정을 관리하세요.
-          </p>
-        </div>
+      <div className="md:py-6 md:px-6 settings-page">
+        {/* 탭 영역만 max-w-5xl 적용 */}
+        <div className="mx-auto max-w-5xl px-2 md:px-8 mb-3 md:mb-6">
+        <h1 className="text-3xl font-bold">설정</h1>
+        <p className="text-muted-foreground mt-2">
+          계정, 알림, 화면 설정을 관리합니다.
+        </p>
+      </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
-            <TabsTrigger value="profile" className="flex items-center gap-2">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3 md:space-y-6">
+        <div className="mx-auto max-w-5xl px-2 md:px-8">
+          <TabsList className={`grid w-full h-auto ${isAdmin ? 'grid-cols-5' : 'grid-cols-4'}`}>
+            <TabsTrigger value="profile" className="flex flex-col gap-1 py-3">
               <User className="h-4 w-4" />
-              <span className="hidden sm:inline">프로필</span>
+              <span className="text-xs">프로필</span>
             </TabsTrigger>
-            <TabsTrigger value="notifications" className="flex items-center gap-2">
+            <TabsTrigger value="notifications" className="flex flex-col gap-1 py-3">
               <Bell className="h-4 w-4" />
-              <span className="hidden sm:inline">알림</span>
+              <span className="text-xs">알림</span>
             </TabsTrigger>
-            <TabsTrigger value="appearance" className="flex items-center gap-2">
+            <TabsTrigger value="appearance" className="flex flex-col gap-1 py-3">
               <Palette className="h-4 w-4" />
-              <span className="hidden sm:inline">외관</span>
+              <span className="text-xs">화면</span>
+            </TabsTrigger>
+            <TabsTrigger value="about" className="flex flex-col gap-1 py-3">
+              <Info className="h-4 w-4" />
+              <span className="text-xs">정보</span>
             </TabsTrigger>
             {isAdmin && (
-              <TabsTrigger value="users" className="flex items-center gap-2">
+              <TabsTrigger value="users" className="flex flex-col gap-1 py-3">
                 <Users className="h-4 w-4" />
-                <span className="hidden sm:inline">사용자 관리</span>
+                <span className="text-xs">유저 관리</span>
               </TabsTrigger>
             )}
-            <TabsTrigger value="about" className="flex items-center gap-2">
-              <Info className="h-4 w-4" />
-              <span className="hidden sm:inline">정보</span>
-            </TabsTrigger>
           </TabsList>
+        </div>
 
-          <TabsContent value="profile" className="mt-6">
+        <TabsContent value="profile" className="space-y-2 md:space-y-4">
+          <div className="mx-auto max-w-5xl px-2 md:px-8">
             <ProfileSettings />
-          </TabsContent>
+          </div>
+        </TabsContent>
 
-          <TabsContent value="notifications" className="mt-6">
+        <TabsContent value="notifications" className="space-y-2 md:space-y-4">
+          <div className="mx-auto max-w-5xl px-2 md:px-8">
             <NotificationSettings />
-          </TabsContent>
+          </div>
+        </TabsContent>
 
-          <TabsContent value="appearance" className="mt-6">
+        <TabsContent value="appearance" className="space-y-2 md:space-y-4">
+          <div className="mx-auto max-w-5xl px-2 md:px-8">
             <AppearanceSettings />
-          </TabsContent>
+          </div>
+        </TabsContent>
 
-          {isAdmin && (
-            <TabsContent value="users" className="mt-6">
-              <UserManagementSettings />
-            </TabsContent>
-          )}
-
-          <TabsContent value="about" className="mt-6">
+        <TabsContent value="about" className="space-y-2 md:space-y-4">
+          <div className="mx-auto max-w-5xl px-2 md:px-8">
             <AboutSettings />
+          </div>
+        </TabsContent>
+
+        {isAdmin && (
+          <TabsContent value="users" className="space-y-2 md:space-y-4">
+            <UserManagementSettings />
           </TabsContent>
-        </Tabs>
+        )}
+      </Tabs>
       </div>
     </>
   );

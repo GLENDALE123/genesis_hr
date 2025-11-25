@@ -1,5 +1,3 @@
-'use client';
-
 import React from 'react';
 import { TitleBar } from '@/shared/components/layout/TitleBar';
 import { AppHeader } from '@/shared/components/layout/AppHeader';

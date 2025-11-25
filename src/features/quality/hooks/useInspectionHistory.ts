@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { QualityInspection } from '../types';
+import { QualityInspection, QualityIssue } from '../types';
 import { subscribeToInspectionsByProductInfo } from '../services/qualityInspectionService';
+import { subscribeToQualityIssuesByProductInfo } from '../services/qualityIssueService';
 import { analyzeInspectionHistory, InspectionSummary } from '@/shared/services/gemini/geminiService';
 import { useDebounce } from 'use-debounce';
 
@@ -14,6 +15,7 @@ interface UseInspectionHistoryParams {
 
 interface UseInspectionHistoryReturn {
   inspections: QualityInspection[];
+  qualityIssues: QualityIssue[];
   summary: InspectionSummary | null;
   isLoading: boolean;
   isAnalyzing: boolean;
@@ -31,6 +33,7 @@ export function useInspectionHistory({
   enabled = true,
 }: UseInspectionHistoryParams): UseInspectionHistoryReturn {
   const [inspections, setInspections] = useState<QualityInspection[]>([]);
+  const [qualityIssues, setQualityIssues] = useState<QualityIssue[]>([]);
   const [summary, setSummary] = useState<InspectionSummary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -119,6 +122,42 @@ export function useInspectionHistory({
     };
   }, [enabled, debouncedSupplier, debouncedProductName, debouncedPartName, debouncedOrderNumber]);
 
+  // 품질이슈 조회
+  useEffect(() => {
+    if (!enabled) {
+      setQualityIssues([]);
+      return;
+    }
+
+    // 최소 2개 이상의 조건이 입력되어야 조회 수행
+    const conditions = [debouncedSupplier, debouncedProductName, debouncedPartName].filter(
+      (value) => value && value.trim() !== ''
+    );
+
+    if (conditions.length < 2) {
+      setQualityIssues([]);
+      return;
+    }
+
+    const unsubscribe = subscribeToQualityIssuesByProductInfo(
+      debouncedSupplier,
+      debouncedProductName,
+      debouncedPartName,
+      (data) => {
+        if (!isMountedRef.current) return;
+        setQualityIssues(data);
+      },
+      (err) => {
+        if (!isMountedRef.current) return;
+        console.error('품질이슈 조회 실패:', err);
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [enabled, debouncedSupplier, debouncedProductName, debouncedPartName]);
+
   // Gemini API 분석 (이력 조회 후 1초 추가 지연)
   useEffect(() => {
     if (!enabled || inspections.length === 0) {
@@ -139,7 +178,8 @@ export function useInspectionHistory({
           supplier || '',
           productName || '',
           partName || '',
-          inspections
+          inspections,
+          qualityIssues
         );
         
         if (!isMountedRef.current || cancelled) return;
@@ -159,10 +199,11 @@ export function useInspectionHistory({
     return () => {
       cancelled = true;
     };
-  }, [enabled, inspections, supplier, productName, partName]);
+  }, [enabled, inspections, qualityIssues, supplier, productName, partName]);
 
   return {
     inspections,
+    qualityIssues,
     summary,
     isLoading,
     isAnalyzing,

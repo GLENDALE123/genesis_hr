@@ -1,9 +1,8 @@
-
-import React, { useState, useMemo } from 'react';
-import { ProductionSchedule } from '@/features/production/types';
-import { useProductionSchedules } from '@/features/production/hooks/useProductionSchedules';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useProductionSchedulesV0 } from '@/features/production/hooks/useProductionSchedulesV0';
+import { useSheetsSync } from '@/features/production/hooks/useSheetsSync';
 import { usePackagingReports } from '@/features/production/hooks/usePackagingReports';
-import { useIsAdmin, useIsManager } from '@/features/auth/hooks';
+import { useIsAdmin } from '@/features/auth/hooks';
 import {
   Table,
   TableBody,
@@ -27,7 +26,7 @@ import {
 } from '@/shared/components/ui/alert-dialog';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/shared/components/ui/alert';
-import { AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { AlertCircle, ChevronDown, ChevronUp, RefreshCw, ExternalLink } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { PRODUCTION_LINE_OPTIONS } from '@/features/production/constants';
 import { toast } from 'sonner';
@@ -45,54 +44,43 @@ const getLocalDateString = (date = new Date()) => {
 const getLineBackgroundColor = (line?: string): string => {
   if (!line) return '';
   
-  // 증착1 관련 - 파란색 계열
   if (line.includes('증착1')) {
     return 'bg-blue-100/40 dark:bg-blue-950/20';
   }
-  // 증착2 관련 - 보라색 계열
   if (line.includes('증착2')) {
     return 'bg-purple-100/40 dark:bg-purple-950/20';
   }
-  // 2코팅 - 청록색 계열
   if (line.includes('2코팅')) {
     return 'bg-cyan-100/40 dark:bg-cyan-950/20';
   }
-  // 1코팅 - 초록색 계열
   if (line.includes('1코팅')) {
     return 'bg-green-100/40 dark:bg-green-950/20';
   }
-  // 내부코팅 - 노란색 계열
   if (line.includes('내부코팅')) {
     return 'bg-yellow-100/40 dark:bg-yellow-950/20';
   }
   
-  // 기본 - 회색 계열
   return 'bg-slate-100/30 dark:bg-slate-900/20';
 };
 
 type QuickFilterType = 'yesterday' | 'today' | 'tomorrow' | 'week' | 'nextWeek' | 'all' | 'custom';
 
 interface ProductionScheduleListViewProps {
-  onOpenUploadModal: () => void;
+  onOpenUploadModal?: () => void;
 }
 
 export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProps> = ({
   onOpenUploadModal
 }) => {
   const isAdmin = useIsAdmin();
-  const isManager = useIsManager();
-  const canManage = isAdmin || isManager;
   const { isSmartphone, isTablet } = useDeviceType();
   const isMobile = isSmartphone || isTablet;
 
-  const {
-    schedules,
-    loading,
-    error,
-    getSchedulesByDateRange,
-    deleteSchedule,
-    deleteSchedulesByDate
-  } = useProductionSchedules();
+  // V0 데이터 조회
+  const { data: scheduleData, loading, error, getRowsByDateRange, refetch } = useProductionSchedulesV0();
+  
+  // Google 스프레드시트 동기화
+  const { sync, loading: syncLoading, result: syncResult } = useSheetsSync();
 
   const [searchTerm, setSearchTerm] = useState('');
   const today = getLocalDateString(new Date());
@@ -103,48 +91,139 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
   // 생산일보 데이터 가져오기 (상태 매칭용)
   const { reports: packagingReports, getReportsByDateRange } = usePackagingReports();
   
-  // 생산일정의 실제 날짜 범위 계산 (비용 최적화)
-  const actualScheduleDateRange = useMemo(() => {
-    if (schedules.length === 0) {
-      return { min: today, max: today };
-    }
-    
-    const dates = schedules.map(s => s.planDate).filter(Boolean);
-    const minDate = dates.reduce((min, date) => date < min ? date : min, dates[0]);
-    const maxDate = dates.reduce((max, date) => date > max ? date : max, dates[0]);
-    
-    return { min: minDate, max: maxDate };
-  }, [schedules, today]);
-  
-  // 생산일정의 실제 날짜 범위에 맞춰 생산일보 조회 (비용 최적화)
-  React.useEffect(() => {
-    if (schedules.length === 0) return;
-    
-    const { min, max } = actualScheduleDateRange;
-    getReportsByDateRange(min, max);
-  }, [actualScheduleDateRange, getReportsByDateRange, schedules.length]);
   const [activeQuickFilter, setActiveQuickFilter] = useState<QuickFilterType>('today');
   const [progressFilter, setProgressFilter] = useState<string>('all');
   const [lineFilter, setLineFilter] = useState<string>('all');
-  const [itemToDelete, setItemToDelete] = useState<ProductionSchedule | null>(null);
-  const [dateToDelete, setDateToDelete] = useState<string | null>(null);
 
-  // 발주번호별 생산일보 상태 매핑
-  const reportStatusMap = useMemo(() => {
-    const map = new Map<string, '생산대기' | '작업중' | '생산완료'>();
-    schedules.forEach(schedule => {
-      const orderNumber = schedule.orderNumber;
-      if (!orderNumber) {
-        return;
-      }
-      
-      // 이 발주번호가 포함된 생산일보 찾기
+  // 헤더에서 컬럼 인덱스 찾기
+  const getColumnIndex = (headerName: string): number => {
+    if (!scheduleData?.headers) return -1;
+    const index = scheduleData.headers.findIndex(h => h === headerName || h.toLowerCase() === headerName.toLowerCase());
+    
+    // 디버깅: 컬럼을 찾지 못한 경우
+    if (index === -1 && process.env.NODE_ENV === 'development') {
+      console.warn(`⚠️ "${headerName}" 컬럼을 찾을 수 없습니다.`, {
+        availableHeaders: scheduleData.headers,
+        searchedHeader: headerName,
+      });
+    }
+    
+    return index;
+  };
+
+  // 날짜 범위로 필터링된 행 가져오기
+  const filteredRows = useMemo(() => {
+    if (!scheduleData) return [];
+    
+    const rows = getRowsByDateRange(startDate, endDate);
+    
+    // 검색어 필터링
+    if (searchTerm) {
+      const lowerCaseSearchTerm = searchTerm.toLowerCase();
+      return rows.filter(row => {
+        return row.data.some(cell => 
+          String(cell || '').toLowerCase().includes(lowerCaseSearchTerm)
+        );
+      });
+    }
+
+    // 진행 상태 필터
+    if (progressFilter !== 'all') {
+      const orderNumberIndex = getColumnIndex('발주번호');
+      if (orderNumberIndex !== -1) {
+        const reportStatusMap = new Map<string, '생산대기' | '작업중' | '생산완료'>();
+        
+        rows.forEach(row => {
+          const orderNumber = String(row.data[orderNumberIndex] || '').trim();
+          if (!orderNumber) return;
+          
       const report = packagingReports.find(r => 
         r.orderNumbers && r.orderNumbers.includes(orderNumber)
       );
       
       let status: '생산대기' | '작업중' | '생산완료';
+          if (!report) {
+            status = '생산대기';
+          } else if (report.endTime) {
+            status = '생산완료';
+          } else if (report.startTime) {
+            status = '작업중';
+          } else {
+            status = '생산대기';
+          }
+          
+          reportStatusMap.set(orderNumber, status);
+        });
+
+        return rows.filter(row => {
+          const orderNumber = String(row.data[orderNumberIndex] || '').trim();
+          const actualStatus = reportStatusMap.get(orderNumber) || '생산대기';
+          return actualStatus === progressFilter;
+        });
+      }
+    }
+
+    // 라인 필터
+    if (lineFilter !== 'all') {
+      const lineIndex = getColumnIndex('라인');
+      if (lineIndex !== -1) {
+        return rows.filter(row => {
+          const line = String(row.data[lineIndex] || '').trim();
+          return line === lineFilter;
+        });
+      }
+    }
+
+    return rows;
+  }, [scheduleData, startDate, endDate, searchTerm, progressFilter, lineFilter, getRowsByDateRange, packagingReports]);
+
+  // 날짜별 그룹핑
+  const rowsByDate = useMemo(() => {
+    if (!scheduleData) return {};
+    
+    const planDateIndex = getColumnIndex('계획일자');
+    if (planDateIndex === -1) {
+      return { '': filteredRows };
+    }
+
+    return filteredRows.reduce((acc, row) => {
+      let planDate = String(row.data[planDateIndex] || '').trim();
       
+      // 날짜 형식 정규화
+      if (planDate.includes('/')) {
+        const [month, day] = planDate.split('/');
+        const currentYear = new Date().getFullYear();
+        planDate = `${currentYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      } else if (planDate.length === 8) {
+        planDate = `${planDate.slice(0, 4)}-${planDate.slice(4, 6)}-${planDate.slice(6, 8)}`;
+      }
+
+      if (!acc[planDate]) {
+        acc[planDate] = [];
+      }
+      acc[planDate].push(row);
+      return acc;
+    }, {} as Record<string, typeof filteredRows>);
+  }, [filteredRows, scheduleData]);
+
+  // 생산일보 상태 매핑
+  const reportStatusMap = useMemo(() => {
+    if (!scheduleData) return new Map();
+    
+    const orderNumberIndex = getColumnIndex('발주번호');
+    if (orderNumberIndex === -1) return new Map();
+
+    const map = new Map<string, '생산대기' | '작업중' | '생산완료'>();
+    
+    filteredRows.forEach(row => {
+      const orderNumber = String(row.data[orderNumberIndex] || '').trim();
+      if (!orderNumber) return;
+      
+      const report = packagingReports.find(r => 
+        r.orderNumbers && r.orderNumbers.includes(orderNumber)
+      );
+      
+      let status: '생산대기' | '작업중' | '생산완료';
       if (!report) {
         status = '생산대기';
       } else if (report.endTime) {
@@ -157,8 +236,9 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
       
       map.set(orderNumber, status);
     });
+    
     return map;
-  }, [schedules, packagingReports]);
+  }, [filteredRows, scheduleData, packagingReports]);
 
   // 퀵 필터 핸들러
   const handleQuickFilter = (filter: Exclude<QuickFilterType, 'custom'>) => {
@@ -210,99 +290,54 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
 
     setStartDate(newStartDate);
     setEndDate(newEndDate);
-    getSchedulesByDateRange(newStartDate, newEndDate);
   };
 
-  // 필터링된 일정
-  const filteredSchedules = useMemo(() => {
-    return schedules.filter(schedule => {
-      // 검색어가 있으면 다른 필터 무시하고 검색만 적용 (생산일보와 동일)
-      if (searchTerm) {
-        const lowerCaseSearchTerm = searchTerm.toLowerCase();
-        const searchFields: (keyof ProductionSchedule)[] = [
-          'progress',
-          'line',
-          'orderNumber',
-          'client',
-          'productName',
-          'postProcess'
-        ];
+  // 동기화 핸들러
+  const handleSync = async () => {
+    if (!isAdmin) {
+      toast.error('관리자만 동기화할 수 있습니다.');
+      return;
+    }
+    
+    try {
+      await sync();
+      // 동기화 후 데이터 새로고침
+      setTimeout(() => {
+        refetch();
+      }, 1000);
+    } catch (error) {
+      // 에러는 useSheetsSync에서 처리
+    }
+  };
 
-        return searchFields.some(field => {
-          const value = schedule[field];
-          return value && String(value).toLowerCase().includes(lowerCaseSearchTerm);
-        });
-      }
+  // 생산일보 데이터 조회 (날짜 범위)
+  useEffect(() => {
+    if (!scheduleData || filteredRows.length === 0) return;
+    
+    const planDateIndex = getColumnIndex('계획일자');
+    if (planDateIndex === -1) return;
 
-      // 검색어가 없을 때만 필터 적용
-      // 진행 상태 필터 (동적 상태 사용)
-      if (progressFilter !== 'all') {
-        const actualStatus = reportStatusMap.get(schedule.orderNumber || '') || '생산대기';
-        if (actualStatus !== progressFilter) {
-          return false;
+    const dates = filteredRows
+      .map(row => {
+        let planDate = String(row.data[planDateIndex] || '').trim();
+        if (planDate.includes('/')) {
+          const [month, day] = planDate.split('/');
+          const currentYear = new Date().getFullYear();
+          planDate = `${currentYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        } else if (planDate.length === 8) {
+          planDate = `${planDate.slice(0, 4)}-${planDate.slice(4, 6)}-${planDate.slice(6, 8)}`;
         }
-      }
+        return planDate;
+      })
+      .filter(Boolean);
 
-      // 라인 필터
-      if (lineFilter !== 'all' && schedule.line !== lineFilter) {
-        return false;
-      }
+    if (dates.length === 0) return;
 
-      return true;
-    });
-  }, [schedules, searchTerm, progressFilter, lineFilter, reportStatusMap]);
+    const minDate = dates.reduce((min, date) => date < min ? date : min, dates[0]);
+    const maxDate = dates.reduce((max, date) => date > max ? date : max, dates[0]);
 
-  // 날짜별 그룹핑
-  const schedulesByDate = useMemo(() => {
-    return filteredSchedules.reduce((acc, schedule) => {
-      const date = schedule.planDate;
-      if (!acc[date]) {
-        acc[date] = [];
-      }
-      acc[date].push(schedule);
-      return acc;
-    }, {} as Record<string, ProductionSchedule[]>);
-  }, [filteredSchedules]);
-
-  // 삭제 확인 핸들러
-  const confirmDelete = async () => {
-    if (!itemToDelete) return;
-    
-    // Admin 권한 체크
-    if (!isAdmin) {
-      toast.error('삭제 권한이 없습니다. 관리자만 삭제할 수 있습니다.');
-      setItemToDelete(null);
-      return;
-    }
-    
-    try {
-      await deleteSchedule(itemToDelete.id);
-      toast.success('일정이 삭제되었습니다.');
-      setItemToDelete(null);
-    } catch {
-      toast.error('일정 삭제에 실패했습니다.');
-    }
-  };
-
-  // 날짜별 전체 삭제 확인 핸들러
-  const confirmDeleteByDate = async () => {
-    if (!dateToDelete) return;
-    
-    // Admin 권한 체크
-    if (!isAdmin) {
-      toast.error('삭제 권한이 없습니다. 관리자만 삭제할 수 있습니다.');
-      setDateToDelete(null);
-      return;
-    }
-    
-    try {
-      await deleteSchedulesByDate(dateToDelete);
-      toast.success(`${dateToDelete} 날짜의 모든 일정이 삭제되었습니다.`);
-      setDateToDelete(null);
-    } catch {
-      toast.error('일정 삭제에 실패했습니다.');
-    }
-  };
+    getReportsByDateRange(minDate, maxDate);
+  }, [filteredRows, scheduleData, getReportsByDateRange]);
 
   if (error) {
     return (
@@ -315,18 +350,59 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
     );
   }
 
+  // Google 스프레드시트 열기 핸들러
+  const handleOpenSpreadsheet = () => {
+    window.open(
+      'https://docs.google.com/spreadsheets/d/1j36qASy8aiOoEaDEkzdjuWtJ2zCx7W-8ord6gheObVc/edit?gid=0#gid=0',
+      '_blank',
+      'noopener,noreferrer'
+    );
+  };
+
   return (
     <div className="min-h-full flex flex-col space-y-4 pb-6">
-      {/* 헤더 */}
-      <div className="flex justify-end">
-        {canManage && (
-          <Button onClick={onOpenUploadModal} className="font-semibold">
-            일괄 등록/업데이트
+      {/* 헤더 - 버튼들 */}
+      <div className="flex justify-end gap-2">
+        <Button
+          onClick={handleOpenSpreadsheet}
+          variant="outline"
+          className="font-semibold"
+        >
+          <ExternalLink className="mr-2 h-4 w-4" />
+          Google 스프레드시트 열기
+        </Button>
+        {isAdmin && (
+          <Button 
+            onClick={handleSync} 
+            disabled={syncLoading}
+            className="font-semibold"
+          >
+            {syncLoading ? (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                동기화 중...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Google 스프레드시트 동기화
+              </>
+            )}
           </Button>
         )}
       </div>
 
-      {/* 필터 영역 - Card로 분리 */}
+      {/* 동기화 결과 표시 */}
+      {syncResult && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            동기화 완료: 추가 {syncResult.added}개, 수정 {syncResult.updated}개, 삭제 {syncResult.deleted}개
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* 필터 영역 */}
       <Card className="flex-shrink-0">
         <CardContent className="p-4">
           <Collapsible open={isMobile ? isFilterExpanded : true} onOpenChange={setIsFilterExpanded}>
@@ -390,7 +466,6 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
                     onChange={(e) => {
                       setStartDate(e.target.value);
                       setActiveQuickFilter('custom');
-                      getSchedulesByDateRange(e.target.value, endDate);
                     }}
                     className="w-full sm:w-auto sm:min-w-[8.75rem]"
                   />
@@ -401,7 +476,6 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
                     onChange={(e) => {
                       setEndDate(e.target.value);
                       setActiveQuickFilter('custom');
-                      getSchedulesByDateRange(startDate, e.target.value);
                     }}
                     min={startDate}
                     className="w-full sm:w-auto sm:min-w-[8.75rem]"
@@ -452,7 +526,7 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
                 <label className="text-sm font-medium text-foreground">검색</label>
                 <Input
                   type="text"
-                  placeholder="진행, 라인, 발주번호, 발주처, 제품명, 후공정 검색..."
+                      placeholder="모든 컬럼 검색..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full"
@@ -468,120 +542,115 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
       {/* 테이블 */}
       <Card className="flex-1">
         <CardContent className="p-0">
-          {loading && schedules.length === 0 ? (
+          {loading && !scheduleData ? (
             <div className="space-y-2 p-4">
               <Skeleton className="h-12 w-full" />
               {[...Array(10)].map((_, i) => (
                 <Skeleton key={i} className="h-16 w-full" />
               ))}
             </div>
-          ) : error && schedules.length === 0 ? (
-            <Alert variant="destructive">
+          ) : !scheduleData ? (
+            <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                데이터를 불러오는 중 오류가 발생했습니다
+                동기화된 데이터가 없습니다. 관리자 권한으로 Google 스프레드시트를 동기화해주세요.
               </AlertDescription>
             </Alert>
-          ) : filteredSchedules.length === 0 ? (
+          ) : filteredRows.length === 0 ? (
             <p className="text-center p-8 text-muted-foreground">표시할 일정이 없습니다.</p>
           ) : (
             <div className="w-full overflow-x-auto">
               <Table>
               <TableHeader className="sticky top-0 z-10 bg-muted">
                 <TableRow>
-                  <TableHead className="whitespace-nowrap rounded-tl-lg px-2">계획일자</TableHead>
-                  <TableHead className="whitespace-nowrap px-2">진행</TableHead>
-                  <TableHead className="whitespace-nowrap px-2">출하</TableHead>
-                  <TableHead className="whitespace-nowrap px-2">라인</TableHead>
-                  <TableHead className="whitespace-nowrap px-2">사출</TableHead>
-                  <TableHead className="whitespace-nowrap px-2">발주번호</TableHead>
-                  <TableHead className="whitespace-nowrap px-2">발주처</TableHead>
-                  <TableHead className="whitespace-nowrap px-2">제품명</TableHead>
-                  <TableHead className="whitespace-nowrap px-2">부속명</TableHead>
-                  <TableHead className="whitespace-nowrap text-right px-2">발주</TableHead>
-                  <TableHead className="whitespace-nowrap px-2">사양</TableHead>
-                  <TableHead className="whitespace-nowrap px-2">후공정</TableHead>
-                  <TableHead className="whitespace-nowrap px-2">참고</TableHead>
-                  <TableHead className="whitespace-nowrap px-2">담당자</TableHead>
-                  <TableHead className="whitespace-nowrap px-2">내/수</TableHead>
-                  <TableHead className="whitespace-nowrap px-2">사용지그</TableHead>
-                  <TableHead className="whitespace-nowrap px-2">신/재</TableHead>
-                  <TableHead className={`whitespace-nowrap text-right px-2 ${canManage ? '' : 'rounded-tr-lg'}`}>부족수량</TableHead>
-                  {canManage && <TableHead className="whitespace-nowrap rounded-tr-lg px-2">작업</TableHead>}
+                    {scheduleData.headers.map((header, index) => (
+                      <TableHead 
+                        key={index} 
+                        className={`whitespace-nowrap px-2 ${index === 0 ? 'rounded-tl-lg' : ''} ${index === scheduleData.headers.length - 1 ? 'rounded-tr-lg' : ''}`}
+                      >
+                        {header}
+                      </TableHead>
+                    ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {Object.entries(schedulesByDate).map(([date, schedulesForDate]) => (
+                  {Object.entries(rowsByDate).map(([date, rowsForDate]) => (
                   <React.Fragment key={date}>
                     {/* 날짜 헤더 행 */}
+                      {date && (
                     <TableRow className="bg-muted/50">
-                      <TableCell colSpan={18 + (canManage ? 1 : 0)} className="whitespace-nowrap font-bold text-base py-1 px-2">
-                        <div className="flex items-center gap-4">
-                          <span>
+                          <TableCell 
+                            colSpan={scheduleData.headers.length} 
+                            className="whitespace-nowrap font-bold text-base py-1 px-2"
+                          >
                             {date} ({new Date(date + 'T00:00:00').toLocaleDateString('ko-KR', { weekday: 'long' })})
-                          </span>
-                          {canManage && (
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => setDateToDelete(date)}
-                            >
-                              이 날짜 전체 삭제
-                            </Button>
-                          )}
-                        </div>
                       </TableCell>
                     </TableRow>
-                    {/* 일정 데이터 행들 */}
-                    {schedulesForDate.map((schedule) => {
-                      const actualStatus = reportStatusMap.get(schedule.orderNumber || '') || '생산대기';
+                      )}
+                      {/* 데이터 행들 */}
+                      {rowsForDate.map((row) => {
+                        const orderNumberIndex = getColumnIndex('발주번호');
+                        const orderNumber = orderNumberIndex !== -1 
+                          ? String(row.data[orderNumberIndex] || '').trim() 
+                          : '';
+                        const actualStatus = reportStatusMap.get(orderNumber) || '생산대기';
                       const statusColorClass = actualStatus === '생산완료'
                         ? 'bg-[hsl(var(--status-completed))] text-[hsl(var(--status-completed-foreground))]'
                         : actualStatus === '작업중'
                         ? 'bg-[hsl(var(--status-inprogress))] text-[hsl(var(--status-inprogress-foreground))]'
                         : 'bg-[hsl(var(--status-pending))] text-[hsl(var(--status-pending-foreground))]';
                       
-                      const lineBgColor = getLineBackgroundColor(schedule.line);
+                        const lineIndex = getColumnIndex('라인');
+                        const line = lineIndex !== -1 ? String(row.data[lineIndex] || '').trim() : '';
+                        
+                        // 디버깅: 라인 컬럼 찾기 실패 시 로그
+                        if (lineIndex === -1 && process.env.NODE_ENV === 'development') {
+                          console.warn('⚠️ "라인" 컬럼을 찾을 수 없습니다. 헤더:', scheduleData.headers);
+                        }
+                        
+                        const lineBgColor = getLineBackgroundColor(line);
+                        
+                        // 헤더 길이에 맞춰 데이터 배열 확장 (새 컬럼 추가 시 빈 값으로 채움)
+                        const paddedData = [...row.data];
+                        while (paddedData.length < scheduleData.headers.length) {
+                          paddedData.push('');
+                        }
                       
                       return (
-                        <TableRow key={schedule.id} className={`${lineBgColor} xl:hover:bg-muted/50`}>
-                          <TableCell className="whitespace-nowrap py-1 px-2">{schedule.planDate}</TableCell>
-                          <TableCell className="whitespace-nowrap py-1 px-2">
+                          <TableRow key={row.rowIndex} className={`${lineBgColor} xl:hover:bg-muted/50`}>
+                            {scheduleData.headers.map((header, cellIndex) => {
+                              const cell = paddedData[cellIndex];
+                              
+                              // 진행 컬럼인 경우 상태 표시
+                              if (header === '진행' || header === 'progress') {
+                                return (
+                                  <TableCell key={cellIndex} className="whitespace-nowrap py-1 px-2">
                             <span className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full ${statusColorClass}`}>
                               {actualStatus}
                             </span>
                           </TableCell>
-                          <TableCell className="whitespace-nowrap py-1 px-2">{schedule.shipping}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1 px-2">{schedule.line}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1 px-2">{schedule.injection}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1 px-2">{schedule.orderNumber}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1 px-2">{schedule.client}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1 px-2">{schedule.productName}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1 px-2">{schedule.partName}</TableCell>
-                        <TableCell className="whitespace-nowrap text-right py-1 px-2">
-                          {schedule.orderQuantity.toLocaleString()}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap py-1 px-2">{schedule.specification}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1 px-2">{schedule.postProcess}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1 px-2 text-red-600 font-semibold" title={schedule.remarks}>{schedule.remarks}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1 px-2">{schedule.manager}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1 px-2">{schedule.domesticOrExport}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1 px-2">{schedule.jigUsed}</TableCell>
-                        <TableCell className="whitespace-nowrap py-1 px-2">{schedule.newOrRe}</TableCell>
-                        <TableCell className="whitespace-nowrap text-right py-1 px-2">
-                          {schedule.shortageQuantity.toLocaleString()}
-                        </TableCell>
-                        {canManage && isAdmin && (
-                          <TableCell className="whitespace-nowrap py-1 px-2">
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => setItemToDelete(schedule)}
-                            >
-                              삭제
-                            </Button>
+                                );
+                              }
+                              
+                              // 참고, 부족수량 컬럼인 경우 굵게 + 빨간색
+                              const isSpecialColumn = header === '참고' || header === '부족수량';
+                              const specialColumnClass = isSpecialColumn ? 'font-bold text-red-600 dark:text-red-400' : '';
+                              
+                              // 숫자 컬럼인 경우 우측 정렬
+                              const isNumeric = typeof cell === 'number' || (typeof cell === 'string' && !isNaN(Number(cell)) && cell !== '');
+                              return (
+                                <TableCell 
+                                  key={cellIndex} 
+                                  className={`whitespace-nowrap py-1 px-2 ${isNumeric ? 'text-right' : ''} ${specialColumnClass}`}
+                                >
+                                  {isNumeric && typeof cell === 'number' 
+                                    ? cell.toLocaleString() 
+                                    : isNumeric && typeof cell === 'string'
+                                    ? Number(cell).toLocaleString()
+                                    : String(cell || '')}
                           </TableCell>
-                        )}
+                              );
+                            })}
                       </TableRow>
                       );
                     })}
@@ -593,43 +662,6 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
         )}
         </CardContent>
       </Card>
-
-      {/* 개별 삭제 확인 다이얼로그 */}
-      <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>일정 삭제 확인</AlertDialogTitle>
-            <AlertDialogDescription>
-              &apos;{itemToDelete?.planDate}&apos;의 &apos;{itemToDelete?.productName}&apos; 일정을 정말 삭제하시겠습니까?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>취소</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete}>삭제</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* 날짜별 전체 삭제 확인 다이얼로그 */}
-      <AlertDialog open={!!dateToDelete} onOpenChange={(open) => !open && setDateToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>일괄 삭제 확인</AlertDialogTitle>
-            <AlertDialogDescription>
-              &apos;{dateToDelete}&apos;의 모든 생산 일정을 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>취소</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteByDate} className="bg-destructive">
-              전체 삭제
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 };
-
-
-

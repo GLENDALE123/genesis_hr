@@ -1,5 +1,3 @@
-'use client';
-
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { CommentsService } from '@/shared/services/comments/commentsService';
 import { Button } from '@/shared/components/ui/button';

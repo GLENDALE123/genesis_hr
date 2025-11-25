@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useState } from 'react';
 import { Button } from '@/shared/components/ui/button';
 import { WORK_TYPES, WorkType } from '../types';

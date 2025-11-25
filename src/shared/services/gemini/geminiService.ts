@@ -1,10 +1,10 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { QualityInspection } from '@/features/quality/types';
+import { QualityInspection, QualityIssue } from '@/features/quality/types';
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
 // 캐시 키 생성 함수
-const generateCacheKey = (supplier: string, productName: string, partName: string, inspections: QualityInspection[]) => {
+const generateCacheKey = (supplier: string, productName: string, partName: string, inspections: QualityInspection[], qualityIssues: QualityIssue[] = []) => {
   // 조건이 모두 같고, 데이터 상태가 같으면 캐시 사용
   // 최신순 정렬
   const sorted = [...inspections].sort((a, b) => {
@@ -20,9 +20,19 @@ const generateCacheKey = (supplier: string, productName: string, partName: strin
   const latestTimestamp = sorted[0]?.updatedAt || sorted[0]?.createdAt || '';
   const timestampHash = latestTimestamp ? new Date(latestTimestamp).getTime().toString() : '0';
   
+  // 품질이슈 정보 포함
+  const issueCount = qualityIssues.length;
+  const latestIssueId = qualityIssues.length > 0 
+    ? qualityIssues.sort((a, b) => {
+        const dateA = new Date(a.updatedAt || a.createdAt || '').getTime();
+        const dateB = new Date(b.updatedAt || b.createdAt || '').getTime();
+        return dateB - dateA;
+      })[0]?.id || 'empty'
+    : 'empty';
+  
   // 특수문자 제거 및 공백 처리로 안전한 키 생성
   const safeKey = `${supplier}_${productName}_${partName}`.replace(/[^a-zA-Z0-9가-힣_]/g, '');
-  return `gemini_analysis_v3:${safeKey}:${count}:${latestId}:${timestampHash}`;
+  return `gemini_analysis_v4:${safeKey}:${count}:${latestId}:${timestampHash}:${issueCount}:${latestIssueId}`;
 };
 
 /**
@@ -61,7 +71,8 @@ export async function analyzeInspectionHistory(
   supplier: string,
   productName: string,
   partName: string,
-  inspections: QualityInspection[]
+  inspections: QualityInspection[],
+  qualityIssues: QualityIssue[] = []
 ): Promise<InspectionSummary | null> {
   // API 키 확인
   if (!API_KEY || API_KEY.trim() === '') {
@@ -80,7 +91,7 @@ export async function analyzeInspectionHistory(
   }
 
   // 1. 캐시 확인 (성능 최적화: 동일 조건/데이터면 즉시 반환)
-  const cacheKey = generateCacheKey(supplier, productName, partName, inspections);
+  const cacheKey = generateCacheKey(supplier, productName, partName, inspections, qualityIssues);
   try {
     const cachedData = sessionStorage.getItem(cacheKey);
     if (cachedData) {
@@ -155,11 +166,51 @@ export async function analyzeInspectionHistory(
       return baseData;
     });
 
+    // 품질이슈 데이터 정리
+    const issueData = qualityIssues.map((issue) => {
+      const baseIssue: any = {
+        날짜: issue.createdAt?.split('T')[0] || '',
+        상태: issue.status,
+        우선순위: issue.priority,
+      };
+
+      // 이슈 내용 (IssueItem 배열 또는 문자열 배열)
+      if (issue.issues && issue.issues.length > 0) {
+        const issueContents = issue.issues.map((item: any) => {
+          if (typeof item === 'string') {
+            return item.substring(0, 100);
+          } else if (item && typeof item === 'object' && item.content) {
+            return item.content.substring(0, 100);
+          }
+          return '';
+        }).filter(Boolean);
+        if (issueContents.length > 0) {
+          baseIssue.이슈내용 = issueContents.join(' / ');
+        }
+      }
+
+      // 불량 키워드
+      if (issue.keywordPairs && issue.keywordPairs.length > 0) {
+        baseIssue.불량 = issue.keywordPairs
+          .filter(pair => pair.process && pair.defect)
+          .map(pair => `${pair.process}-${pair.defect}`)
+          .join(',');
+      }
+
+      // 해결 내용
+      if (issue.resolution) {
+        baseIssue.해결내용 = issue.resolution.substring(0, 100);
+      }
+
+      return baseIssue;
+    });
+
     // 프롬프트 구성 - 최소화 (속도 최적화)
     const prompt = `품질검사 이력 분석. 짧고 간결하게.
 
 역할: 사출물 코팅/증착 후공정 업체.
-데이터: ${JSON.stringify(inspectionData)}
+검사이력: ${JSON.stringify(inspectionData)}
+품질이슈: ${JSON.stringify(issueData)}
 
 규칙:
 1. 요약 형식 (필수):
@@ -167,11 +218,13 @@ export async function analyzeInspectionHistory(
    - 형식: "불량률 X%, 불량유형1, 불량유형2" 또는 "불량유형1(X%), 불량유형2(Y%)"
    - 예시: "불량률 3.6%, 코팅-이물, 사출-스크래치" 또는 "코팅-이물(2.2%), 사출-스크래치(1.4%)"
    - 불량 유형이 데이터에 있으면 반드시 포함 (누락 금지)
+   - 품질이슈가 있으면 요약에 품질이슈 내용도 포함 (예: "품질이슈: [이슈내용]")
 2. 위치/비교/조치 정보는 데이터에 있을 때만 포함
 3. 짧은 명사형 종결
 4. 데이터에 없는 조언 금지
 5. 없으면 생략
 6. 요약은 날짜별로 줄바꿈 (\\n 사용, 날짜 형식: YYYY-MM-DD)
+7. 품질이슈는 검사이력과 함께 종합적으로 분석하여 요약에 반영
 
 체크리스트 규칙 (중요):
 - 반드시 이력 데이터에서 발견된 구체적인 불량이나 패턴에만 기반

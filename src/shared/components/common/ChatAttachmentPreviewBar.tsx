@@ -53,3 +53,4 @@ export const ChatAttachmentPreviewBar: React.FC<ChatAttachmentPreviewBarProps> =
   );
 };
 
+

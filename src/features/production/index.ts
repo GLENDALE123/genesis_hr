@@ -10,6 +10,8 @@ export type {
   ProductionReportFilter,
   ProductionReportStatsData,
   ProductionSchedule,
+  ProductionScheduleV0,
+  ProductionScheduleV0Row,
   ShortageRequest
 } from './types';
 
@@ -36,12 +38,16 @@ export { usePackagingReportFilters } from './hooks/usePackagingReportFilters';
 export { usePackagingForm } from './hooks/usePackagingForm';
 export { usePackagingCalculations } from './hooks/usePackagingCalculations';
 export { useProductionSchedules } from './hooks/useProductionSchedules';
+export { useProductionSchedulesV0 } from './hooks/useProductionSchedulesV0';
+export { useSheetsSync } from './hooks/useSheetsSync';
 
 // Services
 export { PackagingReportsService } from './services/packagingReportsService';
 export { ProductionRequestService, ProductionRequestType, ProductionRequestStatus } from './services/productionRequestService';
 export type { ProductionRequest } from './services/productionRequestService';
 export * as ProductionScheduleService from './services/productionScheduleService';
+export * as ProductionScheduleV0Service from './services/productionScheduleV0Service';
+export * as SheetsSyncService from './services/sheetsSyncService';
 export * as ShortageService from './services/shortageService';
 
 // Production Request Hooks

@@ -1,5 +1,3 @@
-"use client"
-
 import * as React from "react"
 import * as VisuallyHiddenPrimitive from "@radix-ui/react-visually-hidden"
 

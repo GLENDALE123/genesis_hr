@@ -1,11 +1,9 @@
-'use client';
-
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Badge } from '@/shared/components/ui/badge';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import { Separator } from '@/shared/components/ui/separator';
-import { QualityInspection } from '../types';
+import { QualityInspection, QualityIssue } from '../types';
 import { INSPECTION_TYPE_LABELS, INSPECTION_TYPE_COLORS, INSPECTION_RESULT_COLORS } from '../constants';
 import { InspectionSummary } from '@/shared/services/gemini/geminiService';
 import { cn } from '@/shared/lib/utils';
@@ -13,6 +11,7 @@ import { Loader2, AlertTriangle, CheckCircle2, FileText, Sparkles } from 'lucide
 
 interface InspectionHistorySummaryProps {
   inspections: QualityInspection[];
+  qualityIssues?: QualityIssue[];
   summary: InspectionSummary | null;
   isLoading: boolean;
   isAnalyzing: boolean;
@@ -31,6 +30,7 @@ interface InspectionHistorySummaryProps {
  */
 export const InspectionHistorySummary: React.FC<InspectionHistorySummaryProps> = ({
   inspections,
+  qualityIssues = [],
   summary,
   isLoading,
   isAnalyzing,

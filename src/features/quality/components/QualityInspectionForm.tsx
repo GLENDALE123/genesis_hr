@@ -1,5 +1,3 @@
-'use client';
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/shared/components/ui/sheet';
@@ -359,6 +357,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
   // formData가 선언된 이후에 호출되어야 함
   const {
     inspections: historyInspections,
+    qualityIssues: historyQualityIssues,
     summary: historySummary,
     isLoading: isHistoryLoading,
     isAnalyzing: isHistoryAnalyzing,
@@ -856,6 +855,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
         <div className="w-1/3 border-r pr-4">
           <InspectionHistorySummary
             inspections={historyInspections}
+            qualityIssues={historyQualityIssues}
             summary={historySummary}
             isLoading={isHistoryLoading}
             isAnalyzing={isHistoryAnalyzing}

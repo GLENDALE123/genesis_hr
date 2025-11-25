@@ -15,6 +15,12 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  define: {
+    // googleapis 패키지가 Node.js 환경을 전제로 하므로 process 객체 폴리필
+    'process.env': '{}',
+    'process.platform': JSON.stringify('browser'),
+    'process.version': JSON.stringify('v16.0.0'),
+  },
   build: {
     outDir: 'dist',
     emptyOutDir: true,

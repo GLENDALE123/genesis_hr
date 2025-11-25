@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { db } from '@/shared/services/firebase/config';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
