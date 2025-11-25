@@ -1,23 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { cn } from '@/shared/lib/utils';
-import {
-  convertStorageBucketURL,
-  getThumbnailURL,
-  waitForThumbnailAvailability
-} from '@/shared/utils/imagePathMigration';
-
-export type ThumbnailStatus = 'checking' | 'thumbnail' | 'original' | 'error';
+import { convertStorageBucketURL, getThumbnailURL } from '@/shared/utils/imagePathMigration';
 
 interface LazyImageProps extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'src'> {
   originalSrc: string;
   placeholderSrc?: string;
   useThumbnail?: boolean;
   lazy?: boolean;
-  thumbnailCheckOptions?: {
-    attempts?: number;
-    intervalMs?: number;
-  };
-  onStatusChange?: (status: ThumbnailStatus) => void;
 }
 
 /**
@@ -28,75 +17,32 @@ export const LazyImage: React.FC<LazyImageProps> = ({
   placeholderSrc,
   useThumbnail = true,
   lazy = true,
-  thumbnailCheckOptions,
   className,
   onLoad,
   onError,
-  onStatusChange,
   ...imgProps
 }) => {
   const normalizedSrc = convertStorageBucketURL(originalSrc);
-  const [displaySrc, setDisplaySrc] = useState<string>(placeholderSrc || normalizedSrc);
-  const [status, setStatus] = useState<ThumbnailStatus>('checking');
+  const [displaySrc, setDisplaySrc] = useState<string>(
+    placeholderSrc || (useThumbnail ? getThumbnailURL(normalizedSrc) : normalizedSrc)
+  );
 
   useEffect(() => {
-    setDisplaySrc(placeholderSrc || normalizedSrc);
-  }, [placeholderSrc, normalizedSrc]);
-
-  useEffect(() => {
-    let mounted = true;
-
-    const resolveThumbnail = async (): Promise<void> => {
-      if (!useThumbnail) {
-        if (!mounted) return;
-        setStatus('original');
-        onStatusChange?.('original');
-        setDisplaySrc(normalizedSrc);
-        return;
-      }
-
-      setStatus('checking');
-      onStatusChange?.('checking');
-
-      try {
-        const available = await waitForThumbnailAvailability(normalizedSrc, {
-          attempts: thumbnailCheckOptions?.attempts,
-          intervalMs: thumbnailCheckOptions?.intervalMs
-        });
-
-        if (!mounted) return;
-
-        if (available) {
-          setStatus('thumbnail');
-          onStatusChange?.('thumbnail');
-          setDisplaySrc(getThumbnailURL(normalizedSrc));
-        } else {
-          setStatus('original');
-          onStatusChange?.('original');
-          setDisplaySrc(normalizedSrc);
-        }
-      } catch (error) {
-        if (!mounted) return;
-        setStatus('error');
-        onStatusChange?.('error');
-        setDisplaySrc(normalizedSrc);
-      }
-    };
-
-    resolveThumbnail();
-
-    return () => {
-      mounted = false;
-    };
-  }, [normalizedSrc, useThumbnail, onStatusChange]);
+    if (placeholderSrc) {
+      setDisplaySrc(placeholderSrc);
+      return;
+    }
+    setDisplaySrc(useThumbnail ? getThumbnailURL(normalizedSrc) : normalizedSrc);
+  }, [placeholderSrc, normalizedSrc, useThumbnail]);
 
   const handleLoad: React.ReactEventHandler<HTMLImageElement> = (event) => {
     onLoad?.(event);
   };
 
   const handleError: React.ReactEventHandler<HTMLImageElement> = (event) => {
-    setStatus('error');
-    onStatusChange?.('error');
+    if (displaySrc !== normalizedSrc) {
+      setDisplaySrc(normalizedSrc);
+    }
     onError?.(event);
   };
 
@@ -111,7 +57,6 @@ export const LazyImage: React.FC<LazyImageProps> = ({
       onLoad={handleLoad}
       onError={handleError}
       {...imgProps}
-      data-thumbnail-status={status}
     />
   );
 };

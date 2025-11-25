@@ -167,6 +167,42 @@ const compressImagesParallel = async (files: File[]): Promise<File[]> => {
   return results;
 };
 
+const createThumbnailFile = async (file: File): Promise<File> => {
+  const options = {
+    maxSizeMB: 0.2,
+    maxWidthOrHeight: 300,
+    useWebWorker: true,
+    fileType: 'image/webp',
+    initialQuality: 0.8
+  };
+
+  const compressed = await imageCompression(file, options);
+  const baseName = file.name.includes('.') ? file.name.substring(0, file.name.lastIndexOf('.')) : file.name;
+  return new File([compressed], `${baseName}_thumb.webp`, { type: 'image/webp' });
+};
+
+const getThumbnailStoragePath = (originalPath: string): string => {
+  const lastSlash = originalPath.lastIndexOf('/');
+  const folder = lastSlash !== -1 ? originalPath.slice(0, lastSlash + 1) : '';
+  const fileName = lastSlash !== -1 ? originalPath.slice(lastSlash + 1) : originalPath;
+  const baseName = fileName.includes('.') ? fileName.substring(0, fileName.lastIndexOf('.')) : fileName;
+  return `${folder}${baseName}_thumb.webp`;
+};
+
+const uploadClientThumbnail = async (
+  originalFile: File,
+  originalPath: string,
+  uploadFn: UploadFileFn
+): Promise<void> => {
+  try {
+    const thumbnailFile = await createThumbnailFile(originalFile);
+    const thumbnailPath = getThumbnailStoragePath(originalPath);
+    await uploadFn(thumbnailFile, thumbnailPath, 1);
+  } catch (error) {
+    console.warn('클라이언트 썸네일 업로드 실패:', error);
+  }
+};
+
 /**
  * 이미지 파일을 업로드합니다.
  * 
@@ -216,6 +252,10 @@ export const uploadImage = async (
 
       // 2단계: 업로드
       const downloadURL = await uploadFile(compressedFile, path);
+      
+      if (mergedOptions.generateThumbnails) {
+        await uploadClientThumbnail(file, path, uploadFile);
+      }
       
       const duration = Date.now() - startTime;
       logUploadSuccess(file.name, file.size, duration);
@@ -362,6 +402,11 @@ export const uploadImagesParallel = async (
           onProgress?.(completedCount, files.length);
           
           const duration = Date.now() - fileStartTime;
+
+        if (mergedOptions.generateThumbnails) {
+          await uploadClientThumbnail(file, path, uploadFile);
+        }
+
           return {
             success: true,
             url: downloadURL,

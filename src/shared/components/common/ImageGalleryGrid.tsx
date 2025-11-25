@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ImageLightbox } from './ImageLightbox';
-import { LazyImage, ThumbnailStatus } from './LazyImage';
+import { LazyImage } from './LazyImage';
 import { getResizedImageURL, convertStorageBucketURL } from '@/shared/utils/imagePathMigration';
-import { Spinner } from '../ui/spinner';
 
 interface ImageGalleryGridProps {
   images: string[];
@@ -34,40 +33,19 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [cachedImages, setCachedImages] = useState<string[]>([]);
-  const [loadedImages, setLoadedImages] = useState<boolean[]>([]);
-  const [thumbnailStatuses, setThumbnailStatuses] = useState<ThumbnailStatus[]>([]);
+  const [cachedImages, setCachedImages] = useState<string[]>([]);
 
   // 이미지 초기화 - Firebase Storage 크기 조정 쿼리 사용
   useEffect(() => {
     if (images.length === 0) {
       setCachedImages([]);
-      setLoadedImages([]);
-      setThumbnailStatuses([]);
       return;
     }
     
     const convertedUrls = images.map(url => convertStorageBucketURL(url));
     const resizedUrls = convertedUrls.map(url => getResizedImageURL(url, 300));
     setCachedImages(resizedUrls);
-    setLoadedImages(new Array(images.length).fill(false));
-    setThumbnailStatuses(new Array(images.length).fill('checking'));
   }, [images]);
-
-  const handleImageLoaded = useCallback((index: number) => {
-    setLoadedImages(prev => {
-      const next = [...prev];
-      next[index] = true;
-      return next;
-    });
-  }, []);
-
-  const handleThumbnailStatus = useCallback((index: number, status: ThumbnailStatus) => {
-    setThumbnailStatuses(prev => {
-      const next = [...prev];
-      next[index] = status;
-      return next;
-    });
-  }, []);
 
   const handleImageClick = (e: React.MouseEvent, index: number) => {
     e.stopPropagation(); // 부모 이벤트 전파 방지 (Dialog 닫힘 방지)
@@ -86,22 +64,7 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
         onClick={(e) => e.stopPropagation()} // 부모 이벤트 전파 방지
       >
         {images.map((url, index) => {
-          const isLoaded = loadedImages[index] ?? false;
-          const thumbnailStatus = thumbnailStatuses[index] ?? 'checking';
           const placeholder = cachedImages[index] || convertStorageBucketURL(url);
-
-          const statusLabel = (() => {
-            switch (thumbnailStatus) {
-              case 'checking':
-                return '썸네일 생성 중...';
-              case 'original':
-                return '원본 표시 중';
-              case 'error':
-                return '썸네일 오류';
-              default:
-                return null;
-            }
-          })();
           
           return (
             <div key={index} className="relative">
@@ -110,30 +73,11 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
                 placeholderSrc={placeholder}
                 useThumbnail={useThumbnails}
                 lazy={enableLazyLoading}
-                thumbnailCheckOptions={{ attempts: 3, intervalMs: 1200 }}
                 className={`w-full ${imageClassName} object-cover border cursor-pointer hover:opacity-80 transition-opacity`}
                 style={{ borderRadius: 'var(--radius)' }}
                 alt={`이미지 ${index + 1}`}
                 onClick={(e) => handleImageClick(e, index)}
-                onLoad={() => handleImageLoaded(index)}
-                onError={() => handleImageLoaded(index)}
-                onStatusChange={(status) => handleThumbnailStatus(index, status)}
               />
-
-              {!isLoaded && (
-                <div
-                  className="absolute inset-0 flex items-center justify-center rounded-md bg-white/40 dark:bg-black/40 pointer-events-none"
-                  style={{ borderRadius: 'var(--radius)' }}
-                >
-                  <Spinner className="size-6 text-primary" />
-                </div>
-              )}
-
-              {statusLabel && (
-                <div className="absolute bottom-2 left-2 text-xs bg-white/85 dark:bg-black/70 px-2 py-1 rounded shadow pointer-events-none">
-                  {statusLabel}
-                </div>
-              )}
             </div>
           );
         })}

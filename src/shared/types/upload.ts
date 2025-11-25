@@ -175,16 +175,14 @@ export interface ImageUploadOptions {
   maxRetries: number;
   showProgressToast: boolean;
   useParallelCompression: boolean;
-  thumbnailPollAttempts: number;
-  thumbnailPollIntervalMs: number;
+  generateThumbnails: boolean;
 }
 
 export const defaultImageUploadOptions: ImageUploadOptions = {
   maxRetries: 3,
   showProgressToast: true,
   useParallelCompression: true,
-  thumbnailPollAttempts: 6,
-  thumbnailPollIntervalMs: 800
+  generateThumbnails: true
 };
 
 export const mergeImageUploadOptions = (
