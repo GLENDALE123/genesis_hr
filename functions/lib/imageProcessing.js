@@ -382,6 +382,67 @@ exports.processImagesManually = onCall({
 });
 
 /**
+ * 지정한 Storage 경로의 기존 이미지들을 순차적으로 재처리하여 썸네일을 생성
+ */
+exports.backfillThumbnails = onCall({
+  region: 'asia-northeast3',
+  memory: '1GiB',
+  timeoutSeconds: 540
+}, async (request) => {
+  const data = request.data || {};
+  const context = request.auth;
+
+  if (!context) {
+    throw new Error('인증이 필요합니다.');
+  }
+
+  const folderPath = data.folderPath;
+  const maxFiles = Math.min(data.maxFiles || 50, 200);
+  const collectionName = data.collectionName || 'backfill';
+
+  if (!folderPath || typeof folderPath !== 'string') {
+    throw new Error('folderPath 값이 필요합니다.');
+  }
+
+  try {
+    const bucket = admin.storage().bucket();
+    const [files] = await bucket.getFiles({ prefix: folderPath });
+
+    const candidates = files
+      .filter(file => file.name && !file.name.endsWith('/'))
+      .filter(file => !isProcessedImage(file.name))
+      .slice(0, maxFiles);
+
+    const results = [];
+
+    for (const file of candidates) {
+      try {
+        await processSingleImage(file.name, collectionName);
+        results.push({ path: file.name, success: true });
+      } catch (error) {
+        console.error('백필 썸네일 생성 실패:', file.name, error);
+        results.push({
+          path: file.name,
+          success: false,
+          error: error instanceof Error ? error.message : '알 수 없는 오류'
+        });
+      }
+    }
+
+    return {
+      success: true,
+      folderPath,
+      attempted: candidates.length,
+      processed: results.filter(r => r.success).length,
+      failed: results.filter(r => !r.success),
+    };
+  } catch (error) {
+    console.error('백필 썸네일 처리 실패:', error);
+    throw new Error('백필 작업 중 오류가 발생했습니다.');
+  }
+});
+
+/**
  * Firebase Storage URL에서 파일 경로 추출
  */
 function extractFilePathFromUrl(url) {
