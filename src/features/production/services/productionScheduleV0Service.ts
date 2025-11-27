@@ -33,10 +33,7 @@ export const getLatestSync = async (): Promise<ProductionScheduleV0 | null> => {
       return null;
     }
 
-    return {
-      id: results[0].id,
-      ...(results[0] as Omit<ProductionScheduleV0, 'id'>),
-    } as ProductionScheduleV0;
+    return results[0] as ProductionScheduleV0;
   } catch (error) {
     console.error('❌ [ProductionScheduleV0Service] 최신 동기화 데이터 조회 실패:', error);
     throw error;
