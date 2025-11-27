@@ -2,23 +2,25 @@ import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Badge } from '@/shared/components/ui/badge';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
-import { Separator } from '@/shared/components/ui/separator';
-import { QualityInspection, QualityIssue } from '../types';
-import { INSPECTION_TYPE_LABELS, INSPECTION_TYPE_COLORS, INSPECTION_RESULT_COLORS } from '../constants';
+import { QualityInspection } from '../types';
+import {
+  INSPECTION_TYPE_LABELS,
+  INSPECTION_TYPE_COLORS,
+  INSPECTION_RESULT_COLORS,
+  STATUS_COLORS
+} from '../constants';
 import { InspectionSummary } from '@/shared/services/gemini/geminiService';
 import { cn } from '@/shared/lib/utils';
-import { Loader2, AlertTriangle, CheckCircle2, FileText, Sparkles } from 'lucide-react';
+import { Loader2, AlertTriangle, CheckCircle2, FileText, Sparkles, RefreshCw } from 'lucide-react';
+import { Button } from '@/shared/components/ui/button';
 
 interface InspectionHistorySummaryProps {
   inspections: QualityInspection[];
-  qualityIssues?: QualityIssue[];
   summary: InspectionSummary | null;
   isLoading: boolean;
   isAnalyzing: boolean;
-  supplier?: string;
-  productName?: string;
-  partName?: string;
   onInspectionClick?: (inspection: QualityInspection) => void;
+  onRefresh?: () => void;
 }
 
 /**
@@ -30,14 +32,11 @@ interface InspectionHistorySummaryProps {
  */
 export const InspectionHistorySummary: React.FC<InspectionHistorySummaryProps> = ({
   inspections,
-  qualityIssues = [],
   summary,
   isLoading,
   isAnalyzing,
-  supplier,
-  productName,
-  partName,
   onInspectionClick,
+  onRefresh,
 }) => {
   // 통계 계산
   const stats = useMemo(() => {
@@ -186,6 +185,53 @@ export const InspectionHistorySummary: React.FC<InspectionHistorySummaryProps> =
     });
   };
 
+  const analyzedQualityIssues = useMemo(() => {
+    if (!summary || !summary.qualityIssues) return [];
+    return summary.qualityIssues
+      .filter((issue) => issue && issue.issue)
+      .slice(0, 3);
+  }, [summary]);
+
+  const getStatusClassName = (status?: string) => {
+    if (!status) return 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300';
+    const normalized = status.toLowerCase();
+    if (STATUS_COLORS[status as keyof typeof STATUS_COLORS]) {
+      return STATUS_COLORS[status as keyof typeof STATUS_COLORS];
+    }
+    if (STATUS_COLORS[normalized as keyof typeof STATUS_COLORS]) {
+      return STATUS_COLORS[normalized as keyof typeof STATUS_COLORS];
+    }
+    const map: Record<string, keyof typeof STATUS_COLORS> = {
+      resolved: '해결완료',
+      closed: '해결완료',
+      'in-progress': '진행중',
+      pending: '대기중',
+      open: '대기중'
+    };
+    const mappedKey = map[normalized];
+    return mappedKey ? STATUS_COLORS[mappedKey] : 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300';
+  };
+
+  const getStatusLabel = (status?: string) => {
+    if (!status) return '대기중';
+    const normalized = status.toLowerCase();
+    const labelMap: Record<string, string> = {
+      resolved: '해결완료',
+      closed: '해결완료',
+      'in-progress': '진행중',
+      progress: '진행중',
+      pending: '대기중',
+      open: '대기중'
+    };
+    if (labelMap[normalized]) {
+      return labelMap[normalized];
+    }
+    if (status === status.toUpperCase()) {
+      return status === 'RESOLVED' ? '해결완료' : status;
+    }
+    return status;
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -227,10 +273,25 @@ export const InspectionHistorySummary: React.FC<InspectionHistorySummaryProps> =
         {summary && (
           <Card className="border-purple-200 dark:border-purple-900/50">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-purple-500" />
-                AI 심층 분석
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-purple-500" />
+                  AI 심층 분석
+                </CardTitle>
+                {onRefresh && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 hover:bg-purple-100 dark:hover:bg-purple-900/30"
+                    onClick={onRefresh}
+                    disabled={isAnalyzing}
+                    title="분석 결과 새로고침"
+                  >
+                    <RefreshCw className={cn("h-3 w-3 text-muted-foreground", isAnalyzing && "animate-spin")} />
+                    <span className="sr-only">새로고침</span>
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* 종합 요약 */}
@@ -241,6 +302,47 @@ export const InspectionHistorySummary: React.FC<InspectionHistorySummaryProps> =
                     {summary.summary.split('\\n').map((line, index) => (
                       <div key={index} className="py-0.5">
                         {highlightText(line)}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 품질이슈 (AI 분석) */}
+              {analyzedQualityIssues.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-medium mb-2 text-muted-foreground flex items-center gap-1">
+                    <FileText className="h-3 w-3 text-sky-500" />
+                    품질이슈
+                  </h4>
+                  <div className="space-y-2">
+                    {analyzedQualityIssues.map((issue, index) => (
+                      <div
+                        key={`${issue.orderNumber || 'issue'}-${index}`}
+                        className="rounded-lg border border-sky-100 dark:border-sky-900/30 bg-sky-50/60 dark:bg-sky-900/10 p-3 space-y-2"
+                      >
+                        <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                          <div className={cn('px-2 py-0.5 rounded-full font-medium', getStatusClassName(issue.status))}>
+                            {getStatusLabel(issue.status)}
+                          </div>
+                          <span>{formatDate(issue.date)}</span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 text-xs">
+                          <Badge variant="outline" className="text-[11px]">
+                            {issue.orderNumber || '-'}
+                          </Badge>
+                          {issue.issue && (
+                            <span className="text-sm text-foreground flex-1">
+                              {highlightText(issue.issue)}
+                            </span>
+                          )}
+                        </div>
+                        {issue.action && (
+                          <div className="text-[12px] text-sky-900 dark:text-sky-200 border-t border-sky-100 dark:border-sky-900/40 pt-2">
+                            <span className="font-semibold mr-1">조치</span>
+                            <span>{highlightText(issue.action)}</span>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -265,25 +367,16 @@ export const InspectionHistorySummary: React.FC<InspectionHistorySummaryProps> =
                 </div>
               )}
 
-              {/* 체크리스트 */}
-              {summary.checklist && summary.checklist.length > 0 && (
+              {/* 품질 분석 보고서 (체크리스트 대체) */}
+              {summary.report && (
                 <div>
                   <h4 className="text-xs font-medium mb-2 text-muted-foreground flex items-center gap-1">
                     <CheckCircle2 className="h-3 w-3 text-green-500" />
-                    다음 작업 체크리스트
+                    품질 분석 보고서
                   </h4>
-                  <ul className="space-y-2">
-                    {summary.checklist.map((item, index) => {
-                      // 날짜 패턴 제거 (예: "(2025-11-16 수입)" 같은 부분)
-                      const cleanItem = item.replace(/\s*\([0-9]{4}-[0-9]{2}-[0-9]{2}\s*[가-힣]+\)/g, '').trim();
-                      return (
-                        <li key={index} className="text-sm flex items-start gap-2 bg-green-50 dark:bg-green-900/10 p-2 rounded-md border border-green-200 dark:border-green-900/30">
-                          <span className="text-green-500 mt-0.5 font-bold">✓</span>
-                          <span className="flex-1">{highlightText(cleanItem)}</span>
-                        </li>
-                      );
-                    })}
-                  </ul>
+                  <div className="text-sm bg-green-50 dark:bg-green-900/10 p-3 rounded-md border border-green-200 dark:border-green-900/30 whitespace-pre-line leading-relaxed text-foreground/90">
+                    {highlightText(summary.report)}
+                  </div>
                 </div>
               )}
             </CardContent>

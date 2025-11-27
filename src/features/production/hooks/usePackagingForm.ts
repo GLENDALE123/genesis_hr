@@ -5,6 +5,7 @@ import { useOrderNumberFormatter } from '@/shared/hooks/useOrderNumberFormatter'
 import { usePackagingCalculations } from './usePackagingCalculations';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
 import { getLocalDateString } from '@/shared/utils/dateUtils';
+import { formatOrderQuantitiesForInput } from '@/features/production/utils/orderQuantity';
 
 const initialFormData: PackagingFormData = {
   workDate: getLocalDateString(new Date()),
@@ -109,7 +110,7 @@ export const usePackagingForm = ({ report, isEditMode = false }: UseProductionFo
         supplier: report.supplier,
         productName: report.productName,
         partName: report.partName,
-        orderQuantity: (report.orderQuantity && report.orderQuantity.toString()) || '',
+        orderQuantity: formatOrderQuantitiesForInput(report),
         specification: report.specification,
         lineRatio: report.lineRatio,
         productionPerMinute: (report.productionPerMinute && report.productionPerMinute.toString()) || '',

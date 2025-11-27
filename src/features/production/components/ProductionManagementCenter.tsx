@@ -12,6 +12,7 @@ import {
   TableRow,
 } from '@/shared/components/ui/table';
 import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useProductionRequests } from '../hooks/useProductionRequests';
 import {
@@ -225,14 +226,9 @@ const ProductionManagementCenterComponent: React.FC = () => {
       </header>
 
       {/* 메인 콘텐츠 */}
-      <main className={`flex-1 overflow-auto ${isLoading ? 'flex' : ''}`}>
-        {isLoading ? (
-          <LoadingSpinner 
-            label="생산 데이터 로딩 중..." 
-            loadingVariant="default"
-            className="flex-1"
-            size="lg"
-          />
+      <main className="flex-1 overflow-auto">
+        {isLoading && requests.length === 0 ? (
+          <Skeleton className="h-96 w-full" />
         ) : filteredRequests.length > 0 ? (
           <div className="relative rounded-md border">
             <Table>

@@ -55,7 +55,6 @@ export {
   uploadProfilePhoto,
   deleteProfilePhoto,
   compressImage,
-  uploadImageFilesWithRetry,
   uploadImageFilesParallel
 } from './storage';
 

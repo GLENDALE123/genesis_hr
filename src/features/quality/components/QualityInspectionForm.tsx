@@ -357,10 +357,10 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
   // formData가 선언된 이후에 호출되어야 함
   const {
     inspections: historyInspections,
-    qualityIssues: historyQualityIssues,
     summary: historySummary,
     isLoading: isHistoryLoading,
     isAnalyzing: isHistoryAnalyzing,
+    refreshAnalysis: refreshHistoryAnalysis,
   } = useInspectionHistory({
     supplier: formData.supplier,
     productName: formData.productName,
@@ -855,13 +855,9 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
         <div className="w-1/3 border-r pr-4">
           <InspectionHistorySummary
             inspections={historyInspections}
-            qualityIssues={historyQualityIssues}
             summary={historySummary}
             isLoading={isHistoryLoading}
             isAnalyzing={isHistoryAnalyzing}
-            supplier={formData.supplier}
-            productName={formData.productName}
-            partName={formData.partName}
           />
         </div>
       )}

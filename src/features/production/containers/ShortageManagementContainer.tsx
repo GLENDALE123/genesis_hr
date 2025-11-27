@@ -175,25 +175,6 @@ const ShortageManagementContainerComponent: React.FC = () => {
     setDeleteConfirmState({ isOpen: false, request: null });
   }, []);
 
-  // 로딩 상태 - 초기 로딩 시에만 스켈레톤 표시
-  if (loading && requests.length === 0) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-10 w-64" />
-        <Skeleton className="h-96" />
-      </div>
-    );
-  }
-
-  // 에러 상태
-  if (error && requests.length === 0) {
-    return (
-      <div className="space-y-4">
-        <p className="text-destructive">데이터를 불러오는 중 오류가 발생했습니다: {error.message || '알 수 없는 오류'}</p>
-      </div>
-    );
-  }
-
   return (
     <>
       <div className="h-full flex flex-col space-y-6">
@@ -203,37 +184,45 @@ const ShortageManagementContainerComponent: React.FC = () => {
 
         {/* 메인 콘텐츠 */}
         <div className="flex-1 min-h-0">
-          <ShortageManagementListView
-            requests={filteredRequests}
-            loading={loading}
-            statusFilter={statusFilter}
-            searchTerm={searchTerm}
-            selectedRequest={selectedRequest}
-            canManage={true}
-            canDelete={isAdmin(userProfile)}
-            onStatusFilterChange={setStatusFilter}
-            onSearchChange={setSearchTerm}
-            onSelectRequest={(request) => {
-              setSelectedRequest(request);
-              // URL 업데이트 (딥링크 지원)
-              const params = new URLSearchParams(searchParams.toString());
-              params.set('requestId', request.id);
-              navigate(`${pathname}?${params.toString()}`, { replace: true });
-            }}
-            onCloseDetail={() => {
-              // URL을 먼저 업데이트
-              if (searchParams.get('requestId')) {
+          {loading && requests.length === 0 ? (
+            <Skeleton className="h-96 w-full" />
+          ) : error && requests.length === 0 ? (
+            <div className="space-y-4">
+              <p className="text-destructive">데이터를 불러오는 중 오류가 발생했습니다: {error.message || '알 수 없는 오류'}</p>
+            </div>
+          ) : (
+            <ShortageManagementListView
+              requests={filteredRequests}
+              loading={loading}
+              statusFilter={statusFilter}
+              searchTerm={searchTerm}
+              selectedRequest={selectedRequest}
+              canManage={true}
+              canDelete={isAdmin(userProfile)}
+              onStatusFilterChange={setStatusFilter}
+              onSearchChange={setSearchTerm}
+              onSelectRequest={(request) => {
+                setSelectedRequest(request);
+                // URL 업데이트 (딥링크 지원)
                 const params = new URLSearchParams(searchParams.toString());
-                params.delete('requestId');
-                const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
-                navigate(newUrl, { replace: true });
-              }
-              // 상태 업데이트 - 모달 닫기
-              setSelectedRequest(null);
-            }}
-            onStatusUpdate={handleStatusUpdate}
-            onDelete={handleDeleteClick}
-          />
+                params.set('requestId', request.id);
+                navigate(`${pathname}?${params.toString()}`, { replace: true });
+              }}
+              onCloseDetail={() => {
+                // URL을 먼저 업데이트
+                if (searchParams.get('requestId')) {
+                  const params = new URLSearchParams(searchParams.toString());
+                  params.delete('requestId');
+                  const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+                  navigate(newUrl, { replace: true });
+                }
+                // 상태 업데이트 - 모달 닫기
+                setSelectedRequest(null);
+              }}
+              onStatusUpdate={handleStatusUpdate}
+              onDelete={handleDeleteClick}
+            />
+          )}
         </div>
       </div>
 

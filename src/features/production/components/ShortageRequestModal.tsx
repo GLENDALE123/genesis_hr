@@ -13,6 +13,7 @@ import { Label } from '@/shared/components/ui/label';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { PackagingReport, ShortageRequest } from '@/features/production/types';
 import { AlertCircle } from 'lucide-react';
+import { getOrderQuantityTotal } from '@/features/production/utils/orderQuantity';
 
 interface ShortageRequestModalProps {
   isOpen: boolean;
@@ -34,6 +35,7 @@ export const ShortageRequestModal: React.FC<ShortageRequestModalProps> = ({
   const [reason, setReason] = useState('');
   const [quantity, setQuantity] = useState('');
   const [error, setError] = useState('');
+  const totalOrderQuantity = getOrderQuantityTotal(report);
 
   // 모달이 열릴 때 기존 데이터 로드
   useEffect(() => {
@@ -128,7 +130,9 @@ export const ShortageRequestModal: React.FC<ShortageRequestModalProps> = ({
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
               <div>
                 <span className="font-medium text-muted-foreground">발주수량:</span>
-                <span className="ml-2">{(report.orderQuantity && report.orderQuantity.toLocaleString()) || '-'}</span>
+                <span className="ml-2">
+                  {totalOrderQuantity != null ? totalOrderQuantity.toLocaleString() : '-'}
+                </span>
               </div>
               <div>
                 <span className="font-medium text-muted-foreground">투입수량:</span>

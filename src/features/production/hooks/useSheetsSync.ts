@@ -4,7 +4,7 @@
 
 import { useState, useCallback } from 'react';
 import { useAuthStore } from '@/features/auth/store/authStore';
-import { useIsAdmin } from '@/features/auth/hooks';
+import { useCanSyncProductionSchedules } from '@/features/auth/hooks';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
 import { syncSpreadsheetToFirestore, SyncResult } from '@/features/production/services/sheetsSyncService';
 import { toast } from 'sonner';
@@ -14,11 +14,11 @@ export const useSheetsSync = () => {
   const [error, setError] = useState<Error | null>(null);
   const [result, setResult] = useState<SyncResult | null>(null);
   const { user, userProfile } = useAuthStore();
-  const isAdmin = useIsAdmin();
+  const canSyncSchedules = useCanSyncProductionSchedules();
 
   const sync = useCallback(async () => {
-    if (!isAdmin) {
-      toast.error('관리자만 동기화할 수 있습니다.');
+    if (!canSyncSchedules) {
+      toast.error('동기화 권한이 없습니다.');
       return;
     }
 
@@ -29,7 +29,10 @@ export const useSheetsSync = () => {
 
     // 스프레드시트 ID는 환경 변수 또는 기본값 사용
     const spreadsheetId = import.meta.env.VITE_GOOGLE_SPREADSHEET_ID;
-    const sheetName = import.meta.env.VITE_GOOGLE_SHEET_NAME || undefined;
+    const sheetName =
+      import.meta.env.VITE_PRODUCTION_SCHEDULE_SHEET_NAME ||
+      import.meta.env.VITE_GOOGLE_SHEET_NAME ||
+      undefined;
 
     if (!spreadsheetId) {
       toast.error('스프레드시트 ID가 설정되지 않았습니다. 환경 변수 VITE_GOOGLE_SPREADSHEET_ID를 확인해주세요.');
@@ -63,7 +66,7 @@ export const useSheetsSync = () => {
     } finally {
       setLoading(false);
     }
-  }, [isAdmin, user, userProfile]);
+  }, [canSyncSchedules, user, userProfile]);
 
   return {
     sync,

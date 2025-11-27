@@ -38,17 +38,6 @@ export const AppearanceSettings: React.FC = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <LoadingSpinner 
-        label="화면 설정을 불러오는 중..." 
-        loadingVariant="default"
-        className="h-64"
-        size="lg"
-      />
-    );
-  }
-
   return (
     <div className="space-y-3 md:space-y-6">
       {/* 테마 설정 */}

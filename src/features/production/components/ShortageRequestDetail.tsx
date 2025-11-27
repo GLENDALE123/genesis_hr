@@ -6,6 +6,7 @@ import { Badge } from '@/shared/components/ui/badge';
 import { ProcessingHistory } from '@/shared/components/common/ProcessingHistory';
 import { ShortageRequest } from '@/features/production/types';
 import { X } from 'lucide-react';
+import { getOrderQuantityTotal } from '@/features/production/utils/orderQuantity';
 
 interface ShortageRequestDetailProps {
   open: boolean;
@@ -38,6 +39,7 @@ export const ShortageRequestDetail: React.FC<ShortageRequestDetailProps> = ({
 }) => {
   if (!request) return null;
   const isCompleted = request.status === 'completed';
+  const totalOrderQuantity = getOrderQuantityTotal(request);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -103,7 +105,10 @@ export const ShortageRequestDetail: React.FC<ShortageRequestDetailProps> = ({
           <div>
             <span className="font-medium text-muted-foreground text-sm">생산 수량 정보:</span>
             <div className="mt-2 p-3 bg-muted rounded-lg space-y-2 text-sm">
-              <p><strong>발주수량:</strong> {(request.orderQuantity && request.orderQuantity.toLocaleString()) || '-'}</p>
+              <p>
+                <strong>발주수량:</strong>{' '}
+                {totalOrderQuantity != null ? totalOrderQuantity.toLocaleString() : '-'}
+              </p>
               <p><strong>투입수량:</strong> {(request.inputQuantity && request.inputQuantity.toLocaleString()) || '-'}</p>
               <p><strong>양품수량:</strong> {(request.goodQuantity && request.goodQuantity.toLocaleString()) || '-'}</p>
               <p><strong>불량수량:</strong> {(request.defectQuantity && request.defectQuantity.toLocaleString()) || '-'}</p>

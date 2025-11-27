@@ -32,6 +32,9 @@ export interface ProcessCoat {
 export interface PackagingReport {
   id: string;
   createdAt: string;
+  updatedAt?: string;
+  lastSyncedAt?: string | null;
+  needsSheetSync?: boolean;
   workDate: string;
   author: {
     uid: string;
@@ -42,6 +45,7 @@ export interface PackagingReport {
   supplier: string;
   productName: string;
   partName: string;
+  orderQuantities?: number[];
   orderQuantity?: number;
   specification: string;
   lineRatio: string;
@@ -183,6 +187,7 @@ export interface ShortageRequest {
   productName: string;
   partName: string;
   specification: string;
+  orderQuantities?: number[];
   orderQuantity?: number;
   inputQuantity?: number;
   goodQuantity?: number;

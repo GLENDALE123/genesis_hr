@@ -11,6 +11,7 @@ import { CommentsService } from '@/shared/services/comments/commentsService';
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent } from '@/shared/components/ui/card';
 import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { ViewMode } from '../types';
 import { Tabs, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import { Table, Grid3X3, Kanban } from 'lucide-react';
@@ -367,13 +368,8 @@ export const JigManagementContainer: React.FC = () => {
 
       {/* 메인 콘텐츠 */}
       <div className="flex-1 pb-6 flex flex-col min-h-0">
-        {isLoading ? (
-          <LoadingSpinner 
-            label="로딩 중..." 
-            loadingVariant="card"
-            className="h-64"
-            size="lg"
-          />
+        {isLoading && requests.length === 0 ? (
+          <Skeleton className="flex-1 w-full" />
         ) : error ? (
           <div className="flex items-center justify-center h-64">
             <div className="text-center">

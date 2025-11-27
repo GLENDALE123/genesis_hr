@@ -1,8 +1,8 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useProductionSchedulesV0 } from '@/features/production/hooks/useProductionSchedulesV0';
 import { useSheetsSync } from '@/features/production/hooks/useSheetsSync';
 import { usePackagingReports } from '@/features/production/hooks/usePackagingReports';
-import { useIsAdmin } from '@/features/auth/hooks';
+import { useCanSyncProductionSchedules } from '@/features/auth/hooks';
 import {
   Table,
   TableBody,
@@ -72,7 +72,7 @@ interface ProductionScheduleListViewProps {
 export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProps> = ({
   onOpenUploadModal
 }) => {
-  const isAdmin = useIsAdmin();
+  const canSyncProductionSchedules = useCanSyncProductionSchedules();
   const { isSmartphone, isTablet } = useDeviceType();
   const isMobile = isSmartphone || isTablet;
 
@@ -294,8 +294,8 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
 
   // 동기화 핸들러
   const handleSync = async () => {
-    if (!isAdmin) {
-      toast.error('관리자만 동기화할 수 있습니다.');
+    if (!canSyncProductionSchedules) {
+      toast.error('동기화 권한이 없습니다.');
       return;
     }
     
@@ -354,7 +354,7 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
   const handleOpenSpreadsheet = () => {
     window.open(
       'https://docs.google.com/spreadsheets/d/1j36qASy8aiOoEaDEkzdjuWtJ2zCx7W-8ord6gheObVc/edit?gid=0#gid=0',
-      '_blank',
+      'production-schedule-spreadsheet', // 고유한 창 이름 (같은 이름의 창이 있으면 포커스만 이동)
       'noopener,noreferrer'
     );
   };
@@ -371,7 +371,7 @@ export const ProductionScheduleListView: React.FC<ProductionScheduleListViewProp
           <ExternalLink className="mr-2 h-4 w-4" />
           Google 스프레드시트 열기
         </Button>
-        {isAdmin && (
+        {canSyncProductionSchedules && (
           <Button 
             onClick={handleSync} 
             disabled={syncLoading}

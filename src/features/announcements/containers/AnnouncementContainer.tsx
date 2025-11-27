@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/shared/components/ui/alert-dialog';
 import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { toast } from 'sonner';
 
 import { AnnouncementService } from '../services/announcementService';
@@ -174,16 +175,6 @@ export const AnnouncementContainer: React.FC<AnnouncementContainerProps> = ({
     setEditingAnnouncement(null);
   };
 
-  if (isLoading) {
-    return (
-      <LoadingSpinner 
-        loadingVariant="card"
-        label="공지사항을 불러오는 중..."
-        size="lg"
-      />
-    );
-  }
-
   return (
     <div className={`${className || ''}`}>
       <div className="space-y-6">
@@ -234,7 +225,23 @@ export const AnnouncementContainer: React.FC<AnnouncementContainerProps> = ({
       </Card>
 
       {/* 공지사항 목록 */}
-      {filteredAnnouncements.length === 0 ? (
+      {isLoading && announcements.length === 0 ? (
+        <div className="space-y-4">
+          {viewMode === 'card' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <Skeleton key={i} className="h-64 w-full" />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {[...Array(5)].map((_, i) => (
+                <Skeleton key={i} className="h-20 w-full" />
+              ))}
+            </div>
+          )}
+        </div>
+      ) : filteredAnnouncements.length === 0 ? (
         <Card>
           <CardContent className="text-center py-12">
             <div className="text-muted-foreground">

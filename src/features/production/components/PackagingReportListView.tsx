@@ -23,6 +23,7 @@ import { PackagingReport, ProductionReportFilter, ShortageRequest } from '@/feat
 import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
 import { PRODUCTION_LINE_OPTIONS } from '@/features/production/constants';
 import { useIsSmartphone, useIsTablet } from '@/shared/hooks/use-device';
+import { getOrderQuantityTotal } from '@/features/production/utils/orderQuantity';
 
 // 테이블 행 컴포넌트 (메모이제이션)
 interface ReportRowProps {
@@ -77,6 +78,7 @@ const ReportRow = React.memo<ReportRowProps>(({
     : report.startTime 
     ? 'bg-[hsl(var(--status-inprogress))] text-[hsl(var(--status-inprogress-foreground))]'
     : 'bg-[hsl(var(--status-requested))] text-[hsl(var(--status-requested-foreground))]';
+  const orderQuantityTotal = getOrderQuantityTotal(report);
 
   const handleRowClick: React.MouseEventHandler<HTMLTableRowElement> = (e) => {
     if (!isSmallScreen) return;
@@ -119,7 +121,9 @@ const ReportRow = React.memo<ReportRowProps>(({
         {report.productName}{report.partName ? '/' + report.partName : ''}
       </TableCell>
       {/* 발주수량 */}
-      <TableCell className="px-1.5 py-2 whitespace-nowrap text-right">{(report.orderQuantity && report.orderQuantity.toLocaleString()) || '-'}</TableCell>
+      <TableCell className="px-1.5 py-2 whitespace-nowrap text-right">
+        {orderQuantityTotal != null ? orderQuantityTotal.toLocaleString() : '-'}
+      </TableCell>
       {/* 사양 */}
       <TableCell className="px-1.5 py-2 whitespace-nowrap">{report.specification || '-'}</TableCell>
       {/* 공정조건 */}
@@ -276,6 +280,7 @@ const ReportRowWithPressState = React.memo<ReportRowProps>((props) => {
     : report.startTime 
     ? 'bg-[hsl(var(--status-inprogress))] text-[hsl(var(--status-inprogress-foreground))]'
     : 'bg-[hsl(var(--status-requested))] text-[hsl(var(--status-requested-foreground))]';
+  const orderQuantityTotal = getOrderQuantityTotal(report);
 
   const [isPressed, setIsPressed] = React.useState(false);
   const handlePointerDown = () => setIsPressed(true);
@@ -317,7 +322,9 @@ const ReportRowWithPressState = React.memo<ReportRowProps>((props) => {
         {report.productName}{report.partName ? '/' + report.partName : ''}
       </TableCell>
       {/* 발주수량 */}
-      <TableCell className="px-1.5 py-2 whitespace-nowrap text-right">{(report.orderQuantity && report.orderQuantity.toLocaleString()) || '-'}</TableCell>
+      <TableCell className="px-1.5 py-2 whitespace-nowrap text-right">
+        {orderQuantityTotal != null ? orderQuantityTotal.toLocaleString() : '-'}
+      </TableCell>
       {/* 사양 */}
       <TableCell className="px-1.5 py-2 whitespace-nowrap">{report.specification || '-'}</TableCell>
       {/* 공정조건 */}

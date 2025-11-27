@@ -222,17 +222,6 @@ export const NotificationSettings: React.FC = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <LoadingSpinner 
-        label="알림 설정을 불러오는 중..." 
-        loadingVariant="card"
-        className="h-64"
-        size="lg"
-      />
-    );
-  }
-
   return (
     <div className="space-y-3 md:space-y-6">
       {/* 알림 권한 상태 */}

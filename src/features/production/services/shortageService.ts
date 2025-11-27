@@ -33,6 +33,10 @@ export const createShortageRequest = async (
   try {
     const now = new Date().toISOString();
     
+    const orderQuantityList = (report.orderQuantities && report.orderQuantities.length > 0)
+      ? report.orderQuantities
+      : (typeof report.orderQuantity === 'number' ? [report.orderQuantity] : []);
+
     const shortageRequest: Omit<ShortageRequest, 'id'> = {
       createdAt: now,
       author,
@@ -44,7 +48,10 @@ export const createShortageRequest = async (
       productName: report.productName,
       partName: report.partName,
       specification: report.specification,
-      orderQuantity: report.orderQuantity,
+      orderQuantities: orderQuantityList,
+      orderQuantity: orderQuantityList.length > 0
+        ? orderQuantityList.reduce((acc, qty) => acc + qty, 0)
+        : report.orderQuantity,
       inputQuantity: report.inputQuantity,
       goodQuantity: report.goodQuantity,
       defectQuantity: report.defectQuantity,

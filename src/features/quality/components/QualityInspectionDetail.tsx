@@ -229,10 +229,10 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
   // AI 이력 분석 훅 (발주처, 제품명, 부속명 기반 - 발주번호 무관하게 모든 이력 조회)
   const {
     inspections: historyInspections,
-    qualityIssues: historyQualityIssues,
     summary: historySummary,
     isLoading: isHistoryLoading,
-    isAnalyzing: isHistoryAnalyzing
+    isAnalyzing: isHistoryAnalyzing,
+    refreshAnalysis: refreshHistoryAnalysis,
   } = useInspectionHistory({
     supplier: currentGroup?.common.supplier || '',
     productName: currentGroup?.common.productName || '',
@@ -342,14 +342,11 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
               <div className="w-1/4 border-r pr-4 overflow-y-auto">
                 <InspectionHistorySummary
                   inspections={historyInspections}
-                  qualityIssues={historyQualityIssues}
                   summary={historySummary}
                   isLoading={isHistoryLoading}
                   isAnalyzing={isHistoryAnalyzing}
-                  supplier={currentGroup?.common.supplier}
-                  productName={currentGroup?.common.productName}
-                  partName={currentGroup?.common.partName}
                   onInspectionClick={handleInspectionClick}
+                  onRefresh={refreshHistoryAnalysis}
                 />
               </div>
               

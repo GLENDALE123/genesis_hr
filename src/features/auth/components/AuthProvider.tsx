@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { useAuthStore } from '../store';
 import { useNavigate } from 'react-router-dom';
 // 자동 로그아웃은 Firebase Functions에서 처리하므로 dateUtils import 제거
@@ -17,6 +17,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const navigate = useNavigate();
   const sessionUnsubscribeRef = useRef<(() => void) | null>(null);
   const sessionRegistrationTimeRef = useRef<number>(0); // 현재 기기 세션 등록 시간
+  const cleanupSessionListener = useCallback(() => {
+    if (sessionUnsubscribeRef.current) {
+      sessionUnsubscribeRef.current();
+      sessionUnsubscribeRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     // 스크립트에서 이미 초기 상태가 설정되었다면 즉시 Firebase 인증 확인
@@ -35,10 +41,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // 로그인된 사용자가 없거나 로딩 중이면 스킵
     if (isLoading || !user) {
       // 기존 세션 리스너 정리
-      if (sessionUnsubscribeRef.current) {
-        sessionUnsubscribeRef.current();
-        sessionUnsubscribeRef.current = null;
-      }
+      cleanupSessionListener();
       return;
     }
 
@@ -80,6 +83,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // session이 null이면 세션이 삭제된 것 (Firebase Functions에서 새벽 1시 자동 로그아웃 또는 수동 삭제)
         if (!session) {
           try {
+            cleanupSessionListener();
             console.log('🔄 [AuthProvider] 세션 삭제 감지 - 자동 로그아웃 실행 (새벽 1시 또는 수동 삭제)');
             toast.warning('세션이 만료되어 로그아웃되었습니다.');
             
@@ -119,6 +123,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             }
             
             try {
+              cleanupSessionListener();
               console.log('🔄 [AuthProvider] 다른 기기에서 로그인 감지 - 자동 로그아웃 실행');
               toast.warning('다른 기기에서 로그인되어 로그아웃되었습니다.');
               
@@ -140,12 +145,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     // cleanup: 컴포넌트 언마운트 또는 로그아웃 시 리스너 정리
     return () => {
-      if (sessionUnsubscribeRef.current) {
-        sessionUnsubscribeRef.current();
-        sessionUnsubscribeRef.current = null;
-      }
+      cleanupSessionListener();
     };
-  }, [user, isLoading, logout, navigate]);
+  }, [user, isLoading, logout, navigate, cleanupSessionListener]);
 
   // 자동 로그아웃은 Firebase Functions에서 처리
   // 새벽 1시에 Functions가 모든 세션을 삭제하면,

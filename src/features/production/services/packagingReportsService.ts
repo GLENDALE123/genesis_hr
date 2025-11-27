@@ -15,6 +15,7 @@ import { PackagingReport, PackagingFormData, ProductionStatus } from '@/features
 import { db } from '@/shared/services/firebase/config';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
 import { DailyReportNotificationService } from '@/shared/services/notificationService';
+import { parseOrderQuantityInput, sumOrderQuantities } from '@/features/production/utils/orderQuantity';
 
 // 기존 상태 계산 함수 (startTime, endTime 기반)
 const calculateStatus = (startTime: string, endTime: string): ProductionStatus => {
@@ -59,9 +60,17 @@ export class PackagingReportsService {
         return isNaN(parsed) ? null : parsed;
       };
 
+      const nowIso = new Date().toISOString();
+      const orderQuantityList = parseOrderQuantityInput(formData.orderQuantity);
+      const totalOrderQuantity =
+        sumOrderQuantities(orderQuantityList) ?? parseNumber(formData.orderQuantity);
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const reportData: any = {
-        createdAt: new Date().toISOString(),
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        lastSyncedAt: null,
+        needsSheetSync: true,
         workDate: formData.workDate,
         author: {
           uid: user.uid,
@@ -69,6 +78,7 @@ export class PackagingReportsService {
         },
         productionLine: formData.productionLine,
         orderNumbers: formData.orderNumbers.filter(num => num.trim() !== ''),
+        orderQuantities: orderQuantityList,
         supplier: formData.supplier || '',
         productName: formData.productName || '',
         partName: formData.partName || '',
@@ -80,7 +90,7 @@ export class PackagingReportsService {
         imageUrls: [],
         status: calculateStatus(formData.startTime || '', formData.endTime || ''), // 시간 기반 상태 계산
         // 숫자 필드들 (undefined 방지를 위해 null 사용)
-        orderQuantity: parseNumber(formData.orderQuantity),
+        orderQuantity: totalOrderQuantity,
         productionPerMinute: parseNumber(formData.productionPerMinute),
         uph: parseNumber(formData.uph),
         inputQuantity: parseNumber(formData.inputQuantity),
@@ -442,6 +452,10 @@ export class PackagingReportsService {
         ])
       );
 
+      const nowIso = new Date().toISOString();
+      cleanedData.updatedAt = nowIso;
+      cleanedData.needsSheetSync = true;
+
       await updateDoc(doc(db, 'packaging-reports', reportId), cleanedData);
       
       // 생산일보 수정 알림 전송 (user 정보가 있을 때만)
@@ -525,7 +539,9 @@ export class PackagingReportsService {
 
       // 상태 업데이트
       await updateDoc(doc(db, 'packaging-reports', reportId), {
-        status: newStatus
+        status: newStatus,
+        updatedAt: new Date().toISOString(),
+        needsSheetSync: true,
       });
 
       // 상태 변경 알림 전송

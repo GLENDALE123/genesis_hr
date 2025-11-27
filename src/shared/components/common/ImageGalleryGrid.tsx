@@ -33,7 +33,6 @@ export const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [cachedImages, setCachedImages] = useState<string[]>([]);
-  const [cachedImages, setCachedImages] = useState<string[]>([]);
 
   // 이미지 초기화 - Firebase Storage 크기 조정 쿼리 사용
   useEffect(() => {

@@ -125,28 +125,6 @@ export const JigMasterContainer: React.FC = () => {
     setIsSaving(false);
   }, []);
 
-  // 로딩 상태 - 초기 로딩 시에만 스켈레톤 표시
-  if (isLoading && filteredMasterItems.length === 0) {
-    return (
-      <div className="h-full flex flex-col space-y-4">
-        <Skeleton className="h-32 w-full" />
-        <Skeleton className="flex-1" />
-      </div>
-    );
-  }
-
-  // 에러 상태
-  if (error) {
-    return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          데이터를 불러오는 중 오류가 발생했습니다: {error.message}
-        </AlertDescription>
-      </Alert>
-    );
-  }
-
   return (
     <div className="h-full flex flex-col space-y-4 p-0">
       {/* 필터 패널 */}
@@ -167,12 +145,23 @@ export const JigMasterContainer: React.FC = () => {
       />
 
       {/* 지그 목록 테이블 */}
-      <JigMasterListView
-        jigs={filteredMasterItems}
-        onSelectJig={handleSelectJig}
-        currentUserProfile={currentUserProfile}
-        totalCount={filteredMasterItems.length}
-      />
+      {isLoading && filteredMasterItems.length === 0 ? (
+        <Skeleton className="flex-1 w-full" />
+      ) : error ? (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            데이터를 불러오는 중 오류가 발생했습니다: {error.message}
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <JigMasterListView
+          jigs={filteredMasterItems}
+          onSelectJig={handleSelectJig}
+          currentUserProfile={currentUserProfile}
+          totalCount={filteredMasterItems.length}
+        />
+      )}
 
       {/* 지그 상세 모달 */}
       <JigMasterDetail

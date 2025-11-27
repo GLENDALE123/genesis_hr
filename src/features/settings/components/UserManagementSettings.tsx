@@ -27,6 +27,7 @@ import {
 } from '@/shared/components/ui/alert-dialog';
 import { Search, Edit, Save, X } from 'lucide-react';
 import { Spinner } from '@/shared/components/ui/spinner';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useUserManagement } from '../hooks/useUserManagement';
 import { UserTableRow } from './UserTableRow';
@@ -107,17 +108,6 @@ export const UserManagementSettings: React.FC = () => {
     </>
   ), []);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Spinner className="size-4" />
-          유저 목록을 불러오는 중...
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-3 md:space-y-6">
       <Card>
@@ -182,59 +172,65 @@ export const UserManagementSettings: React.FC = () => {
           </div>
 
           {/* 유저 테이블 */}
-          <div className="border rounded-md overflow-x-auto">
-            <Table>
-              <TableHeader className="sticky top-[-16px] z-10">
-                <TableRow>
-                  <TableHead className="whitespace-nowrap">이메일</TableHead>
-                  <TableHead className="whitespace-nowrap">이름</TableHead>
-                  <TableHead className="whitespace-nowrap">직책</TableHead>
-                  <TableHead className="whitespace-nowrap">전화번호</TableHead>
-                  <TableHead className="whitespace-nowrap">역할</TableHead>
-                  <TableHead className="whitespace-nowrap">부서</TableHead>
-                  <TableHead className="whitespace-nowrap">최종 로그인</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">작업</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredUsers.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                      {searchQuery ? '검색 결과가 없습니다.' : '등록된 유저가 없습니다.'}
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredUsers.map((user) => (
-                    <UserTableRow
-                      key={user.uid}
-                      user={user}
-                      isEditMode={isEditMode}
-                      userData={getUserData(user)}
-                      isEdited={!!editedUsers[user.uid || '']}
-                      positionItems={positionItems}
-                      departmentItems={departmentItems}
-                      roleItems={roleItems}
-                      onFieldChange={handleUserFieldChange}
-                      onDelete={handleDeleteClick}
-                      currentUserId={currentUser?.uid}
-                      currentUserRole={userProfile?.role}
-                    />
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <div>
-              총 {users.length}명의 유저 (검색 결과: {filteredUsers.length}명)
-            </div>
-            {isEditMode && hasChanges && (
-              <div className="text-yellow-600 dark:text-yellow-500">
-                {Object.keys(editedUsers).length}명의 유저 정보가 변경되었습니다.
+          {isLoading ? (
+            <Skeleton className="h-96 w-full" />
+          ) : (
+            <>
+              <div className="border rounded-md overflow-x-auto">
+                <Table>
+                  <TableHeader className="sticky top-[-16px] z-10">
+                    <TableRow>
+                      <TableHead className="whitespace-nowrap">이메일</TableHead>
+                      <TableHead className="whitespace-nowrap">이름</TableHead>
+                      <TableHead className="whitespace-nowrap">직책</TableHead>
+                      <TableHead className="whitespace-nowrap">전화번호</TableHead>
+                      <TableHead className="whitespace-nowrap">역할</TableHead>
+                      <TableHead className="whitespace-nowrap">부서</TableHead>
+                      <TableHead className="whitespace-nowrap">최종 로그인</TableHead>
+                      <TableHead className="text-right whitespace-nowrap">작업</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredUsers.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                          {searchQuery ? '검색 결과가 없습니다.' : '등록된 유저가 없습니다.'}
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredUsers.map((user) => (
+                        <UserTableRow
+                          key={user.uid}
+                          user={user}
+                          isEditMode={isEditMode}
+                          userData={getUserData(user)}
+                          isEdited={!!editedUsers[user.uid || '']}
+                          positionItems={positionItems}
+                          departmentItems={departmentItems}
+                          roleItems={roleItems}
+                          onFieldChange={handleUserFieldChange}
+                          onDelete={handleDeleteClick}
+                          currentUserId={currentUser?.uid}
+                          currentUserRole={userProfile?.role}
+                        />
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
               </div>
-            )}
-          </div>
+
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <div>
+                  총 {users.length}명의 유저 (검색 결과: {filteredUsers.length}명)
+                </div>
+                {isEditMode && hasChanges && (
+                  <div className="text-yellow-600 dark:text-yellow-500">
+                    {Object.keys(editedUsers).length}명의 유저 정보가 변경되었습니다.
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 

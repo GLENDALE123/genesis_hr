@@ -10,6 +10,7 @@ import { WorkType } from '../types';
 import { ScheduleSummaryView } from '../components/ScheduleSummary';
 import { ScheduleAdminPanel } from '../components/ScheduleAdminPanel';
 import { LoadingSpinner } from '@/shared/components/common';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { Card, CardContent } from '@/shared/components/ui/card';
 
 export const WorkScheduleContainer: React.FC = () => {
@@ -75,13 +76,8 @@ export const WorkScheduleContainer: React.FC = () => {
 
           {/* 메인 영역 */}
           <div className="flex flex-col lg:flex-row gap-2 md:gap-4 pt-1 sm:pt-2 overflow-y-auto lg:overflow-hidden">
-            {isLoading ? (
-              <div className="flex-1 flex items-center justify-center">
-                <LoadingSpinner 
-                  size="lg"
-                  label="데이터를 불러오는 중..."
-                />
-              </div>
+            {isLoading && schedules.size === 0 ? (
+              <Skeleton className="flex-1 w-full" />
             ) : (
               <>
                 {view === 'year' ? (

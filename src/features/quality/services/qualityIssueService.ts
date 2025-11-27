@@ -309,15 +309,15 @@ export const subscribeToQualityIssuesByProductInfo = (
 
     let q = query(getCollectionRef());
 
-    // 조건 추가 (빈 값은 제외)
-    if (supplier && supplier.trim() !== '') {
-      q = query(q, where('supplier', '==', supplier.trim()));
+    // 조건 추가 (빈 값은 제외하되, 값 자체는 trim 하지 않음 - DB 데이터와 정확히 일치해야 함)
+    if (supplier) {
+      q = query(q, where('supplier', '==', supplier));
     }
-    if (productName && productName.trim() !== '') {
-      q = query(q, where('productName', '==', productName.trim()));
+    if (productName) {
+      q = query(q, where('productName', '==', productName));
     }
-    if (partName && partName.trim() !== '') {
-      q = query(q, where('partName', '==', partName.trim()));
+    if (partName) {
+      q = query(q, where('partName', '==', partName));
     }
 
     // 제한 (최대 500개)

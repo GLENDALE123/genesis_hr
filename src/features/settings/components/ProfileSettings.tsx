@@ -339,14 +339,6 @@ export const ProfileSettings: React.FC = () => {
     }
   }, [userProfile, user, settings.profile, isEditing]);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-muted-foreground">설정을 불러오는 중...</div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-3 md:space-y-6">
       {/* 프로필 사진 */}

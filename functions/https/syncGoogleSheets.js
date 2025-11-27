@@ -149,6 +149,7 @@ exports.syncGoogleSheets = onCall(
   {
     region: 'asia-northeast3',
     cors: true,
+    allowInvalidHTTPOrigins: true,
     secrets: [googleServiceAccountEmail, googlePrivateKey],
   },
   async (request) => {

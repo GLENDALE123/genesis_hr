@@ -33,7 +33,8 @@ import {
   Save,
   X,
   AlertCircle,
-  ArrowLeft
+  ArrowLeft,
+  RefreshCw
 } from 'lucide-react';
 import { PackagingReportListView } from '@/features/production/components/PackagingReportListView';
 import { PackagingReportForm } from '@/features/production/components/PackagingReportForm';
@@ -45,10 +46,12 @@ import { usePackagingReportFilters } from '@/features/production/hooks/usePackag
 import { 
   useAuthStore
 } from '@/features/auth';
+import { useCanSyncDailyReports } from '@/features/auth/hooks';
 import { PackagingReport, PackagingFormData, ShortageRequest } from '@/features/production/types';
 import { toast } from 'sonner';
 import { getFirebaseErrorMessage } from '@/shared/utils/firebaseErrorHandler';
 import { getUserDisplayName, isAdmin } from '@/shared/utils/userUtils';
+import { syncDailyReportsToSheets, type SyncDailyReportsResult } from '@/shared/services/google/sheetsService';
 import {
   createShortageRequest,
   updateShortageRequest,
@@ -57,11 +60,15 @@ import {
 } from '@/features/production/services/shortageService';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/shared/components/ui/alert';
+import { parseOrderQuantityInput, sumOrderQuantities } from '@/features/production/utils/orderQuantity';
 
 const PackagingDailyReportContainerComponent: React.FC = () => {
   const { user, userProfile } = useAuthStore();
+  const canSyncDailyReports = useCanSyncDailyReports();
   const { isSmartphone, isTablet } = useDeviceType();
   const isMobileOrTablet = isSmartphone || isTablet;
+  const [isSyncingSheets, setIsSyncingSheets] = useState(false);
+  const [dailyReportSyncResult, setDailyReportSyncResult] = useState<SyncDailyReportsResult | null>(null);
   
   // 컴포넌트 마운트 로그
   useEffect(() => {
@@ -175,6 +182,37 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
     setIsFormOpen(true);
   }, []);
 
+  const handleSyncDailyReports = useCallback(async () => {
+    if (!canSyncDailyReports) {
+      toast.error('동기화 권한이 없습니다.');
+      return;
+    }
+
+    const spreadsheetId = import.meta.env.VITE_GOOGLE_SPREADSHEET_ID || '';
+    const sheetName = import.meta.env.VITE_DAILY_REPORT_SHEET_NAME || '생산일보';
+
+    if (!spreadsheetId) {
+      toast.error('스프레드시트 ID가 설정되지 않았습니다. 환경 변수를 확인해주세요.');
+      return;
+    }
+
+    setIsSyncingSheets(true);
+    try {
+      const result = await syncDailyReportsToSheets({ spreadsheetId, sheetName });
+      setDailyReportSyncResult(result);
+
+      const summary = `신규 ${result.inserted}건 • 갱신 ${result.updated}건 • 스킵 ${result.skipped}건`;
+      toast.success(`"${result.sheetName}" 시트로 동기화되었습니다.`, {
+        description: summary,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '알 수 없는 오류';
+      toast.error(`동기화 실패: ${message}`);
+    } finally {
+      setIsSyncingSheets(false);
+    }
+  }, [canSyncDailyReports]);
+
   const handleEditReport = useCallback((report: PackagingReport) => {
     setSelectedReport(report);
     setIsEditMode(true);
@@ -252,8 +290,20 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
           }))
         };
 
+        const parsedOrderQuantities = parseOrderQuantityInput(formData.orderQuantity);
+        updateData.orderQuantities = parsedOrderQuantities;
+
+        if (parsedOrderQuantities.length > 0) {
+          const totalOrderQuantity = sumOrderQuantities(parsedOrderQuantities);
+          updateData.orderQuantity = totalOrderQuantity ?? undefined;
+        } else if (formData.orderQuantity) {
+          const fallback = parseInt(formData.orderQuantity.replace(/[^0-9]/g, ''), 10);
+          updateData.orderQuantity = Number.isNaN(fallback) ? undefined : fallback;
+        } else {
+          updateData.orderQuantity = undefined;
+        }
+
         // 숫자 필드는 값이 있을 때만 추가 (undefined 방지)
-        if (formData.orderQuantity) updateData.orderQuantity = parseInt(formData.orderQuantity);
         if (formData.productionPerMinute) updateData.productionPerMinute = parseInt(formData.productionPerMinute);
         if (formData.uph) updateData.uph = parseInt(formData.uph);
         if (formData.inputQuantity) updateData.inputQuantity = parseInt(formData.inputQuantity);
@@ -487,31 +537,6 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
     }
   }, [error]);
 
-  // 로딩 상태 - 초기 로딩 시에만 스켈레톤 표시
-  if (loading && reports.length === 0) {
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-10 w-64" />
-          <Skeleton className="h-10 w-32" />
-        </div>
-        <Skeleton className="h-96" />
-      </div>
-    );
-  }
-
-  // 에러 상태
-  if (error && reports.length === 0) {
-    return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          데이터를 불러오는 중 오류가 발생했습니다: {error.message || '알 수 없는 오류'}
-        </AlertDescription>
-      </Alert>
-    );
-  }
-
   return (
     <>
       <div className="h-full md:h-full min-h-full flex flex-col space-y-6 pb-6">
@@ -519,22 +544,27 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
         <div className="flex items-center justify-end gap-4 flex-shrink-0">
           {/* 우측: 액션 버튼들 */}
           <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="hidden md:flex"
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              엑셀 업로드
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              className="hidden md:flex"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              엑셀 다운로드
-            </Button>
+            {canSyncDailyReports && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleSyncDailyReports}
+                disabled={isSyncingSheets}
+                className="hidden md:flex"
+              >
+                {isSyncingSheets ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    동기화 중...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Google 시트 동기화
+                  </>
+                )}
+              </Button>
+            )}
             <Button 
               onClick={handleCreateReport}
             >
@@ -542,25 +572,32 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
               생산일보 등록
             </Button>
             
-            {/* 모바일: 엑셀 아이콘만 표시 */}
-            <div className="flex items-center gap-2 md:hidden">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="p-2"
-              >
-                <Upload className="h-4 w-4" />
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="p-2"
-              >
-                <Download className="h-4 w-4" />
-              </Button>
-            </div>
+            {/* 모바일: 동기화 버튼만 아이콘으로 표시 */}
+            {canSyncDailyReports && (
+              <div className="md:hidden">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="p-2"
+                  onClick={handleSyncDailyReports}
+                  disabled={isSyncingSheets}
+                >
+                  <RefreshCw className={`h-4 w-4 ${isSyncingSheets ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
+            )}
           </div>
         </div>
+
+        {canSyncDailyReports && dailyReportSyncResult && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              최근 동기화: 신규 {dailyReportSyncResult.inserted}건, 갱신 {dailyReportSyncResult.updated}건,
+              스킵 {dailyReportSyncResult.skipped}건 (시트: {dailyReportSyncResult.sheetName})
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* 선택된 항목 배너 */}
         {selectedReportIds.size > 0 && (
@@ -589,38 +626,49 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
 
         {/* 메인 콘텐츠 - 필터링된 목록 표시 */}
         <div className="flex-1 min-h-0 flex flex-col">
-          <PackagingReportListView
-            reports={filteredReports}
-            loading={loading}
-            error={error}
-            filters={filters}
-            searchTerm={searchTerm}
-            isSummaryVisible={isSummaryVisible}
-            activeQuickFilter={activeQuickFilter}
-            summaryData={summaryData}
-            byLineGroup1={byLineGroup1}
-            byLineGroup2={byLineGroup2}
-            selectedReportIds={selectedReportIds}
-            isAllSelected={isAllSelected}
-            isIndeterminate={isIndeterminate}
-            onEdit={handleEditReport}
-            onDelete={handleDeleteReport}
-            onFilterChange={handleFilterChange}
-            onQuickDateFilter={handleQuickDateFilter}
-            onSearchChange={handleSearchChange}
-            onClearFilters={clearFilters}
-            onSummaryToggle={toggleSummary}
-            onRefetch={refetch}
-            onOpenProcessConditions={handleOpenProcessConditions}
-            onOpenMemo={handleOpenMemo}
-            onOpenShortageRequest={handleOpenShortageRequest}
-            onToggleReportSelection={handleToggleReportSelection}
-            onSelectAll={handleSelectAll}
-            shortageRequestsMap={shortageRequestsMap}
-            canManage={true}
-            canUpdate={true}
-            canDelete={isAdmin(userProfile)}
-          />
+          {loading && reports.length === 0 ? (
+            <Skeleton className="h-96 w-full" />
+          ) : error && reports.length === 0 ? (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                데이터를 불러오는 중 오류가 발생했습니다: {error.message || '알 수 없는 오류'}
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <PackagingReportListView
+              reports={filteredReports}
+              loading={loading}
+              error={error}
+              filters={filters}
+              searchTerm={searchTerm}
+              isSummaryVisible={isSummaryVisible}
+              activeQuickFilter={activeQuickFilter}
+              summaryData={summaryData}
+              byLineGroup1={byLineGroup1}
+              byLineGroup2={byLineGroup2}
+              selectedReportIds={selectedReportIds}
+              isAllSelected={isAllSelected}
+              isIndeterminate={isIndeterminate}
+              onEdit={handleEditReport}
+              onDelete={handleDeleteReport}
+              onFilterChange={handleFilterChange}
+              onQuickDateFilter={handleQuickDateFilter}
+              onSearchChange={handleSearchChange}
+              onClearFilters={clearFilters}
+              onSummaryToggle={toggleSummary}
+              onRefetch={refetch}
+              onOpenProcessConditions={handleOpenProcessConditions}
+              onOpenMemo={handleOpenMemo}
+              onOpenShortageRequest={handleOpenShortageRequest}
+              onToggleReportSelection={handleToggleReportSelection}
+              onSelectAll={handleSelectAll}
+              shortageRequestsMap={shortageRequestsMap}
+              canManage={true}
+              canUpdate={true}
+              canDelete={isAdmin(userProfile)}
+            />
+          )}
         </div>
       </div>
 

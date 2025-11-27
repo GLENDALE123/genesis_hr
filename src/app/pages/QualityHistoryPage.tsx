@@ -82,32 +82,6 @@ export default function QualityHistoryPage() {
     }
   };
 
-  // 로딩 상태 - 초기 로딩 시에만 스켈레톤 표시
-  if (isLoading && filteredGroupedInspections.length === 0) {
-    return (
-      <ProtectedRoute>
-        <div className="space-y-4">
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-96" />
-        </div>
-      </ProtectedRoute>
-    );
-  }
-
-  // 에러 상태
-  if (error) {
-    return (
-      <ProtectedRoute>
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            데이터를 불러오는 중 오류가 발생했습니다: {error.message}
-          </AlertDescription>
-        </Alert>
-      </ProtectedRoute>
-    );
-  }
-
   return (
     <ProtectedRoute>
       <div className="h-full flex flex-col space-y-4 p-0">
@@ -129,14 +103,25 @@ export default function QualityHistoryPage() {
       />
 
       {/* 검사 테이블 */}
-      <QualityInspectionTable
-        groupedData={filteredGroupedInspections}
-        isLoading={isLoading}
-        onSelectGroup={(group, initialTab) => {
-          setSelectedGroup(group);
-          setSelectedInitialTab(initialTab);
-        }}
-      />
+      {isLoading && filteredGroupedInspections.length === 0 ? (
+        <Skeleton className="flex-1 w-full" />
+      ) : error ? (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            데이터를 불러오는 중 오류가 발생했습니다: {error.message}
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <QualityInspectionTable
+          groupedData={filteredGroupedInspections}
+          isLoading={isLoading}
+          onSelectGroup={(group, initialTab) => {
+            setSelectedGroup(group);
+            setSelectedInitialTab(initialTab);
+          }}
+        />
+      )}
 
       {/* 상세 모달 */}
       <QualityInspectionDetail

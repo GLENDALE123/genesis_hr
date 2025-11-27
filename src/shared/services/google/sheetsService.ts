@@ -84,3 +84,36 @@ export const readSpreadsheetWithHeaders = async (
     throw error;
   }
 };
+
+// =====================================================================
+// 생산일보 → Google Sheets 동기화
+// =====================================================================
+
+export interface SyncDailyReportsPayload {
+  spreadsheetId: string;
+  sheetName?: string;
+  forceFullSync?: boolean;
+}
+
+export interface SyncDailyReportsResult {
+  success: boolean;
+  sheetName: string;
+  inserted: number;
+  updated: number;
+  skipped: number;
+  totalReports: number;
+  forceFullSync: boolean;
+  message?: string;
+}
+
+export const syncDailyReportsToSheets = async (
+  payload: SyncDailyReportsPayload
+): Promise<SyncDailyReportsResult> => {
+  if (!functions) {
+    throw new Error('Firebase Functions가 초기화되지 않았습니다.');
+  }
+
+  const callable = httpsCallable(functions, 'syncDailyReportsToSheets');
+  const result = await callable(payload);
+  return result.data as SyncDailyReportsResult;
+};

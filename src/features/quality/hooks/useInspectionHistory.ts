@@ -20,6 +20,7 @@ interface UseInspectionHistoryReturn {
   isLoading: boolean;
   isAnalyzing: boolean;
   error: Error | null;
+  refreshAnalysis: () => Promise<void>;
 }
 
 /**
@@ -38,6 +39,8 @@ export function useInspectionHistory({
   const [isLoading, setIsLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  // 강제 새로고침 상태 (트리거용)
+  const [forceRefreshTrigger, setForceRefreshTrigger] = useState(0);
   const isMountedRef = useRef(true);
 
   useEffect(() => {
@@ -158,6 +161,13 @@ export function useInspectionHistory({
     };
   }, [enabled, debouncedSupplier, debouncedProductName, debouncedPartName]);
 
+  // 분석 새로고침 함수
+  const refreshAnalysis = useCallback(async () => {
+    if (!inspections.length) return;
+    // 트리거 값을 변경하여 useEffect가 다시 실행되도록 함
+    setForceRefreshTrigger(prev => prev + 1);
+  }, [inspections.length]);
+
   // Gemini API 분석 (이력 조회 후 1초 추가 지연)
   useEffect(() => {
     if (!enabled || inspections.length === 0) {
@@ -174,12 +184,16 @@ export function useInspectionHistory({
       setError(null);
 
       try {
+        // forceRefreshTrigger가 0보다 크면 강제 새로고침으로 간주
+        const forceRefresh = forceRefreshTrigger > 0;
+        
         const analysisResult = await analyzeInspectionHistory(
           supplier || '',
           productName || '',
           partName || '',
           inspections,
-          qualityIssues
+          qualityIssues,
+          forceRefresh
         );
         
         if (!isMountedRef.current || cancelled) return;
@@ -199,7 +213,7 @@ export function useInspectionHistory({
     return () => {
       cancelled = true;
     };
-  }, [enabled, inspections, qualityIssues, supplier, productName, partName]);
+  }, [enabled, inspections, qualityIssues, supplier, productName, partName, forceRefreshTrigger]);
 
   return {
     inspections,
@@ -208,6 +222,7 @@ export function useInspectionHistory({
     isLoading,
     isAnalyzing,
     error,
+    refreshAnalysis,
   };
 }
 
