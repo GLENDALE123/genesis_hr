@@ -104,6 +104,7 @@ export interface SyncDailyReportsResult {
   totalReports: number;
   forceFullSync: boolean;
   message?: string;
+  error?: string;
 }
 
 export const syncDailyReportsToSheets = async (
@@ -113,7 +114,47 @@ export const syncDailyReportsToSheets = async (
     throw new Error('Firebase Functions가 초기화되지 않았습니다.');
   }
 
-  const callable = httpsCallable(functions, 'syncDailyReportsToSheets');
-  const result = await callable(payload);
-  return result.data as SyncDailyReportsResult;
+  try {
+    const { auth } = await import('@/shared/services/firebase/config');
+    
+    let authToken = '';
+    if (auth) {
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        authToken = await currentUser.getIdToken();
+      }
+    }
+
+    const functionUrl = `https://asia-northeast3-hs-jig-b2093.cloudfunctions.net/syncDailyReportsToSheetsV3`;
+    
+    const response = await fetch(functionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json() as SyncDailyReportsResult;
+    
+    if (!result.success) {
+      throw new Error(result.message || result.error || '동기화 실패');
+    }
+    
+    return result;
+  } catch (error: unknown) {
+    console.error('❌ [SheetsService] 동기화 함수 호출 실패:', error);
+    
+    if (error instanceof Error) {
+      throw error;
+    }
+    
+    throw new Error('알 수 없는 오류가 발생했습니다.');
+  }
 };

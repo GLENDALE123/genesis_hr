@@ -7,6 +7,7 @@ import { AuthService } from '@/features/auth/services';
 import { UserProfile } from '@/features/auth/types';
 import { usePermissionsStore } from './permissionsStore';
 import { auth } from '@/shared/services/firebase/config';
+import { UserStatusService } from '@/features/chat/services/userStatusService';
 
 // 전역 윈도우 객체에 인증 초기 상태 타입 추가
 declare global {
@@ -111,6 +112,16 @@ export const useAuthStore = create<AuthState & AuthActions>()(
               } catch (sessionError) {
                 console.error('⚠️ [AuthStore] 세션 삭제 실패:', sessionError);
                 // 세션 삭제 실패해도 로그아웃은 진행
+              }
+              
+              // ✅ 사용자 상태를 오프라인으로 설정
+              try {
+                await UserStatusService.setOffline(currentUser.uid);
+              } catch (statusError) {
+                if (process.env.NODE_ENV === 'development') {
+                  console.warn('⚠️ [AuthStore] 사용자 상태 오프라인 설정 실패:', statusError);
+                }
+                // 상태 설정 실패해도 로그아웃은 진행
               }
             }
             

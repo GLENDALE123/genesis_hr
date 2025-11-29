@@ -365,6 +365,7 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
     supplier: formData.supplier,
     productName: formData.productName,
     partName: formData.partName,
+    specification: formData.specification,
     enabled: isCreateMode && isOpen, // 생성 모드이고 모달이 열려있을 때만 활성화
   });
 

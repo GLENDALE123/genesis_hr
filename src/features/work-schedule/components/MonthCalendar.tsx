@@ -111,7 +111,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
       </div>
 
       {/* 달력 그리드 - 반응형 높이 */}
-      <div className="flex-1 grid grid-rows-6 gap-px bg-border overflow-y-auto">
+      <div className="flex-1 grid grid-rows-6 gap-px bg-border overflow-y-auto border-t">
         {calendar.map((week: CalendarDay[], weekIndex: number) => (
           <div key={weekIndex} className="grid grid-cols-7 gap-px">
             {week.map((dayData: CalendarDay) => {

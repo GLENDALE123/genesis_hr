@@ -282,13 +282,14 @@ export const subscribeToQualityIssues = (
 };
 
 /**
- * 발주처, 제품명, 부속명으로 품질이슈 조회 (실시간 구독)
+ * 발주처, 제품명, 부속명, 사양으로 품질이슈 조회 (실시간 구독)
  * 최소 2개 이상의 조건이 입력되어야 조회 수행
  */
 export const subscribeToQualityIssuesByProductInfo = (
   supplier: string | undefined,
   productName: string | undefined,
   partName: string | undefined,
+  specification: string | undefined,
   callback: (issues: QualityIssue[]) => void,
   onError?: (error: Error) => void
 ) => {
@@ -298,7 +299,7 @@ export const subscribeToQualityIssuesByProductInfo = (
     }
 
     // 최소 2개 이상의 조건이 입력되어야 조회 수행
-    const conditions = [supplier, productName, partName].filter(
+    const conditions = [supplier, productName, partName, specification].filter(
       (value) => value && value.trim() !== ''
     );
 
@@ -318,6 +319,9 @@ export const subscribeToQualityIssuesByProductInfo = (
     }
     if (partName) {
       q = query(q, where('partName', '==', partName));
+    }
+    if (specification) {
+      q = query(q, where('specification', '==', specification));
     }
 
     // 제한 (최대 500개)

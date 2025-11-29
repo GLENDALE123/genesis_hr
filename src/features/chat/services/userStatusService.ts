@@ -13,11 +13,12 @@ import {
 import { db } from '@/shared/services/firebase/config';
 import { CHAT_COLLECTIONS } from '../constants';
 
-export type UserStatus = 'online' | 'offline';
+export type UserStatus = 'online' | 'away' | 'offline';
 
 export interface UserStatusData {
   status: UserStatus;
   lastSeen: string; // ISO string
+  lastActivity?: string; // 마지막 활동 시간 (ISO string)
 }
 
 /**
@@ -27,14 +28,34 @@ export class UserStatusService {
   /**
    * 사용자 온라인 상태 설정
    */
-  static async setOnline(userId: string): Promise<void> {
+  static async setOnline(userId: string, lastActivity?: string): Promise<void> {
+    if (!db) throw new Error('Firestore is not initialized');
+
+    const statusRef = doc(db, CHAT_COLLECTIONS.USER_STATUS, userId);
+    const now = new Date().toISOString();
+    await setDoc(
+      statusRef,
+      {
+        status: 'online',
+        lastSeen: now,
+        lastActivity: lastActivity || now,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  }
+
+  /**
+   * 사용자 자리비움 상태 설정
+   */
+  static async setAway(userId: string): Promise<void> {
     if (!db) throw new Error('Firestore is not initialized');
 
     const statusRef = doc(db, CHAT_COLLECTIONS.USER_STATUS, userId);
     await setDoc(
       statusRef,
       {
-        status: 'online',
+        status: 'away',
         lastSeen: new Date().toISOString(),
         updatedAt: serverTimestamp(),
       },
@@ -80,6 +101,7 @@ export class UserStatusService {
           callback({
             status: data.status || 'offline',
             lastSeen: data.lastSeen || new Date().toISOString(),
+            lastActivity: data.lastActivity || data.lastSeen || new Date().toISOString(),
           });
         } else {
           callback(null);

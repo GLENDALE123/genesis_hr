@@ -189,6 +189,7 @@ export const getQualityInspection = async (docId: string): Promise<QualityInspec
 /**
  * 품질검사 목록 실시간 구독
  * 생산일보와 동일한 limit 패턴 사용 (기본 500개)
+ * 검색 모드에서는 제한 없이 모든 문서 조회 (limitCount: 0 또는 음수)
  */
 export const subscribeToQualityInspections = (
   callback: (inspections: QualityInspection[]) => void,
@@ -196,11 +197,15 @@ export const subscribeToQualityInspections = (
   onError?: (error: Error) => void
 ) => {
   try {
-    const q = query(
+    // limitCount가 0 이하이면 limit을 적용하지 않음 (모든 문서 조회)
+    let q = query(
       getCollectionRef(),
-      orderBy('createdAt', 'desc'),
-      limit(limitCount)
+      orderBy('createdAt', 'desc')
     );
+    
+    if (limitCount > 0) {
+      q = query(q, limit(limitCount));
+    }
 
     return onSnapshot(
       q,
@@ -590,6 +595,7 @@ export const subscribeToInspectionsByProductInfo = (
   supplier: string | undefined,
   productName: string | undefined,
   partName: string | undefined,
+  specification: string | undefined,
   callback: (inspections: QualityInspection[]) => void,
   onError?: (error: Error) => void,
   limitCount: number = 500
@@ -605,7 +611,7 @@ export const subscribeToInspectionsByProductInfo = (
   }
 
   // 최소 2개 이상의 조건이 입력되어야 조회 수행
-  const conditions = [supplier, productName, partName].filter(
+  const conditions = [supplier, productName, partName, specification].filter(
     (value) => value && value.trim() !== ''
   );
 
@@ -627,6 +633,9 @@ export const subscribeToInspectionsByProductInfo = (
     }
     if (partName) {
       q = query(q, where('partName', '==', partName));
+    }
+    if (specification) {
+      q = query(q, where('specification', '==', specification));
     }
 
     // 제한 (orderBy는 복합 인덱스가 필요하므로 제거하고 클라이언트에서 정렬)

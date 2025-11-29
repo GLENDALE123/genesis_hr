@@ -3,7 +3,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
-  base: './', // Electron 및 상대 경로 배포 지원
+  base: process.env.ELECTRON_BUILD === 'true' ? './' : '/', // Electron은 상대 경로, Firebase Hosting은 절대 경로
   plugins: [
     react({
       jsxRuntime: 'automatic',

@@ -15,6 +15,7 @@ import SampleCenterPage from '../pages/SampleCenterPage';
 import SampleCenterRequestsPage from '../pages/SampleCenterRequestsPage';
 import JigManagementPage from '../pages/JigManagementPage';
 import JigMasterListPage from '../pages/JigMasterListPage';
+import MessagePage from '../pages/MessagePage';
 
 export const routes = (
   <Routes>
@@ -24,6 +25,10 @@ export const routes = (
     <Route path="/announcements" element={<AnnouncementsPage />} />
     <Route path="/work-schedule" element={<WorkSchedulePage />} />
     <Route path="/settings" element={<SettingsPage />} />
+    
+    {/* Chat/Message Routes */}
+    <Route path="/messages" element={<MessagePage />} />
+    <Route path="/chat" element={<MessagePage />} />
     
     {/* Production Routes */}
     <Route path="/production/daily-report" element={<ProductionDailyReportPage />} />

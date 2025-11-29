@@ -9,6 +9,7 @@ interface UseInspectionHistoryParams {
   supplier?: string;
   productName?: string;
   partName?: string;
+  specification?: string;
   orderNumber?: string; // 발주번호 (묶음 검사 포함 조회용)
   enabled?: boolean; // 조회 활성화 여부
 }
@@ -30,6 +31,7 @@ export function useInspectionHistory({
   supplier,
   productName,
   partName,
+  specification,
   orderNumber,
   enabled = true,
 }: UseInspectionHistoryParams): UseInspectionHistoryReturn {
@@ -54,6 +56,7 @@ export function useInspectionHistory({
   const [debouncedSupplier] = useDebounce(supplier, 500);
   const [debouncedProductName] = useDebounce(productName, 500);
   const [debouncedPartName] = useDebounce(partName, 500);
+  const [debouncedSpecification] = useDebounce(specification, 500);
   const [debouncedOrderNumber] = useDebounce(orderNumber, 500);
 
   // 이력 조회
@@ -65,7 +68,7 @@ export function useInspectionHistory({
     }
 
     // 최소 2개 이상의 조건이 입력되어야 조회 수행
-    const conditions = [debouncedSupplier, debouncedProductName, debouncedPartName].filter(
+    const conditions = [debouncedSupplier, debouncedProductName, debouncedPartName, debouncedSpecification].filter(
       (value) => value && value.trim() !== ''
     );
 
@@ -83,6 +86,7 @@ export function useInspectionHistory({
       debouncedSupplier,
       debouncedProductName,
       debouncedPartName,
+      debouncedSpecification,
       (data) => {
         if (!isMountedRef.current) return;
         // 발주번호가 주어진 경우, 발주번호가 포함된 검사들 필터링
@@ -123,7 +127,7 @@ export function useInspectionHistory({
     return () => {
       unsubscribe();
     };
-  }, [enabled, debouncedSupplier, debouncedProductName, debouncedPartName, debouncedOrderNumber]);
+  }, [enabled, debouncedSupplier, debouncedProductName, debouncedPartName, debouncedSpecification, debouncedOrderNumber]);
 
   // 품질이슈 조회
   useEffect(() => {
@@ -133,7 +137,7 @@ export function useInspectionHistory({
     }
 
     // 최소 2개 이상의 조건이 입력되어야 조회 수행
-    const conditions = [debouncedSupplier, debouncedProductName, debouncedPartName].filter(
+    const conditions = [debouncedSupplier, debouncedProductName, debouncedPartName, debouncedSpecification].filter(
       (value) => value && value.trim() !== ''
     );
 
@@ -146,6 +150,7 @@ export function useInspectionHistory({
       debouncedSupplier,
       debouncedProductName,
       debouncedPartName,
+      debouncedSpecification,
       (data) => {
         if (!isMountedRef.current) return;
         setQualityIssues(data);
@@ -159,7 +164,7 @@ export function useInspectionHistory({
     return () => {
       unsubscribe();
     };
-  }, [enabled, debouncedSupplier, debouncedProductName, debouncedPartName]);
+  }, [enabled, debouncedSupplier, debouncedProductName, debouncedPartName, debouncedSpecification]);
 
   // 분석 새로고침 함수
   const refreshAnalysis = useCallback(async () => {
@@ -191,6 +196,7 @@ export function useInspectionHistory({
           supplier || '',
           productName || '',
           partName || '',
+          specification || '',
           inspections,
           qualityIssues,
           forceRefresh

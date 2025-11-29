@@ -148,7 +148,7 @@ export const useQualityInspections = (
         unsubscribeRef.current = null;
       }
 
-      // 검색어가 있으면 모든 데이터 구독 (날짜 필터 무시)
+      // 검색어가 있으면 모든 데이터 구독 (날짜 필터 무시, 제한 없음)
       if (debouncedSearchTerm && debouncedSearchTerm.trim()) {
         unsubscribeRef.current = subscribeToQualityInspections(
           (newInspections) => {
@@ -158,7 +158,7 @@ export const useQualityInspections = (
               setError(null);
             }
           },
-          limitCount,
+          0, // 검색 모드에서는 제한 없이 모든 문서 조회 (0은 limit 미적용을 의미)
           (err) => {
             if (!isCancelled) {
               console.error('❌ 품질검사 데이터 로드 실패:', err);

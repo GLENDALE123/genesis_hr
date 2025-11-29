@@ -1,5 +1,15 @@
 {
   "projects": {
     "default": "hs-jig-b2093"
-  }
+  },
+  "targets": {
+    "hs-jig-b2093": {
+      "hosting": {
+        "control-hosting": [
+          "control-6a11d"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

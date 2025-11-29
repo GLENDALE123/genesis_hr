@@ -21,7 +21,7 @@ import { Spinner } from '@/shared/components/ui/spinner';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { getAllUsersWithAuthInfo } from '@/shared/services/firebase/userManagement';
 import { getUserDisplayName, getUserInitial } from '@/shared/utils/userUtils';
-import { UserStatusService } from '../services/userStatusService';
+import { UserStatusService, type UserStatusData } from '../services/userStatusService';
 import { ChatService } from '../services/chatService';
 import { useChatStore } from '../store/chatStore';
 import { MessageSquare, Star, Search } from 'lucide-react';
@@ -33,15 +33,81 @@ let hasCachedUsers = false;
 let cachedUserStatuses: Record<string, boolean> = {};
 let userStatusUnsubscribe: (() => void) | null = null;
 
+// localStorage 캐시 키
+const USERS_CACHE_KEY = 'chat-users-cache';
+const USERS_CACHE_EXPIRY_KEY = 'chat-users-cache-expiry';
+const CACHE_DURATION = 5 * 60 * 1000; // 5분
+
+// localStorage에서 사용자 목록 캐시 로드
+const loadUsersFromLocalStorage = (): UserManagementInfo[] | null => {
+  if (typeof window === 'undefined') return null;
+  
+  try {
+    const expiry = localStorage.getItem(USERS_CACHE_EXPIRY_KEY);
+    if (!expiry) return null;
+    
+    const expiryTime = parseInt(expiry, 10);
+    if (Date.now() > expiryTime) {
+      // 캐시 만료
+      localStorage.removeItem(USERS_CACHE_KEY);
+      localStorage.removeItem(USERS_CACHE_EXPIRY_KEY);
+      return null;
+    }
+    
+    const cached = localStorage.getItem(USERS_CACHE_KEY);
+    if (!cached) return null;
+    
+    return JSON.parse(cached) as UserManagementInfo[];
+  } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('Failed to load users from localStorage:', error);
+    }
+    return null;
+  }
+};
+
+// localStorage에 사용자 목록 캐시 저장
+const saveUsersToLocalStorage = (users: UserManagementInfo[]) => {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    localStorage.setItem(USERS_CACHE_KEY, JSON.stringify(users));
+    localStorage.setItem(USERS_CACHE_EXPIRY_KEY, String(Date.now() + CACHE_DURATION));
+  } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('Failed to save users to localStorage:', error);
+    }
+  }
+};
+
 // 캐시 접근을 위한 export (프리로드용)
-export const getCachedUsers = () => ({ cachedUsers, hasCachedUsers, cachedUserStatuses });
+export const getCachedUsers = () => {
+  // 메모리 캐시가 있으면 사용
+  if (hasCachedUsers && cachedUsers.length > 0) {
+    return { cachedUsers, hasCachedUsers, cachedUserStatuses };
+  }
+  
+  // localStorage 캐시 확인
+  const localStorageUsers = loadUsersFromLocalStorage();
+  if (localStorageUsers && localStorageUsers.length > 0) {
+    cachedUsers = localStorageUsers;
+    hasCachedUsers = true;
+    return { cachedUsers, hasCachedUsers, cachedUserStatuses };
+  }
+  
+  return { cachedUsers, hasCachedUsers, cachedUserStatuses };
+};
+
 export const setCachedUsers = (users: UserManagementInfo[]) => {
   cachedUsers = users;
   hasCachedUsers = true;
+  saveUsersToLocalStorage(users);
 };
+
 export const setCachedUserStatuses = (statuses: Record<string, boolean>) => {
   cachedUserStatuses = statuses;
 };
+
 export const getUserStatusUnsubscribe = () => userStatusUnsubscribe;
 export const setUserStatusUnsubscribe = (unsubscribe: (() => void) | null) => {
   userStatusUnsubscribe = unsubscribe;
@@ -58,8 +124,110 @@ export interface UserListProps {
 }
 
 interface UserWithStatus extends UserManagementInfo {
-  isOnline?: boolean;
+  status?: UserStatusData;
 }
+
+// 개별 사용자 아이템 컴포넌트 (React.memo로 최적화)
+interface UserItemProps {
+  user: UserWithStatus;
+  index: number;
+  isFavorite: boolean;
+  status: UserStatusData['status'];
+  displayName: string;
+  photoURL?: string;
+  onUserClick: (user: UserWithStatus) => void;
+  onToggleFavorite: (userId: string) => void;
+}
+
+const UserItem = React.memo<UserItemProps>(({
+  user,
+  index,
+  isFavorite,
+  status,
+  displayName,
+  photoURL,
+  onUserClick,
+  onToggleFavorite,
+}) => {
+  // 상태별 색상 설정
+  const getStatusColor = () => {
+    switch (status) {
+      case 'online':
+        return 'bg-green-500';
+      case 'away':
+        return 'bg-yellow-500';
+      case 'offline':
+        return 'bg-red-500';
+      default:
+        return 'bg-gray-400';
+    }
+  };
+
+  return (
+    <React.Fragment>
+      {index > 0 && (
+        <div className="border-t border-border my-1" />
+      )}
+      <ContextMenu>
+        <ContextMenuTrigger>
+          <div
+            className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer ${
+              isFavorite
+                ? 'bg-muted/80 dark:bg-muted/60'
+                : 'hover:bg-muted'
+            }`}
+            onClick={() => onUserClick(user)}
+          >
+            <div className="relative">
+              <Avatar
+                className="[width:var(--avatar-size,2.5rem)] [height:var(--avatar-size,2.5rem)]"
+                style={{ '--avatar-size': '2.5rem' } as React.CSSProperties}
+              >
+                <AvatarImage src={photoURL} alt={displayName} />
+                <AvatarFallback className="flex items-center justify-center font-medium text-muted-foreground [font-size:calc(var(--avatar-size,2.5rem)*0.4)]">
+                  {getUserInitial(user, 'U')}
+                </AvatarFallback>
+              </Avatar>
+              <div className={`absolute bottom-0 right-0 size-3 ${getStatusColor()} border-2 border-background rounded-full`} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="font-medium truncate">{displayName}</span>
+                {isFavorite && <Star className="size-4 text-yellow-500 fill-yellow-500" />}
+              </div>
+              {user.department && (
+                <p className="text-xs text-muted-foreground truncate mt-0.5">
+                  {user.department}
+                </p>
+              )}
+            </div>
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem onClick={() => onUserClick(user)}>
+            <MessageSquare className="mr-2 h-4 w-4" />
+            메시지 보내기
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => onToggleFavorite(user.uid || '')}>
+            <Star className={`mr-2 h-4 w-4 ${isFavorite ? 'fill-yellow-500 text-yellow-500' : ''}`} />
+            {isFavorite ? '즐겨찾기 제거' : '즐겨찾기 추가'}
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+    </React.Fragment>
+  );
+}, (prevProps, nextProps) => {
+  // 상태가 변경되지 않았으면 리렌더링 방지
+  return (
+    prevProps.user.uid === nextProps.user.uid &&
+    prevProps.isFavorite === nextProps.isFavorite &&
+    prevProps.status === nextProps.status &&
+    prevProps.displayName === nextProps.displayName &&
+    prevProps.photoURL === nextProps.photoURL
+  );
+});
+
+UserItem.displayName = 'UserItem';
 
 export const UserList: React.FC<UserListProps> = ({ className }) => {
   const navigate = useNavigate();
@@ -67,11 +235,13 @@ export const UserList: React.FC<UserListProps> = ({ className }) => {
   const { addTemporaryRoom } = useChatStore();
   const [users, setUsers] = useState<UserWithStatus[]>([]);
   const [usersLoaded, setUsersLoaded] = useState(false);
-  const [userStatuses, setUserStatuses] = useState<Record<string, boolean>>({});
+  const [userStatuses, setUserStatuses] = useState<Record<string, UserStatusData>>({});
   const [favorites, setFavorites] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const isMountedRef = useRef(true);
   const retryTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const previousStatusesRef = useRef<Record<string, UserStatusData>>({});
+  const statusUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -80,6 +250,10 @@ export const UserList: React.FC<UserListProps> = ({ className }) => {
       if (retryTimerRef.current) {
         clearTimeout(retryTimerRef.current);
         retryTimerRef.current = null;
+      }
+      if (statusUpdateTimeoutRef.current) {
+        clearTimeout(statusUpdateTimeoutRef.current);
+        statusUpdateTimeoutRef.current = null;
       }
     };
   }, []);
@@ -138,10 +312,27 @@ export const UserList: React.FC<UserListProps> = ({ className }) => {
   useEffect(() => {
     if (!currentUser?.uid) return;
 
-    // 캐시가 있으면 즉시 표시하고 백그라운드에서 업데이트
+    // localStorage 캐시 확인 (메모리 캐시가 없을 때)
+    if (!hasCachedUsers || cachedUsers.length === 0) {
+      const localStorageUsers = loadUsersFromLocalStorage();
+      if (localStorageUsers && localStorageUsers.length > 0) {
+        cachedUsers = localStorageUsers;
+        hasCachedUsers = true;
+      }
+    }
+
+      // 캐시가 있으면 즉시 표시하고 백그라운드에서 업데이트
     if (hasCachedUsers && cachedUsers.length > 0) {
       setUsers(cachedUsers);
-      setUserStatuses(cachedUserStatuses);
+      // cachedUserStatuses를 UserStatusData 형식으로 변환
+      const statuses: Record<string, UserStatusData> = {};
+      Object.entries(cachedUserStatuses).forEach(([uid, isOnline]) => {
+        statuses[uid] = {
+          status: isOnline ? 'online' : 'offline',
+          lastSeen: new Date().toISOString(),
+        };
+      });
+      setUserStatuses(statuses);
       usersRef.current = { users: cachedUsers, loaded: true };
       setUsersLoaded(true);
 
@@ -156,8 +347,7 @@ export const UserList: React.FC<UserListProps> = ({ className }) => {
         .then((userList) => {
           if (!isMountedRef.current) return;
           const filteredUsers = userList.filter((u) => u.uid !== currentUser.uid);
-          cachedUsers = filteredUsers;
-          hasCachedUsers = true;
+          setCachedUsers(filteredUsers); // localStorage에도 저장
           setUsers(filteredUsers);
           usersRef.current = { users: filteredUsers, loaded: true };
           if (globalUsersRef.current) {
@@ -177,21 +367,54 @@ export const UserList: React.FC<UserListProps> = ({ className }) => {
         if (userIds.length > 0) {
           userStatusUnsubscribe = UserStatusService.subscribeToMultipleUserStatus(
             userIds,
-            (statuses) => {
-              if (!isMountedRef.current) return;
-              const onlineMap: Record<string, boolean> = {};
-              Object.entries(statuses).forEach(([uid, status]) => {
-                onlineMap[uid] = status.status === 'online';
-              });
-              cachedUserStatuses = onlineMap;
-              setUserStatuses(onlineMap);
-            }
+              (statuses) => {
+                if (!isMountedRef.current) return;
+                
+                // 상태 변경이 실제로 있는지 확인 (깜빡임 방지)
+                const hasChanged = Object.keys(statuses).some((uid) => {
+                  const prevStatus = previousStatusesRef.current[uid];
+                  const newStatus = statuses[uid];
+                  return !prevStatus || prevStatus.status !== newStatus.status;
+                });
+                
+                // 변경이 없으면 업데이트하지 않음
+                if (!hasChanged && Object.keys(statuses).length === Object.keys(previousStatusesRef.current).length) {
+                  return;
+                }
+                
+                // UserStatusData 형식으로 변환
+                const statusMap: Record<string, UserStatusData> = {};
+                const onlineMap: Record<string, boolean> = {};
+                Object.entries(statuses).forEach(([uid, status]) => {
+                  statusMap[uid] = status;
+                  onlineMap[uid] = status.status === 'online';
+                });
+                cachedUserStatuses = onlineMap;
+                previousStatusesRef.current = statusMap;
+                
+                // 디바운스 처리 (100ms) - 빠른 연속 업데이트 방지
+                if (statusUpdateTimeoutRef.current) {
+                  clearTimeout(statusUpdateTimeoutRef.current);
+                }
+                statusUpdateTimeoutRef.current = setTimeout(() => {
+                  if (isMountedRef.current) {
+                    setUserStatuses({ ...statusMap });
+                  }
+                }, 100);
+              }
           );
         }
       } else {
         // 이미 구독 중이면 캐시된 상태 사용
         if (isMountedRef.current) {
-          setUserStatuses(cachedUserStatuses);
+          const statuses: Record<string, UserStatusData> = {};
+          Object.entries(cachedUserStatuses).forEach(([uid, isOnline]) => {
+            statuses[uid] = {
+              status: isOnline ? 'online' : 'offline',
+              lastSeen: new Date().toISOString(),
+            };
+          });
+          setUserStatuses(statuses);
         }
       }
       
@@ -207,9 +430,8 @@ export const UserList: React.FC<UserListProps> = ({ className }) => {
         // 현재 사용자 제외
         const filteredUsers = userList.filter((u) => u.uid !== currentUser.uid);
 
-        // 캐시에 저장
-        cachedUsers = filteredUsers;
-        hasCachedUsers = true;
+        // 캐시에 저장 (localStorage 포함)
+        setCachedUsers(filteredUsers);
 
         if (!isMountedRef.current) return;
 
@@ -231,19 +453,53 @@ export const UserList: React.FC<UserListProps> = ({ className }) => {
               userIds,
               (statuses) => {
                 if (!isMountedRef.current) return;
+                
+                // 상태 변경이 실제로 있는지 확인 (깜빡임 방지)
+                const hasChanged = Object.keys(statuses).some((uid) => {
+                  const prevStatus = previousStatusesRef.current[uid];
+                  const newStatus = statuses[uid];
+                  return !prevStatus || prevStatus.status !== newStatus.status;
+                });
+                
+                // 변경이 없으면 업데이트하지 않음
+                if (!hasChanged && Object.keys(statuses).length === Object.keys(previousStatusesRef.current).length) {
+                  return;
+                }
+                
+                // UserStatusData 형식으로 변환
+                const statusMap: Record<string, UserStatusData> = {};
                 const onlineMap: Record<string, boolean> = {};
                 Object.entries(statuses).forEach(([uid, status]) => {
+                  statusMap[uid] = status;
                   onlineMap[uid] = status.status === 'online';
                 });
                 cachedUserStatuses = onlineMap;
-                setUserStatuses(onlineMap);
+                previousStatusesRef.current = statusMap;
+                
+                // 디바운스 처리 (100ms) - 빠른 연속 업데이트 방지
+                if (statusUpdateTimeoutRef.current) {
+                  clearTimeout(statusUpdateTimeoutRef.current);
+                }
+                statusUpdateTimeoutRef.current = setTimeout(() => {
+                  if (isMountedRef.current) {
+                    setUserStatuses({ ...statusMap });
+                  }
+                }, 100);
               }
             );
           }
         } else {
           // 이미 구독 중이면 캐시된 상태 사용
           if (isMountedRef.current) {
-            setUserStatuses(cachedUserStatuses);
+            const statuses: Record<string, UserStatusData> = {};
+            Object.entries(cachedUserStatuses).forEach(([uid, isOnline]) => {
+              statuses[uid] = {
+                status: isOnline ? 'online' : 'offline',
+                lastSeen: new Date().toISOString(),
+              };
+            });
+            previousStatusesRef.current = statuses;
+            setUserStatuses(statuses);
           }
         }
       } catch (error) {
@@ -380,7 +636,7 @@ export const UserList: React.FC<UserListProps> = ({ className }) => {
     }
   };
 
-  // 필터링 및 정렬된 사용자 목록
+  // 필터링 및 정렬된 사용자 목록 (상태 변경 시에도 안정적으로 유지)
   const filteredUsers = useMemo(() => {
     let filtered = [...users];
 
@@ -430,7 +686,7 @@ export const UserList: React.FC<UserListProps> = ({ className }) => {
     });
 
     return sorted;
-  }, [users, favorites, searchQuery]);
+  }, [users, favorites, searchQuery]); // userStatuses는 의존성에서 제외 (깜빡임 방지)
 
   // 사용자 정보 가져오기 헬퍼
   const getUserInfo = (userId: string) => {
@@ -498,7 +754,8 @@ export const UserList: React.FC<UserListProps> = ({ className }) => {
           if (!user.uid) return null;
 
           const isFavorite = favorites.includes(user.uid);
-          const isOnline = userStatuses[user.uid] || false;
+          const userStatus = userStatuses[user.uid];
+          const status = userStatus?.status || 'offline';
           const displayName = getUserDisplayName(
             { displayName: user.displayName, email: user.email },
             { position: user.position },
@@ -507,60 +764,17 @@ export const UserList: React.FC<UserListProps> = ({ className }) => {
           const photoURL = (user as any).photoURL || undefined;
 
           return (
-            <React.Fragment key={user.uid}>
-              {index > 0 && (
-                <div className="border-t border-border my-1" />
-              )}
-              <ContextMenu>
-                <ContextMenuTrigger>
-                  <div
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer ${
-                      isFavorite
-                        ? 'bg-muted/80 dark:bg-muted/60'
-                        : 'hover:bg-muted'
-                    }`}
-                  >
-                  <div className="relative">
-                    <Avatar
-                      className="[width:var(--avatar-size,2.5rem)] [height:var(--avatar-size,2.5rem)]"
-                      style={{ '--avatar-size': '2.5rem' } as React.CSSProperties}
-                    >
-                      <AvatarImage src={photoURL} alt={displayName} />
-                      <AvatarFallback className="flex items-center justify-center font-medium text-muted-foreground [font-size:calc(var(--avatar-size,2.5rem)*0.4)]">
-                        {getUserInitial(user, 'U')}
-                      </AvatarFallback>
-                    </Avatar>
-                    {isOnline && (
-                      <div className="absolute bottom-0 right-0 size-3 bg-green-500 border-2 border-background rounded-full" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium truncate">{displayName}</span>
-                      {isFavorite && <Star className="size-4 text-yellow-500 fill-yellow-500" />}
-                    </div>
-                    {user.department && (
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">
-                        {user.department}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </ContextMenuTrigger>
-              <ContextMenuContent>
-                <ContextMenuItem onClick={() => handleStartChat(user.uid!)}>
-                  <MessageSquare className="mr-2 size-4" />
-                  채팅하기
-                </ContextMenuItem>
-                <ContextMenuItem onClick={() => handleToggleFavorite(user.uid!)}>
-                  <Star
-                    className={`mr-2 size-4 ${isFavorite ? 'text-yellow-500 fill-yellow-500' : ''}`}
-                  />
-                  {isFavorite ? '즐겨찾기 제거' : '즐겨찾기 추가'}
-                </ContextMenuItem>
-              </ContextMenuContent>
-            </ContextMenu>
-            </React.Fragment>
+            <UserItem
+              key={user.uid}
+              user={user}
+              index={index}
+              isFavorite={isFavorite}
+              status={status}
+              displayName={displayName}
+              photoURL={photoURL}
+              onUserClick={(user) => handleStartChat(user.uid!)}
+              onToggleFavorite={handleToggleFavorite}
+            />
           );
         })}
         </div>

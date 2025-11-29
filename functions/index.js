@@ -27,6 +27,7 @@ const { backfillThumbnails } = require('./lib/imageProcessing');
 // Scheduled 트리거들
 const cleanupTriggers = require('./triggers/cleanupReadNotifications');
 const autoLogoutTriggers = require('./triggers/autoLogout');
+const scheduleDailyReportsSync = require('./triggers/scheduleDailyReportsSync');
 
 // HTTPS 함수들
 const notificationHttps = require('./https/notifications');
@@ -46,6 +47,7 @@ module.exports = {
   ...imageTriggers,
   ...cleanupTriggers,
   ...autoLogoutTriggers,
+  ...scheduleDailyReportsSync,
   
   // HTTPS 함수들
   ...notificationHttps,

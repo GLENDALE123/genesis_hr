@@ -237,6 +237,7 @@ const QualityInspectionDetailComponent: React.FC<QualityInspectionDetailProps> =
     supplier: currentGroup?.common.supplier || '',
     productName: currentGroup?.common.productName || '',
     partName: currentGroup?.common.partName || '',
+    specification: currentGroup?.common.specification || '',
     // orderNumber는 전달하지 않음 - 발주번호가 달라도 같은 제품이면 모든 이력 조회
     enabled: isOpen && !!currentGroup // 모달이 열려있고 그룹이 있을 때만 활성화
   });

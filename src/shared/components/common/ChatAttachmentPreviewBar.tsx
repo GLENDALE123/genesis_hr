@@ -8,6 +8,7 @@ interface ChatAttachmentPreviewBarProps {
   items: UploadingImageItem[];
   onRemove: (index: number) => void;
   disableRemove?: boolean;
+  className?: string;
 }
 
 /**
@@ -18,11 +19,12 @@ export const ChatAttachmentPreviewBar: React.FC<ChatAttachmentPreviewBarProps> =
   items,
   onRemove,
   disableRemove = false,
+  className,
 }) => {
   if (items.length === 0) return null;
 
   return (
-    <div className="flex gap-2 overflow-x-auto pb-2">
+    <div className={`flex gap-2 overflow-x-auto pb-2 ${className || ''}`}>
       {items.map((item, index) => (
         <div
           key={index}

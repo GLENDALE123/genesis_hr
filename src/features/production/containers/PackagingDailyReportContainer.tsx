@@ -69,6 +69,7 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
   const isMobileOrTablet = isSmartphone || isTablet;
   const [isSyncingSheets, setIsSyncingSheets] = useState(false);
   const [dailyReportSyncResult, setDailyReportSyncResult] = useState<SyncDailyReportsResult | null>(null);
+  const [isFullSyncDialogOpen, setIsFullSyncDialogOpen] = useState(false);
   
   // 컴포넌트 마운트 로그
   useEffect(() => {
@@ -182,7 +183,7 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
     setIsFormOpen(true);
   }, []);
 
-  const handleSyncDailyReports = useCallback(async () => {
+  const handleSyncDailyReports = useCallback(async (forceFullSync = false) => {
     if (!canSyncDailyReports) {
       toast.error('동기화 권한이 없습니다.');
       return;
@@ -198,11 +199,16 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
 
     setIsSyncingSheets(true);
     try {
-      const result = await syncDailyReportsToSheets({ spreadsheetId, sheetName });
+      const result = await syncDailyReportsToSheets({ 
+        spreadsheetId, 
+        sheetName,
+        forceFullSync 
+      });
       setDailyReportSyncResult(result);
 
       const summary = `신규 ${result.inserted}건 • 갱신 ${result.updated}건 • 스킵 ${result.skipped}건`;
-      toast.success(`"${result.sheetName}" 시트로 동기화되었습니다.`, {
+      const syncType = forceFullSync ? '전체 동기화' : '동기화';
+      toast.success(`"${result.sheetName}" 시트로 ${syncType}되었습니다.`, {
         description: summary,
       });
     } catch (error) {
@@ -210,8 +216,21 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
       toast.error(`동기화 실패: ${message}`);
     } finally {
       setIsSyncingSheets(false);
+      setIsFullSyncDialogOpen(false);
     }
   }, [canSyncDailyReports]);
+
+  const handleNormalSyncClick = useCallback(() => {
+    handleSyncDailyReports(false);
+  }, [handleSyncDailyReports]);
+
+  const handleFullSyncClick = useCallback(() => {
+    setIsFullSyncDialogOpen(true);
+  }, []);
+
+  const handleConfirmFullSync = useCallback(() => {
+    handleSyncDailyReports(true);
+  }, [handleSyncDailyReports]);
 
   const handleEditReport = useCallback((report: PackagingReport) => {
     setSelectedReport(report);
@@ -545,25 +564,52 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
           {/* 우측: 액션 버튼들 */}
           <div className="flex items-center gap-2">
             {canSyncDailyReports && (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleSyncDailyReports}
-                disabled={isSyncingSheets}
-                className="hidden md:flex"
-              >
-                {isSyncingSheets ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                    동기화 중...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Google 시트 동기화
-                  </>
+              <>
+                {dailyReportSyncResult && (
+                  <span className="hidden md:block text-xs text-muted-foreground">
+                    최근 동기화: 신규 {dailyReportSyncResult.inserted}건, 갱신 {dailyReportSyncResult.updated}건,
+                    스킵 {dailyReportSyncResult.skipped}건 (시트: {dailyReportSyncResult.sheetName})
+                  </span>
                 )}
-              </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleNormalSyncClick}
+                  disabled={isSyncingSheets}
+                  className="hidden md:flex"
+                >
+                  {isSyncingSheets ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      동기화 중...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Google 시트 동기화
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleFullSyncClick}
+                  disabled={isSyncingSheets}
+                  className="hidden md:flex"
+                >
+                  {isSyncingSheets ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      동기화 중...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      전체 동기화
+                    </>
+                  )}
+                </Button>
+              </>
             )}
             <Button 
               onClick={handleCreateReport}
@@ -579,7 +625,7 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
                   variant="secondary"
                   size="sm"
                   className="p-2"
-                  onClick={handleSyncDailyReports}
+                  onClick={handleNormalSyncClick}
                   disabled={isSyncingSheets}
                 >
                   <RefreshCw className={`h-4 w-4 ${isSyncingSheets ? 'animate-spin' : ''}`} />
@@ -588,16 +634,6 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
             )}
           </div>
         </div>
-
-        {canSyncDailyReports && dailyReportSyncResult && (
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              최근 동기화: 신규 {dailyReportSyncResult.inserted}건, 갱신 {dailyReportSyncResult.updated}건,
-              스킵 {dailyReportSyncResult.skipped}건 (시트: {dailyReportSyncResult.sheetName})
-            </AlertDescription>
-          </Alert>
-        )}
 
         {/* 선택된 항목 배너 */}
         {selectedReportIds.size > 0 && (
@@ -825,6 +861,29 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
             <AlertDialogCancel onClick={cancelDelete}>취소</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 전체 동기화 확인 다이얼로그 */}
+      <AlertDialog open={isFullSyncDialogOpen} onOpenChange={setIsFullSyncDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>전체 동기화</AlertDialogTitle>
+            <AlertDialogDescription>
+              전체 동기화를 실행하면 구글 스프레드시트의 기존 데이터가 모두 삭제되고,
+              Firestore의 모든 생산일보 데이터가 새로 동기화됩니다.
+              <br /><br />
+              <strong className="text-foreground">주의:</strong> 발주번호가 여러 개인 경우 자동으로 분할되어 각 발주번호별로 별도 행이 생성됩니다.
+              <br /><br />
+              정말로 전체 동기화를 진행하시겠습니까?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setIsFullSyncDialogOpen(false)}>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmFullSync} disabled={isSyncingSheets}>
+              전체 동기화 실행
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
