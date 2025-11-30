@@ -1272,10 +1272,10 @@ async function runDailyReportsSync({
     // 추가된 행의 범위 확인
     // Google Sheets API append 응답 구조: { data: { updates: { updatedRange: "...", ... } } }
     const updates = appendResponse.data?.updates;
-    const updatedRange = updates?.updatedRange;
+    const updatedRangeFromUpdates = updates?.updatedRange;
     
     // updatedRange가 없으면 다른 경로 시도
-    const finalUpdatedRange = updatedRange || appendResponse.data?.updatedRange || appendResponse.updatedRange;
+    const finalUpdatedRange = updatedRangeFromUpdates || appendResponse.data?.updatedRange || appendResponse.updatedRange;
     
     if (finalUpdatedRange) {
       // 범위에서 시작 행과 끝 행 추출
@@ -1421,19 +1421,14 @@ async function runDailyReportsSync({
         });
       }
     } else {
-      logger.warn('수식 복사 스킵: rangeMatch를 찾을 수 없음', {
+      const updates = appendResponse.data?.updates;
+      logger.warn('수식 복사 스킵: finalUpdatedRange를 찾을 수 없음', {
         finalUpdatedRange,
-        updatedRange,
+        hasUpdates: !!updates,
+        updatesKeys: updates ? Object.keys(updates) : [],
+        appendResponseDataKeys: appendResponse.data ? Object.keys(appendResponse.data) : [],
       });
     }
-  } else {
-    logger.warn('수식 복사 스킵: finalUpdatedRange를 찾을 수 없음', {
-      updatedRange,
-      finalUpdatedRange,
-      hasUpdates: !!updates,
-      updatesKeys: updates ? Object.keys(updates) : [],
-      appendResponseDataKeys: appendResponse.data ? Object.keys(appendResponse.data) : [],
-    });
   }
   
   if (rowsToAppend.length === 0) {
