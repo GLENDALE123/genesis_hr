@@ -38,6 +38,7 @@ import { SampleRequest, SampleStatus } from '../types';
 import { SAMPLE_STATUS_COLORS, SAMPLE_REQUESTS_COLLECTION } from '../constants';
 import { ProcessingHistory } from '@/shared/components/common/ProcessingHistory';
 import { useAuthStore } from '@/features/auth/store/authStore';
+import { UploadingImageGrid } from '@/shared/components/common/UploadingImageGrid';
 
 interface SampleRequestDetailProps {
   open: boolean;
@@ -53,6 +54,7 @@ interface SampleRequestDetailProps {
   onEdit: (request: SampleRequest) => void;
   onUpdateWorkData: (id: string, workData: SampleRequest['workData']) => Promise<void>;
   onUploadWorkImage: (id: string, file: File) => Promise<string>;
+  onRemoveWorkImages: (id: string, urls: string[]) => Promise<void>;
   currentUserUid?: string;
   isAdmin?: boolean;
 }
@@ -66,19 +68,30 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
   onEdit,
   onUpdateWorkData,
   onUploadWorkImage,
+  onRemoveWorkImages,
   currentUserUid = '',
   isAdmin = false,
 }) => {
   // 이미지 업로드 훅 사용
   const imageUploadHook = useImageUpload();
+  const {
+    uploadingImages,
+    handleFileSelect,
+    removeImage,
+    clearUploadingImages,
+    deletedImageUrls,
+    setDeletedImageUrls,
+    clearDeletedUrls,
+  } = imageUploadHook;
   
   const [workData, setWorkData] = useState<NonNullable<SampleRequest['workData']>>(
     (request && request.workData) || {}
   );
+  const [existingWorkImages, setExistingWorkImages] = useState<string[]>(request?.workImageUrls || []);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [statusChangeReason, setStatusChangeReason] = useState('');
   const [changingStatus, setChangingStatus] = useState<SampleStatus | null>(null);
-  const [uploadingWorkImage, setUploadingWorkImage] = useState(false);
+  const [savingWorkSection, setSavingWorkSection] = useState(false);
   const workImageInputRef = React.useRef<HTMLInputElement>(null);
   const cameraInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -183,10 +196,20 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
   };
 
   // 작업 이미지가 있는지 확인
-  const hasWorkImages = currentRequest?.workImageUrls && currentRequest.workImageUrls.length > 0;
+  const hasWorkImages = (currentRequest?.workImageUrls?.length || 0) > 0;
 
   // 작업 정보가 비어있으면 자동으로 수정 모드 시작
-  const [isEditingWorkData, setIsEditingWorkData] = useState(() => isWorkDataEmpty() && !hasWorkImages);
+  const [isEditingWorkData, setIsEditingWorkData] = useState(false);
+  
+  useEffect(() => {
+    if (!currentRequest) return;
+    const shouldAutoEdit = isWorkDataEmpty() && !hasWorkImages;
+    setIsEditingWorkData(shouldAutoEdit);
+  }, [currentRequest?.id, hasWorkImages]);
+
+  const workImageCount = isEditingWorkData
+    ? existingWorkImages.length
+    : currentRequest?.workImageUrls?.length || 0;
   
   // 작업 데이터는 기본적으로 펼쳐진 상태
   const [isWorkDataOpen, setIsWorkDataOpen] = useState(true);
@@ -261,7 +284,7 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
     
     if (files.length > 0) {
       try {
-        await imageUploadHook.handleFileSelect(files);
+        await handleFileSelect(files);
       } catch (error) {
         console.error('파일 선택 처리 실패:', error);
       }
@@ -273,37 +296,59 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
     }
   };
 
-  // 작업 이미지 업로드 (기존 함수 유지 - 단일 파일 업로드용)
-  const handleWorkImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0 || !currentRequest) return;
-    
-    setUploadingWorkImage(true);
-    try {
-      const file = e.target.files[0];
-      await onUploadWorkImage(currentRequest.id, file);
-    } catch (error) {
-      console.error('작업 이미지 업로드 실패:', error);
-    } finally {
-      setUploadingWorkImage(false);
-      if (e.target) {
-        e.target.value = '';
-      }
-    }
-  };
-
   // 작업 데이터 수정 모드 토글
   const handleToggleEditMode = () => {
     if (isEditingWorkData) {
       // 수정 모드 종료 시 원본 데이터로 복원
       setWorkData((currentRequest && currentRequest.workData) || {});
+      setExistingWorkImages(currentRequest?.workImageUrls || []);
+      clearUploadingImages();
+      clearDeletedUrls();
+      setIsEditingWorkData(false);
+      return;
     }
-    setIsEditingWorkData(!isEditingWorkData);
+    setExistingWorkImages(currentRequest?.workImageUrls || []);
+    clearUploadingImages();
+    clearDeletedUrls();
+    setIsEditingWorkData(true);
+  };
+
+  const handleRemoveExistingWorkImage = (url: string) => {
+    setExistingWorkImages((prev) => prev.filter((item) => item !== url));
+    setDeletedImageUrls((prev) => (prev.includes(url) ? prev : [...prev, url]));
   };
 
   // 작업 데이터 저장
   const handleSaveWorkDataClick = async () => {
-    await handleSaveWorkData();
-    setIsEditingWorkData(false);
+    if (!currentRequest) return;
+
+    setSavingWorkSection(true);
+    try {
+      await handleSaveWorkData();
+
+      const newFiles = uploadingImages
+        .filter((item) => item.file)
+        .map((item) => item.file!);
+
+      for (const file of newFiles) {
+        await onUploadWorkImage(currentRequest.id, file);
+      }
+
+      if (newFiles.length > 0) {
+        clearUploadingImages();
+      }
+
+      if (deletedImageUrls.length > 0) {
+        await onRemoveWorkImages(currentRequest.id, deletedImageUrls);
+        clearDeletedUrls();
+      }
+
+      setIsEditingWorkData(false);
+    } catch (error) {
+      console.error('작업 정보 저장 실패:', error);
+    } finally {
+      setSavingWorkSection(false);
+    }
   };
 
   const DetailItem: React.FC<{ label: string; value: string | number | React.ReactNode }> = ({ label, value }) => (
@@ -520,15 +565,15 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label className="text-base font-semibold">
-                      작업 이미지 {currentRequest?.workImageUrls ? `(${currentRequest.workImageUrls.length})` : ''}
+                      작업 이미지 {workImageCount > 0 ? `(${workImageCount})` : ''}
                     </Label>
-                    {canManage && currentRequest?.status === SampleStatus.InProgress && (
+                    {canManage && currentRequest?.status === SampleStatus.InProgress && isEditingWorkData && (
                       <div className="flex gap-2">
                         <Button 
                           onClick={() => workImageInputRef.current && workImageInputRef.current.click()} 
                           size="sm" 
                           variant="outline"
-                          disabled={uploadingWorkImage}
+                          disabled={savingWorkSection}
                           className="gap-2"
                         >
                           <Upload className="h-4 w-4" />
@@ -538,7 +583,7 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
                           onClick={() => cameraInputRef.current && cameraInputRef.current.click()} 
                           size="sm" 
                           variant="outline"
-                          disabled={uploadingWorkImage}
+                          disabled={savingWorkSection}
                           className="gap-2"
                         >
                           <Camera className="h-4 w-4" />
@@ -553,7 +598,8 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
                     ref={workImageInputRef}
                     type="file"
                     accept="image/*"
-                    onChange={handleWorkImageUpload}
+                    multiple
+                    onChange={handleFileInputChange}
                     className="hidden"
                   />
                   <input
@@ -561,45 +607,67 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
                     type="file"
                     accept="image/*"
                     capture="environment"
-                    onChange={handleWorkImageUpload}
+                    onChange={handleFileInputChange}
                     className="hidden"
                   />
                   
-                  {/* 기존 작업 이미지 */}
-                  {currentRequest?.workImageUrls && currentRequest.workImageUrls.length > 0 ? (
+                  {isEditingWorkData ? (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground">
+                          기존 이미지 (삭제 시 목록에서 사라지고 저장 후 최종 반영됩니다)
+                        </p>
+                        {existingWorkImages.length > 0 ? (
+                          <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
+                            {existingWorkImages.map((url) => (
+                              <div
+                                key={url}
+                                className="relative group rounded-md border overflow-hidden"
+                              >
+                                <img
+                                  src={url}
+                                  alt="작업 이미지"
+                                  className="w-full h-24 object-cover"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveExistingWorkImage(url)}
+                                  className="absolute top-2 right-2 rounded-full bg-destructive text-destructive-foreground w-7 h-7 flex items-center justify-center text-xs shadow-sm hover:bg-destructive/90"
+                                  aria-label="이미지 삭제"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-muted-foreground text-center py-6 border border-dashed rounded-md">
+                            기존 이미지가 없습니다.
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground">
+                          새로 추가된 이미지는 저장 버튼을 눌러야 업로드됩니다.
+                        </p>
+                        <UploadingImageGrid
+                          items={uploadingImages}
+                          onRemove={removeImage}
+                          imageClassName="h-24"
+                        />
+                        {uploadingImages.length === 0 && (
+                          <div className="text-sm text-muted-foreground text-center py-8 border border-dashed rounded-md">
+                            추가된 이미지가 없습니다.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : currentRequest?.workImageUrls && currentRequest.workImageUrls.length > 0 ? (
                     <ImageGalleryGrid images={currentRequest.workImageUrls} />
                   ) : (
                     <div className="text-sm text-muted-foreground text-center py-8 border border-dashed rounded-md">
                       작업 이미지가 없습니다.
-                    </div>
-                  )}
-                  
-                  {/* 새로 추가된 이미지 미리보기 */}
-                  {imageUploadHook.uploadingImages.length > 0 && (
-                    <div className="mt-4">
-                      <h4 className="text-sm font-medium mb-2">새로 추가된 이미지</h4>
-                      <div className="grid grid-cols-4 gap-2">
-                        {imageUploadHook.uploadingImages.map((item, index) => (
-                          <div key={index} className="relative">
-                            {item.preview ? (
-                              <img
-                                src={item.preview}
-                                alt={`새 이미지 ${index + 1}`}
-                                className="w-full h-20 object-cover rounded border"
-                              />
-                            ) : (
-                              <div className="w-full h-20 rounded border bg-muted animate-pulse" aria-hidden="true" />
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => imageUploadHook.removeImage(index)}
-                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
                     </div>
                   )}
                 </div>
@@ -622,9 +690,9 @@ export const SampleRequestDetail: React.FC<SampleRequestDetailProps> = ({
                             취소
                           </Button>
                         )}
-                        <Button onClick={handleSaveWorkDataClick} size="sm">
+                        <Button onClick={handleSaveWorkDataClick} size="sm" disabled={savingWorkSection}>
                           <Save className="h-4 w-4 mr-1" />
-                          저장
+                          {savingWorkSection ? '저장 중...' : '저장'}
                         </Button>
                       </>
                     )}

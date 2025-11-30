@@ -95,7 +95,9 @@ function SettingsContent() {
 
         {isAdmin && (
           <TabsContent value="users" className="space-y-2 md:space-y-4">
-            <UserManagementSettings />
+            <div className="mx-auto max-w-5xl px-2 md:px-8">
+              <UserManagementSettings />
+            </div>
           </TabsContent>
         )}
       </Tabs>

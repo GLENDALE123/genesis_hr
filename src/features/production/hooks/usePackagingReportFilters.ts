@@ -75,17 +75,11 @@ export const usePackagingReportFilters = (
   useEffect(() => {
     if (!onDateRangeChange) return;
 
-    // 검색어가 있는 경우: 최근 데이터에서 검색 (메모리 사용량 제한)
+    // 검색어가 있는 경우: 모든 데이터에서 검색 (리미트 없음)
     if (searchTerm && searchTerm.trim() !== '') {
-      // 날짜 범위를 최근 6개월로 제한 (메모리 사용량 감소)
-      const todayDate = new Date();
-      const sixMonthsAgo = new Date();
-      sixMonthsAgo.setMonth(todayDate.getMonth() - 6);
-      
-      const endDate = formatDateForInput(todayDate);
-      const startDate = formatDateForInput(sixMonthsAgo);
-      
-      onDateRangeChange(startDate, endDate);
+      // 날짜 범위를 매우 넓게 설정 (2000년부터 2100년까지)
+      // 실제로는 서버에서 리미트 없이 모든 데이터를 가져옴
+      onDateRangeChange('2000-01-01', '2100-12-31');
     } 
     // 검색어가 없는 경우: 날짜 필터 적용
     else if (filters.startDate && filters.endDate) {

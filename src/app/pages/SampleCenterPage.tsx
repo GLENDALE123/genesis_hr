@@ -21,6 +21,8 @@ export default function SampleCenterPage() {
     updateStatus,
     deleteRequest,
     updateWorkData,
+    uploadWorkImage,
+    removeWorkImages,
   } = useSampleRequests();
 
   // 상세 보기 모달
@@ -73,10 +75,8 @@ export default function SampleCenterPage() {
               navigate('/sample-center/requests');
             }}
             onUpdateWorkData={updateWorkData}
-            onUploadWorkImage={async (id: string, file: File) => {
-              // 작업 이미지 업로드 로직 (필요시 구현)
-              return 'uploaded-image-url'; // 임시 URL 반환
-            }}
+            onUploadWorkImage={uploadWorkImage}
+            onRemoveWorkImages={removeWorkImages}
             isAdmin={true}
           />
         )}

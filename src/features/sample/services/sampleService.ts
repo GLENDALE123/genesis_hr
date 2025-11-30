@@ -16,11 +16,13 @@ import {
   updateDoc,
   deleteDoc,
   onSnapshot,
-  arrayUnion
+  arrayUnion,
+  arrayRemove
 } from 'firebase/firestore';
 import { uploadImageFilesParallel } from '@/shared/services/firebase/storage';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
 import { auth } from '@/shared/services/firebase/config';
+import { deleteImagesWithThumbnails } from '@/shared/utils/imagePathMigration';
 import {
   SampleRequest,
   SampleFormData,
@@ -520,6 +522,31 @@ export class SampleService {
       return imageUrl;
     } catch (error) {
       console.error('❌ 작업 이미지 업로드 실패:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 작업 이미지 삭제
+   */
+  static async deleteWorkImages(id: string, imageUrls: string[]): Promise<void> {
+    try {
+      if (!db) {
+        throw new Error('Firebase not initialized');
+      }
+      if (!imageUrls || imageUrls.length === 0) {
+        return;
+      }
+
+      await deleteImagesWithThumbnails(imageUrls);
+
+      const docRef = doc(db, SAMPLE_REQUESTS_COLLECTION, id);
+      await updateDoc(docRef, {
+        workImageUrls: arrayRemove(...imageUrls),
+        updatedAt: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('❌ 작업 이미지 삭제 실패:', error);
       throw error;
     }
   }

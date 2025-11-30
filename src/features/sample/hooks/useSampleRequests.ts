@@ -276,6 +276,20 @@ export const useSampleRequests = () => {
   }, []);
 
   /**
+   * 작업 이미지 삭제
+   */
+  const removeWorkImages = useCallback(async (id: string, imageUrls: string[]) => {
+    try {
+      await SampleService.deleteWorkImages(id, imageUrls);
+      toast.success('작업 이미지가 삭제되었습니다.');
+    } catch (error) {
+      console.error('❌ 작업 이미지 삭제 실패:', error);
+      toast.error('작업 이미지 삭제에 실패했습니다.');
+      throw error;
+    }
+  }, []);
+
+  /**
    * 특정 샘플 요청 조회
    */
   const getRequestById = useCallback((id: string): SampleRequest | undefined => {
@@ -294,6 +308,7 @@ export const useSampleRequests = () => {
     deleteRequest,
     uploadImage,
     uploadWorkImage,
+    removeWorkImages,
     getRequestById,
     clearCache
   };

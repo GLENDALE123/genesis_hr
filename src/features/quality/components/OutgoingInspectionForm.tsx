@@ -62,7 +62,8 @@ export const OutgoingInspectionForm: React.FC<OutgoingInspectionFormProps> = ({
 
   const handleDefectResultPairChange = (index: number, field: string, value: string) => {
     const newPairs = [...(formData.defectResultPairs || [])];
-    newPairs[index] = { ...newPairs[index], [field]: value };
+    const currentPair = newPairs[index] || { defectKeyword: '', inspectionResult: '양호', limitApprovalContent: '', limitApprovalDecisionMaker: '' };
+    newPairs[index] = { ...currentPair, [field]: value };
     setFormData((prev: Partial<QualityInspection>) => ({ ...prev, defectResultPairs: newPairs as DefectResultPair[] }));
   };
 
@@ -238,6 +239,7 @@ export const OutgoingInspectionForm: React.FC<OutgoingInspectionFormProps> = ({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="양호">양호</SelectItem>
+                      <SelectItem value="한도대기">한도대기</SelectItem>
                       <SelectItem value="한도승인">한도승인</SelectItem>
                     </SelectContent>
                   </Select>

@@ -173,53 +173,6 @@ exports.markNotificationsReadBulk = onRequest({
 });
 
 
-// 모바일 단말에서 FCM 토큰을 등록하기 위한 엔드포인트
-exports.registerMobileToken = onRequest({
-  memory: '256MiB',
-  timeoutSeconds: 30,
-  region: 'asia-northeast3'
-}, async (req, res) => {
-  try {
-    // CORS 설정 강화
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-    res.set('Access-Control-Max-Age', '3600');
-    
-    // Preflight 요청 처리
-    if (req.method === 'OPTIONS') {
-      return res.status(204).send('');
-    }
-
-    if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'Method not allowed' });
-    const { token, platform, uid } = req.body || {};
-    if (!token || !platform) return res.status(400).json({ ok: false, error: 'token and platform are required' });
-
-    const normalizedPlatform = String(platform).toLowerCase();
-    if (!['android', 'ios', 'web'].includes(normalizedPlatform)) {
-      return res.status(400).json({ ok: false, error: 'invalid platform' });
-    }
-
-    const { db } = initializeFirebase();
-    const ownerUid = uid ? String(uid) : 'mobile-anonymous';
-    const ref = db.collection('users').doc(ownerUid).collection('fcmTokens').doc(String(token));
-    await ref.set({
-      token: String(token),
-      platform: normalizedPlatform,
-      enabled: true,
-      userAgent: req.get('User-Agent') || 'rn-app',
-      language: 'ko',
-      updatedAt: new Date(),
-      createdAt: new Date(),
-    }, { merge: true });
-
-    return res.json({ ok: true });
-  } catch (e) {
-    console.error('registerMobileToken error', e);
-    return res.status(500).json({ ok: false, error: e && e.message ? e.message : String(e) });
-  }
-});
-
 // 사용자 설정 조회 (모바일 앱용)
 exports.getUserSettings = onRequest({
   memory: '256MiB',

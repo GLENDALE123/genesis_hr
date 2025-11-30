@@ -37,6 +37,8 @@ function SampleRequestsContent() {
     updateStatus,
     deleteRequest,
     updateWorkData,
+    uploadWorkImage,
+    removeWorkImages,
   } = useSampleRequests();
 
   const {
@@ -286,10 +288,8 @@ function SampleRequestsContent() {
             onDelete={deleteRequest}
             onEdit={handleEdit}
             onUpdateWorkData={updateWorkData}
-            onUploadWorkImage={async (id: string, file: File) => {
-              // 작업 이미지 업로드 로직 (필요시 구현)
-              return 'uploaded-image-url'; // 임시 URL 반환
-            }}
+            onUploadWorkImage={uploadWorkImage}
+            onRemoveWorkImages={removeWorkImages}
             currentUserUid={user?.uid}
             isAdmin={true}
           />

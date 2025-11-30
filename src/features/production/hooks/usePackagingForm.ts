@@ -147,13 +147,18 @@ export const usePackagingForm = ({ report, isEditMode = false }: UseProductionFo
 
   // 일반 입력 필드 변경
   const handleInputChange = (field: keyof PackagingFormData, value: string | string[]) => {
-    // 숫자만 입력 가능한 필드
+    // 숫자만 입력 가능한 필드 (orderQuantity 제외 - 쉼표로 구분된 여러 수량 입력 가능)
     const numericFields = [
-      'orderQuantity', 'inputQuantity', 'goodQuantity', 'personnelCount',
+      'inputQuantity', 'goodQuantity', 'personnelCount',
       'productionPerMinute', 'packagingUnit', 'boxCount', 'remainder'
     ];
 
-    if (numericFields.includes(field) && typeof value === 'string') {
+    // orderQuantity는 쉼표와 공백도 허용 (예: "10000, 20000, 30000")
+    if (field === 'orderQuantity' && typeof value === 'string') {
+      // 숫자, 쉼표, 공백만 허용
+      value = value.replace(/[^0-9,\s]/g, '');
+    } else if (numericFields.includes(field) && typeof value === 'string') {
+      // 다른 숫자 필드는 숫자만 허용
       value = value.replace(/[^0-9]/g, '');
     }
 

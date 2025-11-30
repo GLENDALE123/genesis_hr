@@ -160,7 +160,7 @@ export const useJigMaster = (
         unsubscribeRef.current = null;
       }
 
-      // 검색어가 있으면 모든 데이터 구독 (날짜 필터 무시)
+      // 검색어가 있으면 모든 데이터 구독 (날짜 필터 무시, 리미트 없음)
       if (debouncedSearchTerm && debouncedSearchTerm.trim()) {
         unsubscribeRef.current = subscribeToJigMasters(
           (newMasters) => {
@@ -170,7 +170,7 @@ export const useJigMaster = (
               setError(null);
             }
           },
-          limitCount,
+          0, // 검색 모드에서는 제한 없이 모든 문서 조회 (0은 limit 미적용을 의미)
           (err) => {
             if (!isCancelled) {
               console.error('❌ 지그 마스터 데이터 로드 실패:', err);

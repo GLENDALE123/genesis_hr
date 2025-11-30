@@ -105,6 +105,9 @@ export const usePackagingReports = () => {
         unsubscribeRef.current = null;
       }
 
+      // 검색어 모드 감지: 날짜 범위가 매우 넓으면 검색어 모드로 간주 (리미트 없음)
+      const isSearchMode = startDate === '2000-01-01' && endDate === '2100-12-31';
+      
       // 새로운 날짜 범위로 실시간 구독
       unsubscribeRef.current = PackagingReportsService.subscribeToPackagingReportsByDateRange(
         startDate,
@@ -113,7 +116,12 @@ export const usePackagingReports = () => {
           if (!isMountedRef.current || isCancelled) return;
           // Zustand 스토어에 저장
           const store = usePackagingReportsStore.getState();
-          store.setReports(newReports, startDate, endDate);
+          // 검색어 모드에서는 캐싱하지 않음
+          if (isSearchMode) {
+            store.setReports(newReports, '', '');
+          } else {
+            store.setReports(newReports, startDate, endDate);
+          }
         },
         (err) => {
           if (!isMountedRef.current || isCancelled) return;
@@ -128,7 +136,8 @@ export const usePackagingReports = () => {
           }
           setLoading(false);
           setFetching(false);
-        }
+        },
+        isSearchMode ? 0 : 2000 // 검색어 모드에서는 리미트 없음
       );
     };
 

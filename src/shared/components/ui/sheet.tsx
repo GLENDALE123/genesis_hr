@@ -86,6 +86,10 @@ const SheetOverlay = React.forwardRef<
         isElectron && "[clip-path:inset(2rem_0_0_0)]",
         className
       )}
+      style={{
+        backdropFilter: 'none',
+        WebkitBackdropFilter: 'none',
+      }}
       onPointerDown={handlePointerDown}
       onClick={handleClick}
       {...props}
@@ -172,6 +176,13 @@ const SheetContent = React.forwardRef<
         // Variant 모드 유지
         return cn(sheetVariants({ side }), className);
       })()}
+      style={{
+        WebkitFontSmoothing: 'subpixel-antialiased',
+        MozOsxFontSmoothing: 'auto',
+        textRendering: 'auto',
+        willChange: 'auto',
+        backfaceVisibility: 'visible',
+      } as React.CSSProperties}
       {...props}
     >
       {!hideClose && (
@@ -196,6 +207,11 @@ const SheetHeader = ({
       "flex flex-col space-y-2 text-center sm:text-left",
       className
     )}
+    style={{
+      WebkitFontSmoothing: 'subpixel-antialiased',
+      MozOsxFontSmoothing: 'auto',
+      textRendering: 'auto',
+    } as React.CSSProperties}
     {...props}
   />
 )
@@ -222,6 +238,11 @@ const SheetTitle = React.forwardRef<
   <SheetPrimitive.Title
     ref={ref}
     className={cn("text-lg font-semibold text-foreground", className)}
+    style={{
+      WebkitFontSmoothing: 'subpixel-antialiased',
+      MozOsxFontSmoothing: 'auto',
+      textRendering: 'auto',
+    }}
     {...props}
   />
 ))
@@ -234,6 +255,11 @@ const SheetDescription = React.forwardRef<
   <SheetPrimitive.Description
     ref={ref}
     className={cn("text-sm text-muted-foreground", className)}
+    style={{
+      WebkitFontSmoothing: 'subpixel-antialiased',
+      MozOsxFontSmoothing: 'auto',
+      textRendering: 'auto',
+    }}
     {...props}
   />
 ))

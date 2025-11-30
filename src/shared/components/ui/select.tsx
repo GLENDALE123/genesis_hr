@@ -78,6 +78,13 @@ const SelectContent = React.forwardRef<
           "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
         className
       )}
+      style={{
+        WebkitFontSmoothing: 'subpixel-antialiased',
+        MozOsxFontSmoothing: 'auto',
+        textRendering: 'auto',
+        willChange: 'auto',
+        backfaceVisibility: 'visible',
+      } as React.CSSProperties}
       position={position}
       {...props}
     >

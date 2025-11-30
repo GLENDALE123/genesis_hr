@@ -88,6 +88,10 @@ const DialogOverlay = React.forwardRef<
         isElectron && "[clip-path:inset(2rem_0_0_0)]",
         className
       )}
+      style={{
+        backdropFilter: 'none',
+        WebkitBackdropFilter: 'none',
+      }}
       onPointerDown={handlePointerDown}
       onClick={handleClick}
       {...props}
@@ -170,6 +174,13 @@ const DialogContent = React.forwardRef<
           isFullscreenOnMobile && "!max-h-none",
           adjustedClassName
         )}
+        style={{
+          WebkitFontSmoothing: 'subpixel-antialiased',
+          MozOsxFontSmoothing: 'auto',
+          textRendering: 'auto',
+          willChange: 'auto',
+          backfaceVisibility: 'visible',
+        } as React.CSSProperties}
         {...props}
       >
         {/* Hidden DialogTitle for accessibility - only when not using stickyHeader */}
@@ -245,6 +256,11 @@ const DialogHeader = ({
       "flex flex-col space-y-1.5 text-center sm:text-left",
       className
     )}
+    style={{
+      WebkitFontSmoothing: 'subpixel-antialiased',
+      MozOsxFontSmoothing: 'auto',
+      textRendering: 'auto',
+    } as React.CSSProperties}
     {...props}
   />
 )
@@ -274,6 +290,11 @@ const DialogTitle = React.forwardRef<
       "text-lg font-semibold leading-none tracking-tight",
       className
     )}
+    style={{
+      WebkitFontSmoothing: 'subpixel-antialiased',
+      MozOsxFontSmoothing: 'auto',
+      textRendering: 'auto',
+    }}
     {...props}
   />
 ))
@@ -286,6 +307,11 @@ const DialogDescription = React.forwardRef<
   <DialogPrimitive.Description
     ref={ref}
     className={cn("text-sm text-muted-foreground", className)}
+    style={{
+      WebkitFontSmoothing: 'subpixel-antialiased',
+      MozOsxFontSmoothing: 'auto',
+      textRendering: 'auto',
+    }}
     {...props}
   />
 ))

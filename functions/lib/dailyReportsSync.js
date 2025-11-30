@@ -92,7 +92,39 @@ const normalizeProductionLine = (line) => {
   return trimmed;
 };
 
+// 라인 정렬 순서 정의
+const LINE_SORT_ORDER = {
+  '증착1': 1,
+  '증착2': 2,
+  '2코팅': 3,
+  '1코팅': 4,
+  '내부코팅1호기': 5,
+  '내부코팅2호기': 6,
+  '내부코팅3호기': 7,
+};
+
+// 라인 정렬 순서 가져오기
+const getLineSortOrder = (line) => {
+  const normalizedLine = normalizeProductionLine(line || '');
+  
+  // 정확한 매칭
+  if (LINE_SORT_ORDER.hasOwnProperty(normalizedLine)) {
+    return LINE_SORT_ORDER[normalizedLine];
+  }
+  
+  // 부분 매칭 (예: "내부코팅1호기"에 "내부코팅1"이 포함된 경우)
+  for (const [key, order] of Object.entries(LINE_SORT_ORDER)) {
+    if (normalizedLine.includes(key) || key.includes(normalizedLine)) {
+      return order;
+    }
+  }
+  
+  // 매칭되지 않으면 큰 숫자 반환 (맨 뒤로)
+  return 999;
+};
+
 const compareReports = (a, b) => {
+  // 1순위: 작업일자
   const dateA = a.workDate || '';
   const dateB = b.workDate || '';
   const timeA = dateA ? new Date(dateA).getTime() : 0;
@@ -102,9 +134,49 @@ const compareReports = (a, b) => {
     return timeA - timeB;
   }
 
-  const lineA = normalizeProductionLine(a.productionLine);
-  const lineB = normalizeProductionLine(b.productionLine);
-  return lineA.localeCompare(lineB);
+  // 2순위: 라인 (지정된 순서대로)
+  const lineA = normalizeProductionLine(a.productionLine || '');
+  const lineB = normalizeProductionLine(b.productionLine || '');
+  const orderA = getLineSortOrder(lineA);
+  const orderB = getLineSortOrder(lineB);
+  
+  if (orderA !== orderB) {
+    return orderA - orderB;
+  }
+  
+  // 같은 순서면 알파벳 순서로
+  const lineCompare = lineA.localeCompare(lineB);
+  if (lineCompare !== 0) {
+    return lineCompare;
+  }
+
+  // 3순위: 시작시간
+  const startTimeA = a.startTime || '';
+  const startTimeB = b.startTime || '';
+  const startTimeCompare = startTimeA.localeCompare(startTimeB);
+  
+  if (startTimeCompare !== 0) {
+    return startTimeCompare;
+  }
+
+  // 4순위: 원본 리포트 ID (같은 원본에서 분할된 행들을 붙이기 위해)
+  const originalIdA = a.originalId || a.id || '';
+  const originalIdB = b.originalId || b.id || '';
+  const originalIdCompare = originalIdA.localeCompare(originalIdB);
+  
+  if (originalIdCompare !== 0) {
+    return originalIdCompare;
+  }
+
+  // 5순위: 발주번호 (같은 원본 리포트에서 분할된 경우 발주번호 순서로 정렬)
+  const orderNumbersA = Array.isArray(a.orderNumbers) 
+    ? a.orderNumbers.map(n => String(n || '').trim()).filter(Boolean).join(',')
+    : String(a.orderNumbers || '').trim();
+  const orderNumbersB = Array.isArray(b.orderNumbers)
+    ? b.orderNumbers.map(n => String(n || '').trim()).filter(Boolean).join(',')
+    : String(b.orderNumbers || '').trim();
+  
+  return orderNumbersA.localeCompare(orderNumbersB);
 };
 
 const getCoatingData = (report, type) => {
@@ -174,14 +246,34 @@ const splitReportByOrderNumbers = async (db, report) => {
     return [report];
   }
   
-  logger.info('발주번호 분할 시작:', {
-    reportId: report.id,
-    orderNumbers: orderNumbers,
-    orderCount: orderNumbers.length,
-  });
+  // 발주번호 분할 시작 (로그 제거 - 너무 많은 로그 출력 방지)
   
   // 발주번호별 발주수량 조회
-  const orderQuantities = await getOrderQuantities(db, orderNumbers);
+  // 먼저 원본 리포트의 orderQuantities 배열 확인
+  let orderQuantities = {};
+  
+  if (Array.isArray(report.orderQuantities) && report.orderQuantities.length === orderNumbers.length) {
+    // 원본 리포트의 orderQuantities 배열이 있고 발주번호 개수와 일치하면 사용
+    for (let i = 0; i < orderNumbers.length; i++) {
+      const orderNumber = orderNumbers[i];
+      const qty = report.orderQuantities[i];
+      orderQuantities[orderNumber] = typeof qty === 'number' ? qty : (parseInt(String(qty).replace(/,/g, ''), 10) || 0);
+    }
+    
+    // 원본 리포트의 orderQuantities 배열 사용 (로그 제거)
+  } else {
+    // 원본 리포트에 orderQuantities 배열이 없거나 개수가 맞지 않으면 production-schedules에서 조회
+    orderQuantities = await getOrderQuantities(db, orderNumbers);
+  }
+  
+  // 발주번호 정렬 (오래된 것부터 먼저 처리)
+  // 발주번호는 보통 날짜나 순서가 포함되어 있으므로 문자열 정렬로 오래된 것부터 처리
+  orderNumbers.sort((a, b) => {
+    // 문자열 비교로 오름차순 정렬 (작은 값 = 오래된 것)
+    return String(a).localeCompare(String(b));
+  });
+  
+  // 발주번호 정렬 완료 (로그 제거)
   
   // 총 발주수량 계산
   const totalOrderQuantity = Object.values(orderQuantities).reduce((sum, qty) => sum + qty, 0);
@@ -189,18 +281,9 @@ const splitReportByOrderNumbers = async (db, report) => {
   // 발주수량이 모두 0이면 균등 분배
   const useEqualDistribution = totalOrderQuantity === 0;
   
-  if (useEqualDistribution) {
-    logger.info('발주수량이 없어서 균등 분배 사용:', {
-      reportId: report.id,
-      orderCount: orderNumbers.length,
-    });
-  } else {
-    logger.info('발주수량 비율 기반 분배 사용:', {
-      reportId: report.id,
-      orderQuantities: orderQuantities,
-      totalOrderQuantity: totalOrderQuantity,
-    });
-  }
+  // 로스율 설정 (5-10%, 평균 7.5% 사용)
+  // 필요시 0.05 (5%) ~ 0.10 (10%) 사이로 조정 가능
+  const LOSS_RATE = 0.075; // 7.5% (5-10%의 평균값)
   
   const splitReports = [];
   const totalInput = report.inputQuantity || 0;
@@ -210,6 +293,13 @@ const splitReportByOrderNumbers = async (db, report) => {
   let remainingInput = totalInput;
   let remainingGood = totalGood;
   let remainingDefect = totalDefect;
+  
+  // 부족분 처리 방식:
+  // - 발주번호 순서대로 우선 채우기: 오래된 발주번호부터 먼저 채움
+  // - 각 발주번호에 발주수량 + 로스율(5-10%) 할당
+  //   예: 발주수량 5000 → 5000 + (5000 * 7.5%) = 5375개 할당
+  // - 나머지는 다음 발주번호에 할당
+  //   예: T10495-1(5000) → 5500개 할당, T10496-1(5000) → 나머지 2500개 할당
   
   for (let i = 0; i < orderNumbers.length; i++) {
     const orderNumber = orderNumbers[i];
@@ -221,7 +311,7 @@ const splitReportByOrderNumbers = async (db, report) => {
     let inputQty, goodQty, defectQty;
     
     if (useEqualDistribution) {
-      // 균등 분배
+      // 균등 분배 (발주수량이 모두 0인 경우)
       if (isLast) {
         inputQty = remainingInput;
         goodQty = remainingGood;
@@ -235,17 +325,31 @@ const splitReportByOrderNumbers = async (db, report) => {
         remainingDefect -= defectQty;
       }
     } else {
-      // 발주수량 비율 기반 분배
-      const ratio = orderQty / totalOrderQuantity;
-      
+      // 발주번호 순서대로 우선 채우기
       if (isLast) {
+        // 마지막 발주번호: 나머지 모두 할당
         inputQty = remainingInput;
         goodQty = remainingGood;
         defectQty = remainingDefect;
       } else {
-        inputQty = Math.round(totalInput * ratio);
-        goodQty = Math.round(totalGood * ratio);
-        defectQty = Math.round(totalDefect * ratio);
+        // 발주수량 + 로스율(7.5%) 계산
+        const targetQty = Math.round(orderQty * (1 + LOSS_RATE));
+        
+        // 남은 양품수량이 목표 수량보다 많으면 목표 수량만큼 할당
+        if (remainingGood >= targetQty) {
+          goodQty = targetQty;
+        } else {
+          // 남은 양품수량이 목표 수량보다 적으면 남은 양품수량 모두 할당
+          goodQty = remainingGood;
+        }
+        
+        // 투입수량과 불량수량도 양품수량 비율로 계산
+        // 양품수량 비율 = goodQty / totalGood
+        const goodRatio = totalGood > 0 ? goodQty / totalGood : 0;
+        inputQty = Math.round(totalInput * goodRatio);
+        defectQty = Math.round(totalDefect * goodRatio);
+        
+        // 반올림 오차 보정: 마지막이 아니면 남은 값에서 빼기
         remainingInput -= inputQty;
         remainingGood -= goodQty;
         remainingDefect -= defectQty;
@@ -266,16 +370,22 @@ const splitReportByOrderNumbers = async (db, report) => {
     
     splitReports.push(splitReport);
     
-    logger.info('발주번호 분할 완료:', {
-      reportId: report.id,
-      orderNumber: orderNumber,
-      orderQuantity: orderQty,
-      inputQuantity: inputQty,
-      goodQuantity: goodQty,
-      defectQuantity: defectQty,
-      ratio: useEqualDistribution ? '균등' : `${((orderQty / totalOrderQuantity) * 100).toFixed(2)}%`,
-    });
+    // 부족분 계산 (발주수량 대비 양품수량)
+    const shortage = orderQty > 0 ? orderQty - goodQty : 0;
+    const shortagePercent = orderQty > 0 ? ((shortage / orderQty) * 100).toFixed(2) : '0.00';
+    
+    // 목표 수량 계산 (발주수량 + 로스율)
+    const targetQty = useEqualDistribution ? 0 : Math.round(orderQty * (1 + LOSS_RATE));
+    
+    // 발주번호 분할 완료 (로그 제거 - 각 발주번호마다 출력되어 너무 많음)
   }
+  
+  // 전체 분할 요약 로그
+  const totalOrderQty = Object.values(orderQuantities).reduce((sum, qty) => sum + qty, 0);
+  const totalGoodQty = splitReports.reduce((sum, r) => sum + (r.goodQuantity || 0), 0);
+  const totalShortage = totalOrderQty - totalGoodQty;
+  
+  // 발주번호 분할 전체 요약 (로그 제거 - 너무 많은 로그 출력 방지)
   
   return splitReports;
 };
@@ -290,29 +400,17 @@ const mapReportToRow = (report) => {
   const undercoatData = getCoatingData(report, 'undercoat');
   const topcoatData = getCoatingData(report, 'topcoat');
 
-  // 디버깅: 하도/상도 데이터 확인
-  if (undercoatData || topcoatData || report.processConditions) {
-    logger.info('하도/상도 데이터 추출:', {
-      reportId: report.id,
-      hasProcessConditions: !!report.processConditions,
-      undercoatFromProcessConditions: report.processConditions?.undercoat?.conditions || '',
-      topcoatFromProcessConditions: report.processConditions?.topcoat?.conditions || '',
-      undercoatFromDirect: report.undercoatData || '',
-      topcoatFromDirect: report.topcoatData || '',
-      finalUndercoat: undercoatData,
-      finalTopcoat: topcoatData,
-    });
-  }
+  // 하도/상도 데이터 추출 (로그 제거 - 너무 많은 로그 출력 방지)
 
   return [
     report.workDate || '',
     normalizeProductionLine(report.productionLine),
     formatArray(report.orderNumbers),
-    report.supplier || '',
-    report.productName || '',
-    report.partName || '',
+    '', // 발주처 - 빈 값 (수식이 자동으로 복사됨)
+    '', // 제품명 - 빈 값 (수식이 자동으로 복사됨)
+    '', // 부속명 - 빈 값 (수식이 자동으로 복사됨)
     formatNumber(report.orderQuantity),
-    report.specification || '',
+    '', // 사양 - 빈 값 (수식이 자동으로 복사됨)
     undercoatData,
     topcoatData,
     formatNumber(report.inputQuantity),
@@ -574,15 +672,37 @@ const readExistingRows = async (sheets, spreadsheetId, sheetTitle) => {
         // 기존 형식: 작업일자(0), 라인(1), 발주번호(2) 조합으로 키 생성
         const workDate = row[0] || '';
         const line = row[1] || '';
-        const orderNumbers = row[2] || '';
-        const key = `${workDate}|${line}|${orderNumbers}`;
+        const orderNumbersStr = row[2] || '';
         
-        if (key !== '||') { // 빈 행 제외
-          map.set(key, {
+        // 전체 키 생성 (여러 발주번호가 쉼표로 구분된 경우)
+        const fullKey = `${workDate}|${line}|${orderNumbersStr}`;
+        
+        if (fullKey !== '||') { // 빈 행 제외
+          map.set(fullKey, {
             rowIndex: index + 2,
             values: row,
             updatedAt: '',
           });
+          
+          // 발주번호가 여러 개인 경우, 각 발주번호별로도 키 생성 (분할된 리포트 매칭용)
+          if (orderNumbersStr.includes(',')) {
+            const orderNumbers = orderNumbersStr
+              .split(',')
+              .map(n => n.trim())
+              .filter(Boolean);
+            
+            orderNumbers.forEach(orderNumber => {
+              const singleKey = `${workDate}|${line}|${orderNumber}`;
+              // 이미 전체 키로 저장했으므로, 단일 키로도 같은 행을 참조하도록 설정
+              if (!map.has(singleKey)) {
+                map.set(singleKey, {
+                  rowIndex: index + 2,
+                  values: row,
+                  updatedAt: '',
+                });
+              }
+            });
+          }
         }
       }
     });
@@ -650,47 +770,94 @@ const clearSheetData = async (sheets, spreadsheetId, sheetTitle) => {
 };
 
 const sortSheetRows = async (sheets, spreadsheetId, sheetTitle) => {
-  const endColumn = columnIndexToLetter(DAILY_REPORT_HEADERS.length - 1);
-  const range = `${sheetTitle}!A2:${endColumn}`;
-
-  const response = await sheets.spreadsheets.values.get({
-    spreadsheetId,
-    range,
-  });
-
-  const rows = response.data.values || [];
-  if (!rows.length) {
-    return;
-  }
-
-  rows.sort((a, b) => {
-    const dateA = a[0] || '';
-    const dateB = b[0] || '';
-    const timeA = dateA ? new Date(dateA).getTime() : 0;
-    const timeB = dateB ? new Date(dateB).getTime() : 0;
-
-    if (timeA !== timeB) {
-      return timeA - timeB;
+  try {
+    // sheetId 가져오기
+    const sheetId = await getSheetId(sheets, spreadsheetId, sheetTitle);
+    if (!sheetId) {
+      logger.warn('sheetId를 찾을 수 없어 정렬을 건너뜁니다.');
+      return;
     }
 
-    const lineA = a[1] || '';
-    const lineB = b[1] || '';
-    return lineA.localeCompare(lineB);
-  });
+    // 현재 데이터 행 수 확인 (더 넓은 범위로 확인)
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `${sheetTitle}!A:Z`,
+    });
 
-  await sheets.spreadsheets.values.clear({
-    spreadsheetId,
-    range,
-  });
+    const allRows = response.data.values || [];
+    if (allRows.length <= 1) {
+      // 헤더만 있거나 데이터가 없으면 정렬 불필요
+      logger.info('정렬할 데이터가 없습니다.');
+      return;
+    }
 
-  await sheets.spreadsheets.values.update({
-    spreadsheetId,
-    range: `${sheetTitle}!A2`,
-    valueInputOption: 'RAW',
-    requestBody: {
-      values: rows,
-    },
-  });
+    const dataRows = allRows.slice(1); // 헤더 제외
+    const lastRowIndex = allRows.length; // 1-based 마지막 행 번호
+    const endColumn = columnIndexToLetter(DAILY_REPORT_HEADERS.length - 1);
+
+    logger.info('정렬 시작:', {
+      sheetTitle,
+      totalRows: allRows.length,
+      dataRows: dataRows.length,
+      lastRowIndex: lastRowIndex,
+      range: `A2:${endColumn}${lastRowIndex}`,
+    });
+
+    // Google Sheets API의 sortRange 사용 (수식 보존)
+    // sortRange는 커스텀 정렬 순서를 지원하지 않으므로, 
+    // compareReports에서 정의한 순서대로 정렬하려면 클라이언트 측 정렬이 필요하지만
+    // 수식 보존을 위해 sortRange를 사용 (라인은 알파벳 순서로 정렬됨)
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [
+          {
+            sortRange: {
+              range: {
+                sheetId: sheetId,
+                startRowIndex: 1, // 헤더 다음 행부터 (0-based, 2행 = index 1)
+                endRowIndex: lastRowIndex, // 마지막 행까지 (0-based, exclusive)
+                startColumnIndex: 0, // A열부터
+                endColumnIndex: DAILY_REPORT_HEADERS.length, // 마지막 컬럼까지 (exclusive)
+              },
+              sortSpecs: [
+                {
+                  dimensionIndex: 0, // 작업일자 (A열, 인덱스 0)
+                  sortOrder: 'ASCENDING',
+                },
+                {
+                  dimensionIndex: 1, // 라인 (B열, 인덱스 1) - 알파벳 순서로 정렬
+                  sortOrder: 'ASCENDING',
+                },
+                {
+                  dimensionIndex: 16, // 시작시간 (Q열, 인덱스 16)
+                  sortOrder: 'ASCENDING',
+                },
+                {
+                  dimensionIndex: 2, // 발주번호 (C열, 인덱스 2)
+                  sortOrder: 'ASCENDING',
+                },
+              ],
+            },
+          },
+        ],
+      },
+    });
+
+    logger.info('시트 정렬 완료 (수식 보존):', {
+      sheetTitle,
+      range: `A2:${endColumn}${lastRowIndex}`,
+      sortedRows: dataRows.length,
+      sheetId: sheetId,
+      sortOrder: '작업일자 → 라인 → 시작시간 → 발주번호',
+    });
+  } catch (error) {
+    logger.error('시트 정렬 실패:', {
+      message: error.message,
+      stack: error.stack,
+    });
+    // 정렬 실패해도 계속 진행
+  }
 };
 
 const hasStringValue = (value) =>
@@ -763,6 +930,21 @@ const hasMeaningfulValue = (report) => {
   return false;
 };
 
+// sheetId를 가져오는 헬퍼 함수
+const getSheetId = async (sheets, spreadsheetId, sheetName) => {
+  try {
+    const spreadsheet = await sheets.spreadsheets.get({
+      spreadsheetId,
+    });
+    
+    const sheet = spreadsheet.data.sheets.find(s => s.properties.title === sheetName);
+    return sheet ? sheet.properties.sheetId : null;
+  } catch (error) {
+    logger.warn('sheetId 가져오기 실패:', error.message);
+    return null;
+  }
+};
+
 const markReportsAsSynced = async (db, reportIds, syncedAtIso) => {
   if (!reportIds.length) {
     return;
@@ -822,35 +1004,39 @@ async function runDailyReportsSync({
   }
 
   await ensureSheet(sheets, spreadsheetId, sheetName);
-  let existingRowsMap = new Map();
-  let hasIdColumn = false;
-  let shouldWriteHeader = true;
   
-  if (forceFullSync) {
-    // 전체 동기화: 데이터만 지우고 조건부 서식 규칙은 보존
-    await clearSheetData(sheets, spreadsheetId, sheetName);
-    // 헤더는 이미 있으므로 다시 쓰지 않음 (조건부 서식 규칙 보존)
-    shouldWriteHeader = false;
-  } else {
-    const result = await readExistingRows(
+  // 전체 동기화와 일반 동기화 모두 기존 행을 읽어서 비교
+  const result = await readExistingRows(
+    sheets,
+    spreadsheetId,
+    sheetName
+  );
+  let existingRowsMap = result.map;
+  let hasIdColumn = result.hasIdColumn || false;
+  let shouldWriteHeader = !(result.header && result.header.length > 0);
+  
+  // 헤더가 없을 때만 헤더 작성
+  if (shouldWriteHeader) {
+    await writeHeader(sheets, spreadsheetId, sheetName);
+    // 헤더 작성 후 다시 기존 행 읽기 (헤더 제외)
+    const resultAfterHeader = await readExistingRows(
       sheets,
       spreadsheetId,
       sheetName
     );
-    existingRowsMap = result.map;
-    hasIdColumn = result.hasIdColumn || false;
-    // 기존 헤더가 있으면 다시 쓰지 않음
-    if (result.header && result.header.length > 0) {
-      shouldWriteHeader = false;
-    }
+    existingRowsMap = resultAfterHeader.map;
+    hasIdColumn = resultAfterHeader.hasIdColumn || false;
   }
   
-  // 헤더가 없거나 일반 동기화에서 헤더가 없을 때만 헤더 작성
-  if (shouldWriteHeader) {
-    await writeHeader(sheets, spreadsheetId, sheetName);
-  }
+  logger.info('기존 행 읽기 완료:', {
+    existingRowsCount: existingRowsMap.size,
+    hasIdColumn: hasIdColumn,
+    forceFullSync: Boolean(forceFullSync),
+  });
 
-  // 일반 동기화에서 엑셀에 없는 문서를 찾기 위해 추가로 가져오기
+  // 일반 동기화에서만 엑셀에 없는 문서를 찾기 위해 추가로 가져오기
+  // 전체 동기화일 때는 이미 모든 문서를 가져왔으므로 추가 확인 불필요
+  // 발주번호 분할 전에 원본 문서를 확인하되, 분할 후에도 다시 확인
   if (!forceFullSync && existingRowsMap.size > 0) {
     logger.info('엑셀에 없는 문서를 찾기 위해 추가 문서를 확인합니다.');
     const existingKeys = new Set();
@@ -859,47 +1045,67 @@ async function runDailyReportsSync({
     });
 
     // 엑셀에 있는 키 목록을 기반으로, Firestore에서 해당 문서들을 확인
-    // 엑셀에 없는 문서를 찾기 위해 최근 문서들을 추가로 확인
+    // 엑셀에 없는 문서를 찾기 위해 최근 업데이트된 문서만 확인
     try {
+      // 최근 7일 이내에 업데이트된 문서만 확인 (엑셀에서 삭제되었을 가능성이 있는 문서)
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
       const additionalSnapshot = await db.collection('packaging-reports')
-        .limit(1000)
+        .where('updatedAt', '>=', sevenDaysAgo)
+        .where('needsSheetSync', '==', false) // 이미 동기화된 문서도 확인
+        .orderBy('updatedAt', 'desc')
+        .limit(500) // 최근 500개만 확인
         .get();
+      
+      let addedCount = 0;
+      let skippedCount = 0;
       
       additionalSnapshot.docs.forEach((docSnap) => {
         const report = { id: docSnap.id, ...docSnap.data() };
         // 의미있는 데이터가 있는지 확인
         if (!hasMeaningfulValue(report)) {
+          skippedCount++;
           return;
         }
 
-        // 엑셀에 있는지 확인
+        // 발주번호 분할을 고려하여 키 생성
+        // 원본 문서의 키로 확인 (분할 전)
         const reportKey = hasIdColumn 
           ? `id:${report.id}` 
           : createReportKey(report);
         
         // 엑셀에 없는 문서이고, 이미 reports에 포함되지 않은 경우 추가
-        if (!existingKeys.has(reportKey)) {
+        const orderNumbers = Array.isArray(report.orderNumbers) 
+          ? report.orderNumbers 
+          : (report.orderNumbers ? String(report.orderNumbers).split(',').map(n => n.trim()).filter(Boolean) : []);
+        
+        // 발주번호가 여러 개인 경우, 분할 후 각각 확인해야 하므로 일단 추가
+        // 발주번호가 1개인 경우, 키로 확인
+        if (orderNumbers.length > 1 || !existingKeys.has(reportKey)) {
           const alreadyIncluded = reports.some(r => r.id === report.id);
           if (!alreadyIncluded) {
             reports.push(report);
-            logger.info('엑셀에 없는 문서를 동기화 대상에 추가:', {
-              reportId: report.id,
-              workDate: report.workDate,
-              productionLine: report.productionLine,
-              key: reportKey,
-            });
+            addedCount++;
           }
+        } else {
+          skippedCount++;
         }
       });
+      
+      if (addedCount > 0) {
+        logger.info('엑셀에 없는 문서를 동기화 대상에 추가:', {
+          addedCount,
+          skippedCount,
+          totalChecked: additionalSnapshot.size,
+        });
+      }
     } catch (error) {
       logger.warn('추가 문서 확인 중 오류:', error.message);
     }
   }
 
-  // 리포트를 발주번호별로 분할
-  logger.info('발주번호별 분할 시작:', {
-    totalReports: reports.length,
-  });
+  // 리포트를 발주번호별로 분할 (로그 제거)
   
   const splitReports = [];
   const originalReportIds = new Set(); // 원본 리포트 ID 추적
@@ -923,11 +1129,7 @@ async function runDailyReportsSync({
     }
   }
   
-  logger.info('발주번호별 분할 완료:', {
-    originalReports: reports.length,
-    splitReports: splitReports.length,
-    splitRatio: splitReports.length / reports.length,
-  });
+  // 발주번호별 분할 완료 (로그 제거 - 너무 많은 로그 출력 방지)
 
   const sortedReports = [...splitReports].sort(compareReports);
 
@@ -960,23 +1162,93 @@ async function runDailyReportsSync({
     // 기존 행 찾기: ID 컬럼이 있으면 ID로, 없으면 작업일자+라인+발주번호 조합으로
     let existing = null;
     if (hasIdColumn) {
+      // 먼저 현재 ID로 찾기
       existing = existingRowsMap.get(report.id);
+      
+      // 분할된 리포트이고 찾지 못한 경우, 원본 ID로 찾기
+      if (!existing && report.originalId) {
+        existing = existingRowsMap.get(report.originalId);
+      }
     } else {
+      // 작업일자+라인+발주번호 조합으로 키 생성
       const key = createReportKey(report);
       existing = existingRowsMap.get(key);
+      
+      // 분할된 리포트이고 찾지 못한 경우, 원본 리포트의 키로도 시도
+      if (!existing && report.originalId) {
+        // 원본 리포트 정보로 키 생성 시도 (하지만 원본 리포트 정보가 없으므로 이 방법은 제한적)
+        // 대신 발주번호가 하나인 경우에만 키로 찾기
+        if (report.orderNumbers && report.orderNumbers.length === 1) {
+          // 이미 단일 발주번호이므로 키는 정상적으로 생성되어야 함
+          // 로그만 추가
+          logger.warn('기존 행을 찾지 못함 (분할된 리포트):', {
+            reportId: report.id,
+            originalId: report.originalId,
+            key: key,
+            orderNumbers: report.orderNumbers,
+          });
+        }
+      }
     }
     
-    // 기존 행이 있고, forceFullSync가 아니면 업데이트
+    // 기존 행이 있으면 업데이트 (수식이 있는 컬럼은 제외)
     if (existing) {
-      const endColumn = columnIndexToLetter(newRow.length - 1);
-      rowsToUpdate.push({
-        range: `${sheetName}!A${existing.rowIndex}:${endColumn}${existing.rowIndex}`,
-        values: [newRow],
-      });
+      // 수식이 있는 컬럼 인덱스: 발주처(3), 제품명(4), 부속명(5), 사양(7)
+      // 이 컬럼들은 업데이트하지 않아서 수식이 보존됨
+      const formulaColumns = [3, 4, 5, 7];
+      
+      // 수식이 없는 컬럼만 업데이트하기 위해 여러 범위로 나누기
+      const updateRanges = [];
+      let startCol = 0;
+      
+      for (let i = 0; i < newRow.length; i++) {
+        if (formulaColumns.includes(i)) {
+          // 수식 컬럼 전까지 업데이트 범위 추가
+          if (startCol < i) {
+            const startColLetter = columnIndexToLetter(startCol);
+            const endColLetter = columnIndexToLetter(i - 1);
+            updateRanges.push({
+              range: `${sheetName}!${startColLetter}${existing.rowIndex}:${endColLetter}${existing.rowIndex}`,
+              values: [[...newRow.slice(startCol, i)]],
+            });
+          }
+          startCol = i + 1; // 수식 컬럼 다음부터 시작
+        }
+      }
+      
+      // 마지막 범위 추가
+      if (startCol < newRow.length) {
+        const startColLetter = columnIndexToLetter(startCol);
+        const endColLetter = columnIndexToLetter(newRow.length - 1);
+        updateRanges.push({
+          range: `${sheetName}!${startColLetter}${existing.rowIndex}:${endColLetter}${existing.rowIndex}`,
+          values: [[...newRow.slice(startCol)]],
+        });
+      }
+      
+      // 여러 범위로 나누어 업데이트 (수식 컬럼 제외)
+      rowsToUpdate.push(...updateRanges);
       updated += 1;
+      
+      // 기존 행 업데이트 (수식 컬럼 제외) - 로그 제거
     } else {
+      // 엑셀에 없는 행이므로 새로 추가
       rowsToAppend.push(newRow);
       inserted += 1;
+      
+      const key = hasIdColumn 
+        ? (report.id || `id:${report.id}`)
+        : createReportKey(report);
+      
+      logger.info('엑셀에 없는 행 추가 (삭제된 행 복구 또는 신규):', {
+        reportId: report.id,
+        originalId: report.originalId,
+        workDate: report.workDate,
+        productionLine: report.productionLine,
+        orderNumbers: report.orderNumbers,
+        key: key,
+        hasIdColumn: hasIdColumn,
+      });
     }
 
     // 원본 리포트 ID를 processedReportIds에 추가 (동기화 플래그 설정용)
@@ -984,8 +1256,10 @@ async function runDailyReportsSync({
     processedReportIds.add(originalId);
   }
 
+  // rowsToAppend 후에 수식 복사 추가
   if (rowsToAppend.length) {
-    await sheets.spreadsheets.values.append({
+    // 먼저 행 추가
+    const appendResponse = await sheets.spreadsheets.values.append({
       spreadsheetId,
       range: `${sheetName}!A:A`,
       valueInputOption: 'RAW',
@@ -994,8 +1268,182 @@ async function runDailyReportsSync({
         values: rowsToAppend,
       },
     });
+    
+    // 추가된 행의 범위 확인
+    // Google Sheets API append 응답 구조: { data: { updates: { updatedRange: "...", ... } } }
+    const updates = appendResponse.data?.updates;
+    const updatedRange = updates?.updatedRange;
+    
+    // updatedRange가 없으면 다른 경로 시도
+    const finalUpdatedRange = updatedRange || appendResponse.data?.updatedRange || appendResponse.updatedRange;
+    
+    if (finalUpdatedRange) {
+      // 범위에서 시작 행과 끝 행 추출
+      // 형식: '생산일보'!A1803:R1810 또는 A1803:R1810
+      // 숫자 부분만 추출: A1803:R1810 -> 1803, 1810
+      // 정규식: 컬럼 이름 + 숫자:컬럼 이름 + 숫자 패턴 찾기
+      // 예: A1803:R1810 -> 1803, 1810
+      const rangeMatch = finalUpdatedRange.match(/[A-Z]+(\d+):[A-Z]+(\d+)/);
+      
+      if (rangeMatch) {
+        const startRow = parseInt(rangeMatch[1]);
+        const endRow = parseInt(rangeMatch[2]);
+        
+        // sheetId 한 번만 가져오기
+        const sheetId = await getSheetId(sheets, spreadsheetId, sheetName);
+        
+        if (sheetId && startRow > 2) { // 헤더 다음 행부터
+          // 수식이 있는 컬럼: 발주처(D), 제품명(E), 부속명(F), 사양(H)
+          const formulaColumns = ['D', 'E', 'F', 'H'];
+          const sourceRow = startRow - 1; // 새 행 바로 위 행
+          
+          if (sourceRow >= 2) {
+            try {
+              // 1단계: 위쪽 행의 수식 읽기
+              const sourceRange = `${sheetName}!${formulaColumns[0]}${sourceRow}:${formulaColumns[formulaColumns.length - 1]}${sourceRow}`;
+              
+              const sourceResponse = await sheets.spreadsheets.get({
+                spreadsheetId,
+                ranges: [sourceRange],
+                includeGridData: true,
+              });
+              
+              const sourceSheet = sourceResponse.data.sheets?.[0];
+              const sourceGridData = sourceSheet?.data?.[0];
+              const sourceRowData = sourceGridData?.rowData?.[0];
+              
+              if (!sourceRowData || !sourceRowData.values) {
+                logger.warn('소스 행 데이터를 찾을 수 없습니다:', { 
+                  sourceRow, 
+                  sourceRange,
+                });
+                return;
+              }
+              
+              // 2단계: 각 새 행에 수식 복사 (copyPaste 사용)
+              const copyPasteRequests = [];
+              
+              // sourceRange의 시작 컬럼 인덱스 계산 (D=3)
+              const startColIndex = formulaColumns[0].charCodeAt(0) - 65;
+              
+              for (let targetRow = startRow; targetRow <= endRow; targetRow++) {
+                formulaColumns.forEach((col) => {
+                  const colIndex = col.charCodeAt(0) - 65; // D=3, E=4, F=5, H=7
+                  // sourceRange에서의 실제 인덱스 계산 (D부터 시작하므로 상대 인덱스)
+                  const sourceCellIndex = colIndex - startColIndex;
+                  const sourceCell = sourceRowData.values[sourceCellIndex];
+                  
+                  // 수식이 있는 경우만 복사
+                  if (sourceCell?.userEnteredValue?.formulaValue) {
+                    copyPasteRequests.push({
+                      copyPaste: {
+                        source: {
+                          sheetId: sheetId,
+                          startRowIndex: sourceRow - 1, // 0-based: 소스 행
+                          endRowIndex: sourceRow, // 0-based: exclusive
+                          startColumnIndex: colIndex,
+                          endColumnIndex: colIndex + 1, // exclusive
+                        },
+                        destination: {
+                          sheetId: sheetId,
+                          startRowIndex: targetRow - 1, // 0-based: 대상 행
+                          endRowIndex: targetRow, // 0-based: exclusive
+                          startColumnIndex: colIndex,
+                          endColumnIndex: colIndex + 1, // exclusive
+                        },
+                        pasteType: 'PASTE_FORMULA', // 수식만 복사
+                        pasteOrientation: 'NORMAL',
+                      },
+                    });
+                  }
+                });
+              }
+              
+              // 3단계: 배치로 실행
+              if (copyPasteRequests.length > 0) {
+                const batchSize = 100;
+                for (let i = 0; i < copyPasteRequests.length; i += batchSize) {
+                  const batch = copyPasteRequests.slice(i, i + batchSize);
+                  
+                  try {
+                    await sheets.spreadsheets.batchUpdate({
+                      spreadsheetId,
+                      requestBody: {
+                        requests: batch,
+                      },
+                    });
+                  } catch (batchError) {
+                    logger.error('수식 복사 배치 실패:', {
+                      message: batchError.message,
+                      stack: batchError.stack,
+                      batchIndex: i,
+                      batchSize: batch.length,
+                    });
+                    throw batchError;
+                  }
+                }
+              } else {
+                logger.warn('복사할 수식이 없습니다:', { 
+                  sourceRow, 
+                  sourceRange,
+                  formulaColumns,
+                });
+              }
+            } catch (error) {
+              logger.error('수식 복사 실패:', {
+                message: error.message,
+                stack: error.stack,
+                sourceRow: sourceRow,
+                targetRange: `${startRow}:${endRow}`,
+                sheetId: sheetId,
+              });
+            }
+          } else {
+            logger.warn('수식 복사 스킵: sourceRow 조건 불만족', {
+              sourceRow,
+              sourceRowCondition: sourceRow >= 2,
+            });
+          }
+        } else {
+          logger.warn('수식 복사 스킵:', {
+            reason: !sheetId ? 'sheetId를 찾을 수 없음' : 'startRow가 2 이하',
+            sheetId,
+            startRow,
+            endRow,
+          });
+        }
+      } else {
+        logger.warn('수식 복사 스킵: rangeMatch를 찾을 수 없음', {
+          finalUpdatedRange,
+          finalUpdatedRangeType: typeof finalUpdatedRange,
+          finalUpdatedRangeLength: finalUpdatedRange ? finalUpdatedRange.length : 0,
+          testMatch: finalUpdatedRange ? finalUpdatedRange.match(/(\d+):(\d+)/) : null,
+        });
+      }
+    } else {
+      logger.warn('수식 복사 스킵: rangeMatch를 찾을 수 없음', {
+        finalUpdatedRange,
+        updatedRange,
+      });
+    }
+  } else {
+    logger.warn('수식 복사 스킵: finalUpdatedRange를 찾을 수 없음', {
+      updatedRange,
+      finalUpdatedRange,
+      hasUpdates: !!updates,
+      updatesKeys: updates ? Object.keys(updates) : [],
+      appendResponseDataKeys: appendResponse.data ? Object.keys(appendResponse.data) : [],
+    });
+  }
+  
+  if (rowsToAppend.length === 0) {
+    logger.info('수식 복사 스킵: 새 행이 없음 (rowsToAppend.length = 0)', {
+      rowsToAppend: rowsToAppend.length,
+      rowsToUpdate: rowsToUpdate.length,
+    });
   }
 
+  // 기존 행 업데이트 (수식 컬럼 제외)
   if (rowsToUpdate.length) {
     await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId,
@@ -1006,6 +1454,7 @@ async function runDailyReportsSync({
     });
   }
 
+  // sortRange API를 사용하여 수식 보존하면서 정렬
   if (rowsToAppend.length || rowsToUpdate.length) {
     await sortSheetRows(sheets, spreadsheetId, sheetName);
   }

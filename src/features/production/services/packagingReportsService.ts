@@ -344,13 +344,17 @@ export class PackagingReportsService {
     }
 
     try {
-      const q = query(
+      let q = query(
         collection(db, 'packaging-reports'),
         where('workDate', '>=', startDate),
         where('workDate', '<=', endDate),
-        orderBy('workDate', 'desc'),
-        limit(limitCount)
+        orderBy('workDate', 'desc')
       );
+      
+      // limitCount가 0 이하이면 limit을 적용하지 않음 (모든 문서 조회)
+      if (limitCount > 0) {
+        q = query(q, limit(limitCount));
+      }
 
       return onSnapshot(
         q,

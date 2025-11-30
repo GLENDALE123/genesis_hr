@@ -157,11 +157,15 @@ export const subscribeToJigMasters = (
   onError?: (error: Error) => void
 ): (() => void) => {
   try {
-    const q = query(
+    let q = query(
       getCollectionRef(JIG_COLLECTIONS.MASTER),
-      orderBy('createdAt', 'desc'),
-      limit(limitCount)
+      orderBy('createdAt', 'desc')
     );
+    
+    // limitCount가 0 이하이면 limit을 적용하지 않음 (모든 문서 조회)
+    if (limitCount > 0) {
+      q = query(q, limit(limitCount));
+    }
 
     return onSnapshot(
       q,
@@ -238,13 +242,17 @@ export const subscribeToJigMastersByDateRange = (
     const endDateObj = new Date(endDate);
     endDateObj.setHours(23, 59, 59, 999);
 
-    const q = query(
+    let q = query(
       getCollectionRef(JIG_COLLECTIONS.MASTER),
       where('createdAt', '>=', startDateObj.toISOString()),
       where('createdAt', '<=', endDateObj.toISOString()),
-      orderBy('createdAt', 'desc'),
-      limit(limitCount)
+      orderBy('createdAt', 'desc')
     );
+    
+    // limitCount가 0 이하이면 limit을 적용하지 않음 (모든 문서 조회)
+    if (limitCount > 0) {
+      q = query(q, limit(limitCount));
+    }
 
     return onSnapshot(
       q,

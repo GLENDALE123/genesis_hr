@@ -22,7 +22,6 @@ const notificationTriggers = require('./triggers/notifications');
 
 // Storage 트리거들
 const imageTriggers = require('./triggers/imageOptimization');
-const { backfillThumbnails } = require('./lib/imageProcessing');
 
 // Scheduled 트리거들
 const cleanupTriggers = require('./triggers/cleanupReadNotifications');
@@ -33,7 +32,6 @@ const scheduleDailyReportsSync = require('./triggers/scheduleDailyReportsSync');
 const notificationHttps = require('./https/notifications');
 const createNotificationHttps = require('./https/createNotification');
 const registerMobileTokenHttps = require('./https/registerMobileToken');
-const getUnreadNotificationsHttps = require('./https/getUnreadNotifications');
 const deleteUserHttps = require('./https/deleteUser');
 const getAllUsersWithAuthInfoHttps = require('./https/getAllUsersWithAuthInfo');
 const updateUserAuthInfoHttps = require('./https/updateUserAuthInfo');
@@ -53,14 +51,10 @@ module.exports = {
   ...notificationHttps,
   ...createNotificationHttps,
   ...registerMobileTokenHttps,
-  ...getUnreadNotificationsHttps,
   ...deleteUserHttps,
   ...getAllUsersWithAuthInfoHttps,
   ...updateUserAuthInfoHttps,
   ...syncGoogleSheetsHttps,
   ...syncDailyReportsToSheetsHttps,
-  
-  // 이미지 백필 callable
-  backfillThumbnails,
 };
 
