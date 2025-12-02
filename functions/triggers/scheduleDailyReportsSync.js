@@ -52,12 +52,12 @@ async function executeSync() {
 }
 
 /**
- * 8:00 AM부터 2시간마다 실행 (8, 10, 12, 14, 16, 18, 20, 22, 0시)
- * cron: "0 8,10,12,14,16,18,20,22,0 * * *"
+ * 8:00 AM부터 2시간마다 실행, 다음날 1:00 AM까지 (8, 10, 12, 14, 16, 18, 20, 22, 0, 1시)
+ * cron: "0 1,8,10,12,14,16,18,20,22,0 * * *"
  */
 exports.scheduleDailyReportsSync = onSchedule(
   {
-    schedule: '0 8,10,12,14,16,18,20,22,0 * * *', // 한국시간 8시, 10시, 12시, 14시, 16시, 18시, 20시, 22시, 0시
+    schedule: '0 1,8,10,12,14,16,18,20,22,0 * * *', // 한국시간 1시, 8시, 10시, 12시, 14시, 16시, 18시, 20시, 22시, 0시
     timeZone: 'Asia/Seoul', // 한국시간대 사용
     region: 'asia-northeast3',
     secrets: [googleServiceAccountEmail, googlePrivateKey],
@@ -69,35 +69,6 @@ exports.scheduleDailyReportsSync = onSchedule(
       await executeSync();
     } catch (error) {
       logger.error('생산일보 자동 동기화 실패:', {
-        message: error.message,
-        stack: error.stack,
-        code: error.code,
-        spreadsheetId: SPREADSHEET_ID,
-        sheetName: SHEET_NAME,
-      });
-      throw error;
-    }
-  }
-);
-
-/**
- * 1:00 AM에 실행 (다음날 1시)
- * cron: "0 1 * * *"
- */
-exports.scheduleDailyReportsSync1AM = onSchedule(
-  {
-    schedule: '0 1 * * *', // 한국시간 1시
-    timeZone: 'Asia/Seoul', // 한국시간대 사용
-    region: 'asia-northeast3',
-    secrets: [googleServiceAccountEmail, googlePrivateKey],
-    memory: '512MiB',
-    timeoutSeconds: 540,
-  },
-  async (event) => {
-    try {
-      await executeSync();
-    } catch (error) {
-      logger.error('생산일보 자동 동기화 실패 (1AM):', {
         message: error.message,
         stack: error.stack,
         code: error.code,

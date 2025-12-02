@@ -20,7 +20,8 @@ import {
   Megaphone,
   Palette,
   Info,
-  Users
+  Users,
+  Package
 } from 'lucide-react';
 
 // 경로별 아이콘 매핑
@@ -30,6 +31,7 @@ export const ROUTE_ICONS: Record<string, React.ComponentType<{ className?: strin
   '/production/schedule': CalendarDays,
   '/production/management': CalendarClock,
   '/production/shortage-management': AlertTriangle,
+  '/production/product-management': Package,
   '/quality/issues': ShieldAlert,
   '/quality/history': History,
   '/sample-center': TestTube,
@@ -54,6 +56,7 @@ export const ROUTE_TITLES: Record<string, string> = {
   '/production/schedule': '생산일정',
   '/production/management': '생산관리부',
   '/production/shortage-management': '부족분관리',
+  '/production/product-management': '종합관리테이블',
   '/quality/issues': '품질 이슈',
   '/quality/history': '품질 종합이력',
   '/sample-center': '샘플센터',

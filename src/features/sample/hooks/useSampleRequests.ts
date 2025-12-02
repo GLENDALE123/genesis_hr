@@ -47,6 +47,7 @@ export const useSampleRequests = () => {
   }, []);
 
   // ✅ 초기 마운트 시 실시간 구독 시작
+  // 메모리 누수 방지: 의존성 배열에서 함수 제거 (Zustand 함수는 안정적이지만 불필요한 재실행 방지)
   useEffect(() => {
     if (!mounted) return;
 
@@ -67,7 +68,7 @@ export const useSampleRequests = () => {
       // Firebase 초기화 대기
       const isFirebaseReady = await waitForFirebaseInit();
       
-      if (isCancelled) return;
+      if (isCancelled || !isMountedRef.current) return;
 
       if (!isFirebaseReady) {
         console.error('❌ Firebase 초기화 실패');
@@ -105,7 +106,8 @@ export const useSampleRequests = () => {
         unsubscribeRef.current = null;
       }
     };
-  }, [mounted, getCachedRequests, setCachedRequests, setError, setFetching, setLoading]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted]); // 함수들은 Zustand store에서 가져온 안정적인 함수이므로 의존성에서 제외
 
   /**
    * 새 샘플 요청 생성

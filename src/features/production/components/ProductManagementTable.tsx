@@ -1,0 +1,256 @@
+/**
+ * 제품 목록 테이블 컴포넌트
+ * PackagingReportListView 패턴 참고
+ */
+
+import React, { useMemo, useState } from 'react';
+import { Card, CardContent } from '@/shared/components/ui/card';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/components/ui/table';
+import { Search, RotateCcw, Package } from 'lucide-react';
+import { Product } from '@/features/production/types/product.types';
+import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
+import { useIsSmartphone, useIsTablet } from '@/shared/hooks/use-device';
+
+interface ProductManagementTableProps {
+  products: Product[];
+  loading: boolean;
+  error: Error | null;
+  searchTerm: string;
+  onSearchChange: (term: string) => void;
+  onProductClick: (product: Product) => void;
+  onRefetch?: () => void;
+}
+
+const ProductManagementTableComponent: React.FC<ProductManagementTableProps> = ({
+  products,
+  loading,
+  error,
+  searchTerm,
+  onSearchChange,
+  onProductClick,
+  onRefetch
+}) => {
+  const isSmartphone = useIsSmartphone();
+  const isTablet = useIsTablet();
+  const isSmallScreen = isSmartphone || isTablet;
+
+  // 검색 필터링 및 정렬 (제품명 → 부속명 → 사양 → 발주처 순)
+  const filteredProducts = useMemo(() => {
+    let result = products;
+
+    // 검색 필터링
+    if (searchTerm.trim()) {
+      const lowerSearchTerm = searchTerm.toLowerCase();
+      result = products.filter(product => 
+        product.supplier.toLowerCase().includes(lowerSearchTerm) ||
+        product.productName.toLowerCase().includes(lowerSearchTerm) ||
+        product.partName.toLowerCase().includes(lowerSearchTerm) ||
+        product.specification.toLowerCase().includes(lowerSearchTerm)
+      );
+    }
+
+    // 정렬: 제품명 → 부속명 → 사양 → 발주처
+    return result.sort((a, b) => {
+      // 1순위: 제품명
+      const productNameCompare = (a.productName || '').localeCompare(b.productName || '', 'ko', { numeric: true });
+      if (productNameCompare !== 0) return productNameCompare;
+
+      // 2순위: 부속명
+      const partNameCompare = (a.partName || '').localeCompare(b.partName || '', 'ko', { numeric: true });
+      if (partNameCompare !== 0) return partNameCompare;
+
+      // 3순위: 사양
+      const specCompare = (a.specification || '').localeCompare(b.specification || '', 'ko', { numeric: true });
+      if (specCompare !== 0) return specCompare;
+
+      // 4순위: 발주처
+      return (a.supplier || '').localeCompare(b.supplier || '', 'ko', { numeric: true });
+    });
+  }, [products, searchTerm]);
+
+  if (loading) {
+    return (
+      <LoadingSpinner 
+        label="제품 목록 로딩 중..."
+        loadingVariant="default"
+        size="lg"
+      />
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="flex items-center justify-center min-h-[24rem]">
+        <CardContent className="text-center p-8">
+          <div className="flex flex-col items-center gap-4">
+            <div className="rounded-full bg-destructive/10 p-4">
+              <Package className="h-12 w-12 text-destructive" />
+            </div>
+            <div>
+              <p className="text-base font-semibold text-foreground mb-2">
+                데이터를 불러올 수 없습니다
+              </p>
+              <p className="text-sm text-muted-foreground mb-1">
+                {error.message || '데이터를 불러오는 중 오류가 발생했습니다.'}
+              </p>
+            </div>
+            {onRefetch && (
+              <Button onClick={onRefetch} variant="default">
+                <RotateCcw className="h-4 w-4 mr-2" />
+                다시 시도
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="flex-1 min-h-0 flex flex-col space-y-4">
+      {/* 검색 */}
+      <Card className="flex-shrink-0">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="발주처, 제품명, 부속명, 사양으로 검색..."
+                value={searchTerm}
+                onChange={(e) => onSearchChange(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 테이블 */}
+      <Card className="flex-1 min-h-0 flex flex-col">
+        <CardContent className="p-0 flex-1 flex flex-col min-h-0">
+          <div className="flex-1 overflow-auto">
+            <Table>
+              <TableHeader className="sticky top-0 bg-background z-10">
+                <TableRow>
+                  <TableHead className="w-[10%]">발주처</TableHead>
+                  <TableHead className="w-[12%]">제품명</TableHead>
+                  <TableHead className="w-[10%]">부속명</TableHead>
+                  <TableHead className="w-[10%]">사양</TableHead>
+                  <TableHead className="w-[12%]">최신 사용지그</TableHead>
+                  <TableHead className="w-[12%]">최신 하도데이터</TableHead>
+                  <TableHead className="w-[12%]">최신 상도데이터</TableHead>
+                  <TableHead className="w-[10%]">평균작업인원</TableHead>
+                  <TableHead className="w-[10%]">최근 비율</TableHead>
+                  <TableHead className="w-[10%]">평균 작업속도(RPM)</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredProducts.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                      {searchTerm ? '검색 결과가 없습니다.' : '제품이 없습니다.'}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredProducts.map((product) => (
+                    <TableRow
+                      key={product.id}
+                      onClick={() => onProductClick(product)}
+                      className="cursor-pointer hover:bg-accent transition-colors"
+                    >
+                      <TableCell className="font-medium whitespace-nowrap">{product.supplier}</TableCell>
+                      <TableCell className="whitespace-nowrap">{product.productName}</TableCell>
+                      <TableCell className="whitespace-nowrap">{product.partName}</TableCell>
+                      <TableCell className="whitespace-nowrap">{product.specification}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        <div className="line-clamp-2 break-words">
+                          {product.latestJig || '-'}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        <div className="line-clamp-2 break-words">
+                          {product.latestUndercoatData || '-'}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        <div className="line-clamp-2 break-words">
+                          {product.latestTopcoatData || '-'}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-center">
+                        {product.averagePersonnelCount !== undefined ? product.averagePersonnelCount.toFixed(1) : '-'}
+                      </TableCell>
+                      <TableCell className="text-sm text-center">
+                        {product.latestLineRatio || '-'}
+                      </TableCell>
+                      <TableCell className="text-sm text-center">
+                        {product.averageRPM !== undefined ? product.averageRPM.toFixed(1) : '-'}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          {filteredProducts.length > 0 && (
+            <div className="p-4 border-t text-sm text-muted-foreground">
+              총 {filteredProducts.length}개 제품
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+// React.memo에 커스텀 비교 함수 제공 - products 배열이 실제로 변경되었는지 확인
+export const ProductManagementTable = React.memo(ProductManagementTableComponent, (prevProps, nextProps) => {
+  // products 배열의 길이가 다르면 변경된 것으로 간주
+  if (prevProps.products.length !== nextProps.products.length) {
+    return false;
+  }
+  
+  // products 배열의 내용이 변경되었는지 확인 (id 기준)
+  const prevIds = new Set(prevProps.products.map(p => p.id));
+  const nextIds = new Set(nextProps.products.map(p => p.id));
+  
+  if (prevIds.size !== nextIds.size) {
+    return false;
+  }
+  
+  for (const id of prevIds) {
+    if (!nextIds.has(id)) {
+      return false;
+    }
+  }
+  
+  // 각 제품의 주요 속성이 변경되었는지 확인
+  for (let i = 0; i < prevProps.products.length; i++) {
+    const prev = prevProps.products[i];
+    const next = nextProps.products[i];
+    
+    if (prev.id !== next.id ||
+        prev.latestJig !== next.latestJig ||
+        prev.latestUndercoatData !== next.latestUndercoatData ||
+        prev.latestTopcoatData !== next.latestTopcoatData ||
+        prev.averagePersonnelCount !== next.averagePersonnelCount ||
+        prev.latestLineRatio !== next.latestLineRatio ||
+        prev.averageRPM !== next.averageRPM) {
+      return false;
+    }
+  }
+  
+  // loading, error, searchTerm도 확인
+  if (prevProps.loading !== nextProps.loading ||
+      prevProps.error !== nextProps.error ||
+      prevProps.searchTerm !== nextProps.searchTerm) {
+    return false;
+  }
+  
+  // 변경사항이 없으면 리렌더링 스킵
+  return true;
+});
+

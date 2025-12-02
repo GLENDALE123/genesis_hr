@@ -101,9 +101,25 @@ export const useGlobalStore = create<GlobalState & GlobalActions>()(
             timestamp: new Date(),
           };
           
-          set((state) => ({
-            notifications: [...state.notifications, notification]
-          }));
+          set((state) => {
+            // 메모리 누수 방지: 알림 개수 제한 (최대 100개)
+            const MAX_NOTIFICATIONS = 100;
+            const newNotifications = [...state.notifications, notification];
+            
+            // 알림이 너무 많으면 오래된 것부터 제거
+            if (newNotifications.length > MAX_NOTIFICATIONS) {
+              const removed = newNotifications.splice(0, newNotifications.length - MAX_NOTIFICATIONS);
+              // 제거된 알림의 timeout도 정리
+              removed.forEach(n => {
+                if (notificationTimeouts.has(n.id)) {
+                  clearTimeout(notificationTimeouts.get(n.id)!);
+                  notificationTimeouts.delete(n.id);
+                }
+              });
+            }
+            
+            return { notifications: newNotifications };
+          });
           
           // 자동 제거 (duration이 설정된 경우)
           if (notificationData.duration && notificationData.duration > 0) {

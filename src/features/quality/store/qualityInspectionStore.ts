@@ -224,7 +224,8 @@ export const useQualityInspectionStore = create<QualityInspectionStore>()(
       {
         name: 'quality-inspection-store',
         partialize: (state) => ({
-          cache: state.cache,
+          // cache는 메모리에서만 관리 (LocalStorage 할당량 초과 방지)
+          // lastUpdated만 저장하여 캐시 유효성 확인용으로 사용
           lastUpdated: state.lastUpdated
         })
       }

@@ -14,6 +14,7 @@ export type {
   ProductionScheduleV0Row,
   ShortageRequest
 } from './types';
+export * from './types/product.types';
 
 // Components
 export { PackagingReportListView } from './components/PackagingReportListView';
@@ -28,6 +29,8 @@ export { ProductionRequestDetailModal } from './components/ProductionRequestDeta
 export { ProductionScheduleListView } from './components/ProductionScheduleListView';
 export { ProductionScheduleUploadModal } from './components/ProductionScheduleUploadModal';
 export { ShortageManagementListView } from './components/ShortageManagementListView';
+export { ProductManagementView } from './components/ProductManagementView';
+export { ProductManagementTable } from './components/ProductManagementTable';
 
 // Containers
 export { PackagingDailyReportContainer } from './containers/PackagingDailyReportContainer';
@@ -40,6 +43,9 @@ export { usePackagingCalculations } from './hooks/usePackagingCalculations';
 export { useProductionSchedules } from './hooks/useProductionSchedules';
 export { useProductionSchedulesV0 } from './hooks/useProductionSchedulesV0';
 export { useSheetsSync } from './hooks/useSheetsSync';
+export { useProducts } from './hooks/useProducts';
+export { useProductDetail } from './hooks/useProductDetail';
+export { useProductAIReport } from './hooks/useProductAIReport';
 
 // Services
 export { PackagingReportsService } from './services/packagingReportsService';

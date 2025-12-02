@@ -11,3 +11,4 @@ export const useCanSyncProductionSchedules = (): boolean => {
   return canSyncProductionSchedules(userProfile);
 };
 
+

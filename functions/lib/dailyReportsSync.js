@@ -5,6 +5,7 @@ const { google } = require('googleapis');
 const { chunkArray, initializeFirebase } = require('./utils');
 
 const DAILY_REPORT_HEADERS = [
+  '정렬ID', // 보조 정렬 컬럼 (A열, 숨김 처리)
   '작업일자',
   '라인',
   '발주번호',
@@ -77,6 +78,46 @@ const formatArray = (value) => {
   return value.map((item) => String(item || '').trim()).filter(Boolean).join(', ');
 };
 
+const formatWorkDate = (value) => {
+  if (!value) return '';
+  
+  // Firestore Timestamp 객체인 경우
+  if (value && typeof value.toDate === 'function') {
+    const date = value.toDate();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  
+  // Date 객체인 경우
+  if (value instanceof Date) {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  
+  // 문자열인 경우
+  if (typeof value === 'string') {
+    // 이미 YYYY-MM-DD 형식이면 그대로 반환
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      return value;
+    }
+    // 다른 형식이면 파싱 시도
+    const date = new Date(value);
+    if (!isNaN(date.getTime())) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+    return value;
+  }
+  
+  return '';
+};
+
 const normalizeProductionLine = (line) => {
   if (!line) {
     return '';
@@ -123,12 +164,42 @@ const getLineSortOrder = (line) => {
   return 999;
 };
 
+// 정렬 ID 생성 함수 (작업일자_라인순서_시작시간_발주번호)
+const generateSortId = (report) => {
+  const workDate = formatWorkDate(report.workDate);
+  const productionLine = normalizeProductionLine(report.productionLine || '');
+  const startTime = report.startTime || '';
+  const orderNumbers = Array.isArray(report.orderNumbers)
+    ? report.orderNumbers.map(n => String(n || '').trim()).filter(Boolean).join(',')
+    : String(report.orderNumbers || '').trim();
+
+  // 라인 정렬 순서
+  const lineSortOrder = getLineSortOrder(productionLine);
+
+  // 정렬 키 생성: 작업일자_라인순서_시작시간_발주번호
+  // 숫자로 변환하여 정렬 가능하게 만듦
+  const dateSortKey = workDate ? workDate.replace(/-/g, '') : '99999999'; // YYYYMMDD
+  const timeSortKey = startTime ? startTime.replace(/:/g, '') : '999999'; // HHMMSS
+  const sortId = `${dateSortKey}_${String(lineSortOrder).padStart(3, '0')}_${timeSortKey}_${orderNumbers}`;
+
+  return sortId;
+};
+
 const compareReports = (a, b) => {
   // 1순위: 작업일자
-  const dateA = a.workDate || '';
-  const dateB = b.workDate || '';
-  const timeA = dateA ? new Date(dateA).getTime() : 0;
-  const timeB = dateB ? new Date(dateB).getTime() : 0;
+  let dateA = a.workDate;
+  let dateB = b.workDate;
+  
+  // Firestore Timestamp 객체인 경우 Date로 변환
+  if (dateA && typeof dateA.toDate === 'function') {
+    dateA = dateA.toDate();
+  }
+  if (dateB && typeof dateB.toDate === 'function') {
+    dateB = dateB.toDate();
+  }
+  
+  const timeA = dateA ? (dateA instanceof Date ? dateA.getTime() : new Date(dateA).getTime()) : 0;
+  const timeB = dateB ? (dateB instanceof Date ? dateB.getTime() : new Date(dateB).getTime()) : 0;
 
   if (timeA !== timeB) {
     return timeA - timeB;
@@ -402,8 +473,12 @@ const mapReportToRow = (report) => {
 
   // 하도/상도 데이터 추출 (로그 제거 - 너무 많은 로그 출력 방지)
 
+  // 정렬 ID 생성
+  const sortId = generateSortId(report);
+
   return [
-    report.workDate || '',
+    sortId, // 정렬 ID (A열, 숨김 처리)
+    formatWorkDate(report.workDate),
     normalizeProductionLine(report.productionLine),
     formatArray(report.orderNumbers),
     '', // 발주처 - 빈 값 (수식이 자동으로 복사됨)
@@ -635,7 +710,7 @@ const ensureSheet = async (sheets, spreadsheetId, sheetTitle) => {
 
 // 작업일자+라인+발주번호 조합으로 고유 키 생성
 const createReportKey = (report) => {
-  const workDate = report.workDate || '';
+  const workDate = formatWorkDate(report.workDate);
   const line = normalizeProductionLine(report.productionLine);
   const orderNumbers = formatArray(report.orderNumbers);
   return `${workDate}|${line}|${orderNumbers}`;
@@ -654,37 +729,36 @@ const readExistingRows = async (sheets, spreadsheetId, sheetTitle) => {
 
     const map = new Map();
     
-    // 헤더 확인: 첫 번째 컬럼이 'ID'인지 확인
-    const hasIdColumn = header[0] === 'ID';
+    // 헤더 확인: 첫 번째 컬럼이 '정렬ID'인지 확인
+    const hasSortIdColumn = header[0] === '정렬ID';
     
     dataRows.forEach((row, index) => {
-      if (hasIdColumn) {
-        // 새 형식: 첫 번째 컬럼이 ID
-        const docId = row[0];
-        if (docId) {
-          map.set(docId, {
-            rowIndex: index + 2,
-            values: row,
-            updatedAt: '',
-          });
-        }
+      // 작업일자+라인+발주번호로 키 생성 (공통 로직)
+      let workDate, line, orderNumbersStr;
+      
+      if (hasSortIdColumn) {
+        // 새 형식: A열이 정렬ID, B열이 작업일자, C열이 라인, D열이 발주번호
+        workDate = row[1] || ''; // B열 (작업일자)
+        line = row[2] || ''; // C열 (라인)
+        orderNumbersStr = row[3] || ''; // D열 (발주번호)
       } else {
-        // 기존 형식: 작업일자(0), 라인(1), 발주번호(2) 조합으로 키 생성
-        const workDate = row[0] || '';
-        const line = row[1] || '';
-        const orderNumbersStr = row[2] || '';
-        
-        // 전체 키 생성 (여러 발주번호가 쉼표로 구분된 경우)
+        // 기존 형식: 작업일자(0), 라인(1), 발주번호(2)
+        workDate = row[0] || '';
+        line = row[1] || '';
+        orderNumbersStr = row[2] || '';
+      }
+      
+      if (workDate && line) {
         const fullKey = `${workDate}|${line}|${orderNumbersStr}`;
         
-        if (fullKey !== '||') { // 빈 행 제외
+        if (fullKey !== '||') {
           map.set(fullKey, {
             rowIndex: index + 2,
             values: row,
             updatedAt: '',
           });
           
-          // 발주번호가 여러 개인 경우, 각 발주번호별로도 키 생성 (분할된 리포트 매칭용)
+          // 발주번호가 여러 개인 경우, 각 발주번호별로도 키 생성
           if (orderNumbersStr.includes(',')) {
             const orderNumbers = orderNumbersStr
               .split(',')
@@ -693,7 +767,6 @@ const readExistingRows = async (sheets, spreadsheetId, sheetTitle) => {
             
             orderNumbers.forEach(orderNumber => {
               const singleKey = `${workDate}|${line}|${orderNumber}`;
-              // 이미 전체 키로 저장했으므로, 단일 키로도 같은 행을 참조하도록 설정
               if (!map.has(singleKey)) {
                 map.set(singleKey, {
                   rowIndex: index + 2,
@@ -707,10 +780,10 @@ const readExistingRows = async (sheets, spreadsheetId, sheetTitle) => {
       }
     });
 
-    return { header, map, hasIdColumn };
+    return { header, map, hasSortIdColumn };
   } catch (error) {
     if (error.code === 404) {
-      return { header: [], map: new Map(), hasIdColumn: false };
+      return { header: [], map: new Map(), hasSortIdColumn: false };
     }
 
     throw error;
@@ -778,7 +851,7 @@ const sortSheetRows = async (sheets, spreadsheetId, sheetTitle) => {
       return;
     }
 
-    // 현재 데이터 행 수 확인 (더 넓은 범위로 확인)
+    // 현재 데이터 행 수 확인
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
       range: `${sheetTitle}!A:Z`,
@@ -786,27 +859,63 @@ const sortSheetRows = async (sheets, spreadsheetId, sheetTitle) => {
 
     const allRows = response.data.values || [];
     if (allRows.length <= 1) {
-      // 헤더만 있거나 데이터가 없으면 정렬 불필요
       logger.info('정렬할 데이터가 없습니다.');
       return;
     }
 
     const dataRows = allRows.slice(1); // 헤더 제외
-    const lastRowIndex = allRows.length; // 1-based 마지막 행 번호
+    const headerRowCount = 1; // 헤더 행 수
+    const dataRowCount = dataRows.length; // 데이터 행 수
+    const lastDataRowIndex = headerRowCount + dataRowCount; // 1-based 마지막 데이터 행 번호
     const endColumn = columnIndexToLetter(DAILY_REPORT_HEADERS.length - 1);
 
     logger.info('정렬 시작:', {
       sheetTitle,
       totalRows: allRows.length,
-      dataRows: dataRows.length,
-      lastRowIndex: lastRowIndex,
-      range: `A2:${endColumn}${lastRowIndex}`,
+      dataRows: dataRowCount,
+      lastDataRowIndex: lastDataRowIndex,
+      range: `A2:${endColumn}${lastDataRowIndex}`,
     });
 
-    // Google Sheets API의 sortRange 사용 (수식 보존)
-    // sortRange는 커스텀 정렬 순서를 지원하지 않으므로, 
-    // compareReports에서 정의한 순서대로 정렬하려면 클라이언트 측 정렬이 필요하지만
-    // 수식 보존을 위해 sortRange를 사용 (라인은 알파벳 순서로 정렬됨)
+    // A열(정렬ID)이 없거나 비어있는 경우 업데이트
+    // 각 행의 정렬ID를 확인하고 필요시 업데이트
+    const needsUpdate = dataRows.some((row, index) => {
+      // A열(인덱스 0)이 없거나 비어있는 경우
+      return !row[0] || row[0].trim() === '';
+    });
+
+    if (needsUpdate) {
+      // A열에 정렬ID 업데이트
+      const sortIdValues = dataRows.map((row) => {
+        // 기존 정렬ID가 있으면 사용, 없으면 생성
+        if (row[0] && row[0].trim() !== '') {
+          return [row[0]];
+        }
+
+        // 리포트 객체로 변환하여 정렬ID 생성
+        const report = {
+          workDate: row[1] || '', // 작업일자 (B열)
+          productionLine: row[2] || '', // 라인 (C열)
+          orderNumbers: row[3] ? String(row[3]).split(',').map(n => n.trim()).filter(Boolean) : [], // 발주번호 (D열)
+          startTime: row[17] || '', // 시작시간 (R열)
+        };
+
+        const sortId = generateSortId(report);
+        return [sortId];
+      });
+
+      await sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: `${sheetTitle}!A2:A${lastDataRowIndex}`,
+        valueInputOption: 'RAW',
+        requestBody: {
+          values: sortIdValues,
+        },
+      });
+    }
+
+    // Google Sheets API의 sortRange 사용 (A열 정렬ID로 정렬)
+    // 헤더는 제외하고 데이터 행만 정렬 (startRowIndex: 1 = 2행부터, endRowIndex는 exclusive)
     await sheets.spreadsheets.batchUpdate({
       spreadsheetId,
       requestBody: {
@@ -816,40 +925,43 @@ const sortSheetRows = async (sheets, spreadsheetId, sheetTitle) => {
               range: {
                 sheetId: sheetId,
                 startRowIndex: 1, // 헤더 다음 행부터 (0-based, 2행 = index 1)
-                endRowIndex: lastRowIndex, // 마지막 행까지 (0-based, exclusive)
+                endRowIndex: lastDataRowIndex, // 마지막 데이터 행 다음 (0-based, exclusive)
                 startColumnIndex: 0, // A열부터
                 endColumnIndex: DAILY_REPORT_HEADERS.length, // 마지막 컬럼까지 (exclusive)
               },
               sortSpecs: [
                 {
-                  dimensionIndex: 0, // 작업일자 (A열, 인덱스 0)
-                  sortOrder: 'ASCENDING',
-                },
-                {
-                  dimensionIndex: 1, // 라인 (B열, 인덱스 1) - 알파벳 순서로 정렬
-                  sortOrder: 'ASCENDING',
-                },
-                {
-                  dimensionIndex: 16, // 시작시간 (Q열, 인덱스 16)
-                  sortOrder: 'ASCENDING',
-                },
-                {
-                  dimensionIndex: 2, // 발주번호 (C열, 인덱스 2)
+                  dimensionIndex: 0, // A열 (정렬ID)
                   sortOrder: 'ASCENDING',
                 },
               ],
+            },
+          },
+          // A열 숨기기
+          {
+            updateDimensionProperties: {
+              range: {
+                sheetId: sheetId,
+                dimension: 'COLUMNS',
+                startIndex: 0, // A열
+                endIndex: 1, // A열만 (exclusive)
+              },
+              properties: {
+                hiddenByUser: true,
+              },
+              fields: 'hiddenByUser',
             },
           },
         ],
       },
     });
 
-    logger.info('시트 정렬 완료 (수식 보존):', {
+    logger.info('시트 정렬 완료 (커스텀 라인 순서, 수식 보존, A열 숨김):', {
       sheetTitle,
-      range: `A2:${endColumn}${lastRowIndex}`,
-      sortedRows: dataRows.length,
+      range: `A2:${endColumn}${lastDataRowIndex}`,
+      sortedRows: dataRowCount,
       sheetId: sheetId,
-      sortOrder: '작업일자 → 라인 → 시작시간 → 발주번호',
+      sortOrder: '작업일자 → 라인(증착1,증착2,2코팅,1코팅,내부코팅1호기,내부코팅2호기,내부코팅3호기) → 시작시간 → 발주번호',
     });
   } catch (error) {
     logger.error('시트 정렬 실패:', {
@@ -1012,11 +1124,21 @@ async function runDailyReportsSync({
     sheetName
   );
   let existingRowsMap = result.map;
-  let hasIdColumn = result.hasIdColumn || false;
-  let shouldWriteHeader = !(result.header && result.header.length > 0);
+  let hasSortIdColumn = result.hasSortIdColumn || false;
   
-  // 헤더가 없을 때만 헤더 작성
-  if (shouldWriteHeader) {
+  // 헤더 확인 및 작성: 헤더가 1행에 없거나 올바르지 않으면 항상 헤더 작성
+  // 1행을 명시적으로 확인
+  const headerCheck = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `${sheetName}!A1:${columnIndexToLetter(DAILY_REPORT_HEADERS.length - 1)}1`,
+  });
+  
+  const headerRow = headerCheck.data.values?.[0] || [];
+  const expectedFirstHeader = DAILY_REPORT_HEADERS[0]; // '정렬ID'
+  const hasValidHeader = headerRow.length > 0 && headerRow[0] === expectedFirstHeader;
+  
+  if (!hasValidHeader) {
+    // 헤더가 1행에 없거나 올바르지 않으면 헤더 작성 (1행에 덮어쓰기)
     await writeHeader(sheets, spreadsheetId, sheetName);
     // 헤더 작성 후 다시 기존 행 읽기 (헤더 제외)
     const resultAfterHeader = await readExistingRows(
@@ -1025,12 +1147,12 @@ async function runDailyReportsSync({
       sheetName
     );
     existingRowsMap = resultAfterHeader.map;
-    hasIdColumn = resultAfterHeader.hasIdColumn || false;
+    hasSortIdColumn = resultAfterHeader.hasSortIdColumn || false;
   }
   
   logger.info('기존 행 읽기 완료:', {
     existingRowsCount: existingRowsMap.size,
-    hasIdColumn: hasIdColumn,
+    hasSortIdColumn: hasSortIdColumn,
     forceFullSync: Boolean(forceFullSync),
   });
 
@@ -1069,10 +1191,9 @@ async function runDailyReportsSync({
           return;
         }
 
-        // 발주번호 분할을 고려하여 키 생성
-        // 원본 문서의 키로 확인 (분할 전)
-        const reportKey = hasIdColumn 
-          ? `id:${report.id}` 
+        // 정렬ID를 키로 사용 (가장 빠르고 정확함)
+        const reportKey = hasSortIdColumn 
+          ? generateSortId(report)
           : createReportKey(report);
         
         // 엑셀에 없는 문서이고, 이미 reports에 포함되지 않은 경우 추가
@@ -1159,57 +1280,61 @@ async function runDailyReportsSync({
 
     const newRow = mapReportToRow(report);
     
-    // 기존 행 찾기: ID 컬럼이 있으면 ID로, 없으면 작업일자+라인+발주번호 조합으로
-    let existing = null;
-    if (hasIdColumn) {
-      // 먼저 현재 ID로 찾기
-      existing = existingRowsMap.get(report.id);
-      
-      // 분할된 리포트이고 찾지 못한 경우, 원본 ID로 찾기
-      if (!existing && report.originalId) {
-        existing = existingRowsMap.get(report.originalId);
-      }
-    } else {
-      // 작업일자+라인+발주번호 조합으로 키 생성
-      const key = createReportKey(report);
-      existing = existingRowsMap.get(key);
-      
-      // 분할된 리포트이고 찾지 못한 경우, 원본 리포트의 키로도 시도
-      if (!existing && report.originalId) {
-        // 원본 리포트 정보로 키 생성 시도 (하지만 원본 리포트 정보가 없으므로 이 방법은 제한적)
-        // 대신 발주번호가 하나인 경우에만 키로 찾기
-        if (report.orderNumbers && report.orderNumbers.length === 1) {
-          // 이미 단일 발주번호이므로 키는 정상적으로 생성되어야 함
-          // 로그만 추가
-          logger.warn('기존 행을 찾지 못함 (분할된 리포트):', {
-            reportId: report.id,
-            originalId: report.originalId,
-            key: key,
-            orderNumbers: report.orderNumbers,
-          });
-        }
-      }
+    // 기존 행 찾기: 작업일자+라인+발주번호로 직접 매칭 (가장 확실함)
+    const key = createReportKey(report);
+    let existing = existingRowsMap.get(key);
+    
+    // 발주번호가 여러 개인 경우, 단일 발주번호로도 시도
+    if (!existing && report.orderNumbers && Array.isArray(report.orderNumbers) && report.orderNumbers.length > 0) {
+      const firstOrderNumber = report.orderNumbers[0];
+      const singleKey = `${formatWorkDate(report.workDate)}|${normalizeProductionLine(report.productionLine)}|${firstOrderNumber}`;
+      existing = existingRowsMap.get(singleKey);
     }
     
     // 기존 행이 있으면 업데이트 (수식이 있는 컬럼은 제외)
     if (existing) {
-      // 수식이 있는 컬럼 인덱스: 발주처(3), 제품명(4), 부속명(5), 사양(7)
+      // 정렬ID 업데이트 (정렬용이므로 항상 최신 값으로 업데이트)
+      if (hasSortIdColumn) {
+        const sortId = generateSortId(report);
+        const existingSortId = existing.values[0] || ''; // A열의 기존 정렬ID
+        if (existingSortId !== sortId) {
+          // 정렬ID 업데이트 (A열)
+          rowsToUpdate.push({
+            range: `${sheetName}!A${existing.rowIndex}:A${existing.rowIndex}`,
+            values: [[sortId]],
+          });
+        }
+      }
+      // 수식이 있는 컬럼 인덱스: 발주처(4), 제품명(5), 부속명(6), 사양(8)
+      // A열(정렬ID, 인덱스 0)은 별도로 업데이트하므로 제외
       // 이 컬럼들은 업데이트하지 않아서 수식이 보존됨
-      const formulaColumns = [3, 4, 5, 7];
+      const formulaColumns = [4, 5, 6, 8];
       
       // 수식이 없는 컬럼만 업데이트하기 위해 여러 범위로 나누기
+      // 정렬ID(A열, 인덱스 0)는 이미 별도로 업데이트했으므로 제외
+      // newRow에서 정렬ID를 제외한 배열 생성 (B열부터 시작)
+      const dataRow = newRow.slice(1); // 정렬ID 제외 (B열부터)
       const updateRanges = [];
-      let startCol = 0;
+      let startCol = 0; // dataRow 기준 인덱스 (실제로는 B열부터)
       
-      for (let i = 0; i < newRow.length; i++) {
-        if (formulaColumns.includes(i)) {
+      for (let i = 0; i < dataRow.length; i++) {
+        const actualColIndex = i + 1; // 실제 컬럼 인덱스 (B열 = 1)
+        if (formulaColumns.includes(actualColIndex)) {
           // 수식 컬럼 전까지 업데이트 범위 추가
           if (startCol < i) {
-            const startColLetter = columnIndexToLetter(startCol);
-            const endColLetter = columnIndexToLetter(i - 1);
+            // dataRow 기준 인덱스를 실제 컬럼 인덱스로 변환
+            // dataRow.slice(startCol, i)는 dataRow[startCol]부터 dataRow[i-1]까지
+            // dataRow[startCol]의 실제 컬럼 인덱스: startCol + 1 (B열부터)
+            // dataRow[i-1]의 실제 컬럼 인덱스: (i-1) + 1 = i
+            // 예: startCol=0, i=1 → dataRow.slice(0,1) = [dataRow[0]] → B열만 (범위: B:B)
+            //     startCol=0, i=4 → dataRow.slice(0,4) = [dataRow[0..3]] → B~E열 (범위: B:E)
+            const startActualCol = startCol + 1; // 실제 컬럼 인덱스 (B열부터, 최소 1)
+            const endActualCol = i; // dataRow[i-1]의 실제 컬럼 인덱스는 i
+            const startColLetter = columnIndexToLetter(startActualCol);
+            const endColLetter = columnIndexToLetter(endActualCol);
             updateRanges.push({
               range: `${sheetName}!${startColLetter}${existing.rowIndex}:${endColLetter}${existing.rowIndex}`,
-              values: [[...newRow.slice(startCol, i)]],
+              values: [[...dataRow.slice(startCol, i)]],
             });
           }
           startCol = i + 1; // 수식 컬럼 다음부터 시작
@@ -1217,12 +1342,17 @@ async function runDailyReportsSync({
       }
       
       // 마지막 범위 추가
-      if (startCol < newRow.length) {
-        const startColLetter = columnIndexToLetter(startCol);
-        const endColLetter = columnIndexToLetter(newRow.length - 1);
+      if (startCol < dataRow.length) {
+        // dataRow는 정렬ID를 제외했으므로, dataRow의 마지막 요소 인덱스는 dataRow.length - 1
+        // 이것의 실제 컬럼 인덱스는 (dataRow.length - 1) + 1 = dataRow.length
+        // newRow.length - 1 = dataRow.length이므로 동일함
+        const startActualCol = startCol + 1; // 실제 컬럼 인덱스 (B열부터)
+        const endActualCol = dataRow.length; // dataRow의 마지막 요소의 실제 컬럼 인덱스
+        const startColLetter = columnIndexToLetter(startActualCol);
+        const endColLetter = columnIndexToLetter(endActualCol);
         updateRanges.push({
           range: `${sheetName}!${startColLetter}${existing.rowIndex}:${endColLetter}${existing.rowIndex}`,
-          values: [[...newRow.slice(startCol)]],
+          values: [[...dataRow.slice(startCol)]],
         });
       }
       
@@ -1236,8 +1366,8 @@ async function runDailyReportsSync({
       rowsToAppend.push(newRow);
       inserted += 1;
       
-      const key = hasIdColumn 
-        ? (report.id || `id:${report.id}`)
+      const key = hasSortIdColumn 
+        ? generateSortId(report)
         : createReportKey(report);
       
       logger.info('엑셀에 없는 행 추가 (삭제된 행 복구 또는 신규):', {
@@ -1247,7 +1377,7 @@ async function runDailyReportsSync({
         productionLine: report.productionLine,
         orderNumbers: report.orderNumbers,
         key: key,
-        hasIdColumn: hasIdColumn,
+        hasSortIdColumn: hasSortIdColumn,
       });
     }
 
@@ -1258,10 +1388,15 @@ async function runDailyReportsSync({
 
   // rowsToAppend 후에 수식 복사 추가
   if (rowsToAppend.length) {
-    // 먼저 행 추가
+    // 헤더는 이미 함수 시작 부분에서 확인하고 작성했으므로, 여기서는 append만 수행
+    // values.append는 지정된 범위의 마지막 행 다음에 데이터를 추가합니다
+    // range를 전체 컬럼 범위(A:endColumn)로 지정하면, Google Sheets가 자동으로
+    // 마지막 데이터 행을 찾아서 그 다음에 추가합니다
+    // 헤더가 1행에 있다면, 마지막 데이터 행 다음(즉, 헤더 다음)에 추가됩니다
+    const endColumn = columnIndexToLetter(DAILY_REPORT_HEADERS.length - 1);
     const appendResponse = await sheets.spreadsheets.values.append({
       spreadsheetId,
-      range: `${sheetName}!A:A`,
+      range: `${sheetName}!A:${endColumn}`, // 전체 컬럼 범위 (마지막 데이터 행 다음에 자동 추가)
       valueInputOption: 'RAW',
       insertDataOption: 'INSERT_ROWS',
       requestBody: {
@@ -1293,8 +1428,9 @@ async function runDailyReportsSync({
         const sheetId = await getSheetId(sheets, spreadsheetId, sheetName);
         
         if (sheetId && startRow > 2) { // 헤더 다음 행부터
-          // 수식이 있는 컬럼: 발주처(D), 제품명(E), 부속명(F), 사양(H)
-          const formulaColumns = ['D', 'E', 'F', 'H'];
+          // 수식이 있는 컬럼: 발주처(E), 제품명(F), 부속명(G), 사양(I)
+          // A열(정렬ID)이 추가되어 컬럼이 하나씩 밀림
+          const formulaColumns = ['E', 'F', 'G', 'I'];
           const sourceRow = startRow - 1; // 새 행 바로 위 행
           
           if (sourceRow >= 2) {
@@ -1323,13 +1459,13 @@ async function runDailyReportsSync({
               // 2단계: 각 새 행에 수식 복사 (copyPaste 사용)
               const copyPasteRequests = [];
               
-              // sourceRange의 시작 컬럼 인덱스 계산 (D=3)
+              // sourceRange의 시작 컬럼 인덱스 계산 (E=4)
               const startColIndex = formulaColumns[0].charCodeAt(0) - 65;
               
               for (let targetRow = startRow; targetRow <= endRow; targetRow++) {
                 formulaColumns.forEach((col) => {
-                  const colIndex = col.charCodeAt(0) - 65; // D=3, E=4, F=5, H=7
-                  // sourceRange에서의 실제 인덱스 계산 (D부터 시작하므로 상대 인덱스)
+                  const colIndex = col.charCodeAt(0) - 65; // E=4, F=5, G=6, I=8
+                  // sourceRange에서의 실제 인덱스 계산 (E부터 시작하므로 상대 인덱스)
                   const sourceCellIndex = colIndex - startColIndex;
                   const sourceCell = sourceRowData.values[sourceCellIndex];
                   
@@ -1449,8 +1585,74 @@ async function runDailyReportsSync({
     });
   }
 
+  // 삭제된 문서 처리: Google Sheets에는 있지만 Firestore에는 없는 행 삭제
+  let deleted = 0;
+  const rowsToDeleteSet = new Set(); // 중복 제거를 위한 Set
+  
+  // Firestore에서 가져온 모든 문서의 키를 Set으로 수집
+  const firestoreKeys = new Set();
+  for (const report of sortedReports) {
+    if (hasMeaningfulValue(report)) {
+      const key = createReportKey(report);
+      firestoreKeys.add(key);
+      
+      // 발주번호가 여러 개인 경우, 각 발주번호별로도 키 추가
+      if (report.orderNumbers && Array.isArray(report.orderNumbers) && report.orderNumbers.length > 0) {
+        report.orderNumbers.forEach(orderNumber => {
+          const singleKey = `${formatWorkDate(report.workDate)}|${normalizeProductionLine(report.productionLine)}|${orderNumber}`;
+          firestoreKeys.add(singleKey);
+        });
+      }
+    }
+  }
+  
+  // Google Sheets에는 있지만 Firestore에는 없는 행 찾기
+  for (const [key, existing] of existingRowsMap.entries()) {
+    if (!firestoreKeys.has(key)) {
+      rowsToDeleteSet.add(existing.rowIndex);
+      deleted += 1;
+    }
+  }
+  
+  // 삭제할 행이 있으면 역순으로 정렬하여 아래부터 삭제 (행 번호가 변경되지 않도록)
+  const rowsToDelete = Array.from(rowsToDeleteSet);
+  if (rowsToDelete.length > 0) {
+    rowsToDelete.sort((a, b) => b - a); // 역순 정렬
+    
+    const sheetId = await getSheetId(sheets, spreadsheetId, sheetName);
+    if (sheetId) {
+      const deleteRequests = rowsToDelete.map(rowIndex => ({
+        deleteDimension: {
+          range: {
+            sheetId: sheetId,
+            dimension: 'ROWS',
+            startIndex: rowIndex - 1, // 0-based index (헤더 제외)
+            endIndex: rowIndex, // endIndex는 exclusive
+          },
+        },
+      }));
+      
+      // 배치로 삭제 (한 번에 최대 100개까지)
+      const batchSize = 100;
+      for (let i = 0; i < deleteRequests.length; i += batchSize) {
+        const batch = deleteRequests.slice(i, i + batchSize);
+        await sheets.spreadsheets.batchUpdate({
+          spreadsheetId,
+          requestBody: {
+            requests: batch,
+          },
+        });
+      }
+      
+      logger.info('삭제된 문서에 해당하는 행 삭제 완료:', {
+        deletedCount: rowsToDelete.length,
+        sheetName,
+      });
+    }
+  }
+
   // sortRange API를 사용하여 수식 보존하면서 정렬
-  if (rowsToAppend.length || rowsToUpdate.length) {
+  if (rowsToAppend.length || rowsToUpdate.length || rowsToDelete.length > 0) {
     await sortSheetRows(sheets, spreadsheetId, sheetName);
   }
 
@@ -1463,6 +1665,7 @@ async function runDailyReportsSync({
     inserted,
     updated,
     skipped,
+    deleted,
     totalReports: reports.length,
     forceFullSync: Boolean(forceFullSync),
   };

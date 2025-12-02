@@ -68,7 +68,6 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
   const { isSmartphone, isTablet } = useDeviceType();
   const isMobileOrTablet = isSmartphone || isTablet;
   const [isSyncingSheets, setIsSyncingSheets] = useState(false);
-  const [dailyReportSyncResult, setDailyReportSyncResult] = useState<SyncDailyReportsResult | null>(null);
   const [isFullSyncDialogOpen, setIsFullSyncDialogOpen] = useState(false);
   
   // 컴포넌트 마운트 로그
@@ -183,7 +182,14 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
     setIsFormOpen(true);
   }, []);
 
-  const handleSyncDailyReports = useCallback(async (forceFullSync = false) => {
+  const handleEditReport = useCallback((report: PackagingReport) => {
+    setSelectedReport(report);
+    setIsEditMode(true);
+    setIsFormOpen(true);
+  }, []);
+
+  // 전체 동기화 핸들러
+  const handleFullSync = useCallback(async () => {
     if (!canSyncDailyReports) {
       toast.error('동기화 권한이 없습니다.');
       return;
@@ -202,13 +208,11 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
       const result = await syncDailyReportsToSheets({ 
         spreadsheetId, 
         sheetName,
-        forceFullSync 
+        forceFullSync: true 
       });
-      setDailyReportSyncResult(result);
 
       const summary = `신규 ${result.inserted}건 • 갱신 ${result.updated}건 • 스킵 ${result.skipped}건`;
-      const syncType = forceFullSync ? '전체 동기화' : '동기화';
-      toast.success(`"${result.sheetName}" 시트로 ${syncType}되었습니다.`, {
+      toast.success(`"${result.sheetName}" 시트로 전체 동기화되었습니다.`, {
         description: summary,
       });
     } catch (error) {
@@ -220,23 +224,13 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
     }
   }, [canSyncDailyReports]);
 
-  const handleNormalSyncClick = useCallback(() => {
-    handleSyncDailyReports(false);
-  }, [handleSyncDailyReports]);
-
   const handleFullSyncClick = useCallback(() => {
     setIsFullSyncDialogOpen(true);
   }, []);
 
   const handleConfirmFullSync = useCallback(() => {
-    handleSyncDailyReports(true);
-  }, [handleSyncDailyReports]);
-
-  const handleEditReport = useCallback((report: PackagingReport) => {
-    setSelectedReport(report);
-    setIsEditMode(true);
-    setIsFormOpen(true);
-  }, []);
+    handleFullSync();
+  }, [handleFullSync]);
 
   const handleDeleteReport = useCallback((reportId: string) => {
     setDeleteConfirmState({ isOpen: true, reportId });
@@ -564,52 +558,24 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
           {/* 우측: 액션 버튼들 */}
           <div className="flex items-center gap-2">
             {canSyncDailyReports && (
-              <>
-                {dailyReportSyncResult && (
-                  <span className="hidden md:block text-xs text-muted-foreground">
-                    최근 동기화: 신규 {dailyReportSyncResult.inserted}건, 갱신 {dailyReportSyncResult.updated}건,
-                    스킵 {dailyReportSyncResult.skipped}건 (시트: {dailyReportSyncResult.sheetName})
-                  </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleFullSyncClick}
+                disabled={isSyncingSheets}
+              >
+                {isSyncingSheets ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    동기화 중...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    전체 동기화
+                  </>
                 )}
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleNormalSyncClick}
-                  disabled={isSyncingSheets}
-                  className="hidden md:flex"
-                >
-                  {isSyncingSheets ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                      동기화 중...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Google 시트 동기화
-                    </>
-                  )}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleFullSyncClick}
-                  disabled={isSyncingSheets}
-                  className="hidden md:flex"
-                >
-                  {isSyncingSheets ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                      동기화 중...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      전체 동기화
-                    </>
-                  )}
-                </Button>
-              </>
+              </Button>
             )}
             <Button 
               onClick={handleCreateReport}
@@ -617,21 +583,6 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
               <Plus className="h-4 w-4 mr-2" />
               생산일보 등록
             </Button>
-            
-            {/* 모바일: 동기화 버튼만 아이콘으로 표시 */}
-            {canSyncDailyReports && (
-              <div className="md:hidden">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="p-2"
-                  onClick={handleNormalSyncClick}
-                  disabled={isSyncingSheets}
-                >
-                  <RefreshCw className={`h-4 w-4 ${isSyncingSheets ? 'animate-spin' : ''}`} />
-                </Button>
-              </div>
-            )}
           </div>
         </div>
 

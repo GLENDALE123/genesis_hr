@@ -9,6 +9,7 @@ import ProductionDailyReportPage from '../pages/ProductionDailyReportPage';
 import ProductionSchedulePage from '../pages/ProductionSchedulePage';
 import ProductionManagementPage from '../pages/ProductionManagementPage';
 import ProductionShortageManagementPage from '../pages/ProductionShortageManagementPage';
+import ProductManagementPage from '../pages/ProductManagementPage';
 import QualityIssuesPage from '../pages/QualityIssuesPage';
 import QualityHistoryPage from '../pages/QualityHistoryPage';
 import SampleCenterPage from '../pages/SampleCenterPage';
@@ -35,6 +36,7 @@ export const routes = (
     <Route path="/production/schedule" element={<ProductionSchedulePage />} />
     <Route path="/production/management" element={<ProductionManagementPage />} />
     <Route path="/production/shortage-management" element={<ProductionShortageManagementPage />} />
+    <Route path="/production/product-management" element={<ProductManagementPage />} />
     
     {/* Quality Routes */}
     <Route path="/quality/issues" element={<QualityIssuesPage />} />

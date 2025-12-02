@@ -44,6 +44,7 @@ const mainNavigationItems: NavItem[] = [
       { title: '생산일정', href: '/production/schedule', icon: ROUTE_ICONS['/production/schedule'] },
       { title: '생산관리부', href: '/production/management', icon: ROUTE_ICONS['/production/management'] },
       { title: '부족분관리', href: '/production/shortage-management', icon: ROUTE_ICONS['/production/shortage-management'] },
+      { title: '종합관리테이블', href: '/production/product-management', icon: ROUTE_ICONS['/production/product-management'] },
     ],
   },
   {

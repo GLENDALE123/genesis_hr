@@ -1,6 +1,7 @@
 // 생산일보 관련 타입 정의
 
 export * from './logistics';
+export * from './product.types';
 
 export interface PackagedBox {
   boxNumber: string;

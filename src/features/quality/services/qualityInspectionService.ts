@@ -248,36 +248,66 @@ export const subscribeToQualityInspections = (
 
 /**
  * 발주번호별 품질검사 그룹화
+ * 다중 발주번호 지원: 공통 발주번호가 있으면 같은 그룹으로 묶음
  */
 export const groupInspectionsByOrder = (
   inspections: QualityInspection[]
 ): GroupedInspectionData[] => {
   const groupedMap = new Map<string, GroupedInspectionData>();
+  // 발주번호별로 어떤 그룹에 속하는지 매핑 (다중 발주번호 지원)
+  const orderNumberToGroupKey = new Map<string, string>();
+
+  // 공정검사 호환: 상위 workLine이 비어있을 경우 processLines의 첫 작업라인을 사용
+  const deriveWorkLine = (insp: QualityInspection): string | undefined => {
+    if (insp && insp.workLine) {
+      return insp.workLine;
+    }
+    if (insp && insp.inspectionType === 'inProcess' && insp.processLines && insp.processLines.length > 0) {
+      const firstLine = insp.processLines[0];
+      if (firstLine && firstLine.workLine) {
+        return firstLine.workLine as unknown as string;
+      }
+    }
+    return undefined;
+  };
+
+  // 발주번호 문자열에서 개별 발주번호 추출
+  const extractOrderNumbers = (orderNumberStr: string): string[] => {
+    if (!orderNumberStr) return [];
+    return orderNumberStr.split(/[,\s]+/).map(s => s.trim()).filter(s => s);
+  };
 
   inspections.forEach(inspection => {
-    const orderNumber = inspection.orderNumber;
+    const orderNumberStr = inspection.orderNumber;
+    const orderNumbers = extractOrderNumbers(orderNumberStr);
     
-    // 공정검사 호환: 상위 workLine이 비어있을 경우 processLines의 첫 작업라인을 사용
-    const deriveWorkLine = (insp: QualityInspection): string | undefined => {
-      if (insp && insp.workLine) {
-        return insp.workLine;
+    // 그룹 키 찾기: 이미 매핑된 발주번호가 있으면 해당 그룹 사용
+    let groupKey: string | null = null;
+    for (const orderNum of orderNumbers) {
+      if (orderNumberToGroupKey.has(orderNum)) {
+        groupKey = orderNumberToGroupKey.get(orderNum)!;
+        break;
       }
-      if (insp && insp.inspectionType === 'inProcess' && insp.processLines && insp.processLines.length > 0) {
-        const firstLine = insp.processLines[0];
-        if (firstLine && firstLine.workLine) {
-          return firstLine.workLine as unknown as string;
-        }
-      }
-      return undefined;
-    };
-
-    if (!groupedMap.has(orderNumber)) {
-      groupedMap.set(orderNumber, {
-        orderNumber,
+    }
+    
+    // 그룹이 없으면 새로 생성 (첫 번째 발주번호를 그룹 키로 사용)
+    if (!groupKey) {
+      groupKey = orderNumbers.length > 0 ? orderNumbers[0] : orderNumberStr;
+    }
+    
+    // 모든 발주번호를 이 그룹에 매핑
+    orderNumbers.forEach(orderNum => {
+      orderNumberToGroupKey.set(orderNum, groupKey!);
+    });
+    
+    // 그룹이 없으면 생성
+    if (!groupedMap.has(groupKey)) {
+      groupedMap.set(groupKey, {
+        orderNumber: groupKey, // 그룹 키를 대표 발주번호로 사용 (나중에 업데이트됨)
         latestDate: inspection.createdAt,
         common: {
           sequentialId: inspection.sequentialId,
-          orderNumber: inspection.orderNumber,
+          orderNumber: orderNumberStr, // 원본 발주번호 문자열 유지
           supplier: inspection.supplier,
           productName: inspection.productName,
           partName: inspection.partName,
@@ -294,7 +324,7 @@ export const groupInspectionsByOrder = (
       });
     }
 
-    const group = groupedMap.get(orderNumber);
+    const group = groupedMap.get(groupKey);
     if (!group) return;
 
     // 최신 날짜 업데이트
@@ -320,6 +350,27 @@ export const groupInspectionsByOrder = (
   const sortedGroups = Array.from(groupedMap.values()).sort((a, b) => 
     new Date(b.latestDate).getTime() - new Date(a.latestDate).getTime()
   );
+
+  // 그룹의 orderNumber를 그룹에 속한 모든 발주번호를 포함하도록 업데이트
+  sortedGroups.forEach(group => {
+    const allOrderNumbers = new Set<string>();
+    
+    // 그룹에 속한 모든 검사의 발주번호 수집
+    [...group.incoming, ...group.inProcess, ...group.outgoing].forEach(inspection => {
+      const orderNumbers = extractOrderNumbers(inspection.orderNumber);
+      orderNumbers.forEach(orderNum => allOrderNumbers.add(orderNum));
+    });
+    
+    // 고유한 발주번호들을 정렬하여 그룹의 orderNumber로 설정
+    if (allOrderNumbers.size > 0) {
+      const sortedOrderNumbers = Array.from(allOrderNumbers).sort();
+      group.orderNumber = sortedOrderNumbers.join(', ');
+      // common.orderNumber도 업데이트 (통합된 문자열 사용)
+      if (sortedOrderNumbers.length > 1) {
+        group.common.orderNumber = sortedOrderNumbers.join(', ');
+      }
+    }
+  });
 
   // 각 그룹의 common.workLine을 공정검사 또는 출하검사의 최신 workLine으로 설정
   sortedGroups.forEach(group => {
@@ -501,6 +552,7 @@ export const filterInspectionsByDateRange = (
 
 /**
  * 검색어로 품질검사 필터링 (딥 서치)
+ * 다중 발주번호 지원: 쉼표로 구분된 발주번호 각각 검색
  */
 export const searchInspections = (
   inspections: QualityInspection[],
@@ -513,7 +565,6 @@ export const searchInspections = (
   return inspections.filter(inspection => {
     // 기본 필드 검색
     const searchableFields = [
-      inspection.orderNumber,
       inspection.supplier,
       inspection.productName,
       inspection.partName,
@@ -524,6 +575,19 @@ export const searchInspections = (
       inspection.injectionColor,
       inspection.workLine,
     ];
+    
+    // 발주번호 검색: 다중 발주번호 지원
+    // orderNumber가 "T50229-2, T50230-2" 형태일 경우 각각 검색
+    if (inspection.orderNumber) {
+      const orderNumbers = inspection.orderNumber.split(/[,\s]+/).map(s => s.trim());
+      orderNumbers.forEach(orderNum => {
+        if (orderNum) {
+          searchableFields.push(orderNum);
+        }
+      });
+      // 전체 발주번호 문자열도 검색 대상에 포함
+      searchableFields.push(inspection.orderNumber);
+    }
     
     // 검사자 정보 검색
     if (typeof inspection.inspector === 'string') {

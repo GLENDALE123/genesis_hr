@@ -1,0 +1,2437 @@
+{
+  "analyzedAt": "2025-12-01T00:38:39.263Z",
+  "summary": {
+    "totalTypes": 3,
+    "totalSamples": 30
+  },
+  "results": {
+    "incoming": {
+      "samples": [
+        {
+          "id": "02SMfaFRJQJvD0cWjjAB",
+          "fields": {
+            "common": [
+              "inspectionDate",
+              "orderNumber",
+              "supplier",
+              "productName",
+              "partName",
+              "orderQuantity",
+              "specification",
+              "postProcess",
+              "result",
+              "resultReason",
+              "keywordPairs",
+              "inspector",
+              "inspectionType",
+              "createdAt",
+              "imageUrls"
+            ],
+            "typeSpecific": [
+              "appearanceHistory",
+              "functionHistory",
+              "finalConsultationDept"
+            ]
+          }
+        },
+        {
+          "id": "03JAxu35UzIb3Zy3k1Gz",
+          "fields": {
+            "common": [
+              "keywordPairs",
+              "imageUrls",
+              "inspectionDate",
+              "orderNumber",
+              "supplier",
+              "productName",
+              "partName",
+              "orderQuantity",
+              "specification",
+              "postProcess",
+              "result",
+              "resultReason",
+              "inspector",
+              "inspectionType",
+              "createdAt"
+            ],
+            "typeSpecific": [
+              "appearanceHistory",
+              "functionHistory",
+              "finalConsultationDept"
+            ]
+          }
+        },
+        {
+          "id": "03OUsN3q9dopBqTS3QDA",
+          "fields": {
+            "common": [
+              "keywordPairs",
+              "imageUrls",
+              "inspectionDate",
+              "orderNumber",
+              "supplier",
+              "productName",
+              "partName",
+              "orderQuantity",
+              "specification",
+              "postProcess",
+              "result",
+              "resultReason",
+              "inspector",
+              "inspectionType",
+              "createdAt"
+            ],
+            "typeSpecific": [
+              "appearanceHistory",
+              "functionHistory",
+              "finalConsultationDept"
+            ]
+          }
+        },
+        {
+          "id": "0FQUUQq7TMHt8zuDu4aZ",
+          "fields": {
+            "common": [
+              "imageUrls",
+              "keywordPairs",
+              "resultReason",
+              "partName",
+              "orderNumber",
+              "result",
+              "createdAt",
+              "postProcess",
+              "specification",
+              "supplier",
+              "inspectionDate",
+              "productName",
+              "orderQuantity",
+              "inspector",
+              "inspectionType"
+            ],
+            "typeSpecific": [
+              "appearanceHistory",
+              "functionHistory",
+              "finalConsultationDept"
+            ]
+          }
+        },
+        {
+          "id": "0FeEAnOtgG9onzLHdaXb",
+          "fields": {
+            "common": [
+              "inspectionType",
+              "orderNumber",
+              "supplier",
+              "productName",
+              "partName",
+              "orderQuantity",
+              "specification",
+              "postProcess",
+              "inspector",
+              "inspectionDate",
+              "result",
+              "resultReason",
+              "keywordPairs",
+              "createdBy",
+              "updatedBy",
+              "createdAt",
+              "imageUrls",
+              "updatedAt"
+            ],
+            "typeSpecific": [
+              "appearanceHistory",
+              "functionHistory",
+              "finalConsultationDept"
+            ]
+          }
+        },
+        {
+          "id": "0Gjk6ffPMlgfpo0Ho9T0",
+          "fields": {
+            "common": [
+              "keywordPairs",
+              "inspectionDate",
+              "orderNumber",
+              "supplier",
+              "productName",
+              "partName",
+              "orderQuantity",
+              "specification",
+              "postProcess",
+              "result",
+              "resultReason",
+              "inspector",
+              "inspectionType",
+              "createdAt",
+              "imageUrls"
+            ],
+            "typeSpecific": [
+              "appearanceHistory",
+              "functionHistory",
+              "finalConsultationDept"
+            ]
+          }
+        },
+        {
+          "id": "0My094fOrC52dG5WlBts",
+          "fields": {
+            "common": [
+              "imageUrls",
+              "inspectionDate",
+              "orderNumber",
+              "supplier",
+              "productName",
+              "partName",
+              "orderQuantity",
+              "specification",
+              "postProcess",
+              "result",
+              "resultReason",
+              "keywordPairs",
+              "inspector",
+              "inspectionType",
+              "createdAt"
+            ],
+            "typeSpecific": [
+              "appearanceHistory",
+              "functionHistory",
+              "finalConsultationDept"
+            ]
+          }
+        },
+        {
+          "id": "0NwXHdiV9vgczHCNBkvJ",
+          "fields": {
+            "common": [
+              "imageUrls",
+              "specification",
+              "result",
+              "keywordPairs",
+              "orderQuantity",
+              "orderNumber",
+              "inspectionType",
+              "inspector",
+              "productName",
+              "createdAt",
+              "resultReason",
+              "supplier",
+              "inspectionDate",
+              "partName",
+              "postProcess"
+            ],
+            "typeSpecific": [
+              "appearanceHistory",
+              "finalConsultationDept",
+              "functionHistory"
+            ]
+          }
+        },
+        {
+          "id": "0PL5yAbmB5sfDucKzumY",
+          "fields": {
+            "common": [
+              "createdAt",
+              "orderQuantity",
+              "inspectionType",
+              "postProcess",
+              "inspector",
+              "keywordPairs",
+              "inspectionDate",
+              "orderNumber",
+              "partName",
+              "resultReason",
+              "result",
+              "productName",
+              "specification",
+              "supplier",
+              "imageUrls"
+            ],
+            "typeSpecific": [
+              "appearanceHistory",
+              "functionHistory",
+              "finalConsultationDept"
+            ]
+          }
+        },
+        {
+          "id": "0POY3VA3uPSzqvjf0YdP",
+          "fields": {
+            "common": [
+              "specification",
+              "keywordPairs",
+              "productName",
+              "resultReason",
+              "partName",
+              "orderQuantity",
+              "inspectionDate",
+              "postProcess",
+              "inspectionType",
+              "orderNumber",
+              "supplier",
+              "createdAt",
+              "inspector",
+              "imageUrls",
+              "result"
+            ],
+            "typeSpecific": [
+              "appearanceHistory",
+              "functionHistory",
+              "finalConsultationDept"
+            ]
+          }
+        }
+      ],
+      "stats": {
+        "total": 10,
+        "byResult": {
+          "한도승인": 3,
+          "합격": 6,
+          "한도대기": 1
+        },
+        "bySupplier": {
+          "제담씨앤디": 1,
+          "창희인터내셔널": 1,
+          "카이코퍼레이션": 1,
+          "토니모리 ": 1,
+          "유림테크": 1,
+          "미지정": 1,
+          "토니모리": 1,
+          "닥터코비": 2,
+          "명인화장품": 1
+        },
+        "byProduct": {
+          "50G신크림진공3": 1,
+          "50G장독2(라운드다층캡)": 1,
+          "타원T/W": 1,
+          "130ML줄기세포": 2,
+          "셔터 글래스 틴트": 1,
+          "미지정": 1,
+          "40G신크림진공3": 1,
+          "40G신크림진공3(직각숄더/직각받침)": 1,
+          "50G장독2(라운드캡)": 1
+        },
+        "byPartName": {
+          "외용기": 3,
+          "내캡": 2,
+          "록크": 1,
+          "외용기 ": 1,
+          "용기": 1,
+          "미지정": 1,
+          "캡": 1
+        },
+        "keywordPairs": [
+          {
+            "process": "사출",
+            "defect": "색상",
+            "count": 3
+          },
+          {
+            "process": "사출",
+            "defect": "가스",
+            "count": 2
+          },
+          {
+            "process": "사출",
+            "defect": "형상",
+            "count": 2
+          },
+          {
+            "process": "사출",
+            "defect": "이물",
+            "count": 1
+          },
+          {
+            "process": "사출",
+            "defect": "파팅단차",
+            "count": 1
+          },
+          {
+            "process": "사출",
+            "defect": "발포지자국",
+            "count": 1
+          },
+          {
+            "process": "사출",
+            "defect": "얼룩",
+            "count": 1
+          },
+          {
+            "process": "사출",
+            "defect": "먼지",
+            "count": 1
+          },
+          {
+            "process": "사출",
+            "defect": "오염",
+            "count": 1
+          },
+          {
+            "process": "사출",
+            "defect": "흑점",
+            "count": 1
+          },
+          {
+            "process": "사출",
+            "defect": "미분산",
+            "count": 1
+          }
+        ],
+        "dateRange": {
+          "earliest": "2025-09-18",
+          "latest": "2025-11-19"
+        },
+        "fieldUsage": {
+          "comments": {
+            "exists": 9,
+            "total": 10,
+            "percentage": 90
+          },
+          "inspectionDate": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "orderNumber": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "relatedOrderNumbers": {
+            "exists": 9,
+            "total": 10,
+            "percentage": 90
+          },
+          "supplier": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "productName": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "partName": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "injectionMaterial": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "injectionColor": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "orderQuantity": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "specification": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "postProcess": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "injectionCompany": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "packagingInfo": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "appearanceHistory": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "functionHistory": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "result": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "resultReason": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "finalConsultationDept": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "finalConsultationName": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "finalConsultationRank": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "keywordPairs": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "inspector": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "inspectionType": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "createdAt": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "history": {
+            "exists": 9,
+            "total": 10,
+            "percentage": 90
+          },
+          "sequentialId": {
+            "exists": 8,
+            "total": 10,
+            "percentage": 80
+          },
+          "imageUrls": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "jigUsed1": {
+            "exists": 1,
+            "total": 10,
+            "percentage": 10
+          },
+          "jigUsed2": {
+            "exists": 1,
+            "total": 10,
+            "percentage": 10
+          },
+          "internalJigLower": {
+            "exists": 1,
+            "total": 10,
+            "percentage": 10
+          },
+          "internalJigUpper": {
+            "exists": 1,
+            "total": 10,
+            "percentage": 10
+          },
+          "dryerUsed": {
+            "exists": 1,
+            "total": 10,
+            "percentage": 10
+          },
+          "flameTreatment": {
+            "exists": 1,
+            "total": 10,
+            "percentage": 10
+          },
+          "processLines": {
+            "exists": 1,
+            "total": 10,
+            "percentage": 10
+          },
+          "reliabilityTestResult": {
+            "exists": 1,
+            "total": 10,
+            "percentage": 10
+          },
+          "colorCheckResult": {
+            "exists": 1,
+            "total": 10,
+            "percentage": 10
+          },
+          "injectionPackaging": {
+            "exists": 1,
+            "total": 10,
+            "percentage": 10
+          },
+          "postProcessPackaging": {
+            "exists": 1,
+            "total": 10,
+            "percentage": 10
+          },
+          "preInspectionHistory": {
+            "exists": 1,
+            "total": 10,
+            "percentage": 10
+          },
+          "inProcessInspectionHistory": {
+            "exists": 1,
+            "total": 10,
+            "percentage": 10
+          },
+          "workerCount": {
+            "exists": 1,
+            "total": 10,
+            "percentage": 10
+          },
+          "workers": {
+            "exists": 1,
+            "total": 10,
+            "percentage": 10
+          },
+          "reliabilityReview": {
+            "exists": 1,
+            "total": 10,
+            "percentage": 10
+          },
+          "reinspectionKeyword": {
+            "exists": 1,
+            "total": 10,
+            "percentage": 10
+          },
+          "reinspectionContent": {
+            "exists": 1,
+            "total": 10,
+            "percentage": 10
+          },
+          "createdBy": {
+            "exists": 1,
+            "total": 10,
+            "percentage": 10
+          },
+          "updatedBy": {
+            "exists": 1,
+            "total": 10,
+            "percentage": 10
+          },
+          "updatedAt": {
+            "exists": 1,
+            "total": 10,
+            "percentage": 10
+          }
+        },
+        "inspectorCount": 3,
+        "hasImages": 5
+      },
+      "patterns": {
+        "commonFields": [
+          "inspectionDate",
+          "orderNumber",
+          "supplier",
+          "productName",
+          "partName",
+          "orderQuantity",
+          "specification",
+          "postProcess",
+          "result",
+          "resultReason",
+          "keywordPairs",
+          "inspector",
+          "inspectionType",
+          "createdAt",
+          "imageUrls",
+          "createdBy",
+          "updatedBy",
+          "updatedAt"
+        ],
+        "typeSpecificFields": {
+          "incoming": [
+            "appearanceHistory",
+            "functionHistory",
+            "finalConsultationDept"
+          ]
+        },
+        "resultDistribution": {
+          "한도승인": 3,
+          "합격": 6,
+          "한도대기": 1
+        },
+        "defectPatterns": [
+          {
+            "process": "사출",
+            "defect": "색상",
+            "frequency": 3,
+            "examples": [
+              "T49976-2",
+              "T49822-1",
+              "T49822-2"
+            ]
+          },
+          {
+            "process": "사출",
+            "defect": "가스",
+            "frequency": 2,
+            "examples": [
+              "T49976-2",
+              "T49841-2"
+            ]
+          },
+          {
+            "process": "사출",
+            "defect": "형상",
+            "frequency": 2,
+            "examples": [
+              "T49976-2",
+              "T10940-2"
+            ]
+          },
+          {
+            "process": "사출",
+            "defect": "이물",
+            "frequency": 1,
+            "examples": [
+              "T10940-2"
+            ]
+          },
+          {
+            "process": "사출",
+            "defect": "파팅단차",
+            "frequency": 1,
+            "examples": [
+              "T10940-2"
+            ]
+          },
+          {
+            "process": "사출",
+            "defect": "발포지자국",
+            "frequency": 1,
+            "examples": [
+              "T10940-2"
+            ]
+          },
+          {
+            "process": "사출",
+            "defect": "얼룩",
+            "frequency": 1,
+            "examples": [
+              "T49953-1"
+            ]
+          },
+          {
+            "process": "사출",
+            "defect": "먼지",
+            "frequency": 1,
+            "examples": [
+              "T49822-1"
+            ]
+          },
+          {
+            "process": "사출",
+            "defect": "오염",
+            "frequency": 1,
+            "examples": [
+              "T49822-1"
+            ]
+          },
+          {
+            "process": "사출",
+            "defect": "흑점",
+            "frequency": 1,
+            "examples": [
+              "T49822-2"
+            ]
+          },
+          {
+            "process": "사출",
+            "defect": "미분산",
+            "frequency": 1,
+            "examples": [
+              "T49822-2"
+            ]
+          }
+        ],
+        "datePatterns": {
+          "hasInspectionDate": 10,
+          "usesCreatedAt": 10
+        }
+      }
+    },
+    "inProcess": {
+      "samples": [
+        {
+          "id": "02CurQhuqAYQ1OUhVRMj",
+          "fields": {
+            "common": [
+              "inspectionType",
+              "orderNumber",
+              "supplier",
+              "productName",
+              "partName",
+              "orderQuantity",
+              "specification",
+              "postProcess",
+              "inspector",
+              "inspectionDate",
+              "result",
+              "resultReason",
+              "keywordPairs",
+              "createdBy",
+              "updatedBy",
+              "createdAt",
+              "imageUrls",
+              "id",
+              "updatedAt"
+            ],
+            "typeSpecific": [
+              "jigUsed1",
+              "jigUsed2",
+              "internalJigLower",
+              "internalJigUpper",
+              "dryerUsed",
+              "flameTreatment",
+              "processLines",
+              "preInspectionHistory",
+              "inProcessInspectionHistory"
+            ]
+          }
+        },
+        {
+          "id": "04TBQwK6K3GegyXiFVA0",
+          "fields": {
+            "common": [
+              "inspectionType",
+              "orderNumber",
+              "supplier",
+              "productName",
+              "partName",
+              "orderQuantity",
+              "specification",
+              "postProcess",
+              "inspector",
+              "inspectionDate",
+              "result",
+              "resultReason",
+              "keywordPairs",
+              "createdBy",
+              "updatedBy",
+              "createdAt",
+              "imageUrls",
+              "updatedAt"
+            ],
+            "typeSpecific": [
+              "jigUsed1",
+              "jigUsed2",
+              "internalJigLower",
+              "internalJigUpper",
+              "dryerUsed",
+              "flameTreatment",
+              "processLines",
+              "preInspectionHistory",
+              "inProcessInspectionHistory"
+            ]
+          }
+        },
+        {
+          "id": "07uakCdEjJmsrNSpjAnO",
+          "fields": {
+            "common": [
+              "inspectionType",
+              "orderNumber",
+              "supplier",
+              "productName",
+              "partName",
+              "orderQuantity",
+              "specification",
+              "postProcess",
+              "inspector",
+              "inspectionDate",
+              "result",
+              "resultReason",
+              "keywordPairs",
+              "createdBy",
+              "updatedBy",
+              "createdAt",
+              "id",
+              "imageUrls",
+              "updatedAt"
+            ],
+            "typeSpecific": [
+              "jigUsed1",
+              "jigUsed2",
+              "internalJigLower",
+              "internalJigUpper",
+              "dryerUsed",
+              "flameTreatment",
+              "processLines",
+              "preInspectionHistory",
+              "inProcessInspectionHistory"
+            ]
+          }
+        },
+        {
+          "id": "08YbGAUuGNpavL17cTxy",
+          "fields": {
+            "common": [
+              "inspectionType",
+              "orderNumber",
+              "supplier",
+              "productName",
+              "partName",
+              "orderQuantity",
+              "specification",
+              "postProcess",
+              "inspector",
+              "inspectionDate",
+              "result",
+              "resultReason",
+              "keywordPairs",
+              "createdBy",
+              "updatedBy",
+              "createdAt",
+              "imageUrls",
+              "updatedAt"
+            ],
+            "typeSpecific": [
+              "jigUsed1",
+              "jigUsed2",
+              "internalJigLower",
+              "internalJigUpper",
+              "dryerUsed",
+              "flameTreatment",
+              "processLines",
+              "preInspectionHistory",
+              "inProcessInspectionHistory"
+            ]
+          }
+        },
+        {
+          "id": "0AGksbBTTHAKPbU0jUPs",
+          "fields": {
+            "common": [
+              "keywordPairs",
+              "inspectionDate",
+              "orderNumber",
+              "supplier",
+              "productName",
+              "partName",
+              "orderQuantity",
+              "specification",
+              "postProcess",
+              "inspectionType",
+              "createdAt",
+              "inspector"
+            ],
+            "typeSpecific": [
+              "jigUsed",
+              "jigUsed2",
+              "preInspectionHistory",
+              "inProcessInspectionHistory",
+              "workLine"
+            ]
+          }
+        },
+        {
+          "id": "0EEU63OoNj2gqNCmeohg",
+          "fields": {
+            "common": [
+              "imageUrls",
+              "inspectionDate",
+              "orderNumber",
+              "supplier",
+              "productName",
+              "partName",
+              "orderQuantity",
+              "specification",
+              "postProcess",
+              "keywordPairs",
+              "inspector",
+              "inspectionType",
+              "createdAt"
+            ],
+            "typeSpecific": [
+              "jigUsed",
+              "jigUsed2",
+              "internalJigLower",
+              "internalJigUpper",
+              "dryerUsed",
+              "flameTreatment",
+              "preInspectionHistory",
+              "inProcessInspectionHistory",
+              "processLines"
+            ]
+          }
+        },
+        {
+          "id": "0KAG4i1XRlCCDMT5ujQh",
+          "fields": {
+            "common": [
+              "inspectionDate",
+              "orderNumber",
+              "supplier",
+              "productName",
+              "partName",
+              "orderQuantity",
+              "specification",
+              "postProcess",
+              "keywordPairs",
+              "inspector",
+              "inspectionType",
+              "createdAt",
+              "imageUrls"
+            ],
+            "typeSpecific": [
+              "jigUsed",
+              "jigUsed2",
+              "internalJigLower",
+              "internalJigUpper",
+              "dryerUsed",
+              "flameTreatment",
+              "preInspectionHistory",
+              "inProcessInspectionHistory",
+              "processLines"
+            ]
+          }
+        },
+        {
+          "id": "0MRZgEonlclaPhfZfNa1",
+          "fields": {
+            "common": [
+              "inspectionType",
+              "orderNumber",
+              "supplier",
+              "productName",
+              "partName",
+              "orderQuantity",
+              "specification",
+              "postProcess",
+              "inspector",
+              "inspectionDate",
+              "result",
+              "resultReason",
+              "keywordPairs",
+              "createdBy",
+              "updatedBy",
+              "createdAt",
+              "imageUrls",
+              "id",
+              "updatedAt"
+            ],
+            "typeSpecific": [
+              "jigUsed1",
+              "jigUsed2",
+              "internalJigLower",
+              "internalJigUpper",
+              "dryerUsed",
+              "flameTreatment",
+              "processLines",
+              "preInspectionHistory",
+              "inProcessInspectionHistory"
+            ]
+          }
+        },
+        {
+          "id": "0MkkxFmTSs1fiU2t9IkG",
+          "fields": {
+            "common": [
+              "inspectionDate",
+              "orderNumber",
+              "supplier",
+              "productName",
+              "partName",
+              "orderQuantity",
+              "specification",
+              "postProcess",
+              "keywordPairs",
+              "inspector",
+              "inspectionType",
+              "createdAt",
+              "imageUrls"
+            ],
+            "typeSpecific": [
+              "jigUsed",
+              "jigUsed2",
+              "internalJigLower",
+              "internalJigUpper",
+              "dryerUsed",
+              "flameTreatment",
+              "preInspectionHistory",
+              "inProcessInspectionHistory",
+              "processLines"
+            ]
+          }
+        },
+        {
+          "id": "0NctrHfzONG26eFQ1rWY",
+          "fields": {
+            "common": [
+              "inspectionDate",
+              "orderNumber",
+              "supplier",
+              "productName",
+              "partName",
+              "orderQuantity",
+              "specification",
+              "postProcess",
+              "keywordPairs",
+              "inspector",
+              "inspectionType",
+              "createdAt"
+            ],
+            "typeSpecific": [
+              "jigUsed",
+              "jigUsed2",
+              "internalJigLower",
+              "internalJigUpper",
+              "dryerUsed",
+              "flameTreatment",
+              "preInspectionHistory",
+              "inProcessInspectionHistory",
+              "processLines"
+            ]
+          }
+        }
+      ],
+      "stats": {
+        "total": 10,
+        "byResult": {
+          "합격": 5,
+          "미지정": 5
+        },
+        "bySupplier": {
+          "로쎄앙": 1,
+          "피씨엠(코스메카코리아)": 1,
+          "코이즈": 1,
+          "HNG화장품(고운세상)": 1,
+          "승보": 2,
+          "모리나(구 티엑스컴)": 1,
+          "토니모리": 1,
+          "대진산업": 1,
+          "벨롱앤아이코스": 1
+        },
+        "byProduct": {
+          "슬림원형에어타이트(두꺼운명판/하자깊은것)": 1,
+          "50G구직각(닥터지캡)": 2,
+          "50G베이직원형": 1,
+          "천기단": 1,
+          "20G압축파우더(상자명판용)": 1,
+          "130ML줄기세포": 1,
+          "에스쁘아 12색 파렛트": 1,
+          "설화수 퍼펙팅쿠션23ad": 1,
+          "50G신크림진공2": 1
+        },
+        "byPartName": {
+          "명판": 1,
+          "외용기": 2,
+          "외캡": 1,
+          "상체": 1,
+          "명판상": 1,
+          "어깨장식": 1,
+          "받침": 1,
+          "하용기": 1,
+          "펌프버튼": 1
+        },
+        "keywordPairs": [
+          {
+            "process": "사출",
+            "defect": "기름",
+            "count": 5
+          },
+          {
+            "process": "증착",
+            "defect": "이물",
+            "count": 4
+          },
+          {
+            "process": "코팅",
+            "defect": "얼룩",
+            "count": 2
+          },
+          {
+            "process": "사출",
+            "defect": "가스",
+            "count": 2
+          },
+          {
+            "process": "코팅",
+            "defect": "이물",
+            "count": 1
+          },
+          {
+            "process": "사출",
+            "defect": "이물박힘",
+            "count": 1
+          },
+          {
+            "process": "미지정",
+            "defect": "미지정",
+            "count": 1
+          },
+          {
+            "process": "증착",
+            "defect": "스크래치",
+            "count": 1
+          },
+          {
+            "process": "증착",
+            "defect": "오염",
+            "count": 1
+          },
+          {
+            "process": "증착",
+            "defect": "부딪힘",
+            "count": 1
+          },
+          {
+            "process": "사출",
+            "defect": "파팅burr",
+            "count": 1
+          },
+          {
+            "process": "사출",
+            "defect": "찍힘",
+            "count": 1
+          },
+          {
+            "process": "증착 ",
+            "defect": "이물",
+            "count": 1
+          },
+          {
+            "process": "증착",
+            "defect": "부딪힘 ",
+            "count": 1
+          }
+        ],
+        "dateRange": {
+          "earliest": "2025-09-04",
+          "latest": "2025-11-27"
+        },
+        "fieldUsage": {
+          "inspectionType": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "orderNumber": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "supplier": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "productName": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "partName": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "orderQuantity": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "injectionMaterial": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "injectionColor": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "specification": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "postProcess": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "injectionCompany": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "inspector": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "inspectionDate": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "packagingInfo": {
+            "exists": 5,
+            "total": 10,
+            "percentage": 50
+          },
+          "appearanceHistory": {
+            "exists": 5,
+            "total": 10,
+            "percentage": 50
+          },
+          "functionHistory": {
+            "exists": 5,
+            "total": 10,
+            "percentage": 50
+          },
+          "result": {
+            "exists": 5,
+            "total": 10,
+            "percentage": 50
+          },
+          "resultReason": {
+            "exists": 5,
+            "total": 10,
+            "percentage": 50
+          },
+          "finalConsultationDept": {
+            "exists": 5,
+            "total": 10,
+            "percentage": 50
+          },
+          "finalConsultationName": {
+            "exists": 5,
+            "total": 10,
+            "percentage": 50
+          },
+          "finalConsultationRank": {
+            "exists": 5,
+            "total": 10,
+            "percentage": 50
+          },
+          "jigUsed1": {
+            "exists": 5,
+            "total": 10,
+            "percentage": 50
+          },
+          "jigUsed2": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "internalJigLower": {
+            "exists": 9,
+            "total": 10,
+            "percentage": 90
+          },
+          "internalJigUpper": {
+            "exists": 9,
+            "total": 10,
+            "percentage": 90
+          },
+          "dryerUsed": {
+            "exists": 9,
+            "total": 10,
+            "percentage": 90
+          },
+          "flameTreatment": {
+            "exists": 9,
+            "total": 10,
+            "percentage": 90
+          },
+          "processLines": {
+            "exists": 9,
+            "total": 10,
+            "percentage": 90
+          },
+          "reliabilityTestResult": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "colorCheckResult": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "preInspectionHistory": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "inProcessInspectionHistory": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "keywordPairs": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "workerCount": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "workers": {
+            "exists": 5,
+            "total": 10,
+            "percentage": 50
+          },
+          "reliabilityReview": {
+            "exists": 5,
+            "total": 10,
+            "percentage": 50
+          },
+          "reinspectionKeyword": {
+            "exists": 5,
+            "total": 10,
+            "percentage": 50
+          },
+          "reinspectionContent": {
+            "exists": 5,
+            "total": 10,
+            "percentage": 50
+          },
+          "createdBy": {
+            "exists": 5,
+            "total": 10,
+            "percentage": 50
+          },
+          "updatedBy": {
+            "exists": 5,
+            "total": 10,
+            "percentage": 50
+          },
+          "createdAt": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "injectionPackaging": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "imageUrls": {
+            "exists": 8,
+            "total": 10,
+            "percentage": 80
+          },
+          "id": {
+            "exists": 3,
+            "total": 10,
+            "percentage": 30
+          },
+          "updatedAt": {
+            "exists": 5,
+            "total": 10,
+            "percentage": 50
+          },
+          "postProcessPackaging": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "relatedOrderNumbers": {
+            "exists": 5,
+            "total": 10,
+            "percentage": 50
+          },
+          "jigUsed": {
+            "exists": 5,
+            "total": 10,
+            "percentage": 50
+          },
+          "workLine": {
+            "exists": 1,
+            "total": 10,
+            "percentage": 10
+          },
+          "lineSpeed": {
+            "exists": 1,
+            "total": 10,
+            "percentage": 10
+          },
+          "lineConditions": {
+            "exists": 1,
+            "total": 10,
+            "percentage": 10
+          },
+          "lampUsage": {
+            "exists": 1,
+            "total": 10,
+            "percentage": 10
+          },
+          "sequentialId": {
+            "exists": 5,
+            "total": 10,
+            "percentage": 50
+          },
+          "history": {
+            "exists": 5,
+            "total": 10,
+            "percentage": 50
+          },
+          "comments": {
+            "exists": 5,
+            "total": 10,
+            "percentage": 50
+          }
+        },
+        "inspectorCount": 6,
+        "hasImages": 7
+      },
+      "patterns": {
+        "commonFields": [
+          "inspectionType",
+          "orderNumber",
+          "supplier",
+          "productName",
+          "partName",
+          "orderQuantity",
+          "specification",
+          "postProcess",
+          "inspector",
+          "inspectionDate",
+          "keywordPairs",
+          "createdAt",
+          "imageUrls",
+          "result",
+          "resultReason",
+          "createdBy",
+          "updatedBy",
+          "updatedAt",
+          "id"
+        ],
+        "typeSpecificFields": {
+          "inProcess": [
+            "jigUsed1",
+            "jigUsed2",
+            "internalJigLower",
+            "internalJigUpper",
+            "dryerUsed",
+            "flameTreatment",
+            "processLines",
+            "preInspectionHistory",
+            "inProcessInspectionHistory",
+            "jigUsed",
+            "workLine"
+          ]
+        },
+        "resultDistribution": {
+          "합격": 5,
+          "미지정": 5
+        },
+        "defectPatterns": [
+          {
+            "process": "사출",
+            "defect": "기름",
+            "frequency": 5,
+            "examples": [
+              "T50124-2",
+              "T49512-1",
+              "T49726-3"
+            ]
+          },
+          {
+            "process": "증착",
+            "defect": "이물",
+            "frequency": 4,
+            "examples": [
+              "T49512-1",
+              "T49726-3",
+              "T10862-3"
+            ]
+          },
+          {
+            "process": "코팅",
+            "defect": "얼룩",
+            "frequency": 2,
+            "examples": [
+              "T50165-3"
+            ]
+          },
+          {
+            "process": "사출",
+            "defect": "가스",
+            "frequency": 2,
+            "examples": [
+              "T50165-3",
+              "T49726-3"
+            ]
+          },
+          {
+            "process": "코팅",
+            "defect": "이물",
+            "frequency": 1,
+            "examples": [
+              "T50124-2"
+            ]
+          },
+          {
+            "process": "사출",
+            "defect": "이물박힘",
+            "frequency": 1,
+            "examples": [
+              "T50165-3"
+            ]
+          },
+          {
+            "process": "증착",
+            "defect": "스크래치",
+            "frequency": 1,
+            "examples": [
+              "T49512-1"
+            ]
+          },
+          {
+            "process": "증착",
+            "defect": "오염",
+            "frequency": 1,
+            "examples": [
+              "T49512-1"
+            ]
+          },
+          {
+            "process": "증착",
+            "defect": "부딪힘",
+            "frequency": 1,
+            "examples": [
+              "T49512-1"
+            ]
+          },
+          {
+            "process": "사출",
+            "defect": "파팅burr",
+            "frequency": 1,
+            "examples": [
+              "T49512-1"
+            ]
+          },
+          {
+            "process": "사출",
+            "defect": "찍힘",
+            "frequency": 1,
+            "examples": [
+              "T49726-3"
+            ]
+          },
+          {
+            "process": "증착 ",
+            "defect": "이물",
+            "frequency": 1,
+            "examples": [
+              "T10959-1"
+            ]
+          },
+          {
+            "process": "증착",
+            "defect": "부딪힘 ",
+            "frequency": 1,
+            "examples": [
+              "T10862-3"
+            ]
+          }
+        ],
+        "datePatterns": {
+          "hasInspectionDate": 10,
+          "usesCreatedAt": 10
+        },
+        "inProcessHistoryAnalysis": {
+          "hasHistory": 10,
+          "total": 10,
+          "averageLength": 45,
+          "commonKeywords": [
+            {
+              "keyword": "불량",
+              "frequency": 8
+            },
+            {
+              "keyword": "이물",
+              "frequency": 6
+            },
+            {
+              "keyword": "검사중",
+              "frequency": 6
+            },
+            {
+              "keyword": "기름",
+              "frequency": 5
+            },
+            {
+              "keyword": "불량율",
+              "frequency": 4
+            },
+            {
+              "keyword": "총불량율",
+              "frequency": 4
+            },
+            {
+              "keyword": "주불량유형",
+              "frequency": 4
+            },
+            {
+              "keyword": "검사",
+              "frequency": 3
+            },
+            {
+              "keyword": "기타불량",
+              "frequency": 3
+            },
+            {
+              "keyword": "불량유형",
+              "frequency": 2
+            }
+          ],
+          "historyContents": [
+            "검사 48개중 불량 11개 불량율 22%\n불량유형 이물, 기름 ",
+            "360검사중 불량16 불량율 0.04%\n바닥얼룩-13%\n가스-2%\n이물박힘-1%",
+            "검사수 100개\n사출 수축 전작업동일수준\n특이사항없음",
+            "360검사중 불량6 불량율0.01%\n바닥얼룩-6%",
+            "검사 200개 특이사항없음"
+          ]
+        }
+      }
+    },
+    "outgoing": {
+      "samples": [
+        {
+          "id": "06z0BDYTPBYIcrx1q8sD",
+          "fields": {
+            "common": [
+              "inspectionType",
+              "orderNumber",
+              "supplier",
+              "productName",
+              "partName",
+              "orderQuantity",
+              "specification",
+              "postProcess",
+              "inspector",
+              "inspectionDate",
+              "imageUrls",
+              "result",
+              "resultReason",
+              "keywordPairs",
+              "createdBy",
+              "updatedBy",
+              "createdAt"
+            ],
+            "typeSpecific": [
+              "reliabilityTestResult",
+              "colorCheckResult",
+              "injectionPackaging",
+              "postProcessPackaging",
+              "workerCount",
+              "workers",
+              "reliabilityReview",
+              "reinspectionKeyword",
+              "reinspectionContent"
+            ]
+          }
+        },
+        {
+          "id": "08w8f8UPGquRHSuEWvHF",
+          "fields": {
+            "common": [
+              "orderNumber",
+              "orderQuantity",
+              "supplier",
+              "postProcess",
+              "partName",
+              "createdAt",
+              "productName",
+              "inspectionDate",
+              "specification",
+              "inspector",
+              "inspectionType",
+              "imageUrls"
+            ],
+            "typeSpecific": [
+              "reinspectionKeyword",
+              "reliabilityReview",
+              "reinspectionContent",
+              "workers",
+              "workerCount",
+              "workLine"
+            ]
+          }
+        },
+        {
+          "id": "0FcifppAjv7s8vzbocud",
+          "fields": {
+            "common": [
+              "inspectionType",
+              "orderNumber",
+              "supplier",
+              "productName",
+              "partName",
+              "orderQuantity",
+              "specification",
+              "postProcess",
+              "inspector",
+              "inspectionDate",
+              "imageUrls",
+              "result",
+              "resultReason",
+              "keywordPairs",
+              "createdBy",
+              "updatedBy",
+              "createdAt"
+            ],
+            "typeSpecific": [
+              "reliabilityTestResult",
+              "colorCheckResult",
+              "injectionPackaging",
+              "postProcessPackaging",
+              "workerCount",
+              "workers",
+              "reliabilityReview",
+              "reinspectionKeyword",
+              "reinspectionContent"
+            ]
+          }
+        },
+        {
+          "id": "0Ipnza0NXWqnUBS3IC2i",
+          "fields": {
+            "common": [
+              "inspectionType",
+              "inspector",
+              "supplier",
+              "partName",
+              "orderQuantity",
+              "orderNumber",
+              "specification",
+              "postProcess",
+              "createdAt",
+              "productName",
+              "inspectionDate",
+              "imageUrls"
+            ],
+            "typeSpecific": [
+              "defectResultPairs",
+              "reliabilityReview",
+              "reinspectionContent",
+              "workers",
+              "workLine",
+              "workerCount",
+              "reinspectionKeyword"
+            ]
+          }
+        },
+        {
+          "id": "0POM5PP8ImEKAInno0QC",
+          "fields": {
+            "common": [
+              "inspectionDate",
+              "orderNumber",
+              "supplier",
+              "productName",
+              "partName",
+              "orderQuantity",
+              "specification",
+              "postProcess",
+              "inspector",
+              "inspectionType",
+              "createdAt",
+              "imageUrls"
+            ],
+            "typeSpecific": [
+              "workLine",
+              "workerCount",
+              "workers",
+              "reliabilityReview",
+              "reinspectionKeyword",
+              "reinspectionContent",
+              "defectResultPairs"
+            ]
+          }
+        },
+        {
+          "id": "0RiKZ3EBRMx4goXKiArk",
+          "fields": {
+            "common": [
+              "inspectionType",
+              "orderNumber",
+              "supplier",
+              "productName",
+              "partName",
+              "orderQuantity",
+              "specification",
+              "postProcess",
+              "inspector",
+              "inspectionDate",
+              "imageUrls",
+              "result",
+              "resultReason",
+              "keywordPairs",
+              "createdBy",
+              "updatedBy",
+              "createdAt",
+              "updatedAt"
+            ],
+            "typeSpecific": [
+              "reliabilityTestResult",
+              "colorCheckResult",
+              "injectionPackaging",
+              "postProcessPackaging",
+              "workerCount",
+              "workers",
+              "reliabilityReview",
+              "reinspectionKeyword",
+              "reinspectionContent"
+            ]
+          }
+        },
+        {
+          "id": "0gMv7y7cWF1g4j8U3Pth",
+          "fields": {
+            "common": [
+              "imageUrls",
+              "inspectionDate",
+              "orderNumber",
+              "supplier",
+              "productName",
+              "partName",
+              "orderQuantity",
+              "specification",
+              "postProcess",
+              "inspector",
+              "inspectionType",
+              "createdAt"
+            ],
+            "typeSpecific": [
+              "workLine",
+              "workerCount",
+              "workers",
+              "reliabilityReview",
+              "reinspectionKeyword",
+              "reinspectionContent"
+            ]
+          }
+        },
+        {
+          "id": "0lHa2mLW2KmeZn9dLWcD",
+          "fields": {
+            "common": [
+              "inspectionType",
+              "orderNumber",
+              "supplier",
+              "productName",
+              "partName",
+              "orderQuantity",
+              "specification",
+              "postProcess",
+              "inspector",
+              "inspectionDate",
+              "imageUrls",
+              "result",
+              "resultReason",
+              "keywordPairs",
+              "createdBy",
+              "updatedBy",
+              "createdAt",
+              "updatedAt"
+            ],
+            "typeSpecific": [
+              "reliabilityTestResult",
+              "colorCheckResult",
+              "injectionPackaging",
+              "postProcessPackaging",
+              "workerCount",
+              "workers",
+              "reliabilityReview",
+              "reinspectionKeyword",
+              "reinspectionContent"
+            ]
+          }
+        },
+        {
+          "id": "0n5TbRlEUlq6CdrzzCxf",
+          "fields": {
+            "common": [
+              "inspectionDate",
+              "orderNumber",
+              "supplier",
+              "productName",
+              "partName",
+              "orderQuantity",
+              "specification",
+              "postProcess",
+              "inspector",
+              "inspectionType",
+              "createdAt"
+            ],
+            "typeSpecific": [
+              "workLine",
+              "workerCount",
+              "reliabilityReview",
+              "reinspectionKeyword",
+              "reinspectionContent",
+              "workers"
+            ]
+          }
+        },
+        {
+          "id": "0vnMqjiWpZXc7Oz18ZcU",
+          "fields": {
+            "common": [
+              "inspectionDate",
+              "orderNumber",
+              "supplier",
+              "productName",
+              "partName",
+              "orderQuantity",
+              "specification",
+              "postProcess",
+              "inspector",
+              "inspectionType",
+              "createdAt",
+              "imageUrls"
+            ],
+            "typeSpecific": [
+              "workLine",
+              "workerCount",
+              "workers",
+              "reliabilityReview",
+              "reinspectionKeyword",
+              "reinspectionContent",
+              "defectResultPairs"
+            ]
+          }
+        }
+      ],
+      "stats": {
+        "total": 10,
+        "byResult": {
+          "합격": 4,
+          "미지정": 6
+        },
+        "bySupplier": {
+          "뷰티솔루션": 1,
+          "코스맥스(고운세상)": 1,
+          "승보": 4,
+          "에이치엠제이코리아": 1,
+          "엔비롱": 1,
+          "닥터코비": 1,
+          "토니모리": 1
+        },
+        "byProduct": {
+          "신사각3T/W(중자원형/두꺼운상)(양각로고)": 1,
+          "50G구직각(100G원형직각브로우캡)": 1,
+          "라네즈 쓰리엑스 크림(25ad) 8ml 견본": 1,
+          "설화수 퍼펙팅쿠션23ad": 1,
+          "21age20's 시그니처팩트(CM,MM,VM)": 1,
+          "24age20's 올뉴1TPW": 1,
+          "50G초음파(스텝캡)": 1,
+          "30G신원형": 1,
+          "PET100ML원형벨트(펌프타입/민자용기)": 1,
+          "PET150ML2(속버튼타입)": 1
+        },
+        "byPartName": {
+          "하": 1,
+          "외용기": 1,
+          "캡": 1,
+          "상용기": 1,
+          "중용기": 1,
+          "하체": 1,
+          "하캡": 1,
+          "외캡": 1,
+          "캡 ": 1,
+          "펌프숄더": 1
+        },
+        "keywordPairs": [
+          {
+            "process": "미지정",
+            "defect": "미지정",
+            "count": 4
+          }
+        ],
+        "dateRange": {
+          "earliest": "2025-09-15",
+          "latest": "2025-11-28"
+        },
+        "fieldUsage": {
+          "inspectionType": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "orderNumber": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "supplier": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "productName": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "partName": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "orderQuantity": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "injectionMaterial": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "injectionColor": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "specification": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "postProcess": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "injectionCompany": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "inspector": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "inspectionDate": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "imageUrls": {
+            "exists": 9,
+            "total": 10,
+            "percentage": 90
+          },
+          "packagingInfo": {
+            "exists": 4,
+            "total": 10,
+            "percentage": 40
+          },
+          "appearanceHistory": {
+            "exists": 4,
+            "total": 10,
+            "percentage": 40
+          },
+          "functionHistory": {
+            "exists": 4,
+            "total": 10,
+            "percentage": 40
+          },
+          "result": {
+            "exists": 4,
+            "total": 10,
+            "percentage": 40
+          },
+          "resultReason": {
+            "exists": 4,
+            "total": 10,
+            "percentage": 40
+          },
+          "finalConsultationDept": {
+            "exists": 4,
+            "total": 10,
+            "percentage": 40
+          },
+          "finalConsultationName": {
+            "exists": 4,
+            "total": 10,
+            "percentage": 40
+          },
+          "finalConsultationRank": {
+            "exists": 4,
+            "total": 10,
+            "percentage": 40
+          },
+          "jigUsed1": {
+            "exists": 4,
+            "total": 10,
+            "percentage": 40
+          },
+          "jigUsed2": {
+            "exists": 4,
+            "total": 10,
+            "percentage": 40
+          },
+          "internalJigLower": {
+            "exists": 4,
+            "total": 10,
+            "percentage": 40
+          },
+          "internalJigUpper": {
+            "exists": 4,
+            "total": 10,
+            "percentage": 40
+          },
+          "dryerUsed": {
+            "exists": 4,
+            "total": 10,
+            "percentage": 40
+          },
+          "flameTreatment": {
+            "exists": 4,
+            "total": 10,
+            "percentage": 40
+          },
+          "processLines": {
+            "exists": 4,
+            "total": 10,
+            "percentage": 40
+          },
+          "reliabilityTestResult": {
+            "exists": 4,
+            "total": 10,
+            "percentage": 40
+          },
+          "colorCheckResult": {
+            "exists": 4,
+            "total": 10,
+            "percentage": 40
+          },
+          "injectionPackaging": {
+            "exists": 4,
+            "total": 10,
+            "percentage": 40
+          },
+          "postProcessPackaging": {
+            "exists": 4,
+            "total": 10,
+            "percentage": 40
+          },
+          "preInspectionHistory": {
+            "exists": 4,
+            "total": 10,
+            "percentage": 40
+          },
+          "inProcessInspectionHistory": {
+            "exists": 4,
+            "total": 10,
+            "percentage": 40
+          },
+          "keywordPairs": {
+            "exists": 4,
+            "total": 10,
+            "percentage": 40
+          },
+          "workerCount": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "workers": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "reliabilityReview": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "reinspectionKeyword": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "reinspectionContent": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "createdBy": {
+            "exists": 4,
+            "total": 10,
+            "percentage": 40
+          },
+          "updatedBy": {
+            "exists": 4,
+            "total": 10,
+            "percentage": 40
+          },
+          "createdAt": {
+            "exists": 10,
+            "total": 10,
+            "percentage": 100
+          },
+          "comments": {
+            "exists": 6,
+            "total": 10,
+            "percentage": 60
+          },
+          "sequentialId": {
+            "exists": 6,
+            "total": 10,
+            "percentage": 60
+          },
+          "history": {
+            "exists": 6,
+            "total": 10,
+            "percentage": 60
+          },
+          "relatedOrderNumbers": {
+            "exists": 6,
+            "total": 10,
+            "percentage": 60
+          },
+          "workLine": {
+            "exists": 6,
+            "total": 10,
+            "percentage": 60
+          },
+          "defectResultPairs": {
+            "exists": 3,
+            "total": 10,
+            "percentage": 30
+          },
+          "updatedAt": {
+            "exists": 2,
+            "total": 10,
+            "percentage": 20
+          }
+        },
+        "inspectorCount": 2,
+        "hasImages": 4
+      },
+      "patterns": {
+        "commonFields": [
+          "inspectionType",
+          "orderNumber",
+          "supplier",
+          "productName",
+          "partName",
+          "orderQuantity",
+          "specification",
+          "postProcess",
+          "inspector",
+          "inspectionDate",
+          "createdAt",
+          "imageUrls",
+          "result",
+          "resultReason",
+          "keywordPairs",
+          "createdBy",
+          "updatedBy",
+          "updatedAt"
+        ],
+        "typeSpecificFields": {
+          "outgoing": [
+            "reliabilityTestResult",
+            "colorCheckResult",
+            "injectionPackaging",
+            "postProcessPackaging",
+            "workerCount",
+            "workers",
+            "reliabilityReview",
+            "reinspectionKeyword",
+            "reinspectionContent",
+            "workLine",
+            "defectResultPairs"
+          ]
+        },
+        "resultDistribution": {
+          "합격": 4,
+          "미지정": 6
+        },
+        "defectPatterns": [],
+        "datePatterns": {
+          "hasInspectionDate": 10,
+          "usesCreatedAt": 10
+        }
+      }
+    }
+  },
+  "design": {
+    "summary": {
+      "totalTypes": 3,
+      "totalSamples": 30
+    },
+    "statistics": {
+      "basic": [
+        "검사 타입별 통계 (수입/공정/출하 검사 수 및 비율)",
+        "검사 결과별 통계 (합격/불합격/한도대기/한도승인/반출)",
+        "불량률 계산 (타입별, 전체)",
+        "날짜 범위별 통계 (기간별 검사 수, 불량률)"
+      ],
+      "byDimension": [
+        "공급사별 통계 (검사 수, 불량률, 주요 불량 유형)",
+        "제품별 통계 (검사 수, 불량률)",
+        "부품명별 통계 (검사 수, 불량률)",
+        "검사자별 통계 (검사 수, 불량률)"
+      ],
+      "patterns": [
+        "공정-불량 키워드 페어 분석 (빈도순, 불량률)",
+        "불량 패턴 추출 (자주 발생하는 불량 조합)",
+        "시간대별/날짜별 트렌드 분석"
+      ],
+      "typeSpecific": {
+        "incoming": [
+          "외관이력/기능이력 분석",
+          "최종협의부서별 통계"
+        ],
+        "inProcess": [
+          "작업라인별 통계",
+          "지그 사용 이력 분석",
+          "공정라인 조건 분석"
+        ],
+        "outgoing": [
+          "작업자별 검사 통계",
+          "신뢰성 테스트 결과 분석",
+          "색상 검사 결과 분석"
+        ]
+      }
+    },
+    "dataStructure": {
+      "qualityHistoryStats": {
+        "period": "{ start: string; end: string }",
+        "totals": "{ incoming: number; inProcess: number; outgoing: number }",
+        "defectRates": "{ overall: number; byType: Record<InspectionType, number> }",
+        "byResult": "Record<InspectionResult, number>",
+        "bySupplier": "Array<{ supplier: string; count: number; defectRate: number }>",
+        "byProduct": "Array<{ productName: string; count: number; defectRate: number }>",
+        "defectPatterns": "Array<{ process: string; defect: string; frequency: number; defectRate: number }>",
+        "trends": "Array<{ date: string; count: number; defectRate: number }>"
+      }
+    },
+    "recommendations": [
+      "검사 타입별로 다른 통계 항목 제공 (타입별 특화 필드 활용)",
+      "키워드 페어를 활용한 불량 패턴 분석 강화",
+      "날짜 범위 필터링 기능 필수 (inspectionDate 또는 createdAt 활용)",
+      "공급사별, 제품별 통계는 상위 N개만 표시하고 나머지는 \"기타\"로 그룹화",
+      "불량률 계산 시 불합격 + 한도대기를 불량으로 간주",
+      "트렌드 분석은 주별 또는 월별로 집계",
+      "검사자별 통계는 개인정보 보호를 위해 익명화 옵션 제공"
+    ]
+  }
+}

@@ -230,6 +230,22 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
                 return;
               }
 
+              // 메모리 누수 방지: recentIds 크기 제한 (최대 100개)
+              const MAX_RECENT_IDS = 100;
+              if (recentIds.size >= MAX_RECENT_IDS) {
+                // 가장 오래된 항목 제거 (Set은 순서가 없으므로 첫 번째 항목 제거)
+                const firstId = recentIds.values().next().value;
+                if (firstId) {
+                  recentIds.delete(firstId);
+                  // 해당 타이머도 정리
+                  const oldTimer = recentIdsTimersRef.current.get(firstId);
+                  if (oldTimer) {
+                    clearTimeout(oldTimer);
+                    recentIdsTimersRef.current.delete(firstId);
+                  }
+                }
+              }
+
               recentIds.add(notificationId);
               
               // 기존 타이머 정리 (중복 방지)

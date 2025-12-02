@@ -125,7 +125,8 @@ export const useQualityIssues = () => {
           console.error('[useQualityIssues] 구독 해제 중 오류:', error);
         });
     };
-  }, [mounted, user, getCachedIssues, setIssues, setError, setFetching, setLoading]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted, user?.uid]); // 함수들은 Zustand store에서 가져온 안정적인 함수이므로 의존성에서 제외, user.uid만 추적
 
   // 검색 및 상태 필터링
   const getCurrentStatus = useCallback((issue: QualityIssue) => {
