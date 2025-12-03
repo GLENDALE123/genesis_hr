@@ -195,3 +195,5 @@ interface OutgoingInspectionSummary {
 - 태블릿/모바일: 각 섹션을 카드 형태로 표시, 확장/축소 가능
 
 
+
+

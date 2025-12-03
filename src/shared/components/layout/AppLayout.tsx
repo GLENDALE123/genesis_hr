@@ -92,7 +92,7 @@ const AppLayoutComponent: React.FC<AppLayoutProps> = ({
                 "flex-1 transition-all duration-300",
                 isMobile 
                   ? (noContentPadding ? "overflow-y-auto p-0 pb-4" : "overflow-y-auto p-2 pb-6")
-                  : (noContentPadding ? "overflow-y-auto p-0" : "overflow-y-auto p-4"),
+                  : (noContentPadding ? "overflow-hidden p-0" : "overflow-y-auto p-4"),
                 className
               )}
               style={{
@@ -105,7 +105,7 @@ const AppLayoutComponent: React.FC<AppLayoutProps> = ({
                 children
               ) : (
                 // 데스크톱: 기존 구조 유지
-                <div className="h-full w-full">
+                <div className="h-full w-full min-w-0">
                   {children}
                 </div>
               )}
@@ -178,7 +178,7 @@ const AppLayoutComponent: React.FC<AppLayoutProps> = ({
               "flex-1 transition-all duration-300",
               isMobile 
                 ? (noContentPadding ? "overflow-y-auto p-0 pb-4" : "overflow-y-auto p-2 pb-6")
-                : (noContentPadding ? "overflow-y-auto p-0" : "overflow-y-auto p-4"),
+                : (noContentPadding ? "overflow-hidden p-0" : "overflow-y-auto p-4"),
               className
             )}
             style={{
@@ -191,7 +191,7 @@ const AppLayoutComponent: React.FC<AppLayoutProps> = ({
               children
             ) : (
               // 데스크톱: 기존 구조 유지
-              <div className="h-full w-full">
+              <div className="h-full w-full min-w-0">
                 {children}
               </div>
             )}

@@ -4,6 +4,7 @@
  */
 
 const { onSchedule } = require('firebase-functions/v2/scheduler');
+const { onRequest } = require('firebase-functions/v2/https');
 const { logger } = require('firebase-functions/v2');
 const { defineSecret } = require('firebase-functions/params');
 const { runDailyReportsSync } = require('../lib/dailyReportsSync');
@@ -76,6 +77,47 @@ exports.scheduleDailyReportsSync = onSchedule(
         sheetName: SHEET_NAME,
       });
       throw error;
+    }
+  }
+);
+
+/**
+ * 스케줄 함수 수동 실행용 HTTP 함수 (테스트용)
+ * GET 또는 POST 요청으로 스케줄 함수를 수동으로 실행할 수 있습니다.
+ */
+exports.testScheduleDailyReportsSync = onRequest(
+  {
+    region: 'asia-northeast3',
+    secrets: [googleServiceAccountEmail, googlePrivateKey],
+    memory: '512MiB',
+    timeoutSeconds: 540,
+  },
+  async (request, response) => {
+    try {
+      logger.info('스케줄 함수 수동 실행 요청:', {
+        method: request.method,
+        query: request.query,
+        body: request.body,
+      });
+
+      const result = await executeSync();
+
+      response.json({
+        success: true,
+        message: '스케줄 함수 실행 완료',
+        result: result,
+      });
+    } catch (error) {
+      logger.error('스케줄 함수 수동 실행 실패:', {
+        message: error.message,
+        stack: error.stack,
+      });
+
+      response.status(500).json({
+        success: false,
+        error: '스케줄 함수 실행 실패',
+        message: error.message,
+      });
     }
   }
 );

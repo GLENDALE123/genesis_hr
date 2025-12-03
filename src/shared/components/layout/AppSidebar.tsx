@@ -88,9 +88,14 @@ const subNavigationItems: NavItem[] = [
     icon: ROUTE_ICONS['/work-schedule'],
   },
   {
-    title: '메시지',
-    href: '/chat',
-    icon: ROUTE_ICONS['/chat'],
+    title: '워크스페이스 (채널)',
+    href: '/workspace',
+    icon: ROUTE_ICONS['/workspace'],
+  },
+  {
+    title: '1:1 채팅',
+    href: '/direct-message',
+    icon: ROUTE_ICONS['/direct-message'],
   },
 ];
 

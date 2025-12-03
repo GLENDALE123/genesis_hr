@@ -1,6 +1,6 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, initializeFirestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getAnalytics } from 'firebase/analytics';
 import { getFunctions } from 'firebase/functions';
@@ -26,6 +26,14 @@ export const FIREBASE_VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY || 'BC
 // 기본값: tms-production (seoul 리전)
 // 주의: default 데이터베이스는 사용하지 않음 (완전 배제)
 export const FIREBASE_FIRESTORE_DATABASE_ID = import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || 'tms-production';
+
+// Firestore 캐시 크기 설정 (메모리 관리)
+// 기본값: 100MB (40MB 기본값보다 크지만 무제한은 아님)
+// 환경변수로 조정 가능 (바이트 단위, 예: 104857600 = 100MB)
+// 무제한을 원하면 CACHE_SIZE_UNLIMITED 사용 (권장하지 않음)
+const FIREBASE_CACHE_SIZE = import.meta.env.VITE_FIREBASE_CACHE_SIZE 
+  ? parseInt(import.meta.env.VITE_FIREBASE_CACHE_SIZE, 10)
+  : 100 * 1024 * 1024; // 100MB 기본값
 
 // Firebase 앱이 이미 초기화되어 있는지 확인
 let app: FirebaseApp;
@@ -65,10 +73,27 @@ export const db = (() => {
       const databaseId = FIREBASE_FIRESTORE_DATABASE_ID;
       
       // initializeFirestore를 사용하여 명시적으로 데이터베이스 지정
-      // 이 방법이 더 확실하게 특정 데이터베이스에 연결됩니다
+      // 적절한 캐시 크기 설정으로 메모리 사용량 관리
       console.log(`🔗 [Firebase Config] Firestore 초기화: 데이터베이스 ID = ${databaseId}`);
-      const dbService = initializeFirestore(app, {}, databaseId);
+      console.log(`💾 [Firebase Config] 캐시 크기: ${(FIREBASE_CACHE_SIZE / 1024 / 1024).toFixed(0)}MB`);
+      const dbService = initializeFirestore(app, {
+        cacheSizeBytes: FIREBASE_CACHE_SIZE, // 적절한 캐시 크기 제한 (기본 100MB)
+      }, databaseId);
       console.log('✅ [Firebase Config] Firestore 초기화 성공');
+      
+      // IndexedDB Persistence 활성화 (오프라인 캐싱 및 빠른 데이터 로드)
+      // 여러 탭에서 동시에 사용할 수 있도록 multi-tab 지원
+      enableIndexedDbPersistence(dbService).catch((err) => {
+        // 이미 다른 탭에서 활성화된 경우 무시
+        if (err.code === 'failed-precondition') {
+          console.warn('⚠️ [Firebase Config] Persistence는 다른 탭에서 이미 활성화되어 있습니다.');
+        } else if (err.code === 'unimplemented') {
+          console.warn('⚠️ [Firebase Config] 현재 브라우저는 Persistence를 지원하지 않습니다.');
+        } else {
+          console.error('❌ [Firebase Config] Persistence 활성화 실패:', err);
+        }
+      });
+      
       return dbService;
     } else {
       return null;

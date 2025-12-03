@@ -1,5 +1,5 @@
 /**
- * 채팅 관련 타입 정의
+ * Direct Message 관련 타입 정의
  */
 
 /**
@@ -14,9 +14,9 @@ export enum MessageStatus {
 }
 
 /**
- * 채팅방 타입
+ * Direct Message 방 타입
  */
-export type ChatRoomType = 'direct' | 'group';
+export type DirectMessageRoomType = 'direct' | 'group';
 
 /**
  * 메시지 첨부파일
@@ -32,9 +32,9 @@ export interface MessageAttachment {
 }
 
 /**
- * 채팅방 참여자
+ * Direct Message 방 참여자
  */
-export interface ChatRoomParticipant {
+export interface DirectMessageRoomParticipant {
   uid: string;
   displayName: string;
   photoURL?: string;
@@ -42,13 +42,13 @@ export interface ChatRoomParticipant {
 }
 
 /**
- * 채팅방
+ * Direct Message 방
  */
-export interface ChatRoom {
+export interface DirectMessageRoom {
   id: string;
-  type: ChatRoomType;
+  type: DirectMessageRoomType;
   name?: string; // 그룹 채팅방의 경우에만 사용
-  participants: ChatRoomParticipant[];
+  participants: DirectMessageRoomParticipant[];
   createdBy: string; // 생성자 UID
   createdAt: string; // ISO string
   updatedAt: string; // ISO string
@@ -62,11 +62,12 @@ export interface ChatRoom {
 }
 
 /**
- * 채팅 메시지
+ * Direct Message 메시지
  */
-export interface ChatMessage {
+export interface DirectMessage {
   id: string;
-  chatRoomId: string;
+  directMessageRoomId: string;
+  chatRoomId?: string; // directMessageRoomId의 별칭 (하위 호환성)
   text: string;
   sender: {
     uid: string;
@@ -83,12 +84,12 @@ export interface ChatMessage {
 }
 
 /**
- * 임시 채팅방 (클라이언트에만 존재)
+ * 임시 Direct Message 방 (클라이언트에만 존재)
  */
-export interface TemporaryChatRoom {
+export interface TemporaryDirectMessageRoom {
   id: string; // temp_로 시작하는 임시 ID
-  type: ChatRoomType;
-  participants: ChatRoomParticipant[];
+  type: DirectMessageRoomType;
+  participants: DirectMessageRoomParticipant[];
   createdAt: string; // ISO string
 }
 
@@ -100,4 +101,11 @@ export interface TypingStatus {
   userName: string;
   timestamp: string; // ISO string
 }
+
+// 하위 호환성을 위한 타입 별칭
+export type ChatRoomType = DirectMessageRoomType;
+export type ChatRoomParticipant = DirectMessageRoomParticipant;
+export type ChatRoom = DirectMessageRoom;
+export type ChatMessage = DirectMessage;
+export type TemporaryChatRoom = TemporaryDirectMessageRoom;
 

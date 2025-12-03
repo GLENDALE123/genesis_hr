@@ -37,6 +37,7 @@ const getAllUsersWithAuthInfoHttps = require('./https/getAllUsersWithAuthInfo');
 const updateUserAuthInfoHttps = require('./https/updateUserAuthInfo');
 const syncGoogleSheetsHttps = require('./https/syncGoogleSheets');
 const syncDailyReportsToSheetsHttps = require('./https/syncDailyReportsToSheets');
+const normalizeProductNamesHttps = require('./https/normalizeProductNames');
 
 // 모든 함수들을 export
 module.exports = {
@@ -56,5 +57,6 @@ module.exports = {
   ...updateUserAuthInfoHttps,
   ...syncGoogleSheetsHttps,
   ...syncDailyReportsToSheetsHttps,
+  ...normalizeProductNamesHttps,
 };
 

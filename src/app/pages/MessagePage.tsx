@@ -5,7 +5,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
-import { useChatStore } from '@/features/chat/store/chatStore';
+import { useChatStore } from '@/features/chat/store/chatStore'; // 하위 호환성 유지
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { getAllUsersWithAuthInfo } from '@/shared/services/firebase/userManagement';
 import { UserStatusService } from '@/features/chat/services/userStatusService';
@@ -24,6 +24,8 @@ import { ChatSidebar } from '@/features/chat/components/ChatSidebar';
 import { UserList } from '@/features/chat/components/UserList';
 import { ChatRoomList } from '@/features/chat/components/ChatRoomList';
 import { ChatRoomPageClient } from './ChatRoomPageClient';
+import { WorkspaceMessagePage } from '@/features/workspace/components/WorkspaceMessagePage';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/shared/components/ui/tabs';
 
 export default function MessagePage() {
   return (
@@ -43,10 +45,23 @@ const MessagePageClient: React.FC = () => {
   const { isSmartphone } = useDeviceType();
   const isMobile = isSmartphone;
   
+  // 모드 선택 (direct-message 또는 workspace) - 기본값은 workspace (슬랙/디스코드 스타일)
+  const mode = searchParams?.get('mode') || 'workspace';
+  
   // URL 쿼리 파라미터에서 채팅방 ID 추출
   const chatRoomId = searchParams?.get('room') || null;
   const handleRoomSelect = (roomId: string) => {
-    navigate(`/messages?room=${roomId}`);
+    navigate(`/direct-message?room=${roomId}`);
+  };
+  
+  // 워크스페이스 모드로 전환
+  const handleSwitchToWorkspace = () => {
+    navigate('/workspace');
+  };
+  
+  // Direct Message 모드로 전환
+  const handleSwitchToDirectMessage = () => {
+    navigate('/direct-message');
   };
   
   // 사용자 정보 로드 확인
@@ -95,7 +110,7 @@ const MessagePageClient: React.FC = () => {
   const handleSheetClose = (open: boolean) => {
     if (!open && isMobile && chatRoomId) {
       // URL에서 room 파라미터 제거
-      navigate('/messages');
+      navigate('/direct-message');
     }
   };
 
@@ -240,6 +255,27 @@ const MessagePageClient: React.FC = () => {
     return null;
   }
 
+  // 워크스페이스 모드
+  if (mode === 'workspace') {
+    return (
+      <>
+        <WorkspaceMessagePage />
+        {/* 모드 전환 버튼 (데스크톱) */}
+        {!isMobile && (
+          <div className="fixed bottom-4 right-4 z-50">
+            <button
+              onClick={handleSwitchToDirectMessage}
+              className="px-4 py-2 bg-background border border-border rounded-md shadow-lg text-sm hover:bg-accent transition-colors"
+            >
+              기존 채팅 모드
+            </button>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  // 기존 Chat 모드 (하위 호환성)
   // 모바일 레이아웃
   if (isMobile) {
     return (
@@ -279,27 +315,40 @@ const MessagePageClient: React.FC = () => {
   );
 
   return (
-    <div className="flex h-full min-w-0 w-full max-w-full">
-      <aside className="flex h-full w-[300px] flex-shrink-0 flex-col border-r bg-background">
-        <div className="flex-shrink-0 border-b px-4 py-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          사용자 목록
+    <>
+      <div className="flex h-full min-w-0 w-full max-w-full">
+        <aside className="flex h-full w-[300px] flex-shrink-0 flex-col border-r bg-background">
+          <div className="flex-shrink-0 border-b px-4 py-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            사용자 목록
+          </div>
+          <div className="flex-1 min-h-0">
+            <UserList />
+          </div>
+        </aside>
+        <aside className="flex h-full w-[300px] flex-shrink-0 flex-col border-r bg-background">
+          <div className="flex-shrink-0 border-b px-4 py-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            채팅방 목록
+          </div>
+          <div className="flex-1 min-h-0">
+            <ChatRoomList onRoomClick={handleRoomSelect} />
+          </div>
+        </aside>
+        <main className="flex-1 min-w-0 h-full flex">
+          {desktopChatArea}
+        </main>
+      </div>
+      {/* 모드 전환 버튼 (데스크톱) */}
+      {!isMobile && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <button
+            onClick={handleSwitchToWorkspace}
+            className="px-4 py-2 bg-background border border-border rounded-md shadow-lg text-sm hover:bg-accent transition-colors"
+          >
+            워크스페이스 모드
+          </button>
         </div>
-        <div className="flex-1 min-h-0">
-          <UserList />
-        </div>
-      </aside>
-      <aside className="flex h-full w-[300px] flex-shrink-0 flex-col border-r bg-background">
-        <div className="flex-shrink-0 border-b px-4 py-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          채팅방 목록
-        </div>
-        <div className="flex-1 min-h-0">
-          <ChatRoomList onRoomClick={handleRoomSelect} />
-        </div>
-      </aside>
-      <main className="flex-1 min-w-0 h-full flex">
-        {desktopChatArea}
-      </main>
-    </div>
+      )}
+    </>
   );
 };
 

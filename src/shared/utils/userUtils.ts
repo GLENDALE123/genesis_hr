@@ -19,6 +19,7 @@ interface UserLike {
   name?: string | null;
   email?: string | null;
   position?: string | null;  // Firestore userProfile의 position
+  photoURL?: string | null;  // 사용자 프로필 사진 URL
 }
 
 interface UserWithRole extends UserLike {

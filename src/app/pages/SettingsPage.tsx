@@ -9,10 +9,11 @@ import { NotificationSettings } from '@/features/settings/components/Notificatio
 import { ProfileSettings } from '@/features/settings/components/ProfileSettings';
 import { AppearanceSettings } from '@/features/settings/components/AppearanceSettings';
 import { AboutSettings } from '@/features/settings/components/AboutSettings';
-import { User, Bell, Palette, Info, Users } from 'lucide-react';
+import { User, Bell, Palette, Info, Users, Settings } from 'lucide-react';
 import { ProtectedRoute } from '@/shared/components/auth';
 import { useIsAdmin } from '@/features/auth/hooks/useUserRole';
 import { UserManagementSettings } from '@/features/settings/components/UserManagementSettings';
+import { SystemManagementSettings } from '@/features/settings/components/SystemManagementSettings';
 
 function SettingsContent() {
   const location = useLocation();
@@ -21,7 +22,7 @@ function SettingsContent() {
   const isAdmin = useIsAdmin();
   const [activeTab, setActiveTab] = useState('profile');
 
-  const validTabs = ['profile', 'notifications', 'appearance', 'about', ...(isAdmin ? ['users'] : [])];
+  const validTabs = ['profile', 'notifications', 'appearance', 'about', ...(isAdmin ? ['users', 'system'] : [])];
 
   // URL 쿼리 파라미터에서 탭 설정 읽기
   useEffect(() => {
@@ -43,7 +44,7 @@ function SettingsContent() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3 md:space-y-6">
         <div className="mx-auto max-w-5xl px-2 md:px-8">
-          <TabsList className={`grid w-full h-auto ${isAdmin ? 'grid-cols-5' : 'grid-cols-4'}`}>
+          <TabsList className={`grid w-full h-auto ${isAdmin ? 'grid-cols-6' : 'grid-cols-4'}`}>
             <TabsTrigger value="profile" className="flex flex-col gap-1 py-3">
               <User className="h-4 w-4" />
               <span className="text-xs">프로필</span>
@@ -61,10 +62,16 @@ function SettingsContent() {
               <span className="text-xs">정보</span>
             </TabsTrigger>
             {isAdmin && (
-              <TabsTrigger value="users" className="flex flex-col gap-1 py-3">
-                <Users className="h-4 w-4" />
-                <span className="text-xs">유저 관리</span>
-              </TabsTrigger>
+              <>
+                <TabsTrigger value="users" className="flex flex-col gap-1 py-3">
+                  <Users className="h-4 w-4" />
+                  <span className="text-xs">유저 관리</span>
+                </TabsTrigger>
+                <TabsTrigger value="system" className="flex flex-col gap-1 py-3">
+                  <Settings className="h-4 w-4" />
+                  <span className="text-xs">시스템 관리</span>
+                </TabsTrigger>
+              </>
             )}
           </TabsList>
         </div>
@@ -94,11 +101,18 @@ function SettingsContent() {
         </TabsContent>
 
         {isAdmin && (
-          <TabsContent value="users" className="space-y-2 md:space-y-4">
-            <div className="mx-auto max-w-5xl px-2 md:px-8">
-              <UserManagementSettings />
-            </div>
-          </TabsContent>
+          <>
+            <TabsContent value="users" className="space-y-2 md:space-y-4">
+              <div className="mx-auto max-w-5xl px-2 md:px-8">
+                <UserManagementSettings />
+              </div>
+            </TabsContent>
+            <TabsContent value="system" className="space-y-2 md:space-y-4">
+              <div className="mx-auto max-w-5xl px-2 md:px-8">
+                <SystemManagementSettings />
+              </div>
+            </TabsContent>
+          </>
         )}
       </Tabs>
       </div>

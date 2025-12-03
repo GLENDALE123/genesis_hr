@@ -3,6 +3,8 @@ import {
   doc,
   getDoc,
   getDocs,
+  getDocsFromCache,
+  getDocsFromServer,
   addDoc,
   setDoc,
   updateDoc,
@@ -14,7 +16,8 @@ import {
   onSnapshot,
   DocumentData,
   QuerySnapshot,
-  WhereFilterOp
+  WhereFilterOp,
+  Query
 } from 'firebase/firestore';
 import { db } from './config';
 
@@ -100,6 +103,61 @@ export const getDocumentsWithQuery = async (
   }
 };
 
+/**
+ * 캐시 우선 읽기: 캐시에서 먼저 읽고, 없으면 서버에서 가져오기
+ * 성능 최적화를 위한 헬퍼 함수
+ */
+export const getDocumentsWithQueryCacheFirst = async (
+  collectionName: string,
+  queries: Array<{ field: string; operator: WhereFilterOp; value: unknown }> = [],
+  orderByField?: string,
+  orderDirection: 'asc' | 'desc' = 'asc',
+  limitCount?: number
+) => {
+  try {
+    let q = query(getCollectionRef(collectionName));
+    
+    // where 조건 추가
+    queries.forEach(({ field, operator, value }) => {
+      q = query(q, where(field, operator, value));
+    });
+    
+    // 정렬 조건 추가
+    if (orderByField) {
+      q = query(q, orderBy(orderByField, orderDirection));
+    }
+    
+    // 제한 조건 추가
+    if (limitCount) {
+      q = query(q, limit(limitCount));
+    }
+    
+    // 캐시에서 먼저 시도
+    try {
+      const cacheSnapshot = await getDocsFromCache(q);
+      if (cacheSnapshot.size > 0) {
+        // 캐시에 데이터가 있으면 즉시 반환
+        return cacheSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+      }
+    } catch (cacheError) {
+      // 캐시에 없거나 오류 발생 시 서버에서 가져오기
+      console.log('📦 [Firestore] 캐시에 데이터 없음, 서버에서 가져오기');
+    }
+    
+    // 서버에서 가져오기
+    const serverSnapshot = await getDocsFromServer(q);
+    return serverSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  } catch (error) {
+    throw error;
+  }
+};
+
 // 새 문서 추가
 export const addDocument = async (collectionName: string, data: DocumentData) => {
   try {
@@ -147,4 +205,23 @@ export const onCollectionSnapshot = (
   callback: (snapshot: QuerySnapshot<DocumentData>) => void
 ) => {
   return onSnapshot(getCollectionRef(collectionName), callback);
+};
+
+/**
+ * 캐시 우선 실시간 리스너
+ * onSnapshot은 기본적으로 캐시를 먼저 확인하지만, 
+ * 이 함수는 명시적으로 캐시 우선 전략을 사용합니다.
+ */
+export const onCollectionSnapshotCacheFirst = (
+  collectionName: string,
+  callback: (snapshot: QuerySnapshot<DocumentData>) => void,
+  options?: {
+    includeMetadataChanges?: boolean;
+  }
+) => {
+  const q = getCollectionRef(collectionName);
+  // onSnapshot은 기본적으로 캐시를 먼저 확인하고 서버와 동기화합니다
+  return onSnapshot(q, {
+    includeMetadataChanges: options?.includeMetadataChanges || false
+  }, callback);
 };

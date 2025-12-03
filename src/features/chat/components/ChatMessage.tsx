@@ -2,18 +2,40 @@
  * 채팅 메시지 컴포넌트
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { formatChatDateTime } from '../utils/dateFormat';
 import { getUserInitial } from '@/shared/utils/userUtils';
 import { getUserInfo, globalUsersRef } from './UserList';
-import { File } from 'lucide-react';
+import { File, MessageSquare, MoreVertical } from 'lucide-react';
 import { ImageLightbox } from '@/shared/components/common/ImageLightbox';
 import { cn } from '@/shared/lib/utils';
 import type { UploadingImageItem } from '@/shared/components/common/UploadingImageGrid';
 import { Progress } from '@/shared/components/ui/progress';
 import type { ChatMessage } from '../types/chat.types';
 import type { User } from 'firebase/auth';
+import { ReactionPicker } from '@/features/workspace/components/ReactionPicker';
+import { ThreadService } from '@/features/workspace/services/threadService';
+import { PinnedMessageService } from '@/features/workspace/services/pinnedMessageService';
+import { Button } from '@/shared/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/shared/components/ui/dropdown-menu';
+import { MarkdownRenderer } from '@/shared/components/common/MarkdownRenderer';
+import { MessageSquareReply, Pin, PinOff, History, Edit, Copy, Link2, Share2 } from 'lucide-react';
+import type { MessageReaction } from '@/features/workspace/types';
+import { useAuthStore } from '@/features/auth/store/authStore';
+import { MessageEditHistoryDialog } from '@/features/workspace/components/MessageEditHistoryDialog';
+import { MessageEditDialog } from '@/features/workspace/components/MessageEditDialog';
+import { copyMessageText, copyMessageLink, createMessageLink } from '@/features/workspace/utils/messageUtils';
+import { MessageDeleteService } from '@/features/workspace/services/messageDeleteService';
+import { useWorkspaceStore } from '@/features/workspace/store/workspaceStore';
+import { toast } from 'sonner';
+import { Trash2 } from 'lucide-react';
 
 export interface ChatMessageProps {
   message: ChatMessage;
@@ -28,6 +50,11 @@ export interface ChatMessageProps {
     total: number;
   };
   pendingAttachments?: UploadingImageItem[];
+  channelId?: string; // 워크스페이스 채널 ID (스레드 기능용)
+  workspaceId?: string; // 워크스페이스 ID (스레드 기능용)
+  onThreadClick?: (messageId: string) => void; // 스레드 클릭 핸들러
+  reactions?: MessageReaction[]; // 메시지 반응 목록
+  onAddReaction?: (messageId: string, emoji: string) => void; // 반응 추가 핸들러
 }
 
 export const ChatMessageComponent = React.memo<ChatMessageProps>(({
@@ -40,6 +67,11 @@ export const ChatMessageComponent = React.memo<ChatMessageProps>(({
   isLastInGroup = true,
   pendingUpload,
   pendingAttachments,
+  channelId,
+  workspaceId,
+  onThreadClick,
+  reactions = [],
+  onAddReaction,
 }) => {
   const isOwnMessage = message.sender.uid === currentUserId;
   const isPendingUpload = Boolean(pendingUpload);
@@ -62,8 +94,24 @@ export const ChatMessageComponent = React.memo<ChatMessageProps>(({
     return Math.max(0, totalOthers - readByOthers);
   }, [message.readBy, participants, currentUserId, isOwnMessage]);
 
-  // 멘션과 검색어 하이라이트 처리
-  const renderMessageText = (text: string, mentionedUserIds?: string[], searchQuery?: string) => {
+  // 마크다운 지원 여부 확인 (코드 블록, 링크 등이 있는지)
+  const hasMarkdown = (text: string): boolean => {
+    const markdownPatterns = [
+      /```[\s\S]*?```/g, // 코드 블록
+      /`[^`]+`/g, // 인라인 코드
+      /\[([^\]]+)\]\(([^)]+)\)/g, // 링크
+      /^#{1,6}\s/m, // 제목
+      /^\*\s/m, // 리스트
+      /^\d+\.\s/m, // 번호 리스트
+      /^>\s/m, // 인용
+      /\*\*[^*]+\*\*/g, // 볼드
+      /_[^_]+_/g, // 이탤릭
+    ];
+    return markdownPatterns.some(pattern => pattern.test(text));
+  };
+
+  // 멘션과 검색어 하이라이트 처리 (마크다운이 아닌 경우)
+  const renderPlainText = (text: string, mentionedUserIds?: string[], searchQuery?: string) => {
     // 검색어가 2글자 미만이면 하이라이트하지 않음
     const trimmedQuery = searchQuery?.trim() || '';
     const validSearchQuery = trimmedQuery.length >= 2 ? trimmedQuery : '';
@@ -149,8 +197,16 @@ export const ChatMessageComponent = React.memo<ChatMessageProps>(({
       <span>
         {parts.map((part, index) => {
           if (part.isMention) {
+            // @here, @channel, @everyone 특별 처리
+            const mentionText = part.text.toLowerCase();
+            let mentionClass = 'text-blue-600 dark:text-blue-400 font-medium';
+            if (mentionText.includes('@here')) {
+              mentionClass = 'text-orange-600 dark:text-orange-400 font-semibold';
+            } else if (mentionText.includes('@channel') || mentionText.includes('@everyone')) {
+              mentionClass = 'text-red-600 dark:text-red-400 font-semibold';
+            }
             return (
-              <span key={index} className="text-blue-600 dark:text-blue-400 font-medium">
+              <span key={index} className={mentionClass}>
                 {part.text}
               </span>
             );
@@ -174,6 +230,119 @@ export const ChatMessageComponent = React.memo<ChatMessageProps>(({
 
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [showActions, setShowActions] = useState(false);
+  const [hasThread, setHasThread] = useState(false);
+  const [threadCount, setThreadCount] = useState(0);
+  const [isPinned, setIsPinned] = useState(false);
+  const [isEditHistoryOpen, setIsEditHistoryOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleted, setIsDeleted] = useState(false);
+  const { user } = useAuthStore();
+  const { currentWorkspace } = useWorkspaceStore();
+
+  // 스레드 존재 여부 확인
+  useEffect(() => {
+    if (!channelId || !workspaceId) return;
+
+    const checkThread = async () => {
+      try {
+        const thread = await ThreadService.getMessageThread(message.id);
+        if (thread) {
+          setHasThread(true);
+          setThreadCount(thread.messages.length);
+        }
+      } catch (error) {
+        // 스레드가 없으면 무시
+      }
+    };
+
+    checkThread();
+  }, [message.id, channelId, workspaceId]);
+
+  // 메시지 고정 여부 확인
+  useEffect(() => {
+    if (!channelId || !workspaceId) return;
+
+    const checkPinned = async () => {
+      try {
+        const pinned = await PinnedMessageService.getPinnedMessage(message.id, channelId);
+        setIsPinned(!!pinned);
+      } catch (error) {
+        // 고정되지 않았으면 무시
+      }
+    };
+
+    checkPinned();
+  }, [message.id, channelId, workspaceId]);
+
+  // 메시지 삭제 여부 확인
+  useEffect(() => {
+    setIsDeleted(MessageDeleteService.isMessageDeleted(message));
+  }, [message]);
+
+  const handlePinMessage = async () => {
+    if (!channelId || !workspaceId || !user?.uid) return;
+
+    try {
+      if (isPinned) {
+        await PinnedMessageService.unpinMessage(message.id, channelId);
+        setIsPinned(false);
+      } else {
+        await PinnedMessageService.pinMessage(
+          message.id,
+          channelId,
+          workspaceId,
+          user.uid,
+          message
+        );
+        setIsPinned(true);
+      }
+    } catch (error) {
+      console.error('Failed to pin/unpin message:', error);
+    }
+  };
+
+  const handleCopyMessage = async () => {
+    const success = await copyMessageText(message.text);
+    if (success) {
+      toast.success('메시지가 복사되었습니다');
+    } else {
+      toast.error('메시지 복사에 실패했습니다');
+    }
+  };
+
+  const handleCopyLink = async () => {
+    if (!channelId || !workspaceId) return;
+    const success = await copyMessageLink(workspaceId, channelId, message.id);
+    if (success) {
+      toast.success('메시지 링크가 복사되었습니다');
+    } else {
+      toast.error('링크 복사에 실패했습니다');
+    }
+  };
+
+  const handleShareMessage = async () => {
+    if (!channelId || !workspaceId) return;
+    const link = createMessageLink(workspaceId, channelId, message.id);
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `${message.sender.displayName}의 메시지`,
+          text: message.text,
+          url: link,
+        });
+      } catch (error) {
+        // 사용자가 공유를 취소한 경우
+        if ((error as Error).name !== 'AbortError') {
+          console.error('Failed to share:', error);
+        }
+      }
+    } else {
+      // 폴백: 링크 복사
+      handleCopyLink();
+    }
+  };
 
   const imageAttachments = message.attachments?.filter((attachment) => attachment.type === 'image') ?? [];
   const fileAttachments = message.attachments?.filter((attachment) => attachment.type === 'file') ?? [];
@@ -258,35 +427,62 @@ export const ChatMessageComponent = React.memo<ChatMessageProps>(({
     );
   };
 
+  const handleThreadClick = () => {
+    if (onThreadClick) {
+      onThreadClick(message.id);
+    } else if (channelId && workspaceId) {
+      // 스레드가 없으면 생성, 있으면 열기
+      ThreadService.getMessageThread(message.id).then((thread) => {
+        if (thread) {
+          // 스레드가 있으면 열기 (부모 컴포넌트에서 처리)
+          if (onThreadClick) {
+            (onThreadClick as (messageId: string) => void)(message.id);
+          }
+        } else {
+          // 스레드 생성 (나중에 구현)
+        }
+      });
+    }
+  };
+
+  // 디스코드 스타일: 모든 메시지를 왼쪽 정렬
   return (
     <div
-      className={`flex gap-3 px-4 py-1 group ${
-        isOwnMessage ? 'flex-row-reverse' : 'flex-row'
-      }`}
+      className={cn(
+        'flex gap-3 px-4 py-1 group hover:bg-muted/30 transition-colors',
+        'flex-row' // 항상 왼쪽 정렬
+      )}
+      onMouseEnter={() => setShowActions(true)}
+      onMouseLeave={() => setShowActions(false)}
     >
-      {/* 아바타 (상대방 메시지만, showAvatar가 true일 때) */}
-      {!isOwnMessage && showAvatar && (
+      {/* 아바타 (항상 왼쪽에 표시, showAvatar가 true일 때만) */}
+      {showAvatar && (
         <div className="flex-shrink-0">
           <Avatar
-            className="[width:var(--avatar-size,2rem)] [height:var(--avatar-size,2rem)]"
-            style={{ '--avatar-size': '2rem' } as React.CSSProperties}
+            className="[width:var(--avatar-size,2.5rem)] [height:var(--avatar-size,2.5rem)] rounded-full"
+            style={{ '--avatar-size': '2.5rem' } as React.CSSProperties}
           >
             <AvatarImage src={message.sender.photoURL} alt={message.sender.displayName} />
-            <AvatarFallback className="flex items-center justify-center font-medium text-muted-foreground [font-size:calc(var(--avatar-size,2rem)*0.4)]">
+            <AvatarFallback className="flex items-center justify-center font-medium text-muted-foreground [font-size:calc(var(--avatar-size,2.5rem)*0.4)]">
               {getUserInitial(message.sender, message.sender.displayName.charAt(0))}
             </AvatarFallback>
           </Avatar>
         </div>
       )}
-      {!isOwnMessage && !showAvatar && <div className="w-8" />}
+      {!showAvatar && <div className="w-10" />}
 
-      {/* 메시지 내용 */}
-      <div className={`flex items-end gap-2 ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'} max-w-[70%] md:max-w-[60%]`}>
-        <div className={`flex flex-col gap-0 ${isOwnMessage ? 'items-end' : 'items-start'}`}>
-          {!isOwnMessage && isFirstInGroup && (
-            <span className="text-base font-semibold text-muted-foreground">
-              {senderDisplayName}
-            </span>
+      {/* 메시지 내용 - 디스코드 스타일: 항상 왼쪽 정렬 */}
+      <div className="flex items-start gap-2 flex-1 min-w-0">
+        <div className="flex flex-col gap-0.5 flex-1 min-w-0 items-start">
+          {isFirstInGroup && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-foreground">
+                {senderDisplayName || '사용자'}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {formatChatDateTime(message.timestamp)}
+              </span>
+            </div>
           )}
           {hasImages && (
             <div className={cn('relative flex flex-wrap overflow-hidden rounded-lg w-60 sm:w-72 md:w-80', isPendingUpload ? 'border border-border/40' : undefined)}>
@@ -354,45 +550,175 @@ export const ChatMessageComponent = React.memo<ChatMessageProps>(({
           {(hasText || fileAttachments.length > 0) && (
             <div
               className={cn(
-                'px-3 py-2 border break-words overflow-wrap-anywhere',
+                'px-2 py-1 break-words overflow-wrap-anywhere rounded',
                 hasImages && 'mt-2',
-                isOwnMessage
-                  ? `bg-yellow-400 dark:bg-yellow-500 text-foreground dark:text-black border-yellow-400 dark:border-yellow-500 ${
-                      isFirstInGroup ? 'rounded-s-xl rounded-ee-xl' : 'rounded-xl'
-                    }`
-                  : `bg-card dark:bg-muted text-foreground border-border dark:border-muted ${
-                      isFirstInGroup ? 'rounded-e-xl rounded-es-xl' : 'rounded-xl'
-                    }`
+                'text-sm',
+                isDeleted && 'opacity-50 italic'
               )}
             >
               {hasText && (
-                <div className="text-lg font-medium">
-                  {renderMessageText(sanitizedText, message.mentionedUserIds, searchQuery)}
+                <div className={cn('text-foreground', isDeleted && 'text-muted-foreground')}>
+                  {hasMarkdown(sanitizedText) ? (
+                    <MarkdownRenderer
+                      content={sanitizedText}
+                      searchQuery={searchQuery}
+                      className="prose prose-sm dark:prose-invert max-w-none"
+                    />
+                  ) : (
+                    renderPlainText(sanitizedText, message.mentionedUserIds, searchQuery)
+                  )}
                 </div>
               )}
               {renderFileAttachments()}
             </div>
           )}
-        </div>
-        {/* 시간 표시는 그룹의 마지막 메시지에만 표시 (1분 이내 연속 메시지) */}
-        {isLastInGroup && (
-          <div className={`flex flex-col items-end gap-0.5 flex-shrink-0 ${isOwnMessage ? '' : 'items-start'}`}>
-            {/* 읽지 않은 사람 수 (내 메시지만) */}
-            {isOwnMessage && unreadCount > 0 && (
-              <span className="text-xs font-semibold text-primary whitespace-nowrap">
-                {unreadCount}
-              </span>
-            )}
-            <div className={`flex items-center gap-1 ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'}`}>
-              <span className="text-xs text-muted-foreground whitespace-nowrap">
-                {formatChatDateTime(message.timestamp)}
-              </span>
-              {message.editedAt && (
-                <span className="text-xs text-muted-foreground whitespace-nowrap">(수정됨)</span>
-              )}
+
+          {/* 반응 표시 */}
+          {reactions.length > 0 && (
+            <div className="flex items-center gap-1 mt-1 flex-wrap">
+              {reactions.map((reaction) => (
+                <button
+                  key={reaction.id}
+                  onClick={() => onAddReaction?.(message.id, reaction.emoji)}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs bg-muted hover:bg-accent transition-colors"
+                >
+                  <span>{reaction.emoji}</span>
+                  <span>{reaction.count}</span>
+                </button>
+              ))}
             </div>
+          )}
+
+          {/* 반응 및 액션 버튼 - 디스코드 스타일 */}
+          <div className="flex items-center gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {channelId && workspaceId && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleThreadClick}
+                  className="h-7 w-7 p-0 hover:bg-muted"
+                  title="답글 달기"
+                >
+                  <MessageSquareReply className="h-4 w-4" />
+                </Button>
+                <ReactionPicker
+                  messageId={message.id}
+                  channelId={channelId}
+                  workspaceId={workspaceId}
+                  reactions={reactions}
+                />
+              </>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 hover:bg-muted"
+                  title="더보기"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {channelId && workspaceId && (
+                  <>
+                    <DropdownMenuItem onClick={handlePinMessage}>
+                      {isPinned ? (
+                        <>
+                          <PinOff className="h-4 w-4 mr-2" />
+                          고정 해제
+                        </>
+                      ) : (
+                        <>
+                          <Pin className="h-4 w-4 mr-2" />
+                          메시지 고정
+                        </>
+                      )}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                {message.editedAt && (
+                  <>
+                    <DropdownMenuItem onClick={() => setIsEditHistoryOpen(true)}>
+                      <History className="h-4 w-4 mr-2" />
+                      편집 히스토리
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                {isOwnMessage && channelId && workspaceId && (
+                  <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    수정
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleCopyMessage}>
+                  <Copy className="h-4 w-4 mr-2" />
+                  복사
+                </DropdownMenuItem>
+                {channelId && workspaceId && (
+                  <>
+                    <DropdownMenuItem onClick={handleCopyLink}>
+                      <Link2 className="h-4 w-4 mr-2" />
+                      링크 복사
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleShareMessage}>
+                      <Share2 className="h-4 w-4 mr-2" />
+                      공유
+                    </DropdownMenuItem>
+                  </>
+                )}
+                <DropdownMenuSeparator />
+                {isOwnMessage && channelId && workspaceId && (
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      if (!user?.uid || !channelId || !workspaceId) return;
+                      if (!confirm('이 메시지를 삭제하시겠습니까?')) return;
+
+                      try {
+                        await MessageDeleteService.deleteMessage(
+                          message.id,
+                          channelId,
+                          workspaceId,
+                          user.uid
+                        );
+                        setIsDeleted(true);
+                        toast.success('메시지가 삭제되었습니다.');
+                      } catch (error: any) {
+                        console.error('Failed to delete message:', error);
+                        toast.error(error.message || '메시지 삭제에 실패했습니다.');
+                      }
+                    }}
+                    className="text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    삭제
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-        )}
+
+          {/* 읽지 않은 사람 수 (내 메시지만) */}
+          {isOwnMessage && unreadCount > 0 && isLastInGroup && (
+            <div className="mt-0.5">
+              <span className="text-xs font-semibold text-primary whitespace-nowrap">
+                읽음 {unreadCount}
+              </span>
+            </div>
+          )}
+          
+          {/* 수정 표시 */}
+          {message.editedAt && isLastInGroup && (
+            <div className="mt-0.5">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">(수정됨)</span>
+            </div>
+          )}
+        </div>
       </div>
       {!isPendingUpload && imageAttachments.length > 0 && (
         <ImageLightbox
@@ -400,6 +726,25 @@ export const ChatMessageComponent = React.memo<ChatMessageProps>(({
           initialIndex={lightboxIndex}
           open={lightboxOpen}
           onClose={() => setLightboxOpen(false)}
+        />
+      )}
+
+      {/* 편집 히스토리 다이얼로그 */}
+      {message.editedAt && (
+        <MessageEditHistoryDialog
+          open={isEditHistoryOpen}
+          onOpenChange={setIsEditHistoryOpen}
+          messageId={message.id}
+        />
+      )}
+
+      {/* 메시지 편집 다이얼로그 */}
+      {channelId && workspaceId && (
+        <MessageEditDialog
+          open={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+          messageId={message.id}
+          currentText={message.text}
         />
       )}
     </div>

@@ -21,7 +21,9 @@ import {
   Palette,
   Info,
   Users,
-  Package
+  Package,
+  Hash,
+  MessageCircle
 } from 'lucide-react';
 
 // 경로별 아이콘 매핑
@@ -40,9 +42,12 @@ export const ROUTE_ICONS: Record<string, React.ComponentType<{ className?: strin
   '/jig/master-list': ClipboardList,
   '/calendar': Calendar,
   '/work-schedule': Calendar,
-  '/chat': MessageSquare,
+  '/workspace': Hash,
+  '/direct-message': MessageCircle,
   '/announcements': Megaphone,
   '/notifications': Bell,
+  // Legacy routes
+  '/chat': MessageSquare,
   '/messages': MessageSquare,
   '/settings': Settings,
   '/help': HelpCircle,
@@ -65,9 +70,12 @@ export const ROUTE_TITLES: Record<string, string> = {
   '/jig/master-list': '지그목록표',
   '/calendar': '일정 관리',
   '/work-schedule': '근무계획',
-  '/chat': '메시지',
+  '/workspace': '워크스페이스 (채널)',
+  '/direct-message': '1:1 채팅',
   '/announcements': '공지사항',
   '/notifications': '알림',
+  // Legacy routes
+  '/chat': '메시지',
   '/messages': '메시지',
   '/settings': '설정',
   '/help': '도움말',

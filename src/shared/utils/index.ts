@@ -3,5 +3,6 @@ export * from './userUtils';
 export * from './firebaseErrorHandler';
 export * from './imageUpload';
 export * from './dateUtils';
+export * from './firestoreUtils';
 // Tauri 제거됨 - Electron 사용
 

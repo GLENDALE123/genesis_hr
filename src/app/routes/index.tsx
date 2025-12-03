@@ -27,7 +27,11 @@ export const routes = (
     <Route path="/work-schedule" element={<WorkSchedulePage />} />
     <Route path="/settings" element={<SettingsPage />} />
     
-    {/* Chat/Message Routes */}
+    {/* Workspace/Direct Message Routes */}
+    <Route path="/workspace" element={<MessagePage />} />
+    {/* Direct Message (1:1 채팅) - /workspace?mode=direct-message 으로 접근 */}
+    <Route path="/direct-message" element={<MessagePage />} />
+    {/* Legacy routes - 리다이렉트용 */}
     <Route path="/messages" element={<MessagePage />} />
     <Route path="/chat" element={<MessagePage />} />
     

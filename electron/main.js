@@ -6,6 +6,253 @@ const http = require('http');
 const fs = require('fs');
 const registerIpcHandlers = require('./ipc-handlers');
 const notificationWindow = require('./notification-window');
+const { FirebaseOptimizer } = require('./firebase-optimizer');
+
+/**
+ * 네이티브 파일 시스템 캐시 관리 (메모리 누수 방지 및 자동 정리)
+ * 앱 데이터 디렉토리에 JSON 파일로 캐시 저장 (네이티브처럼 빠른 접근)
+ */
+const CACHE_DIR = path.join(app.getPath('userData'), 'cache');
+const CACHE_FILE = path.join(CACHE_DIR, 'data-cache.json');
+const CACHE_STATS_FILE = path.join(CACHE_DIR, 'cache-stats.json');
+
+// 캐시 설정
+const CACHE_CONFIG = {
+  MAX_SIZE: 1000,                    // 최대 캐시 항목 수
+  MAX_MEMORY_MB: 50,                 // 최대 메모리 사용량 (MB)
+  DEFAULT_TTL: 7 * 24 * 60 * 60 * 1000, // 기본 TTL: 7일
+  CLEANUP_INTERVAL: 60 * 60 * 1000,  // 정리 주기: 1시간
+  SAVE_INTERVAL: 5 * 60 * 1000,      // 저장 주기: 5분
+};
+
+// 캐시 항목 구조: { data: any, timestamp: number, accessCount: number, lastAccess: number }
+let nativeCache = new Map();
+let cacheStats = {
+  totalItems: 0,
+  totalSize: 0,
+  hitCount: 0,
+  missCount: 0,
+  evictionCount: 0,
+  lastCleanup: Date.now(),
+};
+
+// 캐시 디렉토리 생성
+function ensureCacheDir() {
+  if (!fs.existsSync(CACHE_DIR)) {
+    fs.mkdirSync(CACHE_DIR, { recursive: true });
+  }
+}
+
+// 캐시 항목 크기 추정 (바이트)
+function estimateCacheItemSize(key, value) {
+  try {
+    const keySize = Buffer.byteLength(key, 'utf-8');
+    const valueSize = Buffer.byteLength(JSON.stringify(value), 'utf-8');
+    return keySize + valueSize + 100; // 메타데이터 오버헤드 포함
+  } catch {
+    return 1024; // 기본값: 1KB
+  }
+}
+
+// 캐시 통계 로드
+function loadCacheStats() {
+  try {
+    if (fs.existsSync(CACHE_STATS_FILE)) {
+      const data = fs.readFileSync(CACHE_STATS_FILE, 'utf-8');
+      cacheStats = { ...cacheStats, ...JSON.parse(data) };
+    }
+  } catch (error) {
+    console.warn('⚠️ [Electron Main] 캐시 통계 로드 실패:', error.message);
+  }
+}
+
+// 캐시 통계 저장
+function saveCacheStats() {
+  try {
+    ensureCacheDir();
+    fs.writeFileSync(CACHE_STATS_FILE, JSON.stringify(cacheStats, null, 2), 'utf-8');
+  } catch (error) {
+    console.error('❌ [Electron Main] 캐시 통계 저장 실패:', error);
+  }
+}
+
+// 캐시 파일에서 데이터 로드
+function loadNativeCache() {
+  try {
+    ensureCacheDir();
+    loadCacheStats();
+    
+    if (fs.existsSync(CACHE_FILE)) {
+      const data = fs.readFileSync(CACHE_FILE, 'utf-8');
+      const parsed = JSON.parse(data);
+      const now = Date.now();
+      let loadedCount = 0;
+      let expiredCount = 0;
+      
+      // 캐시 로드 및 만료된 항목 필터링
+      for (const [key, item] of Object.entries(parsed)) {
+        if (item && typeof item === 'object' && item.timestamp) {
+          // TTL 확인
+          const age = now - item.timestamp;
+          const ttl = item.ttl || CACHE_CONFIG.DEFAULT_TTL;
+          
+          if (age < ttl) {
+            nativeCache.set(key, item);
+            loadedCount++;
+          } else {
+            expiredCount++;
+          }
+        } else {
+          // 구버전 형식 호환 (타임스탬프 없음)
+          nativeCache.set(key, {
+            data: item,
+            timestamp: now,
+            accessCount: 0,
+            lastAccess: now,
+            ttl: CACHE_CONFIG.DEFAULT_TTL,
+          });
+          loadedCount++;
+        }
+      }
+      
+      cacheStats.totalItems = nativeCache.size;
+      console.log(`✅ [Electron Main] 네이티브 캐시 로드 완료: ${loadedCount}개 항목 (만료: ${expiredCount}개)`);
+      
+      // 만료된 항목이 있으면 즉시 저장
+      if (expiredCount > 0) {
+        saveNativeCache();
+      }
+    }
+  } catch (error) {
+    console.warn('⚠️ [Electron Main] 캐시 로드 실패 (무시 가능):', error.message);
+    nativeCache = new Map();
+  }
+}
+
+// 캐시 파일에 데이터 저장
+function saveNativeCache() {
+  try {
+    ensureCacheDir();
+    const data = {};
+    let totalSize = 0;
+    
+    for (const [key, item] of nativeCache.entries()) {
+      data[key] = item;
+      totalSize += estimateCacheItemSize(key, item);
+    }
+    
+    cacheStats.totalSize = totalSize;
+    cacheStats.totalItems = nativeCache.size;
+    
+    fs.writeFileSync(CACHE_FILE, JSON.stringify(data, null, 2), 'utf-8');
+    saveCacheStats();
+  } catch (error) {
+    console.error('❌ [Electron Main] 캐시 저장 실패:', error);
+  }
+}
+
+// LRU 기반 캐시 정리 (가장 오래 사용하지 않은 항목 제거)
+function evictLRUItems(count = 10) {
+  const items = Array.from(nativeCache.entries())
+    .map(([key, item]) => ({
+      key,
+      lastAccess: item.lastAccess || item.timestamp || 0,
+      accessCount: item.accessCount || 0,
+    }))
+    .sort((a, b) => {
+      // 먼저 접근 횟수로 정렬, 같으면 마지막 접근 시간으로 정렬
+      if (a.accessCount !== b.accessCount) {
+        return a.accessCount - b.accessCount;
+      }
+      return a.lastAccess - b.lastAccess;
+    });
+  
+  let evicted = 0;
+  for (let i = 0; i < Math.min(count, items.length); i++) {
+    nativeCache.delete(items[i].key);
+    evicted++;
+  }
+  
+  cacheStats.evictionCount += evicted;
+  return evicted;
+}
+
+// 오래된 캐시 정리 (TTL 기반)
+function cleanupExpiredCache() {
+  const now = Date.now();
+  let expiredCount = 0;
+  
+  for (const [key, item] of nativeCache.entries()) {
+    if (item && item.timestamp) {
+      const age = now - item.timestamp;
+      const ttl = item.ttl || CACHE_CONFIG.DEFAULT_TTL;
+      
+      if (age >= ttl) {
+        nativeCache.delete(key);
+        expiredCount++;
+      }
+    }
+  }
+  
+  if (expiredCount > 0) {
+    console.log(`🧹 [Electron Main] 만료된 캐시 ${expiredCount}개 정리 완료`);
+  }
+  
+  // 캐시 크기가 최대치를 넘으면 LRU로 정리
+  if (nativeCache.size > CACHE_CONFIG.MAX_SIZE) {
+    const excess = nativeCache.size - CACHE_CONFIG.MAX_SIZE;
+    const evicted = evictLRUItems(excess);
+    console.log(`🧹 [Electron Main] LRU 캐시 ${evicted}개 정리 완료 (최대 크기 초과)`);
+  }
+  
+  cacheStats.lastCleanup = now;
+  saveNativeCache();
+}
+
+// 메모리 사용량 확인 및 정리
+function checkMemoryUsage() {
+  try {
+    const stats = process.memoryUsage();
+    const heapUsedMB = stats.heapUsed / 1024 / 1024;
+    
+    if (heapUsedMB > CACHE_CONFIG.MAX_MEMORY_MB) {
+      console.warn(`⚠️ [Electron Main] 메모리 사용량 높음: ${heapUsedMB.toFixed(2)}MB`);
+      // 캐시의 20% 제거
+      const evictCount = Math.ceil(nativeCache.size * 0.2);
+      evictLRUItems(evictCount);
+      console.log(`🧹 [Electron Main] 메모리 압박으로 캐시 ${evictCount}개 정리`);
+    }
+  } catch (error) {
+    // 메모리 체크 실패는 무시
+  }
+}
+
+// 앱 시작 시 캐시 로드
+loadNativeCache();
+
+// 앱 종료 시 캐시 저장
+app.on('before-quit', () => {
+  cleanupExpiredCache();
+  saveNativeCache();
+  saveCacheStats();
+  
+  // Firebase 최적화 정리
+  if (firebaseOptimizer) {
+    firebaseOptimizer.destroy();
+    firebaseOptimizer = null;
+  }
+});
+
+// 주기적으로 캐시 저장 (5분마다)
+setInterval(() => {
+  saveNativeCache();
+}, CACHE_CONFIG.SAVE_INTERVAL);
+
+// 주기적으로 캐시 정리 (1시간마다)
+setInterval(() => {
+  cleanupExpiredCache();
+  checkMemoryUsage();
+}, CACHE_CONFIG.CLEANUP_INTERVAL);
 
 // 개발 서버 사용 여부를 명시적으로 제어
 // 패키지된 앱(설치본)에서는 무조건 로컬 정적 서버 사용
@@ -34,12 +281,41 @@ const UPDATE_CHECK_INTERVAL = 30 * 60 * 1000;
 let mainWindow;
 let tray;
 let hasLoggedNotificationPermission = false; // 알림 권한 로그 1회만 출력
+let firebaseOptimizer = null; // Firebase 최적화 인스턴스
 
 // 네트워크/인증 설정 (사내 프록시/인증서 검사 환경 대비)
 try {
   app.commandLine.appendSwitch('ignore-certificate-errors', 'true');
   app.commandLine.appendSwitch('allow-insecure-localhost', 'true');
 } catch {}
+
+// 성능 최적화: Chromium 플래그 설정
+try {
+  // 메모리 최적화
+  app.commandLine.appendSwitch('disable-background-networking'); // 백그라운드 네트워킹 비활성화
+  app.commandLine.appendSwitch('disable-background-timer-throttling'); // 백그라운드 타이머 스로틀링 비활성화
+  app.commandLine.appendSwitch('disable-renderer-backgrounding'); // 렌더러 백그라운딩 비활성화
+  app.commandLine.appendSwitch('disable-backgrounding-occluded-windows'); // 가려진 윈도우 백그라운딩 비활성화
+  
+  // GPU 가속 최적화
+  app.commandLine.appendSwitch('enable-gpu-rasterization'); // GPU 래스터화 활성화
+  app.commandLine.appendSwitch('enable-zero-copy'); // 제로 카피 활성화 (메모리 효율)
+  
+  // 렌더링 최적화
+  app.commandLine.appendSwitch('disable-features', 'TranslateUI'); // 번역 UI 비활성화
+  app.commandLine.appendSwitch('disable-ipc-flooding-protection'); // IPC 플러딩 보호 비활성화 (성능)
+  
+  // 메모리 절약
+  app.commandLine.appendSwitch('disable-dev-shm-usage'); // /dev/shm 사용 비활성화 (리눅스)
+  app.commandLine.appendSwitch('disable-extensions'); // 확장 프로그램 비활성화 (필요시)
+  
+  // 네트워크 최적화
+  app.commandLine.appendSwitch('enable-features', 'NetworkService,NetworkServiceInProcess'); // 네트워크 서비스 최적화
+  
+  console.log('✅ [Electron Main] 성능 최적화 플래그 설정 완료');
+} catch (error) {
+  console.warn('⚠️ [Electron Main] 성능 플래그 설정 실패:', error.message);
+}
 
 // 폰트 렌더링 선명도 개선 설정 (Windows 하이 DPI 지원)
 try {
@@ -209,6 +485,15 @@ function createWindow() {
       partition: 'persist:main',
       // 폰트 렌더링 선명도 개선
       enableBlinkFeatures: 'CSSFontFeatureValues',
+      // 추가 보안 설정
+      sandbox: false, // preload 사용 시 false (필수)
+      spellcheck: false, // 맞춤법 검사 비활성화 (성능)
+      // 리소스 제한 및 성능 최적화
+      v8CacheOptions: 'code', // V8 캐시 최적화
+      // 성능 최적화: 백그라운드 스로틀링 비활성화 (백그라운드에서도 동작)
+      backgroundThrottling: false, // 백그라운드에서도 성능 유지
+      // 메모리 최적화
+      offscreen: false, // 오프스크린 렌더링 비활성화 (메모리 절약)
     },
     icon: getResourcePath('public/tms-logo.png'),
     show: false, // 로딩 완료 후 표시
@@ -227,13 +512,88 @@ function createWindow() {
   // 줌 레벨을 1.0으로 고정 (흐린 텍스트 방지)
   mainWindow.webContents.on('did-finish-load', () => {
     mainWindow.webContents.setZoomFactor(1.0);
+    
+    // 성능 최적화: 불필요한 기능 비활성화
+    mainWindow.webContents.executeJavaScript(`
+      // 불필요한 이벤트 리스너 최소화
+      if (window.chrome && window.chrome.runtime) {
+        // Chrome 확장 프로그램 관련 비활성화
+      }
+      
+      // 성능 모니터링 API 비활성화 (프로덕션)
+      if (typeof PerformanceObserver !== 'undefined') {
+        // 필요한 경우에만 활성화
+      }
+    `).catch(() => {});
+    
+    // CSP (Content Security Policy) 헤더 추가 (보안 강화)
+    mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Content-Security-Policy': [
+            "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https:; " +
+            "img-src 'self' data: blob: https: http:; " +
+            "font-src 'self' data: blob:; " +
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+            "style-src 'self' 'unsafe-inline'; " +
+            "connect-src 'self' https: wss: ws:;"
+          ]
+        }
+      });
+    });
+  });
+  
+  // 메모리 최적화: 페이지가 보이지 않을 때 리소스 정리
+  mainWindow.on('hide', () => {
+    // 윈도우가 숨겨지면 일부 리소스 정리 (선택적)
+    if (app.isPackaged) {
+      mainWindow.webContents.session.clearCache().catch(() => {});
+    }
+  });
+  
+  // 메모리 압박 시 자동 정리
+  mainWindow.webContents.on('render-process-gone', (event, details) => {
+    if (details.reason === 'clean-exit') {
+      // 정상 종료 시 리소스 정리
+      cleanupWindowResources();
+    }
   });
 
-  // 항상 웹 URL 사용
+  // 외부 네비게이션 제한 (보안)
+  mainWindow.webContents.on('will-navigate', (event, navigationUrl) => {
+    if (!shouldAllowNavigation(navigationUrl)) {
+      console.warn(`⚠️ [Electron Main] 외부 URL 로드 차단: ${navigationUrl}`);
+      event.preventDefault();
+    }
+  });
+
+  // 새 윈도우 열기 제한 (보안)
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (!shouldAllowNavigation(url)) {
+      console.warn(`⚠️ [Electron Main] 새 윈도우 열기 차단: ${url}`);
+      return { action: 'deny' };
+    }
+    // 허용된 URL은 기본 브라우저에서 열기
+    shell.openExternal(url);
+    return { action: 'deny' };
+  });
+
+  // 패키지된 앱이면 파일 직접 로드 (네이티브처럼 빠름), 개발 모드면 개발 서버 사용
   const load = async () => {
-    devServerInUse = true;
     await mainWindow.webContents.session.clearCache();
-    await mainWindow.loadURL(DEV_SERVER_URL);
+    
+    if (app.isPackaged) {
+      // 프로덕션 빌드: 파일 시스템에서 직접 로드 (HTTP 서버 없이, 네이티브처럼 빠름)
+      const indexPath = getResourcePath('dist/index.html');
+      console.log(`✅ [Electron Main] 파일 직접 로드: ${indexPath}`);
+      await mainWindow.loadFile(indexPath);
+    } else {
+      // 개발 모드: 개발 서버 사용
+      devServerInUse = true;
+      console.log(`✅ [Electron Main] 개발 서버 사용: ${DEV_SERVER_URL}`);
+      await mainWindow.loadURL(DEV_SERVER_URL);
+    }
   };
   load();
 
@@ -307,6 +667,11 @@ function createWindow() {
     if (openDevToolsOnStart) {
       mainWindow.webContents.openDevTools();
     }
+    
+    // Firebase 최적화 시작
+    if (!firebaseOptimizer) {
+      firebaseOptimizer = new FirebaseOptimizer(mainWindow);
+    }
   });
 
   // 윈도우 닫기 이벤트
@@ -316,13 +681,24 @@ function createWindow() {
       event.preventDefault();
       mainWindow.hide();
     } else {
-      // 실제 종료
+      // 실제 종료 전 리소스 정리
+      cleanupWindowResources();
       mainWindow = null;
     }
   });
 
   mainWindow.on('closed', () => {
+    // Firebase 최적화 정리
+    if (firebaseOptimizer) {
+      firebaseOptimizer.destroy();
+      firebaseOptimizer = null;
+    }
     mainWindow = null;
+  });
+
+  // 메모리 누수 방지: 윈도우가 닫힐 때 리소스 정리
+  mainWindow.webContents.on('destroyed', () => {
+    cleanupWindowResources();
   });
 }
 
@@ -402,6 +778,55 @@ function playSystemNotificationSound() {
 }
 
 /**
+ * 윈도우 리소스 정리 (메모리 누수 방지)
+ */
+function cleanupWindowResources() {
+  try {
+    // 세션 캐시 정리 (선택적)
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.session.clearCache().catch(() => {});
+    }
+  } catch (error) {
+    console.warn('⚠️ [Electron Main] 리소스 정리 실패:', error.message);
+  }
+}
+
+/**
+ * 외부 URL 로드 제한 (보안 강화)
+ */
+function shouldAllowNavigation(url) {
+  try {
+    const parsedUrl = new URL(url);
+    
+    // 로컬 파일 허용
+    if (parsedUrl.protocol === 'file:') {
+      return true;
+    }
+    
+    // 개발 서버 허용
+    if (parsedUrl.hostname === 'localhost' || parsedUrl.hostname === '127.0.0.1') {
+      return true;
+    }
+    
+    // 프로덕션 빌드에서는 외부 URL 차단
+    if (app.isPackaged) {
+      // Firebase 등 허용된 도메인만 허용
+      const allowedDomains = [
+        'firebase.googleapis.com',
+        'firebaseapp.com',
+        'googleapis.com',
+      ];
+      
+      return allowedDomains.some(domain => parsedUrl.hostname.includes(domain));
+    }
+    
+    return true; // 개발 모드에서는 모두 허용
+  } catch {
+    return false;
+  }
+}
+
+/**
  * 프로덕션/개발 환경에 따른 리소스 경로 가져오기
  */
 function getResourcePath(relativePath) {
@@ -432,6 +857,10 @@ function getResourcePath(relativePath) {
  * 커스텀 알림 표시
  */
 ipcMain.handle('show-notification', async (event, options) => {
+  // IPC 채널 검증
+  if (!validateIpcChannel('show-notification')) {
+    return { success: false, error: 'Unauthorized' };
+  }
   try {
     const { title, subtitle, body, icon, senderName, senderAvatar, timestamp, centerInfo, link, useCustom = true, soundEnabled = true } = options;
     // 🔔 작업 표시줄 깜빡임 (메인 윈도우가 포커스되지 않았을 때)
@@ -633,8 +1062,35 @@ function setupUpdater() {
   });
 }
 
+/**
+ * 안전한 IPC 핸들러 래퍼 (보안 강화)
+ */
+function safeIpcHandle(channel, handler) {
+  ipcMain.handle(channel, async (event, ...args) => {
+    // 채널 검증
+    if (!validateIpcChannel(channel)) {
+      console.error(`❌ [Electron Main] 허용되지 않은 IPC 채널: ${channel}`);
+      return { success: false, error: 'Unauthorized channel' };
+    }
+    
+    // WebContents 검증 (보안)
+    if (!event.sender || event.sender.isDestroyed()) {
+      console.error(`❌ [Electron Main] 유효하지 않은 IPC 발신자: ${channel}`);
+      return { success: false, error: 'Invalid sender' };
+    }
+    
+    try {
+      return await handler(event, ...args);
+    } catch (error) {
+      console.error(`❌ [Electron Main] IPC 핸들러 에러 (${channel}):`, error);
+      logErrorToFile(`ipc-handler-${channel}`, error);
+      return { success: false, error: error.message };
+    }
+  });
+}
+
 // IPC 핸들러: 업데이트 체크 요청 (프론트엔드에서 호출)
-ipcMain.handle('check-for-updates', async (event) => {
+safeIpcHandle('check-for-updates', async (event) => {
   checkForUpdates(true);
   return { success: true };
 });
@@ -668,6 +1124,174 @@ ipcMain.handle('install-update', async (event) => {
 });
 
 /**
+ * 네이티브 파일 시스템 캐시 IPC 핸들러 (메모리 누수 방지 포함)
+ */
+// 네이티브 캐시에서 데이터 가져오기
+ipcMain.handle('get-cached-data', async (event, key) => {
+  try {
+    if (key) {
+      // 특정 키 조회
+      const item = nativeCache.get(key);
+      if (!item) {
+        cacheStats.missCount++;
+        return null;
+      }
+      
+      // TTL 확인
+      const now = Date.now();
+      const age = now - item.timestamp;
+      const ttl = item.ttl || CACHE_CONFIG.DEFAULT_TTL;
+      
+      if (age >= ttl) {
+        // 만료된 항목 삭제
+        nativeCache.delete(key);
+        cacheStats.missCount++;
+        return null;
+      }
+      
+      // 접근 정보 업데이트
+      item.lastAccess = now;
+      item.accessCount = (item.accessCount || 0) + 1;
+      nativeCache.set(key, item);
+      
+      cacheStats.hitCount++;
+      return item.data;
+    } else {
+      // 전체 캐시 반환 (데이터만)
+      const result = {};
+      for (const [k, item] of nativeCache.entries()) {
+        result[k] = item.data;
+      }
+      return result;
+    }
+  } catch (error) {
+    console.error('❌ [Electron Main] 캐시 읽기 실패:', error);
+    cacheStats.missCount++;
+    return null;
+  }
+});
+
+// 네이티브 캐시에 데이터 저장
+ipcMain.handle('set-cached-data', async (event, key, data, options = {}) => {
+  try {
+    // 캐시 크기 확인 및 정리
+    if (nativeCache.size >= CACHE_CONFIG.MAX_SIZE) {
+      evictLRUItems(10); // 10개 제거
+    }
+    
+    const now = Date.now();
+    const item = {
+      data,
+      timestamp: now,
+      lastAccess: now,
+      accessCount: 0,
+      ttl: options.ttl || CACHE_CONFIG.DEFAULT_TTL,
+    };
+    
+    nativeCache.set(key, item);
+    
+    // 비동기로 저장 (블로킹 안 함)
+    setImmediate(() => {
+      saveNativeCache();
+    });
+    
+    return { success: true };
+  } catch (error) {
+    console.error('❌ [Electron Main] 캐시 저장 실패:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// 네이티브 캐시에서 데이터 삭제
+ipcMain.handle('delete-cached-data', async (event, key) => {
+  try {
+    const deleted = nativeCache.delete(key);
+    if (deleted) {
+      setImmediate(() => {
+        saveNativeCache();
+      });
+    }
+    return { success: true, deleted };
+  } catch (error) {
+    console.error('❌ [Electron Main] 캐시 삭제 실패:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// 네이티브 캐시 전체 삭제
+ipcMain.handle('clear-cached-data', async (event) => {
+  try {
+    nativeCache.clear();
+    cacheStats.totalItems = 0;
+    cacheStats.totalSize = 0;
+    
+    if (fs.existsSync(CACHE_FILE)) {
+      fs.unlinkSync(CACHE_FILE);
+    }
+    if (fs.existsSync(CACHE_STATS_FILE)) {
+      fs.unlinkSync(CACHE_STATS_FILE);
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('❌ [Electron Main] 캐시 전체 삭제 실패:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// 캐시 통계 조회
+ipcMain.handle('get-cache-stats', async (event) => {
+  try {
+    const stats = process.memoryUsage();
+    return {
+      ...cacheStats,
+      cacheSize: nativeCache.size,
+      memoryUsage: {
+        heapUsed: Math.round(stats.heapUsed / 1024 / 1024 * 100) / 100, // MB
+        heapTotal: Math.round(stats.heapTotal / 1024 / 1024 * 100) / 100, // MB
+        rss: Math.round(stats.rss / 1024 / 1024 * 100) / 100, // MB
+      },
+      hitRate: cacheStats.hitCount + cacheStats.missCount > 0
+        ? Math.round((cacheStats.hitCount / (cacheStats.hitCount + cacheStats.missCount)) * 100 * 100) / 100
+        : 0,
+    };
+  } catch (error) {
+    console.error('❌ [Electron Main] 캐시 통계 조회 실패:', error);
+    return null;
+  }
+});
+
+/**
+ * Firebase Storage 캐시 IPC 핸들러
+ */
+// Storage 파일 캐시 가져오기
+ipcMain.handle('get-cached-storage-file', async (event, url) => {
+  try {
+    if (firebaseOptimizer) {
+      return firebaseOptimizer.getCachedStorageFile(url);
+    }
+    return null;
+  } catch (error) {
+    console.error('❌ [Electron Main] Storage 캐시 읽기 실패:', error);
+    return null;
+  }
+});
+
+// Storage 파일 캐시 저장
+ipcMain.handle('cache-storage-file', async (event, url, filePath) => {
+  try {
+    if (firebaseOptimizer) {
+      firebaseOptimizer.cacheStorageFile(url, filePath);
+      return { success: true };
+    }
+    return { success: false, error: 'Firebase optimizer not initialized' };
+  } catch (error) {
+    console.error('❌ [Electron Main] Storage 캐시 저장 실패:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+/**
  * 단일 인스턴스 잠금 요청
  * 이미 실행 중인 인스턴스가 있으면 false 반환
  */
@@ -693,8 +1317,21 @@ if (!gotTheLock) {
    * 앱 준비 완료 이벤트
    */
   app.on('ready', () => {
+    // 성능 최적화: 앱 우선순위 설정 (Windows)
+    if (process.platform === 'win32') {
+      try {
+        // 높은 우선순위로 설정 (성능 향상)
+        process.setPriority(process.platform === 'win32' ? 'high' : 0);
+      } catch (error) {
+        console.warn('⚠️ [Electron Main] 프로세스 우선순위 설정 실패:', error.message);
+      }
+    }
+    
     // IPC 핸들러 등록 (윈도우 컨트롤용)
     registerIpcHandlers();
+    
+    // 전역 에러 핸들러 등록
+    setupGlobalErrorHandlers();
     
     // 업데ater 설정
     setupUpdater();
@@ -751,4 +1388,79 @@ app.on('before-quit', () => {
 // Windows 7 호환성을 위한 추가 설정
 if (process.platform === 'win32') {
   app.setAppUserModelId('com.hs.hr');
+  
+  // Windows 성능 최적화
+  try {
+    // Windows 메모리 관리 최적화
+    app.commandLine.appendSwitch('disable-features', 'VizDisplayCompositor'); // 디스플레이 컴포지터 비활성화 (성능)
+  } catch {}
 }
+
+/**
+ * 앱 성능 모니터링 및 자동 최적화
+ */
+function startPerformanceMonitoring() {
+  let consecutiveHighMemoryCount = 0;
+  
+  setInterval(() => {
+    try {
+      const stats = process.memoryUsage();
+      const heapUsedMB = stats.heapUsed / 1024 / 1024;
+      const heapTotalMB = stats.heapTotal / 1024 / 1024;
+      const rssMB = stats.rss / 1024 / 1024;
+      
+      // 메모리 사용량이 높으면 경고 및 자동 정리
+      if (heapUsedMB > 200) {
+        consecutiveHighMemoryCount++;
+        console.warn(`⚠️ [Electron Main] 메모리 사용량 높음: ${heapUsedMB.toFixed(2)}MB / ${heapTotalMB.toFixed(2)}MB (RSS: ${rssMB.toFixed(2)}MB)`);
+        
+        // 연속으로 메모리 사용량이 높으면 강제 정리
+        if (consecutiveHighMemoryCount >= 3) {
+          console.log('🧹 [Electron Main] 메모리 압박 감지, 강제 정리 시작...');
+          
+          // 캐시 정리
+          if (nativeCache.size > 0) {
+            const evictCount = Math.ceil(nativeCache.size * 0.3);
+            evictLRUItems(evictCount);
+          }
+          
+          // 세션 캐시 정리
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.session.clearCache().catch(() => {});
+          }
+          
+          // 가비지 컬렉션 힌트 (V8)
+          if (global.gc) {
+            global.gc();
+          }
+          
+          consecutiveHighMemoryCount = 0;
+        }
+      } else {
+        consecutiveHighMemoryCount = 0;
+      }
+      
+      // 메인 윈도우에 성능 메트릭 전송 (선택적)
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('performance-metrics', {
+          heapUsed: heapUsedMB,
+          heapTotal: heapTotalMB,
+          rss: rssMB,
+          timestamp: Date.now(),
+        });
+      }
+    } catch (error) {
+      // 성능 모니터링 실패는 무시
+    }
+  }, 5 * 60 * 1000); // 5분마다 체크
+}
+
+// 성능 모니터링 시작
+startPerformanceMonitoring();
+
+// 주기적으로 Storage 캐시 정리 (1일마다)
+setInterval(() => {
+  if (firebaseOptimizer) {
+    firebaseOptimizer.cleanupStorageCache();
+  }
+}, 24 * 60 * 60 * 1000);

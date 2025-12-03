@@ -30,6 +30,8 @@ import {
   createMessageGroupingMap,
   mergeHistoricalMessages,
 } from '../utils/chatMessageUtils';
+import { ReactionService } from '@/features/workspace/services/reactionService';
+import type { MessageReaction } from '@/features/workspace/types';
 
 export interface ChatViewProps {
   chatRoomId: string;
@@ -38,6 +40,9 @@ export interface ChatViewProps {
   onSearchResultsChange?: (results: Array<{ id: string; index: number }>) => void;
   hideInput?: boolean;
   pendingUploadsOverride?: PendingUpload[];
+  channelId?: string; // 워크스페이스 채널 ID
+  workspaceId?: string; // 워크스페이스 ID
+  onThreadClick?: (messageId: string) => void; // 스레드 클릭 핸들러
 }
 
 const START_INDEX = 1_000_000;
@@ -49,6 +54,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
   onSearchResultsChange,
   hideInput = false,
   pendingUploadsOverride,
+  channelId,
+  workspaceId,
+  onThreadClick,
 }) => {
   const navigate = useNavigate();
 // ... existing code ...
@@ -76,6 +84,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   // combinedMessages는 아래에서 정의되므로 초기값은 빈 배열로 설정하고 useEffect에서 동기화합니다.
   const combinedMessagesRef = useRef<CombinedMessageItem[]>([]);
   const isMountedRef = useRef(true);
+  const [messageReactions, setMessageReactions] = useState<Map<string, MessageReaction[]>>(new Map());
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -256,6 +265,34 @@ export const ChatView: React.FC<ChatViewProps> = ({
     [nonPendingMessages]
   );
 
+  // 채널 메시지인 경우 반응 구독
+  useEffect(() => {
+    if (!channelId || !workspaceId || nonPendingMessages.length === 0) return;
+
+    const unsubscribes: (() => void)[] = [];
+
+    nonPendingMessages.forEach((message) => {
+      const unsubscribe = ReactionService.subscribeToMessageReactions(
+        message.id,
+        (reactions) => {
+          setMessageReactions((prev) => {
+            const newMap = new Map(prev);
+            newMap.set(message.id, reactions);
+            return newMap;
+          });
+        },
+        (error) => {
+          console.error(`Error subscribing to reactions for message ${message.id}:`, error);
+        }
+      );
+      unsubscribes.push(unsubscribe);
+    });
+
+    return () => {
+      unsubscribes.forEach((unsub) => unsub());
+    };
+  }, [channelId, workspaceId, nonPendingMessages]);
+
   const handleAtBottomStateChange = useCallback((bottom: boolean) => {
     setIsAtBottom(bottom);
   }, []);
@@ -294,7 +331,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
           {...props}
           ref={ref}
           style={style}
-          className={cn('py-4 px-2 min-w-0', className)}
+          className={cn('py-2 px-0 min-w-0', className)}
         >
           {children}
         </div>
@@ -370,6 +407,83 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
     setIsInitialLoading(true);
 
+    // 채널 메시지인 경우 ChannelMessageService 사용
+    if (channelId && workspaceId) {
+      const fetchAndSubscribe = async () => {
+        try {
+          const { ChannelMessageService } = await import('@/features/workspace/services/channelMessageService');
+          
+          const initialMessages = await ChannelMessageService.fetchInitialMessages(
+            chatRoomId,
+            MESSAGE_PAGINATION.INITIAL_BATCH
+          );
+          
+          if (!isMountedRef.current) return;
+
+          setMessages(chatRoomId, initialMessages);
+          setHasMoreOlderMessages(initialMessages.length === MESSAGE_PAGINATION.INITIAL_BATCH);
+          
+          if (!isMountedRef.current) return;
+
+          const unsub = ChannelMessageService.subscribeToChannelMessages(
+            chatRoomId,
+            async (newMessages) => {
+              if (!isMountedRef.current) return;
+
+              setMessages(chatRoomId, newMessages);
+
+              if (!currentUserId) return;
+              
+              const unreadMessages = newMessages.filter(
+                (msg) => msg.sender.uid !== currentUserId && !msg.readBy.includes(currentUserId)
+              );
+              
+              if (unreadMessages.length > 0) {
+                const markAsReadPromises = unreadMessages.map((msg) =>
+                  ChannelMessageService.markMessageAsRead(chatRoomId, msg.id, currentUserId).catch((markError) => {
+                    if (process.env.NODE_ENV === 'development') {
+                      console.warn(`Failed to mark message ${msg.id} as read:`, markError);
+                    }
+                  })
+                );
+                
+                await Promise.allSettled(markAsReadPromises);
+              }
+            },
+            (error) => {
+              console.error('Failed to subscribe to channel messages:', error);
+            },
+            MESSAGE_PAGINATION.INITIAL_BATCH
+          );
+
+          if (!isMountedRef.current) {
+            unsub();
+            return;
+          }
+
+          unsubscribeFn = unsub;
+          setIsInitialLoading(false);
+        } catch (error) {
+          console.error('Failed to fetch initial channel messages:', error);
+          if (isMountedRef.current) {
+            setIsInitialLoading(false);
+            // 에러 발생 시 빈 메시지 배열 설정
+            setMessages(chatRoomId, []);
+            setHasMoreOlderMessages(false);
+          }
+        }
+      };
+
+      fetchAndSubscribe();
+
+      return () => {
+        if (unsubscribeFn) {
+          unsubscribeFn();
+        }
+      };
+    }
+
+    // 기존 Chat 메시지 (하위 호환성)
     const cached = getCachedMessages(chatRoomId);
     if (cached && cached.length > 0) {
       setMessages(chatRoomId, cached);
@@ -388,7 +502,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
         setCachedMessages(chatRoomId, initialMessages);
         setHasMoreOlderMessages(initialMessages.length === MESSAGE_PAGINATION.INITIAL_BATCH);
         
-        // 초기 로드 후에도 컴포넌트가 여전히 마운트 상태인지 확인 후 구독 시작
         if (!isMountedRef.current) return;
 
         const unsub = ChatService.subscribeToMessages(
@@ -423,7 +536,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
           MESSAGE_PAGINATION.INITIAL_BATCH
         );
 
-        // 구독 함수 반환 직후 언마운트 체크
         if (!isMountedRef.current) {
           unsub();
           return;
@@ -445,7 +557,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
         unsubscribeFn();
       }
     };
-  }, [chatRoomId, currentUserId, setMessages]);
+  }, [chatRoomId, currentUserId, setMessages, channelId, workspaceId]);
   const handleLoadOlderMessages = useCallback(async () => {
     if (isLoadingOlderMessages || !hasMoreOlderMessages) return;
     if (!chatRoomId) return;
@@ -536,8 +648,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
   ) => {
     if (!user || (!text.trim() && (!attachments || attachments.length === 0))) return;
 
-    const tempRoom = temporaryRooms.find((r) => r.id === chatRoomId);
-    
     // 이름+직급 가져오기 (UserList에서 사용하는 방식과 동일)
     const senderDisplayName = getUserDisplayName(
       { displayName: user.displayName, email: user.email },
@@ -546,6 +656,27 @@ export const ChatView: React.FC<ChatViewProps> = ({
     );
 
     try {
+      // 채널 메시지인 경우 ChannelMessageService 사용
+      if (channelId && workspaceId) {
+        const { ChannelMessageService } = await import('@/features/workspace/services/channelMessageService');
+        await ChannelMessageService.sendMessage(
+          channelId,
+          workspaceId,
+          text,
+          {
+            uid: user.uid,
+            displayName: senderDisplayName,
+            photoURL: user.photoURL || undefined,
+          },
+          attachments,
+          mentionedUserIds
+        );
+        return;
+      }
+
+      // 기존 Chat 메시지 (하위 호환성)
+      const tempRoom = temporaryRooms.find((r) => r.id === chatRoomId);
+      
       const result = await ChatService.sendMessage(
         chatRoomId,
         text,
@@ -746,6 +877,24 @@ export const ChatView: React.FC<ChatViewProps> = ({
                             : undefined
                         }
                         pendingAttachments={pendingAttachments}
+                        channelId={channelId}
+                        workspaceId={workspaceId}
+                        onThreadClick={onThreadClick}
+                        reactions={channelId && workspaceId ? (messageReactions.get(currentMessage.id) || []) : undefined}
+                        onAddReaction={channelId && workspaceId ? async (messageId, emoji) => {
+                          if (!user?.uid) return;
+                          try {
+                            await ReactionService.addReaction({
+                              messageId,
+                              channelId,
+                              workspaceId,
+                              emoji,
+                              userId: user.uid,
+                            });
+                          } catch (error) {
+                            console.error('Failed to add reaction:', error);
+                          }
+                        } : undefined}
                       />
                     </div>
                   );

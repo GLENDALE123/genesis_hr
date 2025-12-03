@@ -14,3 +14,4 @@ export { ElectronNavigationHandler } from './ElectronNavigationHandler';
 export { InputSelect } from './InputSelect';
 export { FontSizeProvider } from './FontSizeProvider';
 export { UpdateNotificationContainer } from './UpdateNotificationContainer';
+export { ErrorBoundary } from './ErrorBoundary';

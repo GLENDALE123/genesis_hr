@@ -75,6 +75,7 @@ export const buildCombinedMessages = ({
   const pendingItems: CombinedMessageItem[] = pendingUploads.map((pending) => {
     const pendingMessage: ChatMessage = {
       id: `pending-${pending.id}`,
+      directMessageRoomId: chatRoomId,
       chatRoomId,
       text: pending.text,
       sender: {
@@ -118,6 +119,11 @@ export const createMessageGroupingMap = (
 ): Map<string, MessageGroupingState> => {
   const map = new Map<string, MessageGroupingState>();
 
+  // 디스코드 스타일: 같은 사용자의 연속 메시지를 그룹화
+  // 그룹 기준: 같은 사용자 + 5분 이내 + 메시지 간격 1분 이내
+  const GROUP_TIME_THRESHOLD = 5 * 60 * 1000; // 5분
+  const MESSAGE_GAP_THRESHOLD = 1 * 60 * 1000; // 1분
+
   for (let index = 0; index < messages.length; index += 1) {
     const current = messages[index];
     const previous = index > 0 ? messages[index - 1] : undefined;
@@ -132,14 +138,17 @@ export const createMessageGroupingMap = (
       : false;
     const sameSenderAsNext = next ? next.sender.uid === current.sender.uid : false;
 
+    // 아바타 표시: 이전 메시지와 다른 사용자이거나 5분 이상 경과
     const showAvatar =
-      !sameSenderAsPrevious || currentTime - previousTime > 5 * 60 * 1000;
+      !sameSenderAsPrevious || currentTime - previousTime > GROUP_TIME_THRESHOLD;
 
+    // 그룹의 첫 번째 메시지: 이전 메시지와 다른 사용자이거나 1분 이상 경과
     const isFirstInGroup =
-      !sameSenderAsPrevious || currentTime - previousTime > 60 * 1000;
+      !sameSenderAsPrevious || currentTime - previousTime > MESSAGE_GAP_THRESHOLD;
 
+    // 그룹의 마지막 메시지: 다음 메시지와 다른 사용자이거나 1분 이상 경과
     const isLastInGroup =
-      !sameSenderAsNext || nextTime - currentTime > 60 * 1000;
+      !sameSenderAsNext || nextTime - currentTime > MESSAGE_GAP_THRESHOLD;
 
     map.set(current.id, {
       showAvatar,

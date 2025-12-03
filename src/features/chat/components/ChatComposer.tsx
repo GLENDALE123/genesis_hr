@@ -552,6 +552,49 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(({
     editorRef.current?.focus();
   };
 
+  // Placeholder 효과 추가
+  useEffect(() => {
+    if (!editorRef.current) return;
+
+    const editor = editorRef.current;
+    const placeholderText = editor.getAttribute('data-placeholder') || '';
+
+    const updatePlaceholder = () => {
+      const isEmpty = editor.textContent?.trim() === '' || editor.textContent === null;
+      const existingPlaceholder = editor.querySelector('.composer-placeholder');
+      
+      if (isEmpty && !existingPlaceholder && placeholderText) {
+        const placeholderEl = document.createElement('span');
+        placeholderEl.className = 'composer-placeholder pointer-events-none absolute left-4 top-2.5 text-muted-foreground/50 text-sm';
+        placeholderEl.textContent = placeholderText;
+        editor.style.position = 'relative';
+        editor.appendChild(placeholderEl);
+      } else if (!isEmpty && existingPlaceholder) {
+        existingPlaceholder.remove();
+      }
+    };
+
+    updatePlaceholder();
+
+    const observer = new MutationObserver(updatePlaceholder);
+    observer.observe(editor, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+
+    // 입력 이벤트도 감지
+    const handleInput = () => {
+      updatePlaceholder();
+    };
+    editor.addEventListener('input', handleInput);
+
+    return () => {
+      observer.disconnect();
+      editor.removeEventListener('input', handleInput);
+    };
+  }, [placeholder, replyTo]);
+
   useEffect(() => {
     if (replyToUser && editorRef.current) {
       const existingMention = editorRef.current.querySelector('.mention');
@@ -626,19 +669,19 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(({
   };
 
   return (
-    <div className="flex items-end gap-2.5">
+    <div className="flex items-end gap-2 px-4 py-3 bg-background border-t border-border">
       <div className="flex-1 relative">
         {replyTo && onCancelReply && (
-          <div className="mb-2 p-2 bg-muted/50 rounded-md flex items-center justify-between">
+          <div className="mb-2 p-2 bg-muted/50 rounded-md flex items-center justify-between border border-border/50">
             <span className="text-xs text-muted-foreground">@{replyTo}에게 답글</span>
             <Button
               type="button"
               variant="ghost"
               size="sm"
               onClick={onCancelReply}
-              className="h-6 w-6 p-0"
+              className="h-6 w-6 p-0 hover:bg-muted"
             >
-              <span className="text-xs">✕</span>
+              <X className="h-3 w-3" />
             </Button>
           </div>
         )}
@@ -649,19 +692,21 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(({
           </div>
         )}
 
-        <div
-          ref={editorRef}
-          contentEditable={!disabled && !isUploading}
-          onInput={handleInput}
-          onKeyDown={handleKeyDown}
-          className="w-full min-h-[72px] max-h-[300px] p-3 border border-border rounded-md bg-background text-foreground text-lg font-medium focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring overflow-y-auto"
-          style={{
-            whiteSpace: 'pre-wrap',
-            wordWrap: 'break-word',
-          }}
-          data-placeholder={replyTo ? `@${replyTo}에게 답글...` : placeholder}
-          suppressContentEditableWarning
-        />
+        <div className="relative">
+          <div
+            ref={editorRef}
+            contentEditable={!disabled && !isUploading}
+            onInput={handleInput}
+            onKeyDown={handleKeyDown}
+            className="w-full min-h-[44px] max-h-[200px] px-4 py-2.5 rounded-lg bg-muted/50 border border-border/50 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring overflow-y-auto resize-none transition-colors hover:bg-muted/70 relative"
+            style={{
+              whiteSpace: 'pre-wrap',
+              wordWrap: 'break-word',
+            }}
+            data-placeholder={replyTo ? `@${replyTo}에게 답글...` : placeholder}
+            suppressContentEditableWarning
+          />
+        </div>
 
         {showMentionList && filteredUsers.length > 0 && (
           <div
@@ -695,7 +740,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(({
         )}
 
         <div className="mt-2 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <Button
               type="button"
               size="icon"
@@ -703,8 +748,9 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(({
               onClick={() => imageInputRef.current?.click()}
               disabled={disabled || isUploading}
               aria-label="이미지 첨부"
+              className="h-8 w-8 hover:bg-muted"
             >
-              <ImageIcon className="h-5 w-5" />
+              <ImageIcon className="h-4 w-4" />
             </Button>
             <Button
               type="button"
@@ -715,21 +761,22 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(({
               }}
               disabled={disabled || isUploading}
               aria-label="파일 첨부"
+              className="h-8 w-8 hover:bg-muted"
             >
-              <Paperclip className="h-5 w-5" />
+              <Paperclip className="h-4 w-4" />
             </Button>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             {!disabled &&
               mentionedUsers.map((user) => (
                 <span
                   key={user.id}
-                  className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-xs text-primary"
+                  className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary"
                 >
                   @{user.displayName}
                   <button
                     type="button"
-                    className="text-primary/70 hover:text-primary"
+                    className="text-primary/70 hover:text-primary transition-colors"
                     onClick={() => handleRemoveMention(user.id)}
                   >
                     <X className="h-3 w-3" />
@@ -745,6 +792,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(({
                 isUploading ||
                 (currentText.trim().length === 0 && attachments.length === 0)
               }
+              className="h-8 px-3 text-sm"
             >
               {isUploading ? '업로드 중...' : '전송'}
             </Button>

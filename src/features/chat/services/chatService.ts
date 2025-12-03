@@ -1,6 +1,6 @@
 /**
- * 채팅 서비스
- * Firestore 기반 채팅방 및 메시지 관리
+ * Direct Message 서비스
+ * Firestore 기반 Direct Message 방 및 메시지 관리
  */
 
 import {
@@ -57,19 +57,236 @@ const removeUndefinedValues = (obj: any): any => {
 };
 
 import type {
+  DirectMessageRoom,
+  DirectMessage,
+  DirectMessageRoomParticipant,
+  MessageAttachment,
+  TemporaryDirectMessageRoom,
+  // 하위 호환성
   ChatRoom,
   ChatMessage,
   ChatRoomParticipant,
-  MessageAttachment,
   TemporaryChatRoom,
 } from '../types/chat.types';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
 
-export class ChatService {
+export class DirectMessageService {
   /**
-   * 채팅방 생성
+   * Direct Message 방 생성
    */
-  static async createChatRoom(
+  static async createDirectMessageRoom(
+    type: 'direct' | 'group',
+    participants: DirectMessageRoomParticipant[],
+    createdBy: string,
+    name?: string
+  ): Promise<string> {
+    if (!db) throw new Error('Firestore is not initialized');
+
+    // 1:1 Direct Message의 경우 기존 방이 있는지 확인
+    if (type === 'direct' && participants.length === 2) {
+      const existingRoom = await this.findDirectMessageRoom(
+        participants[0].uid,
+        participants[1].uid
+      );
+      if (existingRoom) {
+        return existingRoom.id;
+      }
+    }
+
+    const now = new Date().toISOString();
+    const roomData: Omit<DirectMessageRoom, 'id'> = {
+      type,
+      participants: participants.map((p) => ({
+        uid: p.uid,
+        displayName: p.displayName || '',
+        photoURL: p.photoURL ?? undefined,
+        joinedAt: p.joinedAt || now,
+      })),
+      createdBy,
+      createdAt: now,
+      updatedAt: now,
+      ...(name && { name }),
+    };
+
+    const sanitizedData = removeUndefinedValues(roomData) as Omit<DirectMessageRoom, 'id'>;
+    const docRef = await addDoc(collection(db, CHAT_COLLECTIONS.ROOMS), sanitizedData);
+    return docRef.id;
+  }
+
+  /**
+   * Direct Message 방 찾기 (1:1)
+   */
+  static async findDirectMessageRoom(
+    user1Uid: string,
+    user2Uid: string
+  ): Promise<DirectMessageRoom | null> {
+    if (!db) throw new Error('Firestore is not initialized');
+
+    const roomsRef = collection(db, CHAT_COLLECTIONS.ROOMS);
+    const q = query(
+      roomsRef,
+      where('type', '==', 'direct'),
+      where('participants', 'array-contains', { uid: user1Uid })
+    );
+
+    const querySnapshot = await getDocs(q);
+    for (const docSnap of querySnapshot.docs) {
+      const room = { id: docSnap.id, ...docSnap.data() } as DirectMessageRoom;
+      const hasUser2 = room.participants.some((p) => p.uid === user2Uid);
+      if (hasUser2) {
+        return room;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * 임시 Direct Message 방으로부터 실제 방 생성
+   */
+  static async createDirectMessageRoomFromTemporary(
+    temporaryRoom: TemporaryDirectMessageRoom,
+    createdBy: string
+  ): Promise<string> {
+    if (!db) throw new Error('Firestore is not initialized');
+
+    // 1:1 Direct Message의 경우 기존 방이 있는지 확인
+    if (temporaryRoom.type === 'direct' && temporaryRoom.participants.length === 2) {
+      const existingRoom = await this.findDirectMessageRoom(
+        temporaryRoom.participants[0].uid,
+        temporaryRoom.participants[1].uid
+      );
+      if (existingRoom) {
+        return existingRoom.id;
+      }
+    }
+
+    const now = new Date().toISOString();
+    const roomData: Omit<DirectMessageRoom, 'id'> = {
+      type: temporaryRoom.type,
+      participants: temporaryRoom.participants.map((p) => ({
+        uid: p.uid,
+        displayName: p.displayName || '',
+        photoURL: p.photoURL ?? undefined,
+        joinedAt: p.joinedAt || now,
+      })),
+      createdBy,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const sanitizedData = removeUndefinedValues(roomData) as Omit<DirectMessageRoom, 'id'>;
+    const docRef = await addDoc(collection(db, CHAT_COLLECTIONS.ROOMS), sanitizedData);
+    return docRef.id;
+  }
+
+  /**
+   * Direct Message 방 조회
+   */
+  static async getDirectMessageRoom(roomId: string): Promise<DirectMessageRoom | null> {
+    if (!db) throw new Error('Firestore is not initialized');
+
+    const docRef = doc(db, CHAT_COLLECTIONS.ROOMS, roomId);
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists()) {
+      return null;
+    }
+
+    return {
+      id: docSnap.id,
+      ...docSnap.data(),
+    } as DirectMessageRoom;
+  }
+
+  /**
+   * Direct Message 방 목록 실시간 구독
+   */
+  static subscribeToDirectMessageRooms(
+    userUid: string,
+    callback: (rooms: DirectMessageRoom[]) => void
+  ): () => void {
+    if (!db) throw new Error('Firestore is not initialized');
+
+    const roomsRef = collection(db, CHAT_COLLECTIONS.ROOMS);
+    const q = query(
+      roomsRef,
+      where('participants', 'array-contains-any', [{ uid: userUid }]),
+      orderBy('updatedAt', 'desc')
+    );
+
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        const rooms = snapshot.docs
+          .map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          })) as DirectMessageRoom[];
+        callback(rooms);
+      },
+      (error) => {
+        console.error('Error subscribing to direct message rooms:', error);
+        callback([]);
+      }
+    );
+  }
+
+  /**
+   * Direct Message 방 업데이트
+   */
+  static async updateDirectMessageRoom(
+    roomId: string,
+    updates: Partial<Pick<DirectMessageRoom, 'name' | 'participants' | 'lastMessage'>>,
+    updatedBy?: string
+  ): Promise<void> {
+    if (!db) throw new Error('Firestore is not initialized');
+
+    const docRef = doc(db, CHAT_COLLECTIONS.ROOMS, roomId);
+    const updateData: any = {
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (updates.name !== undefined) updateData.name = updates.name;
+    if (updates.participants !== undefined) updateData.participants = updates.participants;
+    if (updates.lastMessage !== undefined) updateData.lastMessage = updates.lastMessage;
+
+    await updateDoc(docRef, removeUndefinedValues(updateData));
+  }
+
+  /**
+   * Direct Message 방 나가기
+   */
+  static async leaveDirectMessageRoom(roomId: string, userUid: string): Promise<void> {
+    if (!db) throw new Error('Firestore is not initialized');
+
+    const directMessageRoom = await this.getDirectMessageRoom(roomId);
+    if (!directMessageRoom) throw new Error('Direct Message 방을 찾을 수 없습니다.');
+
+    // participants가 배열인지 확인
+    if (!directMessageRoom.participants || !Array.isArray(directMessageRoom.participants)) {
+      throw new Error('Invalid participants data');
+    }
+
+    // 현재 사용자를 participants에서 제거
+    const updatedParticipants = directMessageRoom.participants.filter(
+      (p) => p.uid !== userUid
+    );
+
+    // participants가 비어있으면 방 삭제, 아니면 업데이트
+    if (updatedParticipants.length === 0) {
+      await deleteDoc(doc(db, CHAT_COLLECTIONS.ROOMS, roomId));
+    } else {
+      await this.updateDirectMessageRoom(roomId, { participants: updatedParticipants }, userUid);
+    }
+  }
+
+  /**
+   * Direct Message 방에 참여자 추가
+   */
+  static async addParticipantToDirectMessageRoom(
+    roomId: string,
+    participant: DirectMessageRoomParticipant,
     type: 'direct' | 'group',
     participants: ChatRoomParticipant[],
     createdBy: string,
@@ -385,6 +602,7 @@ export class ChatService {
 
     const now = new Date().toISOString();
     const messageData: Omit<ChatMessage, 'id'> = {
+      directMessageRoomId: chatRoomId,
       chatRoomId,
       text,
       sender: {
@@ -740,4 +958,7 @@ export class ChatService {
     );
   }
 }
+
+// 하위 호환성을 위한 별칭
+export const ChatService = DirectMessageService;
 

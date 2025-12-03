@@ -1173,12 +1173,27 @@ async function runDailyReportsSync({
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       
-      const additionalSnapshot = await db.collection('packaging-reports')
-        .where('updatedAt', '>=', sevenDaysAgo)
-        .where('needsSheetSync', '==', false) // 이미 동기화된 문서도 확인
-        .orderBy('updatedAt', 'desc')
-        .limit(500) // 최근 500개만 확인
-        .get();
+      // needsSheetSync 조건 제거: 엑셀에서 삭제된 문서는 needsSheetSync가 true일 수도 있음
+      // 이미 위에서 가져온 문서는 중복 체크로 제외됨
+      let additionalSnapshot;
+      try {
+        additionalSnapshot = await db.collection('packaging-reports')
+          .where('updatedAt', '>=', sevenDaysAgo)
+          .orderBy('updatedAt', 'desc')
+          .limit(500) // 최근 500개만 확인
+          .get();
+      } catch (indexError) {
+        if (indexError.code === 'failed-precondition' && indexError.message.includes('index')) {
+          logger.warn('updatedAt 인덱스가 없어서 정렬 없이 가져옵니다.');
+          // 인덱스가 없으면 정렬 없이 가져오기
+          additionalSnapshot = await db.collection('packaging-reports')
+            .where('updatedAt', '>=', sevenDaysAgo)
+            .limit(500)
+            .get();
+        } else {
+          throw indexError;
+        }
+      }
       
       let addedCount = 0;
       let skippedCount = 0;
@@ -1191,19 +1206,30 @@ async function runDailyReportsSync({
           return;
         }
 
-        // 정렬ID를 키로 사용 (가장 빠르고 정확함)
-        const reportKey = hasSortIdColumn 
-          ? generateSortId(report)
-          : createReportKey(report);
+        // existingKeys는 createReportKey 형식이므로, 비교할 때도 createReportKey를 사용
+        const reportKey = createReportKey(report);
         
         // 엑셀에 없는 문서이고, 이미 reports에 포함되지 않은 경우 추가
         const orderNumbers = Array.isArray(report.orderNumbers) 
           ? report.orderNumbers 
           : (report.orderNumbers ? String(report.orderNumbers).split(',').map(n => n.trim()).filter(Boolean) : []);
         
-        // 발주번호가 여러 개인 경우, 분할 후 각각 확인해야 하므로 일단 추가
-        // 발주번호가 1개인 경우, 키로 확인
-        if (orderNumbers.length > 1 || !existingKeys.has(reportKey)) {
+        // 엑셀에 있는지 확인
+        let foundInExcel = existingKeys.has(reportKey);
+        
+        // 발주번호가 여러 개인 경우, 각 발주번호별로도 키 확인
+        if (!foundInExcel && orderNumbers.length > 1) {
+          for (const orderNumber of orderNumbers) {
+            const singleKey = `${formatWorkDate(report.workDate)}|${normalizeProductionLine(report.productionLine)}|${orderNumber}`;
+            if (existingKeys.has(singleKey)) {
+              foundInExcel = true;
+              break;
+            }
+          }
+        }
+        
+        // 엑셀에 없고, 이미 reports에 포함되지 않은 경우 추가
+        if (!foundInExcel) {
           const alreadyIncluded = reports.some(r => r.id === report.id);
           if (!alreadyIncluded) {
             reports.push(report);
@@ -1308,7 +1334,9 @@ async function runDailyReportsSync({
       // 수식이 있는 컬럼 인덱스: 발주처(4), 제품명(5), 부속명(6), 사양(8)
       // A열(정렬ID, 인덱스 0)은 별도로 업데이트하므로 제외
       // 이 컬럼들은 업데이트하지 않아서 수식이 보존됨
-      const formulaColumns = [4, 5, 6, 8];
+      // dataRow는 정렬ID를 제외했으므로, dataRow 기준 인덱스로 변환: 실제 컬럼 인덱스 - 1
+      // 발주처(4) → dataRow[3], 제품명(5) → dataRow[4], 부속명(6) → dataRow[5], 사양(8) → dataRow[7]
+      const formulaColumns = [4, 5, 6, 8]; // 실제 컬럼 인덱스
       
       // 수식이 없는 컬럼만 업데이트하기 위해 여러 범위로 나누기
       // 정렬ID(A열, 인덱스 0)는 이미 별도로 업데이트했으므로 제외
@@ -1332,9 +1360,11 @@ async function runDailyReportsSync({
             const endActualCol = i; // dataRow[i-1]의 실제 컬럼 인덱스는 i
             const startColLetter = columnIndexToLetter(startActualCol);
             const endColLetter = columnIndexToLetter(endActualCol);
+            const updateValues = dataRow.slice(startCol, i);
+            
             updateRanges.push({
               range: `${sheetName}!${startColLetter}${existing.rowIndex}:${endColLetter}${existing.rowIndex}`,
-              values: [[...dataRow.slice(startCol, i)]],
+              values: [[...updateValues]],
             });
           }
           startCol = i + 1; // 수식 컬럼 다음부터 시작
@@ -1347,12 +1377,20 @@ async function runDailyReportsSync({
         // 이것의 실제 컬럼 인덱스는 (dataRow.length - 1) + 1 = dataRow.length
         // newRow.length - 1 = dataRow.length이므로 동일함
         const startActualCol = startCol + 1; // 실제 컬럼 인덱스 (B열부터)
-        const endActualCol = dataRow.length; // dataRow의 마지막 요소의 실제 컬럼 인덱스
+        const lastRangeValues = dataRow.slice(startCol);
+        // lastRangeValues의 마지막 요소의 실제 컬럼 인덱스는 startActualCol + lastRangeValues.length - 1
+        // 하지만 dataRow의 마지막 요소는 항상 S열(인덱스 18)이므로, endActualCol은 dataRow.length여야 함
+        // 헤더는 19개이므로 S열까지가 맞음 (인덱스 0~18)
+        const endActualCol = Math.min(startActualCol + lastRangeValues.length - 1, DAILY_REPORT_HEADERS.length - 1);
         const startColLetter = columnIndexToLetter(startActualCol);
         const endColLetter = columnIndexToLetter(endActualCol);
+        
+        // 헤더 길이를 초과하지 않도록 값도 제한
+        const safeLastRangeValues = lastRangeValues.slice(0, endActualCol - startActualCol + 1);
+        
         updateRanges.push({
           range: `${sheetName}!${startColLetter}${existing.rowIndex}:${endColLetter}${existing.rowIndex}`,
-          values: [[...dataRow.slice(startCol)]],
+          values: [[...safeLastRangeValues]],
         });
       }
       
@@ -1360,7 +1398,7 @@ async function runDailyReportsSync({
       rowsToUpdate.push(...updateRanges);
       updated += 1;
       
-      // 기존 행 업데이트 (수식 컬럼 제외) - 로그 제거
+      // 기존 행 업데이트 (수식 컬럼 제외)
     } else {
       // 엑셀에 없는 행이므로 새로 추가
       rowsToAppend.push(newRow);
@@ -1386,33 +1424,145 @@ async function runDailyReportsSync({
     processedReportIds.add(originalId);
   }
 
-  // rowsToAppend 후에 수식 복사 추가
-  if (rowsToAppend.length) {
-    // 헤더는 이미 함수 시작 부분에서 확인하고 작성했으므로, 여기서는 append만 수행
-    // values.append는 지정된 범위의 마지막 행 다음에 데이터를 추가합니다
-    // range를 전체 컬럼 범위(A:endColumn)로 지정하면, Google Sheets가 자동으로
-    // 마지막 데이터 행을 찾아서 그 다음에 추가합니다
-    // 헤더가 1행에 있다면, 마지막 데이터 행 다음(즉, 헤더 다음)에 추가됩니다
-    const endColumn = columnIndexToLetter(DAILY_REPORT_HEADERS.length - 1);
-    const appendResponse = await sheets.spreadsheets.values.append({
-      spreadsheetId,
-      range: `${sheetName}!A:${endColumn}`, // 전체 컬럼 범위 (마지막 데이터 행 다음에 자동 추가)
-      valueInputOption: 'RAW',
-      insertDataOption: 'INSERT_ROWS',
-      requestBody: {
-        values: rowsToAppend,
-      },
-    });
-    
-    // 추가된 행의 범위 확인
-    // Google Sheets API append 응답 구조: { data: { updates: { updatedRange: "...", ... } } }
-    const updates = appendResponse.data?.updates;
-    const updatedRangeFromUpdates = updates?.updatedRange;
-    
-    // updatedRange가 없으면 다른 경로 시도
-    const finalUpdatedRange = updatedRangeFromUpdates || appendResponse.data?.updatedRange || appendResponse.updatedRange;
-    
-    if (finalUpdatedRange) {
+    // rowsToAppend 후에 수식 복사 추가
+    let appendResponse = null; // 수식 복사 로직에서 사용하기 위해 변수 선언
+    if (rowsToAppend.length) {
+      // 근본적인 해결: append 대신 정확한 행 번호를 계산하여 batchUpdate + update 사용
+      const endColumn = columnIndexToLetter(DAILY_REPORT_HEADERS.length - 1);
+      const expectedLength = DAILY_REPORT_HEADERS.length;
+      
+      // append 전에 각 행의 길이를 정확히 헤더 길이로 제한 (근본 해결)
+      const safeRowsToAppend = rowsToAppend.map(row => {
+        // 정확히 expectedLength로 제한 (초과하면 자르기, 부족하면 빈 값으로 채우기)
+        const safeRow = Array(expectedLength).fill('');
+        if (row && Array.isArray(row)) {
+          for (let i = 0; i < Math.min(row.length, expectedLength); i++) {
+            safeRow[i] = row[i] !== undefined && row[i] !== null ? row[i] : '';
+          }
+        }
+        
+        if (row && row.length > expectedLength) {
+          logger.warn('행 길이 초과, 자동 조정:', {
+            originalLength: row.length,
+            expectedLength,
+            firstFewValues: row.slice(0, 5),
+            lastFewValues: row.slice(-3),
+          });
+        }
+        
+        return safeRow;
+      });
+      
+      // 근본적인 해결: existingRowsMap에서 실제 마지막 데이터 행 번호 찾기 (가장 정확함)
+      let lastDataRow1Based = 1; // 헤더만 있으면 1
+      if (existingRowsMap.size > 0) {
+        // existingRowsMap의 각 행에서 가장 큰 rowIndex 찾기
+        let maxRowIndex = 0;
+        existingRowsMap.forEach((rowData) => {
+          if (rowData.rowIndex > maxRowIndex) {
+            maxRowIndex = rowData.rowIndex;
+          }
+        });
+        lastDataRow1Based = maxRowIndex; // rowIndex는 이미 1-based
+      }
+      
+      // insertDimension은 0-based이므로 변환
+      const lastDataRow0Based = lastDataRow1Based - 1; // 0-based: 마지막 데이터 행 인덱스
+      const startRow1Based = lastDataRow1Based + 1; // 1-based: 새 행 시작 위치
+      const endRow1Based = startRow1Based + safeRowsToAppend.length - 1; // 1-based: 새 행 끝 위치
+      
+      // startIndex는 0-based이고, 마지막 데이터 행 다음에 삽입해야 하므로 lastDataRow0Based + 1
+      let insertStartIndex = lastDataRow0Based + 1; // 0-based: 마지막 데이터 행 다음
+      let insertEndIndex = insertStartIndex + safeRowsToAppend.length; // 0-based: exclusive
+      
+      // 근본적인 해결: batchUpdate로 빈 행을 먼저 삽입
+      const sheetId = await getSheetId(sheets, spreadsheetId, sheetName);
+      if (sheetId !== null) {
+        // 그리드 크기 확인
+        const spreadsheet = await sheets.spreadsheets.get({
+          spreadsheetId,
+        });
+        const sheet = spreadsheet.data.sheets.find(s => s.properties.sheetId === sheetId);
+        const gridRowCount = sheet?.properties?.gridProperties?.rowCount || 1000; // 기본값 1000
+        
+        // 근본적인 해결: insertDimension 제거하고 values.update만 사용
+        // insertDimension이 예상보다 더 많은 행을 삽입하므로, 직접 update 사용
+        // 그리드가 부족하면 먼저 확장
+        if (insertStartIndex >= gridRowCount) {
+          // 그리드를 정확히 필요한 만큼만 확장
+          const neededRowCount = insertEndIndex; // insertEndIndex는 exclusive이므로 이것만큼 확장
+          logger.warn('insertStartIndex가 그리드 크기보다 큼, 그리드 확장:', {
+            insertStartIndex,
+            gridRowCount,
+            lastDataRow1Based,
+            neededRowCount,
+            rowsToInsert: safeRowsToAppend.length,
+          });
+          
+          // 그리드 확장 (정확히 필요한 만큼만)
+          await sheets.spreadsheets.batchUpdate({
+            spreadsheetId,
+            requestBody: {
+              requests: [{
+                updateSheetProperties: {
+                  properties: {
+                    sheetId: sheetId,
+                    gridProperties: {
+                      rowCount: neededRowCount,
+                    },
+                  },
+                  fields: 'gridProperties.rowCount',
+                },
+              }],
+            },
+          });
+        }
+        
+        // 근본적인 해결: insertDimension 제거, values.update만 사용 (빈 행 자동 생성)
+        // Google Sheets는 존재하지 않는 행에 update하면 자동으로 행이 생성됨
+        await sheets.spreadsheets.values.update({
+          spreadsheetId,
+          range: `${sheetName}!A${startRow1Based}:${endColumn}${endRow1Based}`,
+          valueInputOption: 'RAW',
+          requestBody: {
+            values: safeRowsToAppend,
+          },
+        });
+        
+        // appendResponse를 수식 복사 로직에서 사용하기 위해 생성
+        appendResponse = {
+          data: {
+            updates: {
+              updatedRange: `${sheetName}!A${startRow1Based}:${endColumn}${endRow1Based}`,
+            },
+          },
+        };
+      } else {
+        // sheetId가 null인 경우: 에러 발생 (append 제거로 인해 insertDimension 사용 불가)
+        throw new Error(`시트 ID를 찾을 수 없습니다: ${sheetName}`);
+      }
+      
+      logger.info('근본적 해결: 새 행 추가 완료:', {
+        startRow: startRow1Based,
+        endRow: endRow1Based,
+        rowsCount: safeRowsToAppend.length,
+        range: appendResponse?.data?.updates?.updatedRange || `A${startRow1Based}:${endColumn}${endRow1Based}`,
+        lastDataRow1Based,
+        insertStartIndex,
+        insertEndIndex,
+        method: appendResponse ? (appendResponse.data?.updates?.updatedRange ? 'append' : 'insertDimension+update') : 'unknown',
+      });
+      
+      // 추가된 행의 범위 확인 (수식 복사용)
+      // Google Sheets API append 응답 구조: { data: { updates: { updatedRange: "...", ... } } }
+      if (appendResponse) {
+      const updates = appendResponse.data?.updates;
+      const updatedRangeFromUpdates = updates?.updatedRange;
+      
+      // updatedRange가 없으면 다른 경로 시도
+      const finalUpdatedRange = updatedRangeFromUpdates || appendResponse.data?.updatedRange || appendResponse.updatedRange;
+      
+      if (finalUpdatedRange) {
       // 범위에서 시작 행과 끝 행 추출
       // 형식: '생산일보'!A1803:R1810 또는 A1803:R1810
       // 숫자 부분만 추출: A1803:R1810 -> 1803, 1810
@@ -1559,11 +1709,14 @@ async function runDailyReportsSync({
     } else {
       const updates = appendResponse.data?.updates;
       logger.warn('수식 복사 스킵: finalUpdatedRange를 찾을 수 없음', {
-        finalUpdatedRange,
+        finalUpdatedRange: null,
         hasUpdates: !!updates,
         updatesKeys: updates ? Object.keys(updates) : [],
         appendResponseDataKeys: appendResponse.data ? Object.keys(appendResponse.data) : [],
       });
+    }
+    } else {
+      logger.warn('수식 복사 스킵: appendResponse가 없음 (rowsToAppend가 비어있음)');
     }
   }
   
@@ -1586,70 +1739,79 @@ async function runDailyReportsSync({
   }
 
   // 삭제된 문서 처리: Google Sheets에는 있지만 Firestore에는 없는 행 삭제
+  // 일반 동기화 모드에서는 삭제하지 않음 (전체 동기화 모드에서만 삭제)
   let deleted = 0;
   const rowsToDeleteSet = new Set(); // 중복 제거를 위한 Set
   
-  // Firestore에서 가져온 모든 문서의 키를 Set으로 수집
-  const firestoreKeys = new Set();
-  for (const report of sortedReports) {
-    if (hasMeaningfulValue(report)) {
-      const key = createReportKey(report);
-      firestoreKeys.add(key);
-      
-      // 발주번호가 여러 개인 경우, 각 발주번호별로도 키 추가
-      if (report.orderNumbers && Array.isArray(report.orderNumbers) && report.orderNumbers.length > 0) {
-        report.orderNumbers.forEach(orderNumber => {
-          const singleKey = `${formatWorkDate(report.workDate)}|${normalizeProductionLine(report.productionLine)}|${orderNumber}`;
-          firestoreKeys.add(singleKey);
-        });
+  // 전체 동기화 모드에서만 삭제 로직 실행
+  if (forceFullSync) {
+    // Firestore에서 가져온 모든 문서의 키를 Set으로 수집
+    const firestoreKeys = new Set();
+    for (const report of sortedReports) {
+      if (hasMeaningfulValue(report)) {
+        const key = createReportKey(report);
+        firestoreKeys.add(key);
+        
+        // 발주번호가 여러 개인 경우, 각 발주번호별로도 키 추가
+        if (report.orderNumbers && Array.isArray(report.orderNumbers) && report.orderNumbers.length > 0) {
+          report.orderNumbers.forEach(orderNumber => {
+            const singleKey = `${formatWorkDate(report.workDate)}|${normalizeProductionLine(report.productionLine)}|${orderNumber}`;
+            firestoreKeys.add(singleKey);
+          });
+        }
       }
     }
-  }
-  
-  // Google Sheets에는 있지만 Firestore에는 없는 행 찾기
-  for (const [key, existing] of existingRowsMap.entries()) {
-    if (!firestoreKeys.has(key)) {
-      rowsToDeleteSet.add(existing.rowIndex);
-      deleted += 1;
-    }
-  }
-  
-  // 삭제할 행이 있으면 역순으로 정렬하여 아래부터 삭제 (행 번호가 변경되지 않도록)
-  const rowsToDelete = Array.from(rowsToDeleteSet);
-  if (rowsToDelete.length > 0) {
-    rowsToDelete.sort((a, b) => b - a); // 역순 정렬
     
-    const sheetId = await getSheetId(sheets, spreadsheetId, sheetName);
-    if (sheetId) {
-      const deleteRequests = rowsToDelete.map(rowIndex => ({
-        deleteDimension: {
-          range: {
-            sheetId: sheetId,
-            dimension: 'ROWS',
-            startIndex: rowIndex - 1, // 0-based index (헤더 제외)
-            endIndex: rowIndex, // endIndex는 exclusive
-          },
-        },
-      }));
+    // Google Sheets에는 있지만 Firestore에는 없는 행 찾기
+    for (const [key, existing] of existingRowsMap.entries()) {
+      if (!firestoreKeys.has(key)) {
+        rowsToDeleteSet.add(existing.rowIndex);
+        deleted += 1;
+      }
+    }
+    
+    // 삭제할 행이 있으면 역순으로 정렬하여 아래부터 삭제 (행 번호가 변경되지 않도록)
+    const rowsToDelete = Array.from(rowsToDeleteSet);
+    if (rowsToDelete.length > 0) {
+      rowsToDelete.sort((a, b) => b - a); // 역순 정렬
       
-      // 배치로 삭제 (한 번에 최대 100개까지)
-      const batchSize = 100;
-      for (let i = 0; i < deleteRequests.length; i += batchSize) {
-        const batch = deleteRequests.slice(i, i + batchSize);
-        await sheets.spreadsheets.batchUpdate({
-          spreadsheetId,
-          requestBody: {
-            requests: batch,
+      const sheetId = await getSheetId(sheets, spreadsheetId, sheetName);
+      if (sheetId) {
+        const deleteRequests = rowsToDelete.map(rowIndex => ({
+          deleteDimension: {
+            range: {
+              sheetId: sheetId,
+              dimension: 'ROWS',
+              startIndex: rowIndex - 1, // 0-based index (헤더 제외)
+              endIndex: rowIndex, // endIndex는 exclusive
+            },
           },
+        }));
+        
+        // 배치로 삭제 (한 번에 최대 100개까지)
+        const batchSize = 100;
+        for (let i = 0; i < deleteRequests.length; i += batchSize) {
+          const batch = deleteRequests.slice(i, i + batchSize);
+          await sheets.spreadsheets.batchUpdate({
+            spreadsheetId,
+            requestBody: {
+              requests: batch,
+            },
+          });
+        }
+        
+        logger.info('삭제된 문서에 해당하는 행 삭제 완료:', {
+          deletedCount: rowsToDelete.length,
+          sheetName,
         });
       }
-      
-      logger.info('삭제된 문서에 해당하는 행 삭제 완료:', {
-        deletedCount: rowsToDelete.length,
-        sheetName,
-      });
     }
+  } else {
+    logger.info('일반 동기화 모드: 삭제 로직 건너뜀 (전체 동기화 모드에서만 삭제)');
   }
+  
+  // rowsToDelete 변수를 정렬 로직에서 사용하기 위해 정의
+  const rowsToDelete = Array.from(rowsToDeleteSet);
 
   // sortRange API를 사용하여 수식 보존하면서 정렬
   if (rowsToAppend.length || rowsToUpdate.length || rowsToDelete.length > 0) {
