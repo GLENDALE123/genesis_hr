@@ -31,7 +31,12 @@ import { createDefaultChannelPermissions } from '../utils/permissions';
 import { getAllUsersWithAuthInfo } from '@/shared/services/firebase/userManagement';
 import { DEPARTMENT_OPTIONS } from '@/shared/constants/departments';
 
-const CHANNELS_COLLECTION = 'channels';
+/**
+ * 채널 서브컬렉션 경로 가져오기
+ */
+const getChannelsCollectionPath = (workspaceId: string) => {
+  return `workspaces/${workspaceId}/channels`;
+};
 
 export class ChannelService {
   /**
@@ -57,21 +62,23 @@ export class ChannelService {
       updatedAt: now,
       permissions,
       isArchived: false,
+      viewType: data.viewType || 'message', // 기본값: 'message'
     };
 
     // undefined 필드 제거 (Firestore는 undefined를 허용하지 않음)
     const cleanedData = removeUndefinedFields(channelData);
-    const docRef = await addDoc(collection(db, CHANNELS_COLLECTION), cleanedData);
+    const channelsRef = collection(db, getChannelsCollectionPath(data.workspaceId));
+    const docRef = await addDoc(channelsRef, cleanedData);
     return docRef.id;
   }
 
   /**
    * 채널 조회
    */
-  static async getChannel(channelId: string): Promise<Channel | null> {
+  static async getChannel(channelId: string, workspaceId: string): Promise<Channel | null> {
     if (!db) throw new Error('Firestore is not initialized');
 
-    const docRef = doc(db, CHANNELS_COLLECTION, channelId);
+    const docRef = doc(db, getChannelsCollectionPath(workspaceId), channelId);
     const docSnap = await getDoc(docRef);
 
     if (!docSnap.exists()) {
@@ -93,9 +100,9 @@ export class ChannelService {
   ): Promise<Channel[]> {
     if (!db) throw new Error('Firestore is not initialized');
 
+    // 서브컬렉션에서 직접 조회
     const q = query(
-      collection(db, CHANNELS_COLLECTION),
-      where('workspaceId', '==', workspaceId),
+      collection(db, getChannelsCollectionPath(workspaceId)),
       where('isArchived', '==', includeArchived),
       orderBy('createdAt', 'asc')
     );
@@ -133,11 +140,12 @@ export class ChannelService {
    */
   static async updateChannel(
     channelId: string,
+    workspaceId: string,
     data: UpdateChannelData
   ): Promise<void> {
     if (!db) throw new Error('Firestore is not initialized');
 
-    const docRef = doc(db, CHANNELS_COLLECTION, channelId);
+    const docRef = doc(db, getChannelsCollectionPath(workspaceId), channelId);
     const updateData: any = {
       updatedAt: new Date().toISOString(),
     };
@@ -148,7 +156,7 @@ export class ChannelService {
     if (data.type !== undefined) updateData.type = data.type;
     if (data.category !== undefined) updateData.category = data.category;
     if (data.permissions !== undefined) {
-      const channel = await this.getChannel(channelId);
+      const channel = await this.getChannel(channelId, workspaceId);
       if (channel) {
         updateData.permissions = {
           ...channel.permissions,
@@ -163,10 +171,10 @@ export class ChannelService {
   /**
    * 채널 삭제 (아카이브)
    */
-  static async archiveChannel(channelId: string): Promise<void> {
+  static async archiveChannel(channelId: string, workspaceId: string): Promise<void> {
     if (!db) throw new Error('Firestore is not initialized');
 
-    const docRef = doc(db, CHANNELS_COLLECTION, channelId);
+    const docRef = doc(db, getChannelsCollectionPath(workspaceId), channelId);
     await updateDoc(docRef, {
       isArchived: true,
       archivedAt: new Date().toISOString(),
@@ -177,10 +185,10 @@ export class ChannelService {
   /**
    * 채널 복원
    */
-  static async unarchiveChannel(channelId: string): Promise<void> {
+  static async unarchiveChannel(channelId: string, workspaceId: string): Promise<void> {
     if (!db) throw new Error('Firestore is not initialized');
 
-    const docRef = doc(db, CHANNELS_COLLECTION, channelId);
+    const docRef = doc(db, getChannelsCollectionPath(workspaceId), channelId);
     await updateDoc(docRef, {
       isArchived: false,
       archivedAt: null,
@@ -192,12 +200,13 @@ export class ChannelService {
    * 채널 멤버 추가/제거
    */
   static async updateChannelMembers(
-    data: ChannelMemberUpdate
+    data: ChannelMemberUpdate,
+    workspaceId: string
   ): Promise<void> {
     if (!db) throw new Error('Firestore is not initialized');
 
-    const docRef = doc(db, CHANNELS_COLLECTION, data.channelId);
-    const channel = await this.getChannel(data.channelId);
+    const docRef = doc(db, getChannelsCollectionPath(workspaceId), data.channelId);
+    const channel = await this.getChannel(data.channelId, workspaceId);
 
     if (!channel) {
       throw new Error('Channel not found');
@@ -227,11 +236,12 @@ export class ChannelService {
    */
   static async updateLastMessage(
     channelId: string,
+    workspaceId: string,
     lastMessage: Channel['lastMessage']
   ): Promise<void> {
     if (!db) throw new Error('Firestore is not initialized');
 
-    const docRef = doc(db, CHANNELS_COLLECTION, channelId);
+    const docRef = doc(db, getChannelsCollectionPath(workspaceId), channelId);
     await updateDoc(docRef, {
       lastMessage,
       updatedAt: new Date().toISOString(),
@@ -239,17 +249,65 @@ export class ChannelService {
   }
 
   /**
+   * 채널 삭제
+   * 채널과 모든 서브컬렉션(messages, threads, todos 등)을 삭제합니다.
+   */
+  static async deleteChannel(channelId: string, workspaceId: string): Promise<void> {
+    if (!db) throw new Error('Firestore is not initialized');
+
+    const channelRef = doc(db, getChannelsCollectionPath(workspaceId), channelId);
+    
+    // 채널 존재 확인
+    const channelDoc = await getDoc(channelRef);
+    if (!channelDoc.exists()) {
+      throw new Error('Channel not found');
+    }
+
+    // 배치 작업으로 모든 서브컬렉션 삭제
+    const batch = writeBatch(db);
+
+    // 서브컬렉션 목록
+    const subcollections = [
+      'messages',
+      'threads',
+      'todos',
+      'pinnedMessages',
+      'messageEditHistory',
+    ];
+
+    // 각 서브컬렉션의 모든 문서 삭제
+    for (const subcollectionName of subcollections) {
+      const subcollectionRef = collection(
+        db,
+        `${getChannelsCollectionPath(workspaceId)}/${channelId}/${subcollectionName}`
+      );
+      const subcollectionSnapshot = await getDocs(subcollectionRef);
+      
+      subcollectionSnapshot.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+    }
+
+    // 채널 문서 삭제
+    batch.delete(channelRef);
+
+    // 배치 작업 실행
+    await batch.commit();
+  }
+
+  /**
    * 채널 읽지 않은 메시지 수 업데이트
    */
   static async updateUnreadCount(
     channelId: string,
+    workspaceId: string,
     userId: string,
     count: number
   ): Promise<void> {
     if (!db) throw new Error('Firestore is not initialized');
 
-    const docRef = doc(db, CHANNELS_COLLECTION, channelId);
-    const channel = await this.getChannel(channelId);
+    const docRef = doc(db, getChannelsCollectionPath(workspaceId), channelId);
+    const channel = await this.getChannel(channelId, workspaceId);
 
     if (!channel) {
       throw new Error('Channel not found');
@@ -269,6 +327,7 @@ export class ChannelService {
    */
   static subscribeToChannel(
     channelId: string,
+    workspaceId: string,
     callback: (channel: Channel | null) => void,
     onError?: (error: Error) => void
   ): () => void {
@@ -278,7 +337,7 @@ export class ChannelService {
       return () => {};
     }
 
-    const docRef = doc(db, CHANNELS_COLLECTION, channelId);
+    const docRef = doc(db, getChannelsCollectionPath(workspaceId), channelId);
 
     const unsubscribe = onSnapshot(
       docRef,
@@ -315,9 +374,9 @@ export class ChannelService {
       return () => {};
     }
 
+    // 서브컬렉션에서 직접 구독
     const q = query(
-      collection(db, CHANNELS_COLLECTION),
-      where('workspaceId', '==', workspaceId),
+      collection(db, getChannelsCollectionPath(workspaceId)),
       where('isArchived', '==', includeArchived),
       orderBy('createdAt', 'asc')
     );
@@ -378,12 +437,13 @@ export class ChannelService {
       updatedAt: now,
       permissions: createDefaultChannelPermissions('public'),
       isArchived: false,
+      viewType: 'message',
     };
 
     // undefined 필드 제거 (Firestore는 undefined를 허용하지 않음)
     const cleanedGeneralData = removeUndefinedFields(generalChannelData);
     const generalChannelRef = await addDoc(
-      collection(db, CHANNELS_COLLECTION),
+      collection(db, getChannelsCollectionPath(workspaceId)),
       cleanedGeneralData
     );
     createdChannels.push({
@@ -404,12 +464,13 @@ export class ChannelService {
       updatedAt: now,
       permissions: createDefaultChannelPermissions('public'),
       isArchived: false,
+      viewType: 'message',
     };
 
     // undefined 필드 제거 (Firestore는 undefined를 허용하지 않음)
     const cleanedAnnouncementsData = removeUndefinedFields(announcementsChannelData);
     const announcementsChannelRef = await addDoc(
-      collection(db, CHANNELS_COLLECTION),
+      collection(db, getChannelsCollectionPath(workspaceId)),
       cleanedAnnouncementsData
     );
     createdChannels.push({
@@ -432,12 +493,13 @@ export class ChannelService {
         updatedAt: now,
         permissions: createDefaultChannelPermissions('public'),
         isArchived: false,
+        viewType: 'message',
       };
 
       // undefined 필드 제거 (Firestore는 undefined를 허용하지 않음)
       const cleanedDepartmentData = removeUndefinedFields(departmentChannelData);
       const departmentChannelRef = await addDoc(
-        collection(db, CHANNELS_COLLECTION),
+        collection(db, getChannelsCollectionPath(workspaceId)),
         cleanedDepartmentData
       );
       createdChannels.push({

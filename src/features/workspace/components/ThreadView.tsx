@@ -5,7 +5,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { ThreadService } from '../services/threadService';
-import { ChatMessageComponent } from '@/features/chat/components/ChatMessage';
+import { ChannelMessageComponent } from './ChannelMessage';
 import type { Thread } from '../types/thread.types';
 import { Button } from '@/shared/components/ui/button';
 import { X, CheckCircle2 } from 'lucide-react';
@@ -36,6 +36,8 @@ export const ThreadView: React.FC<ThreadViewProps> = ({
   useEffect(() => {
     const unsubscribe = ThreadService.subscribeToThread(
       threadId,
+      workspaceId,
+      channelId,
       (updatedThread) => {
         setThread(updatedThread);
       },
@@ -47,14 +49,14 @@ export const ThreadView: React.FC<ThreadViewProps> = ({
     return () => {
       unsubscribe();
     };
-  }, [threadId]);
+  }, [threadId, workspaceId, channelId]);
 
   const handleResolve = async () => {
     if (!user?.uid || !thread) return;
 
     setIsResolving(true);
     try {
-      await ThreadService.resolveThread(threadId, user.uid);
+      await ThreadService.resolveThread(threadId, workspaceId, channelId, user.uid);
     } catch (error) {
       console.error('Failed to resolve thread:', error);
     } finally {
@@ -67,7 +69,7 @@ export const ThreadView: React.FC<ThreadViewProps> = ({
 
     setIsResolving(true);
     try {
-      await ThreadService.unresolveThread(threadId);
+      await ThreadService.unresolveThread(threadId, workspaceId, channelId);
     } catch (error) {
       console.error('Failed to unresolve thread:', error);
     } finally {
@@ -134,12 +136,13 @@ export const ThreadView: React.FC<ThreadViewProps> = ({
         <div className="space-y-4">
           {thread.messages.map((message, index) => (
             <div key={message.id} className={cn(index === 0 && 'pb-4 border-b')}>
-              <ChatMessageComponent
+              <ChannelMessageComponent
                 message={message}
                 currentUserId={currentUserId}
                 showAvatar={true}
                 isFirstInGroup={true}
                 isLastInGroup={true}
+                channelMembers={thread.participants}
               />
             </div>
           ))}

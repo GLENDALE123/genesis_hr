@@ -49,7 +49,7 @@ export class MentionService {
     channelId: string,
     workspaceId: string
   ): Promise<string[]> {
-    const channel = await ChannelService.getChannel(channelId);
+    const channel = await ChannelService.getChannel(channelId, workspaceId);
     if (!channel) return [];
 
     // 채널 멤버 중 온라인 사용자만 필터링
@@ -69,8 +69,8 @@ export class MentionService {
    * @channel 멘션 대상 사용자 목록 가져오기
    * 채널의 모든 멤버 반환
    */
-  static async getChannelMentionTargets(channelId: string): Promise<string[]> {
-    const channel = await ChannelService.getChannel(channelId);
+  static async getChannelMentionTargets(channelId: string, workspaceId: string): Promise<string[]> {
+    const channel = await ChannelService.getChannel(channelId, workspaceId);
     if (!channel) return [];
     return channel.members;
   }
@@ -102,7 +102,7 @@ export class MentionService {
         const hereTargets = await this.getHereMentionTargets(channelId, workspaceId);
         hereTargets.forEach((uid) => targetSet.add(uid));
       } else if (mention.type === 'channel') {
-        const channelTargets = await this.getChannelMentionTargets(channelId);
+        const channelTargets = await this.getChannelMentionTargets(channelId, workspaceId);
         channelTargets.forEach((uid) => targetSet.add(uid));
       } else if (mention.type === 'everyone') {
         const everyoneTargets = await this.getEveryoneMentionTargets(workspaceId);

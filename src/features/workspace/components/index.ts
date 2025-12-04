@@ -21,4 +21,8 @@ export * from './KeyboardShortcutsDialog';
 export * from './UserCustomStatusDialog';
 export * from './WorkspaceMessagePage';
 export * from './ReportRequestDialog';
+export * from './ChannelRightSidebar';
+export * from './ChannelSettingsDialog';
+export * from './ChannelMemberManagement';
+export * from './ChannelBoardView';
 export * from './ApprovalManagementPanel';

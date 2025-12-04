@@ -14,7 +14,12 @@ import {
 import { db } from '@/shared/services/firebase/config';
 import { ChannelService } from './channelService';
 
-const CHANNELS_COLLECTION = 'channels';
+/**
+ * 채널 서브컬렉션 경로 가져오기
+ */
+const getChannelsCollectionPath = (workspaceId: string) => {
+  return `workspaces/${workspaceId}/channels`;
+};
 
 export class UnreadMessageService {
   /**
@@ -22,11 +27,12 @@ export class UnreadMessageService {
    */
   static async incrementUnreadCount(
     channelId: string,
+    workspaceId: string,
     userId: string
   ): Promise<void> {
     if (!db) throw new Error('Firestore is not initialized');
 
-    const channelRef = doc(db, CHANNELS_COLLECTION, channelId);
+    const channelRef = doc(db, getChannelsCollectionPath(workspaceId), channelId);
     const unreadPath = `unreadCount.${userId}`;
 
     await updateDoc(channelRef, {
@@ -40,11 +46,12 @@ export class UnreadMessageService {
    */
   static async markChannelAsRead(
     channelId: string,
+    workspaceId: string,
     userId: string
   ): Promise<void> {
     if (!db) throw new Error('Firestore is not initialized');
 
-    const channelRef = doc(db, CHANNELS_COLLECTION, channelId);
+    const channelRef = doc(db, getChannelsCollectionPath(workspaceId), channelId);
     const unreadPath = `unreadCount.${userId}`;
 
     await updateDoc(channelRef, {
@@ -58,9 +65,10 @@ export class UnreadMessageService {
    */
   static async getUnreadCount(
     channelId: string,
+    workspaceId: string,
     userId: string
   ): Promise<number> {
-    const channel = await ChannelService.getChannel(channelId);
+    const channel = await ChannelService.getChannel(channelId, workspaceId);
     if (!channel) return 0;
     return channel.unreadCount?.[userId] || 0;
   }
@@ -87,6 +95,7 @@ export class UnreadMessageService {
    */
   static subscribeToChannelUnreadCount(
     channelId: string,
+    workspaceId: string,
     userId: string,
     callback: (count: number) => void,
     onError?: (error: Error) => void
@@ -97,7 +106,7 @@ export class UnreadMessageService {
       return () => {};
     }
 
-    const channelRef = doc(db, CHANNELS_COLLECTION, channelId);
+    const channelRef = doc(db, getChannelsCollectionPath(workspaceId), channelId);
 
     const unsubscribe = onSnapshot(
       channelRef,

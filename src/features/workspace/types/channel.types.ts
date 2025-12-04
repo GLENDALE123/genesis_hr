@@ -10,6 +10,11 @@ import type { UserRole } from '@/features/auth/types';
 export type ChannelType = 'public' | 'private';
 
 /**
+ * 채널 뷰 타입
+ */
+export type ChannelViewType = 'message' | 'board';
+
+/**
  * 채널 카테고리
  */
 export type ChannelCategory = 'department' | 'project' | 'topic' | 'general';
@@ -75,6 +80,7 @@ export interface Channel {
   permissions: ChannelPermissions;
   isArchived: boolean;
   archivedAt?: string; // ISO string
+  viewType: ChannelViewType; // 채널 뷰 타입 (생성 시 결정, 변경 불가)
 }
 
 /**
@@ -88,6 +94,7 @@ export interface CreateChannelData {
   category?: ChannelCategory;
   memberIds?: string[]; // 초대할 멤버 UID 배열
   permissions?: Partial<ChannelPermissions>;
+  viewType?: ChannelViewType; // 채널 뷰 타입 (기본값: 'message')
 }
 
 /**

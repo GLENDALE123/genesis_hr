@@ -93,7 +93,7 @@ const subNavigationItems: NavItem[] = [
     icon: ROUTE_ICONS['/workspace'],
   },
   {
-    title: '1:1 채팅',
+    title: '다이렉트 메시지',
     href: '/direct-message',
     icon: ROUTE_ICONS['/direct-message'],
   },

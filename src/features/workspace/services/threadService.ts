@@ -19,17 +19,19 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '@/shared/services/firebase/config';
-import { ChatService } from '@/features/chat/services/chatService';
-import { MessageStatus } from '@/features/chat/types/chat.types';
 import type {
   Thread,
   CreateThreadData,
   AddThreadMessageData,
 } from '../types/thread.types';
-import type { ChatMessage } from '@/features/chat/types/chat.types';
+import type { ChannelMessage } from '../types/channelMessage.types';
 
-const THREADS_COLLECTION = 'threads';
-const THREAD_MESSAGES_COLLECTION = 'threadMessages';
+/**
+ * 스레드 서브컬렉션 경로 가져오기
+ */
+const getThreadsCollectionPath = (workspaceId: string, channelId: string) => {
+  return `workspaces/${workspaceId}/channels/${channelId}/threads`;
+};
 
 export class ThreadService {
   /**
@@ -41,11 +43,12 @@ export class ThreadService {
     const now = new Date().toISOString();
     
     // 초기 메시지 생성
-    const initialMessage: ChatMessage = {
+    const initialMessage: ChannelMessage = {
       ...data.initialMessage,
       id: `thread-msg-${Date.now()}`,
+      channelId: data.channelId,
+      workspaceId: data.workspaceId,
       timestamp: now,
-      status: MessageStatus.SENT,
       readBy: [data.initialMessage.sender.uid],
     };
 
@@ -62,17 +65,18 @@ export class ThreadService {
       unreadCount: {},
     };
 
-    const docRef = await addDoc(collection(db, THREADS_COLLECTION), threadData);
+    const threadsRef = collection(db, getThreadsCollectionPath(data.workspaceId, data.channelId));
+    const docRef = await addDoc(threadsRef, threadData);
     return docRef.id;
   }
 
   /**
    * 스레드 조회
    */
-  static async getThread(threadId: string): Promise<Thread | null> {
+  static async getThread(threadId: string, workspaceId: string, channelId: string): Promise<Thread | null> {
     if (!db) throw new Error('Firestore is not initialized');
 
-    const docRef = doc(db, THREADS_COLLECTION, threadId);
+    const docRef = doc(db, getThreadsCollectionPath(workspaceId, channelId), threadId);
     const docSnap = await getDoc(docRef);
 
     if (!docSnap.exists()) {
@@ -88,12 +92,12 @@ export class ThreadService {
   /**
    * 채널의 스레드 목록 조회
    */
-  static async getChannelThreads(channelId: string): Promise<Thread[]> {
+  static async getChannelThreads(channelId: string, workspaceId: string): Promise<Thread[]> {
     if (!db) throw new Error('Firestore is not initialized');
 
+    // 서브컬렉션에서 직접 조회
     const q = query(
-      collection(db, THREADS_COLLECTION),
-      where('channelId', '==', channelId),
+      collection(db, getThreadsCollectionPath(workspaceId, channelId)),
       where('isResolved', '==', false),
       orderBy('updatedAt', 'desc')
     );
@@ -108,11 +112,12 @@ export class ThreadService {
   /**
    * 메시지의 스레드 조회
    */
-  static async getMessageThread(parentMessageId: string): Promise<Thread | null> {
+  static async getMessageThread(parentMessageId: string, workspaceId: string, channelId: string): Promise<Thread | null> {
     if (!db) throw new Error('Firestore is not initialized');
 
+    // 서브컬렉션에서 직접 조회
     const q = query(
-      collection(db, THREADS_COLLECTION),
+      collection(db, getThreadsCollectionPath(workspaceId, channelId)),
       where('parentMessageId', '==', parentMessageId),
       limit(1)
     );
@@ -135,24 +140,25 @@ export class ThreadService {
   static async addThreadMessage(data: AddThreadMessageData): Promise<void> {
     if (!db) throw new Error('Firestore is not initialized');
 
-    const thread = await this.getThread(data.threadId);
+    const thread = await this.getThread(data.threadId, data.workspaceId, data.channelId);
     if (!thread) {
       throw new Error('Thread not found');
     }
 
     const now = new Date().toISOString();
-    const newMessage: ChatMessage = {
+    const newMessage: ChannelMessage = {
       ...data.message,
       id: `thread-msg-${Date.now()}`,
+      channelId: thread.channelId,
+      workspaceId: thread.workspaceId,
       timestamp: now,
-      status: MessageStatus.SENT,
       readBy: [data.message.sender.uid],
     };
 
     const updatedMessages = [...thread.messages, newMessage];
     const updatedParticipants = [...new Set([...thread.participants, data.message.sender.uid])];
 
-    const docRef = doc(db, THREADS_COLLECTION, data.threadId);
+    const docRef = doc(db, getThreadsCollectionPath(data.workspaceId, data.channelId), data.threadId);
     await updateDoc(docRef, {
       messages: updatedMessages,
       participants: updatedParticipants,
@@ -163,10 +169,10 @@ export class ThreadService {
   /**
    * 스레드 해결 표시
    */
-  static async resolveThread(threadId: string, resolvedBy: string): Promise<void> {
+  static async resolveThread(threadId: string, workspaceId: string, channelId: string, resolvedBy: string): Promise<void> {
     if (!db) throw new Error('Firestore is not initialized');
 
-    const docRef = doc(db, THREADS_COLLECTION, threadId);
+    const docRef = doc(db, getThreadsCollectionPath(workspaceId, channelId), threadId);
     await updateDoc(docRef, {
       isResolved: true,
       resolvedBy,
@@ -178,10 +184,10 @@ export class ThreadService {
   /**
    * 스레드 해결 취소
    */
-  static async unresolveThread(threadId: string): Promise<void> {
+  static async unresolveThread(threadId: string, workspaceId: string, channelId: string): Promise<void> {
     if (!db) throw new Error('Firestore is not initialized');
 
-    const docRef = doc(db, THREADS_COLLECTION, threadId);
+    const docRef = doc(db, getThreadsCollectionPath(workspaceId, channelId), threadId);
     await updateDoc(docRef, {
       isResolved: false,
       resolvedBy: null,
@@ -195,13 +201,15 @@ export class ThreadService {
    */
   static async updateUnreadCount(
     threadId: string,
+    workspaceId: string,
+    channelId: string,
     userId: string,
     count: number
   ): Promise<void> {
     if (!db) throw new Error('Firestore is not initialized');
 
-    const docRef = doc(db, THREADS_COLLECTION, threadId);
-    const thread = await this.getThread(threadId);
+    const docRef = doc(db, getThreadsCollectionPath(workspaceId, channelId), threadId);
+    const thread = await this.getThread(threadId, workspaceId, channelId);
 
     if (!thread) {
       throw new Error('Thread not found');
@@ -221,6 +229,7 @@ export class ThreadService {
    */
   static subscribeToChannelThreads(
     channelId: string,
+    workspaceId: string,
     callback: (threads: Thread[]) => void,
     onError?: (error: Error) => void
   ): () => void {
@@ -230,9 +239,9 @@ export class ThreadService {
       return () => {};
     }
 
+    // 서브컬렉션에서 직접 구독
     const q = query(
-      collection(db, THREADS_COLLECTION),
-      where('channelId', '==', channelId),
+      collection(db, getThreadsCollectionPath(workspaceId, channelId)),
       where('isResolved', '==', false),
       orderBy('updatedAt', 'desc')
     );
@@ -262,6 +271,8 @@ export class ThreadService {
    */
   static subscribeToThread(
     threadId: string,
+    workspaceId: string,
+    channelId: string,
     callback: (thread: Thread | null) => void,
     onError?: (error: Error) => void
   ): () => void {
@@ -271,7 +282,7 @@ export class ThreadService {
       return () => {};
     }
 
-    const docRef = doc(db, THREADS_COLLECTION, threadId);
+    const docRef = doc(db, getThreadsCollectionPath(workspaceId, channelId), threadId);
 
     const unsubscribe = onSnapshot(
       docRef,

@@ -1,6 +1,6 @@
 /**
- * 채팅 사이드바 컴포넌트
- * 사용자 목록과 채팅방 목록 탭 전환
+ * 다이렉트 메시지 사이드바 컴포넌트
+ * 사용자 목록과 다이렉트 메시지 방 목록 탭 전환
  */
 
 import React, { useState, useEffect } from 'react';
@@ -69,7 +69,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ className }) => {
         <div className="flex-shrink-0 p-4 border-b">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="users">사용자</TabsTrigger>
-            <TabsTrigger value="rooms">채팅방</TabsTrigger>
+            <TabsTrigger value="rooms">다이렉트 메시지</TabsTrigger>
           </TabsList>
         </div>
         <div className="flex-1 min-h-0 overflow-hidden">

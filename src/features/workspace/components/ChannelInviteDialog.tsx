@@ -96,7 +96,7 @@ export const ChannelInviteDialog: React.FC<ChannelInviteDialogProps> = ({
         channelId: channel.id,
         memberIds: Array.from(selectedUserIds),
         action: 'add',
-      });
+      }, channel.workspaceId);
       onInviteComplete?.();
       onOpenChange(false);
     } catch (error) {

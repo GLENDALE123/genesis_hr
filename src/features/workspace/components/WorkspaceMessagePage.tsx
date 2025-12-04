@@ -33,18 +33,42 @@ const WorkspaceMessagePageClient: React.FC = () => {
   // URL 쿼리 파라미터에서 채널 ID 추출
   const channelId = searchParams?.get('channel') || null;
 
-  // URL에서 채널 ID가 변경되면 채널 설정
+  // URL에서 채널 ID가 변경되면 채널 설정 (URL이 소스)
   useEffect(() => {
-    if (channelId && currentWorkspace) {
-      const channels = useWorkspaceStore.getState().channels[currentWorkspace.id] || [];
-      const channel = channels.find((c) => c.id === channelId);
+    if (!currentWorkspace) return;
+    
+    const channels = useWorkspaceStore.getState().channels[currentWorkspace.id] || [];
+    
+    if (channelId) {
+      // URL에 channelId가 있으면 해당 채널 찾기
+      const channel = channels.find((c) => c.id === channelId && c.workspaceId === currentWorkspace.id);
       if (channel && channel.id !== currentChannel?.id) {
         setCurrentChannel(channel);
+      } else if (!channel && currentChannel?.id === channelId) {
+        // 채널을 찾을 수 없는데 현재 채널이 해당 ID면 null로 설정
+        setCurrentChannel(null);
       }
-    } else if (!channelId && currentChannel) {
-      setCurrentChannel(null);
+    } else {
+      // URL에 channelId가 없으면 현재 채널도 null
+      if (currentChannel) {
+        setCurrentChannel(null);
+      }
     }
-  }, [channelId, currentWorkspace, currentChannel, setCurrentChannel]);
+  }, [channelId, currentWorkspace?.id]); // currentChannel을 dependency에서 제거하여 무한 루프 방지
+
+  // currentChannel이 변경되면 URL 업데이트 (상태가 소스)
+  useEffect(() => {
+    // URL 업데이트는 navigate만 사용하고, replace: true로 무한 루프 방지
+    if (currentChannel) {
+      const newChannelId = currentChannel.id;
+      if (newChannelId !== channelId) {
+        navigate(`/workspace?channel=${newChannelId}`, { replace: true });
+      }
+    } else if (!currentChannel && channelId) {
+      // currentChannel이 null인데 URL에 channelId가 있으면 URL 정리
+      navigate('/workspace', { replace: true });
+    }
+  }, [currentChannel?.id]); // currentChannel.id만 dependency로 사용하여 무한 루프 방지
 
   // 클라이언트 마운트 확인
   useEffect(() => {

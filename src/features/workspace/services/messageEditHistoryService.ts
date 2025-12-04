@@ -5,18 +5,21 @@
 import {
   collection,
   doc,
-  getDoc,
   getDocs,
   addDoc,
   query,
   where,
   orderBy,
-  limit,
 } from 'firebase/firestore';
 import { db } from '@/shared/services/firebase/config';
 import type { MessageEditHistory } from '../types/message.types';
 
-const EDIT_HISTORY_COLLECTION = 'messageEditHistory';
+/**
+ * 편집 히스토리 서브컬렉션 경로 가져오기
+ */
+const getEditHistoryCollectionPath = (workspaceId: string, channelId: string) => {
+  return `workspaces/${workspaceId}/channels/${channelId}/messageEditHistory`;
+};
 
 export class MessageEditHistoryService {
   /**
@@ -24,6 +27,8 @@ export class MessageEditHistoryService {
    */
   static async addEditHistory(
     messageId: string,
+    channelId: string,
+    workspaceId: string,
     editedBy: string,
     previousText: string,
     newText: string
@@ -32,13 +37,16 @@ export class MessageEditHistoryService {
 
     const historyData: Omit<MessageEditHistory, 'id'> = {
       messageId,
+      channelId,
+      workspaceId,
       editedBy,
       editedAt: new Date().toISOString(),
       previousText,
       newText,
     };
 
-    const docRef = await addDoc(collection(db, EDIT_HISTORY_COLLECTION), historyData);
+    const editHistoryRef = collection(db, getEditHistoryCollectionPath(workspaceId, channelId));
+    const docRef = await addDoc(editHistoryRef, historyData);
     return docRef.id;
   }
 
@@ -46,12 +54,14 @@ export class MessageEditHistoryService {
    * 메시지의 편집 히스토리 조회
    */
   static async getMessageEditHistory(
-    messageId: string
+    messageId: string,
+    channelId: string,
+    workspaceId: string
   ): Promise<MessageEditHistory[]> {
     if (!db) throw new Error('Firestore is not initialized');
 
     const q = query(
-      collection(db, EDIT_HISTORY_COLLECTION),
+      collection(db, getEditHistoryCollectionPath(workspaceId, channelId)),
       where('messageId', '==', messageId),
       orderBy('editedAt', 'desc')
     );
@@ -63,4 +73,3 @@ export class MessageEditHistoryService {
     })) as MessageEditHistory[];
   }
 }
-

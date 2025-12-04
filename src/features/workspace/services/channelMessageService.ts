@@ -10,6 +10,7 @@ import {
   getDocs,
   addDoc,
   updateDoc,
+  deleteDoc,
   query,
   where,
   orderBy,
@@ -18,15 +19,20 @@ import {
   arrayUnion,
 } from 'firebase/firestore';
 import { db } from '@/shared/services/firebase/config';
-import { MessageStatus } from '@/features/chat/types/chat.types';
-import type { ChatMessage, MessageAttachment } from '@/features/chat/types/chat.types';
+import type { ChannelMessage, ChannelMessageAttachment } from '../types/channelMessage.types';
 import { MentionService } from './mentionService';
 import { ChannelService } from './channelService';
 
-const CHANNEL_MESSAGES_COLLECTION = 'channelMessages';
 const MESSAGE_PAGINATION = {
   INITIAL_BATCH: 50,
   OLDER_PAGE_SIZE: 30,
+};
+
+/**
+ * 채널 메시지 서브컬렉션 경로 가져오기
+ */
+const getMessagesCollectionPath = (workspaceId: string, channelId: string) => {
+  return `workspaces/${workspaceId}/channels/${channelId}/messages`;
 };
 
 export class ChannelMessageService {
@@ -42,7 +48,7 @@ export class ChannelMessageService {
       displayName: string;
       photoURL?: string;
     },
-    attachments?: MessageAttachment[],
+    attachments?: ChannelMessageAttachment[],
     mentionedUserIds?: string[],
     replyTo?: string
   ): Promise<string> {
@@ -63,42 +69,76 @@ export class ChannelMessageService {
     ].filter((uid, index, self) => self.indexOf(uid) === index); // 중복 제거
 
     const now = new Date().toISOString();
-    const messageData: Omit<ChatMessage, 'id'> = {
-      directMessageRoomId: channelId,
-      chatRoomId: channelId, // 채널 ID를 chatRoomId로 사용
+    const messageData: any = {
+      channelId,
+      workspaceId,
       text,
       sender,
       timestamp: now,
-      status: MessageStatus.SENT,
       readBy: [sender.uid],
-      ...(attachments && attachments.length > 0 && { attachments }),
-      mentionedUserIds: allMentionedUserIds.length > 0 ? allMentionedUserIds : undefined,
-      ...(replyTo && { replyTo }),
     };
 
-    const docRef = await addDoc(
-      collection(db, CHANNEL_MESSAGES_COLLECTION),
-      messageData
-    );
+    // attachments가 있고 길이가 0보다 크면 추가
+    if (attachments && attachments.length > 0) {
+      messageData.attachments = attachments;
+    }
 
-    // 채널의 마지막 메시지 업데이트
-    await ChannelService.updateLastMessage(channelId, {
-      text: text.substring(0, 100),
-      senderId: sender.uid,
-      senderName: sender.displayName,
-      timestamp: now,
-    });
+    // mentionedUserIds가 있고 길이가 0보다 크면 추가 (undefined 방지)
+    if (allMentionedUserIds.length > 0) {
+      messageData.mentionedUserIds = allMentionedUserIds;
+    }
+
+    // replyTo가 있으면 추가
+    if (replyTo) {
+      messageData.replyTo = replyTo;
+    }
+
+    const messagesRef = collection(
+      db,
+      getMessagesCollectionPath(workspaceId, channelId)
+    );
+    const docRef = await addDoc(messagesRef, messageData);
+
+    // 채널의 마지막 메시지 업데이트 (에러가 발생해도 메시지 전송은 성공한 것으로 처리)
+    try {
+      await ChannelService.updateLastMessage(channelId, workspaceId, {
+        text: text.substring(0, 100),
+        senderId: sender.uid,
+        senderName: sender.displayName,
+        timestamp: now,
+      });
+    } catch (error) {
+      // 마지막 메시지 업데이트 실패는 메시지 전송 실패로 처리하지 않음
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('Failed to update last message, but message was sent:', error);
+      }
+    }
 
     // 읽지 않은 메시지 수 업데이트 (보낸 사람 제외한 모든 채널 멤버)
-    const { UnreadMessageService } = await import('./unreadMessageService');
-    const channel = await ChannelService.getChannel(channelId);
-    if (channel) {
-      const otherMembers = channel.members.filter((uid) => uid !== sender.uid);
-      await Promise.all(
-        otherMembers.map((uid) =>
-          UnreadMessageService.incrementUnreadCount(channelId, uid)
-        )
-      );
+    // 에러가 발생해도 메시지 전송은 성공한 것으로 처리
+    try {
+      const { UnreadMessageService } = await import('./unreadMessageService');
+      const channel = await ChannelService.getChannel(channelId, workspaceId);
+      if (channel) {
+        const otherMembers = channel.members.filter((uid) => uid !== sender.uid);
+        // 에러가 발생해도 계속 진행 (비동기로 실행하여 블로킹 방지)
+        Promise.allSettled(
+          otherMembers.map((uid) =>
+            UnreadMessageService.incrementUnreadCount(channelId, uid).catch((err) => {
+              if (process.env.NODE_ENV === 'development') {
+                console.warn(`Failed to increment unread count for user ${uid}:`, err);
+              }
+            })
+          )
+        ).catch(() => {
+          // 에러는 무시하고 계속 진행
+        });
+      }
+    } catch (error) {
+      // 읽지 않은 메시지 수 업데이트 실패는 메시지 전송 실패로 처리하지 않음
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('Failed to update unread count, but message was sent:', error);
+      }
     }
 
     return docRef.id;
@@ -109,40 +149,33 @@ export class ChannelMessageService {
    */
   static async fetchInitialMessages(
     channelId: string,
+    workspaceId: string,
     limitCount: number = MESSAGE_PAGINATION.INITIAL_BATCH
-  ): Promise<ChatMessage[]> {
+  ): Promise<ChannelMessage[]> {
     if (!db) throw new Error('Firestore is not initialized');
 
     try {
-      // 인덱스 문제를 피하기 위해 orderBy 없이 조회 후 클라이언트에서 정렬
+      // 서브컬렉션에서 직접 조회 (인덱스 불필요)
       const q = query(
-        collection(db, CHANNEL_MESSAGES_COLLECTION),
-        where('chatRoomId', '==', channelId),
-        limit(limitCount * 2) // 정렬 후 limit을 적용하기 위해 더 많이 가져옴
+        collection(db, getMessagesCollectionPath(workspaceId, channelId)),
+        orderBy('timestamp', 'desc'),
+        limit(limitCount)
       );
 
       const querySnapshot = await getDocs(q);
-      const messages: ChatMessage[] = [];
+      const messages: ChannelMessage[] = [];
 
       querySnapshot.forEach((doc) => {
         messages.push({
           id: doc.id,
+          channelId,
+          workspaceId,
           ...doc.data(),
-        } as ChatMessage);
+        } as ChannelMessage);
       });
-
-      // 클라이언트에서 시간순으로 정렬 (최신순)
-      messages.sort((a, b) => {
-        const timeA = new Date(a.timestamp).getTime();
-        const timeB = new Date(b.timestamp).getTime();
-        return timeB - timeA; // 내림차순 (최신순)
-      });
-
-      // limit 적용
-      const limitedMessages = messages.slice(0, limitCount);
 
       // 시간순으로 정렬 (오래된 것부터)
-      return limitedMessages.reverse();
+      return messages.reverse();
     } catch (error) {
       console.error('Failed to fetch initial channel messages:', error);
       // 인덱스 에러인 경우 빈 배열 반환
@@ -159,45 +192,35 @@ export class ChannelMessageService {
    */
   static async fetchOlderMessages(
     channelId: string,
+    workspaceId: string,
     beforeTimestamp: string,
     limitCount: number = MESSAGE_PAGINATION.OLDER_PAGE_SIZE
-  ): Promise<ChatMessage[]> {
+  ): Promise<ChannelMessage[]> {
     if (!db) throw new Error('Firestore is not initialized');
 
     try {
-      // 인덱스 문제를 피하기 위해 orderBy 없이 조회 후 클라이언트에서 정렬
+      // 서브컬렉션에서 직접 조회
       const q = query(
-        collection(db, CHANNEL_MESSAGES_COLLECTION),
-        where('chatRoomId', '==', channelId),
-        limit(limitCount * 3) // 정렬 후 필터링하기 위해 더 많이 가져옴
+        collection(db, getMessagesCollectionPath(workspaceId, channelId)),
+        where('timestamp', '<', beforeTimestamp),
+        orderBy('timestamp', 'desc'),
+        limit(limitCount)
       );
 
       const querySnapshot = await getDocs(q);
-      const messages: ChatMessage[] = [];
+      const messages: ChannelMessage[] = [];
 
       querySnapshot.forEach((doc) => {
-        const message = {
+        messages.push({
           id: doc.id,
+          channelId,
+          workspaceId,
           ...doc.data(),
-        } as ChatMessage;
-        
-        // beforeTimestamp 이전의 메시지만 필터링
-        if (new Date(message.timestamp).getTime() < new Date(beforeTimestamp).getTime()) {
-          messages.push(message);
-        }
+        } as ChannelMessage);
       });
 
-      // 클라이언트에서 시간순으로 정렬 (최신순)
-      messages.sort((a, b) => {
-        const timeA = new Date(a.timestamp).getTime();
-        const timeB = new Date(b.timestamp).getTime();
-        return timeB - timeA; // 내림차순 (최신순)
-      });
-
-      // limit 적용
-      const limitedMessages = messages.slice(0, limitCount);
-
-      return limitedMessages.reverse();
+      // 시간순으로 정렬 (오래된 것부터)
+      return messages.reverse();
     } catch (error) {
       console.error('Failed to fetch older channel messages:', error);
       // 인덱스 에러인 경우 빈 배열 반환
@@ -214,7 +237,8 @@ export class ChannelMessageService {
    */
   static subscribeToChannelMessages(
     channelId: string,
-    callback: (messages: ChatMessage[]) => void,
+    workspaceId: string,
+    callback: (messages: ChannelMessage[]) => void,
     onError?: (error: Error) => void,
     limitCount: number = MESSAGE_PAGINATION.INITIAL_BATCH
   ): () => void {
@@ -225,46 +249,32 @@ export class ChannelMessageService {
     }
 
     try {
-      // 인덱스 문제를 피하기 위해 orderBy 없이 조회 후 클라이언트에서 정렬
+      // 서브컬렉션에서 직접 구독
       const q = query(
-        collection(db, CHANNEL_MESSAGES_COLLECTION),
-        where('chatRoomId', '==', channelId),
-        limit(limitCount * 2) // 정렬 후 limit을 적용하기 위해 더 많이 가져옴
+        collection(db, getMessagesCollectionPath(workspaceId, channelId)),
+        orderBy('timestamp', 'desc'),
+        limit(limitCount)
       );
 
       const unsubscribe = onSnapshot(
         q,
         (querySnapshot) => {
-          const messages: ChatMessage[] = [];
+          const messages: ChannelMessage[] = [];
           querySnapshot.forEach((doc) => {
             messages.push({
               id: doc.id,
+              channelId,
+              workspaceId,
               ...doc.data(),
-            } as ChatMessage);
+            } as ChannelMessage);
           });
           
-          // 클라이언트에서 시간순으로 정렬 (최신순)
-          messages.sort((a, b) => {
-            const timeA = new Date(a.timestamp).getTime();
-            const timeB = new Date(b.timestamp).getTime();
-            return timeB - timeA; // 내림차순 (최신순)
-          });
-
-          // limit 적용
-          const limitedMessages = messages.slice(0, limitCount);
-
           // 시간순으로 정렬 (오래된 것부터)
-          callback(limitedMessages.reverse());
+          callback(messages.reverse());
         },
         (error) => {
           console.error('Failed to subscribe to channel messages:', error);
-          // 인덱스 에러인 경우 빈 배열로 콜백 호출
-          if (error instanceof Error && error.message.includes('index')) {
-            console.warn('Firestore index required. Returning empty messages array.');
-            callback([]);
-          } else {
-            onError?.(error);
-          }
+          onError?.(error);
         }
       );
 
@@ -281,23 +291,104 @@ export class ChannelMessageService {
    */
   static async markMessageAsRead(
     channelId: string,
+    workspaceId: string,
     messageId: string,
     userId: string
   ): Promise<void> {
     if (!db) throw new Error('Firestore is not initialized');
 
-    const docRef = doc(db, CHANNEL_MESSAGES_COLLECTION, messageId);
+    const docRef = doc(
+      db,
+      getMessagesCollectionPath(workspaceId, channelId),
+      messageId
+    );
     const messageDoc = await getDoc(docRef);
 
     if (!messageDoc.exists()) {
       throw new Error('Message not found');
     }
 
-    const message = messageDoc.data() as ChatMessage;
+    const message = messageDoc.data() as ChannelMessage;
     if (!message.readBy.includes(userId)) {
       await updateDoc(docRef, {
         readBy: arrayUnion(userId),
       });
+    }
+  }
+
+  /**
+   * 메시지 수정
+   */
+  static async updateMessage(
+    channelId: string,
+    workspaceId: string,
+    messageId: string,
+    text: string
+  ): Promise<void> {
+    if (!db) throw new Error('Firestore is not initialized');
+
+    const docRef = doc(
+      db,
+      getMessagesCollectionPath(workspaceId, channelId),
+      messageId
+    );
+
+    const messageDoc = await getDoc(docRef);
+    if (!messageDoc.exists()) {
+      throw new Error('Message not found');
+    }
+
+    const now = new Date().toISOString();
+    await updateDoc(docRef, {
+      text,
+      editedAt: now,
+    });
+  }
+
+  /**
+   * 메시지 삭제
+   * 메시지와 관련된 스레드, 고정 메시지도 함께 처리해야 함
+   */
+  static async deleteMessage(
+    channelId: string,
+    workspaceId: string,
+    messageId: string
+  ): Promise<void> {
+    if (!db) throw new Error('Firestore is not initialized');
+
+    const docRef = doc(
+      db,
+      getMessagesCollectionPath(workspaceId, channelId),
+      messageId
+    );
+
+    // 메시지 존재 확인
+    const messageDoc = await getDoc(docRef);
+    if (!messageDoc.exists()) {
+      throw new Error('Message not found');
+    }
+
+    // 메시지 삭제
+    await deleteDoc(docRef);
+
+    // 관련된 고정 메시지도 삭제 (PinnedMessageService에서 처리하거나 여기서 처리)
+    try {
+      const { PinnedMessageService } = await import('./pinnedMessageService');
+      const pinnedMessages = await PinnedMessageService.getChannelPinnedMessages(
+        channelId,
+        workspaceId
+      );
+      const pinnedMessage = pinnedMessages.find((p) => p.messageId === messageId);
+      if (pinnedMessage) {
+        await PinnedMessageService.unpinMessage(
+          pinnedMessage.id,
+          channelId,
+          workspaceId
+        );
+      }
+    } catch (error) {
+      // 고정 메시지 삭제 실패는 메시지 삭제 실패로 처리하지 않음
+      console.warn('Failed to delete pinned message:', error);
     }
   }
 }

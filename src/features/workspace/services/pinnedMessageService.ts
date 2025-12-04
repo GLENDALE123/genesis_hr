@@ -13,12 +13,19 @@ import {
   query,
   where,
   orderBy,
+  limit,
   onSnapshot,
 } from 'firebase/firestore';
 import { db } from '@/shared/services/firebase/config';
 import type { PinnedMessage } from '../types/message.types';
+import type { ChannelMessage } from '../types/channelMessage.types';
 
-const PINNED_MESSAGES_COLLECTION = 'pinnedMessages';
+/**
+ * 고정 메시지 서브컬렉션 경로 가져오기
+ */
+const getPinnedMessagesCollectionPath = (workspaceId: string, channelId: string) => {
+  return `workspaces/${workspaceId}/channels/${channelId}/pinnedMessages`;
+};
 
 export class PinnedMessageService {
   /**
@@ -29,12 +36,12 @@ export class PinnedMessageService {
     channelId: string,
     workspaceId: string,
     pinnedBy: string,
-    message: any // ChatMessage 타입
+    message: ChannelMessage
   ): Promise<string> {
     if (!db) throw new Error('Firestore is not initialized');
 
     // 이미 고정된 메시지인지 확인
-    const existing = await this.getPinnedMessage(messageId, channelId);
+    const existing = await this.getPinnedMessage(messageId, channelId, workspaceId);
     if (existing) {
       throw new Error('Message is already pinned');
     }
@@ -49,41 +56,42 @@ export class PinnedMessageService {
       message,
     };
 
-    const docRef = await addDoc(collection(db, PINNED_MESSAGES_COLLECTION), pinnedData);
+    const pinnedMessagesRef = collection(db, getPinnedMessagesCollectionPath(workspaceId, channelId));
+    const docRef = await addDoc(pinnedMessagesRef, pinnedData);
     return docRef.id;
   }
 
   /**
-   * 메시지 고정 해제
+   * 고정된 메시지 고정 해제
    */
-  static async unpinMessage(messageId: string, channelId: string): Promise<void> {
+  static async unpinMessage(
+    pinnedMessageId: string,
+    channelId: string,
+    workspaceId: string
+  ): Promise<void> {
     if (!db) throw new Error('Firestore is not initialized');
 
-    const pinned = await this.getPinnedMessage(messageId, channelId);
-    if (!pinned) {
-      throw new Error('Message is not pinned');
-    }
-
-    const docRef = doc(db, PINNED_MESSAGES_COLLECTION, pinned.id);
+    const docRef = doc(db, getPinnedMessagesCollectionPath(workspaceId, channelId), pinnedMessageId);
     await deleteDoc(docRef);
   }
 
   /**
-   * 고정된 메시지 조회
+   * 특정 메시지가 고정되었는지 확인
    */
   static async getPinnedMessage(
     messageId: string,
-    channelId: string
+    channelId: string,
+    workspaceId: string
   ): Promise<PinnedMessage | null> {
     if (!db) throw new Error('Firestore is not initialized');
 
     const q = query(
-      collection(db, PINNED_MESSAGES_COLLECTION),
+      collection(db, getPinnedMessagesCollectionPath(workspaceId, channelId)),
       where('messageId', '==', messageId),
-      where('channelId', '==', channelId)
+      limit(1)
     );
-
     const querySnapshot = await getDocs(q);
+
     if (querySnapshot.empty) {
       return null;
     }
@@ -96,18 +104,20 @@ export class PinnedMessageService {
   }
 
   /**
-   * 채널의 모든 고정 메시지 조회
+   * 채널의 고정된 메시지 목록 조회
    */
-  static async getChannelPinnedMessages(channelId: string): Promise<PinnedMessage[]> {
+  static async getChannelPinnedMessages(
+    channelId: string,
+    workspaceId: string
+  ): Promise<PinnedMessage[]> {
     if (!db) throw new Error('Firestore is not initialized');
 
     const q = query(
-      collection(db, PINNED_MESSAGES_COLLECTION),
-      where('channelId', '==', channelId),
+      collection(db, getPinnedMessagesCollectionPath(workspaceId, channelId)),
       orderBy('pinnedAt', 'desc')
     );
-
     const querySnapshot = await getDocs(q);
+
     return querySnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
@@ -115,10 +125,11 @@ export class PinnedMessageService {
   }
 
   /**
-   * 채널의 고정 메시지 실시간 구독
+   * 채널의 고정된 메시지 목록 실시간 구독
    */
   static subscribeToChannelPinnedMessages(
     channelId: string,
+    workspaceId: string,
     callback: (pinnedMessages: PinnedMessage[]) => void,
     onError?: (error: Error) => void
   ): () => void {
@@ -129,8 +140,7 @@ export class PinnedMessageService {
     }
 
     const q = query(
-      collection(db, PINNED_MESSAGES_COLLECTION),
-      where('channelId', '==', channelId),
+      collection(db, getPinnedMessagesCollectionPath(workspaceId, channelId)),
       orderBy('pinnedAt', 'desc')
     );
 
@@ -147,6 +157,7 @@ export class PinnedMessageService {
         callback(pinnedMessages);
       },
       (error) => {
+        console.error('Failed to subscribe to pinned messages:', error);
         onError?.(error);
       }
     );
@@ -154,4 +165,3 @@ export class PinnedMessageService {
     return unsubscribe;
   }
 }
-

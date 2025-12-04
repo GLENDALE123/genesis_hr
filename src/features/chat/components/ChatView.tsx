@@ -1,5 +1,5 @@
 /**
- * 채팅 뷰 컴포넌트
+ * 다이렉트 메시지 뷰 컴포넌트
  * 메시지 목록 표시 및 실시간 구독
  */
 
@@ -11,6 +11,7 @@ import { ChatService } from '../services/chatService';
 import { ChatMessageComponent } from './ChatMessage';
 import { ChatAttachmentPreviewBar } from '@/shared/components/common/ChatAttachmentPreviewBar';
 import { ChatComposer } from './ChatComposer';
+import { ChannelMessageComposer } from '@/features/workspace/components/ChannelMessageComposer';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { getUserDisplayName } from '@/shared/utils/userUtils';
 import { MESSAGE_PAGINATION } from '../constants';
@@ -24,14 +25,13 @@ import type {
   PendingUploadProgressPayload,
 } from '../types/pendingUpload.types';
 import { Loader2 } from 'lucide-react';
+import { createVirtuosoComponents } from '@/shared/components/common/VirtuosoComponents';
 import {
   buildCombinedMessages,
   CombinedMessageItem,
   createMessageGroupingMap,
   mergeHistoricalMessages,
 } from '../utils/chatMessageUtils';
-import { ReactionService } from '@/features/workspace/services/reactionService';
-import type { MessageReaction } from '@/features/workspace/types';
 
 export interface ChatViewProps {
   chatRoomId: string;
@@ -84,7 +84,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
   // combinedMessages는 아래에서 정의되므로 초기값은 빈 배열로 설정하고 useEffect에서 동기화합니다.
   const combinedMessagesRef = useRef<CombinedMessageItem[]>([]);
   const isMountedRef = useRef(true);
-  const [messageReactions, setMessageReactions] = useState<Map<string, MessageReaction[]>>(new Map());
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -265,34 +264,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
     [nonPendingMessages]
   );
 
-  // 채널 메시지인 경우 반응 구독
-  useEffect(() => {
-    if (!channelId || !workspaceId || nonPendingMessages.length === 0) return;
-
-    const unsubscribes: (() => void)[] = [];
-
-    nonPendingMessages.forEach((message) => {
-      const unsubscribe = ReactionService.subscribeToMessageReactions(
-        message.id,
-        (reactions) => {
-          setMessageReactions((prev) => {
-            const newMap = new Map(prev);
-            newMap.set(message.id, reactions);
-            return newMap;
-          });
-        },
-        (error) => {
-          console.error(`Error subscribing to reactions for message ${message.id}:`, error);
-        }
-      );
-      unsubscribes.push(unsubscribe);
-    });
-
-    return () => {
-      unsubscribes.forEach((unsub) => unsub());
-    };
-  }, [channelId, workspaceId, nonPendingMessages]);
-
   const handleAtBottomStateChange = useCallback((bottom: boolean) => {
     setIsAtBottom(bottom);
   }, []);
@@ -309,62 +280,18 @@ export const ChatView: React.FC<ChatViewProps> = ({
     []
   );
 
-  const virtuosoComponents = useMemo(() => {
-    const Scroller = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-      ({ className, style, children, ...props }, ref) => (
-        <div
-          {...props}
-          ref={ref}
-          style={style}
-          className={cn('h-full w-full overflow-y-auto', className)}
-          data-chat-virtuoso-scroller
-        >
-          {children}
-        </div>
-      )
-    );
-    Scroller.displayName = 'ChatVirtuosoScroller';
-
-    const List = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-      ({ className, style, children, ...props }, ref) => (
-        <div
-          {...props}
-          ref={ref}
-          style={style}
-          className={cn('py-2 px-0 min-w-0', className)}
-        >
-          {children}
-        </div>
-      )
-    );
-    List.displayName = 'ChatVirtuosoList';
-
-    const Header: React.FC = () => {
-      if (isInitialLoading) {
-        return null;
-      }
-
-      if (isLoadingOlderMessages) {
-        return (
-          <div className="flex justify-center py-2 text-xs text-muted-foreground">
-            이전 메시지를 불러오는 중...
-          </div>
-        );
-      }
-
-      if (!hasMoreOlderMessages) {
-        return (
-          <div className="flex justify-center py-2 text-xs text-muted-foreground">
-            더 이상 이전 메시지가 없습니다
-          </div>
-        );
-      }
-
-      return null;
-    };
-
-    return { Scroller, List, Header };
-  }, [hasMoreOlderMessages, isInitialLoading, isLoadingOlderMessages]);
+  const virtuosoComponents = useMemo(
+    () =>
+      createVirtuosoComponents({
+        isInitialLoading,
+        isLoadingOlderMessages,
+        hasMoreOlderMessages,
+        scrollerDataAttribute: 'chat-virtuoso-scroller',
+        scrollerDisplayName: 'ChatVirtuosoScroller',
+        listDisplayName: 'ChatVirtuosoList',
+      }),
+    [hasMoreOlderMessages, isInitialLoading, isLoadingOlderMessages]
+  );
 
   // 검색 결과 추적 (2글자 이상일 때만)
   useEffect(() => {
@@ -407,83 +334,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
     setIsInitialLoading(true);
 
-    // 채널 메시지인 경우 ChannelMessageService 사용
-    if (channelId && workspaceId) {
-      const fetchAndSubscribe = async () => {
-        try {
-          const { ChannelMessageService } = await import('@/features/workspace/services/channelMessageService');
-          
-          const initialMessages = await ChannelMessageService.fetchInitialMessages(
-            chatRoomId,
-            MESSAGE_PAGINATION.INITIAL_BATCH
-          );
-          
-          if (!isMountedRef.current) return;
-
-          setMessages(chatRoomId, initialMessages);
-          setHasMoreOlderMessages(initialMessages.length === MESSAGE_PAGINATION.INITIAL_BATCH);
-          
-          if (!isMountedRef.current) return;
-
-          const unsub = ChannelMessageService.subscribeToChannelMessages(
-            chatRoomId,
-            async (newMessages) => {
-              if (!isMountedRef.current) return;
-
-              setMessages(chatRoomId, newMessages);
-
-              if (!currentUserId) return;
-              
-              const unreadMessages = newMessages.filter(
-                (msg) => msg.sender.uid !== currentUserId && !msg.readBy.includes(currentUserId)
-              );
-              
-              if (unreadMessages.length > 0) {
-                const markAsReadPromises = unreadMessages.map((msg) =>
-                  ChannelMessageService.markMessageAsRead(chatRoomId, msg.id, currentUserId).catch((markError) => {
-                    if (process.env.NODE_ENV === 'development') {
-                      console.warn(`Failed to mark message ${msg.id} as read:`, markError);
-                    }
-                  })
-                );
-                
-                await Promise.allSettled(markAsReadPromises);
-              }
-            },
-            (error) => {
-              console.error('Failed to subscribe to channel messages:', error);
-            },
-            MESSAGE_PAGINATION.INITIAL_BATCH
-          );
-
-          if (!isMountedRef.current) {
-            unsub();
-            return;
-          }
-
-          unsubscribeFn = unsub;
-          setIsInitialLoading(false);
-        } catch (error) {
-          console.error('Failed to fetch initial channel messages:', error);
-          if (isMountedRef.current) {
-            setIsInitialLoading(false);
-            // 에러 발생 시 빈 메시지 배열 설정
-            setMessages(chatRoomId, []);
-            setHasMoreOlderMessages(false);
-          }
-        }
-      };
-
-      fetchAndSubscribe();
-
-      return () => {
-        if (unsubscribeFn) {
-          unsubscribeFn();
-        }
-      };
-    }
-
-    // 기존 Chat 메시지 (하위 호환성)
     const cached = getCachedMessages(chatRoomId);
     if (cached && cached.length > 0) {
       setMessages(chatRoomId, cached);
@@ -502,6 +352,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
         setCachedMessages(chatRoomId, initialMessages);
         setHasMoreOlderMessages(initialMessages.length === MESSAGE_PAGINATION.INITIAL_BATCH);
         
+        // 초기 로드 후에도 컴포넌트가 여전히 마운트 상태인지 확인 후 구독 시작
         if (!isMountedRef.current) return;
 
         const unsub = ChatService.subscribeToMessages(
@@ -536,6 +387,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
           MESSAGE_PAGINATION.INITIAL_BATCH
         );
 
+        // 구독 함수 반환 직후 언마운트 체크
         if (!isMountedRef.current) {
           unsub();
           return;
@@ -557,7 +409,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
         unsubscribeFn();
       }
     };
-  }, [chatRoomId, currentUserId, setMessages, channelId, workspaceId]);
+  }, [chatRoomId, currentUserId, setMessages]);
   const handleLoadOlderMessages = useCallback(async () => {
     if (isLoadingOlderMessages || !hasMoreOlderMessages) return;
     if (!chatRoomId) return;
@@ -648,6 +500,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
   ) => {
     if (!user || (!text.trim() && (!attachments || attachments.length === 0))) return;
 
+    const tempRoom = temporaryRooms.find((r) => r.id === chatRoomId);
+    
     // 이름+직급 가져오기 (UserList에서 사용하는 방식과 동일)
     const senderDisplayName = getUserDisplayName(
       { displayName: user.displayName, email: user.email },
@@ -656,27 +510,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
     );
 
     try {
-      // 채널 메시지인 경우 ChannelMessageService 사용
-      if (channelId && workspaceId) {
-        const { ChannelMessageService } = await import('@/features/workspace/services/channelMessageService');
-        await ChannelMessageService.sendMessage(
-          channelId,
-          workspaceId,
-          text,
-          {
-            uid: user.uid,
-            displayName: senderDisplayName,
-            photoURL: user.photoURL || undefined,
-          },
-          attachments,
-          mentionedUserIds
-        );
-        return;
-      }
-
-      // 기존 Chat 메시지 (하위 호환성)
-      const tempRoom = temporaryRooms.find((r) => r.id === chatRoomId);
-      
       const result = await ChatService.sendMessage(
         chatRoomId,
         text,
@@ -691,7 +524,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
         tempRoom
       );
 
-      // 임시 채팅방인 경우 저장된 채팅방 ID로 URL 업데이트
+      // 임시 다이렉트 메시지 방인 경우 저장된 방 ID로 URL 업데이트
       if (tempRoom && result.roomId !== chatRoomId) {
         navigate(`/chat?room=${result.roomId}`);
       }
@@ -818,7 +651,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
         {!isInitialLoading ? (
           combinedMessages.length === 0 ? (
             <div className="flex h-full items-center justify-center text-muted-foreground">
-              <p>첫 메시지를 보내 채팅을 시작하세요</p>
+              <p>첫 메시지를 보내 다이렉트 메시지를 시작하세요</p>
             </div>
           ) : (
             <div className="h-full">
@@ -877,24 +710,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
                             : undefined
                         }
                         pendingAttachments={pendingAttachments}
-                        channelId={channelId}
-                        workspaceId={workspaceId}
-                        onThreadClick={onThreadClick}
-                        reactions={channelId && workspaceId ? (messageReactions.get(currentMessage.id) || []) : undefined}
-                        onAddReaction={channelId && workspaceId ? async (messageId, emoji) => {
-                          if (!user?.uid) return;
-                          try {
-                            await ReactionService.addReaction({
-                              messageId,
-                              channelId,
-                              workspaceId,
-                              emoji,
-                              userId: user.uid,
-                            });
-                          } catch (error) {
-                            console.error('Failed to add reaction:', error);
-                          }
-                        } : undefined}
                       />
                     </div>
                   );
@@ -921,21 +736,41 @@ export const ChatView: React.FC<ChatViewProps> = ({
           <div
             className="flex-shrink-0 border-t bg-background p-4 min-w-0 sticky bottom-0 z-10"
           >
-            <ChatComposer
-              onSubmit={handleSendMessage}
-              placeholder="메시지를 입력하세요..."
-              disabled={!user}
-              users={[]} // TODO: 채팅방 참여자 목록 전달
-              currentUserUid={user?.uid}
-              attachments={composerAttachments}
-              onAttachmentsChange={handleAttachmentsChange}
-              uploadFolder={`chat/messages/${chatRoomId}`}
-              onUploadingStateChange={setIsUploadingAttachments}
-              onPendingUploadStart={isUsingExternalPending ? undefined : handlePendingUploadStart}
-              onUploadProgress={isUsingExternalPending ? undefined : handlePendingUploadProgress}
-              onUploadComplete={isUsingExternalPending ? undefined : handlePendingUploadComplete}
-              onUploadError={isUsingExternalPending ? undefined : handlePendingUploadError}
-            />
+            {/* 워크스페이스 채널인 경우 워크스페이스 전용 컴포넌트 사용 */}
+            {channelId && workspaceId ? (
+              <ChannelMessageComposer
+                onSubmit={handleSendMessage}
+                placeholder="메시지를 입력하세요..."
+                disabled={!user}
+                users={[]} // TODO: 채널 멤버 목록 전달
+                currentUserUid={user?.uid}
+                attachments={composerAttachments}
+                onAttachmentsChange={handleAttachmentsChange}
+                uploadFolder={`workspace/messages/${workspaceId}/${channelId}`}
+                onUploadingStateChange={setIsUploadingAttachments}
+                onPendingUploadStart={isUsingExternalPending ? undefined : handlePendingUploadStart}
+                onUploadProgress={isUsingExternalPending ? undefined : handlePendingUploadProgress}
+                onUploadComplete={isUsingExternalPending ? undefined : handlePendingUploadComplete}
+                onUploadError={isUsingExternalPending ? undefined : handlePendingUploadError}
+              />
+            ) : (
+              /* 다이렉트 메시지인 경우 기존 ChatComposer 사용 */
+              <ChatComposer
+                onSubmit={handleSendMessage}
+                placeholder="메시지를 입력하세요..."
+                disabled={!user}
+                users={[]} // TODO: 다이렉트 메시지 방 참여자 목록 전달
+                currentUserUid={user?.uid}
+                attachments={composerAttachments}
+                onAttachmentsChange={handleAttachmentsChange}
+                uploadFolder={`chat/messages/${chatRoomId}`}
+                onUploadingStateChange={setIsUploadingAttachments}
+                onPendingUploadStart={isUsingExternalPending ? undefined : handlePendingUploadStart}
+                onUploadProgress={isUsingExternalPending ? undefined : handlePendingUploadProgress}
+                onUploadComplete={isUsingExternalPending ? undefined : handlePendingUploadComplete}
+                onUploadError={isUsingExternalPending ? undefined : handlePendingUploadError}
+              />
+            )}
           </div>
         </>
       )}

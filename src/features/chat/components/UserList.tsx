@@ -545,7 +545,7 @@ export const UserList: React.FC<UserListProps> = ({ className }) => {
     }
   };
 
-  // 채팅 시작
+  // 다이렉트 메시지 시작
   const handleStartChat = async (userId: string) => {
     if (!currentUser?.uid) return;
 
@@ -553,15 +553,15 @@ export const UserList: React.FC<UserListProps> = ({ className }) => {
     if (!targetUser) return;
 
     try {
-      // 기존 1:1 채팅방 확인
+      // 기존 다이렉트 메시지 방 확인
       const existingRoom = await ChatService.findDirectChatRoom(
         currentUser.uid,
         targetUser.uid
       );
 
       if (existingRoom) {
-        // 기존 채팅방이 있으면 그 채팅방으로 이동
-        // 채팅방 탭으로 전환
+        // 기존 다이렉트 메시지 방이 있으면 그 방으로 이동
+        // 다이렉트 메시지 탭으로 전환
         if (typeof window !== 'undefined') {
           sessionStorage.setItem('chat-sidebar-tab', 'rooms');
           window.dispatchEvent(new Event('chat-sidebar-tab-change'));
@@ -570,7 +570,7 @@ export const UserList: React.FC<UserListProps> = ({ className }) => {
         return;
       }
 
-      // 기존 채팅방이 없으면 임시 채팅방 생성
+      // 기존 다이렉트 메시지 방이 없으면 임시 방 생성
       const tempRoomId = `temp_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
       addTemporaryRoom({
@@ -597,17 +597,17 @@ export const UserList: React.FC<UserListProps> = ({ className }) => {
         createdAt: new Date().toISOString(),
       });
 
-      // 채팅방 탭으로 전환
+      // 다이렉트 메시지 탭으로 전환
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('chat-sidebar-tab', 'rooms');
         window.dispatchEvent(new Event('chat-sidebar-tab-change'));
       }
 
-      // 임시 채팅방으로 이동
+      // 임시 다이렉트 메시지 방으로 이동
       navigate(`/chat?room=${tempRoomId}`);
     } catch (error) {
       console.error('Failed to start chat:', error);
-      // 에러가 발생해도 임시 채팅방으로 이동
+      // 에러가 발생해도 임시 다이렉트 메시지 방으로 이동
       const tempRoomId = `temp_${Date.now()}_${Math.random().toString(36).substring(7)}`;
       addTemporaryRoom({
         id: tempRoomId,

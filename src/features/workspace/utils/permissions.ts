@@ -109,7 +109,7 @@ export const canAccessChannel = (
   userId: string,
   channel: Channel
 ): boolean => {
-  if (channel.type === 'public') return true;
+  if (channel.type === 'public' || channel.type === 'board') return true;
   return channel.members.includes(userId);
 };
 
@@ -128,11 +128,21 @@ export const getUserWorkspaceRole = (
  * 기본 채널 권한 생성
  */
 export const createDefaultChannelPermissions = (
-  type: 'public' | 'private'
+  type: 'public' | 'private' | 'board'
 ): ChannelPermissions => {
   if (type === 'private') {
     return {
       ...DEFAULT_PRIVATE_CHANNEL_PERMISSIONS,
+    };
+  }
+  if (type === 'board') {
+    // 보드뷰는 기본적으로 공개 채널 권한과 동일하지만, 메시지 전송은 불가
+    return {
+      canSendMessages: false,
+      canEditMessages: true,
+      canDeleteMessages: true,
+      canManageChannel: true,
+      canManageMembers: true,
     };
   }
   return {

@@ -3,7 +3,7 @@
  * 디스코드/슬랙 스타일의 워크스페이스 및 채널 목록
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useWorkspaceStore } from '../store/workspaceStore';
 import { WorkspaceService } from '../services/workspaceService';
 import { ChannelService } from '../services/channelService';
@@ -12,7 +12,7 @@ import { useAuthStore } from '@/features/auth/store/authStore';
 import { ChannelList } from './ChannelList';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/shared/components/ui/button';
-import { Plus, Hash, Users, Settings } from 'lucide-react';
+import { Plus, Hash, Users, Settings, ChevronDown, Search, Check } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { WorkspaceSettingsDialog } from './WorkspaceSettingsDialog';
 import {
@@ -23,6 +23,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/shared/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/shared/components/ui/dropdown-menu';
 import { Input } from '@/shared/components/ui/input';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { Label } from '@/shared/components/ui/label';
@@ -45,6 +53,8 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({ className })
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
   const [newWorkspaceDescription, setNewWorkspaceDescription] = useState('');
+  const [isWorkspaceDropdownOpen, setIsWorkspaceDropdownOpen] = useState(false);
+  const [workspaceSearchQuery, setWorkspaceSearchQuery] = useState('');
 
   const navigate = useNavigate();
 
@@ -120,7 +130,7 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({ className })
     return () => {
       unsubscribe();
     };
-  }, [user?.uid, setWorkspaces, setCurrentWorkspace, setIsLoadingWorkspaces, currentWorkspace]);
+  }, [user?.uid, setWorkspaces, setCurrentWorkspace, setIsLoadingWorkspaces]);
 
   // 워크스페이스 선택 시 채널 로드
   useEffect(() => {
@@ -180,6 +190,15 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({ className })
       const newWorkspace = await WorkspaceService.getWorkspace(workspaceId);
       if (newWorkspace) {
         setCurrentWorkspace(newWorkspace);
+        // 첫 번째 채널 자동 선택
+        const channels = await ChannelService.getUserChannels(
+          newWorkspace.id,
+          user.uid
+        );
+        if (channels.length > 0) {
+          const firstChannel = channels[0];
+          navigate(`/workspace?channel=${firstChannel.id}`);
+        }
       }
 
       setIsCreateWorkspaceOpen(false);
@@ -190,103 +209,170 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({ className })
     }
   };
 
+  const handleWorkspaceSelect = (workspace: Workspace) => {
+    setCurrentWorkspace(workspace);
+    setIsWorkspaceDropdownOpen(false);
+    setWorkspaceSearchQuery('');
+    // 첫 번째 채널 자동 선택
+    const channels = useWorkspaceStore.getState().channels[workspace.id] || [];
+    if (channels.length > 0) {
+      const firstChannel = channels[0];
+      navigate(`/workspace?channel=${firstChannel.id}`);
+    }
+  };
+
+  // 워크스페이스 검색 필터링
+  const filteredWorkspaces = useMemo(() => {
+    if (!workspaceSearchQuery.trim()) {
+      return workspaces;
+    }
+    const query = workspaceSearchQuery.toLowerCase();
+    return workspaces.filter(
+      (workspace) =>
+        workspace.name.toLowerCase().includes(query) ||
+        workspace.description?.toLowerCase().includes(query)
+    );
+  }, [workspaces, workspaceSearchQuery]);
+
   return (
     <div className={cn('flex flex-col h-full bg-background border-r border-border', className)}>
-      {/* 워크스페이스 헤더 */}
-      <div className="flex-shrink-0 px-2 py-3 border-b border-border">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-sm font-semibold text-foreground px-2">워크스페이스</h2>
-          <Dialog open={isCreateWorkspaceOpen} onOpenChange={setIsCreateWorkspaceOpen}>
-            <DialogTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-accent rounded"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>새 워크스페이스 생성</DialogTitle>
-                <DialogDescription>
-                  팀 협업을 위한 새로운 워크스페이스를 생성하세요.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="workspace-name">워크스페이스 이름</Label>
-                  <Input
-                    id="workspace-name"
-                    value={newWorkspaceName}
-                    onChange={(e) => setNewWorkspaceName(e.target.value)}
-                    placeholder="예: 개발팀, 프로젝트 A"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="workspace-description">설명 (선택사항)</Label>
-                  <Textarea
-                    id="workspace-description"
-                    value={newWorkspaceDescription}
-                    onChange={(e) => setNewWorkspaceDescription(e.target.value)}
-                    placeholder="워크스페이스에 대한 설명을 입력하세요"
-                    rows={3}
-                  />
-                </div>
-                <Button onClick={handleCreateWorkspace} className="w-full">
-                  생성
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-
-        {/* 워크스페이스 목록 */}
-        <div className="space-y-0.5">
-          {workspaces.map((workspace) => (
-            <div
-              key={workspace.id}
-              className={cn(
-                'group flex items-center gap-1',
-                currentWorkspace?.id === workspace.id && 'bg-accent/50 rounded'
-              )}
+      {/* 워크스페이스 선택 헤더 */}
+      <div className="flex-shrink-0 px-2 py-2 border-b border-border">
+        <DropdownMenu open={isWorkspaceDropdownOpen} onOpenChange={setIsWorkspaceDropdownOpen}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="w-full justify-between h-9 px-2 text-sm font-medium hover:bg-accent"
             >
-              <button
-                onClick={() => setCurrentWorkspace(workspace)}
-                className={cn(
-                  'flex-1 text-left px-2 py-1.5 rounded text-sm font-medium transition-colors',
-                  'hover:bg-accent hover:text-accent-foreground',
-                  currentWorkspace?.id === workspace.id
-                    ? 'bg-accent text-accent-foreground'
-                    : 'text-muted-foreground'
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                {currentWorkspace ? (
+                  <>
+                    {currentWorkspace.icon ? (
+                      <span className="text-base flex-shrink-0">{currentWorkspace.icon}</span>
+                    ) : (
+                      <Users className="h-4 w-4 flex-shrink-0" />
+                    )}
+                    <span className="truncate">{currentWorkspace.name}</span>
+                  </>
+                ) : (
+                  <span className="text-muted-foreground">워크스페이스 선택</span>
                 )}
-              >
-                <div className="flex items-center gap-2">
-                  {workspace.icon ? (
-                    <span className="text-base">{workspace.icon}</span>
-                  ) : (
-                    <Users className="h-4 w-4" />
-                  )}
-                  <span className="truncate">{workspace.name}</span>
-                </div>
-              </button>
-              {currentWorkspace?.id === workspace.id && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={(e) => {
-                    e.stopPropagation();
+              </div>
+              <ChevronDown className="h-4 w-4 flex-shrink-0 ml-2 opacity-50" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-[240px] p-0">
+            <div className="p-2 border-b">
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="워크스페이스 검색..."
+                  value={workspaceSearchQuery}
+                  onChange={(e) => setWorkspaceSearchQuery(e.target.value)}
+                  className="pl-8 h-8 text-sm"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+            </div>
+            <div className="max-h-[300px] overflow-y-auto overflow-x-hidden">
+              <div className="p-1">
+                {filteredWorkspaces.length === 0 ? (
+                  <div className="px-2 py-6 text-center text-sm text-muted-foreground">
+                    {workspaceSearchQuery ? '검색 결과가 없습니다' : '워크스페이스가 없습니다'}
+                  </div>
+                ) : (
+                  filteredWorkspaces.map((workspace) => (
+                    <DropdownMenuItem
+                      key={workspace.id}
+                      onClick={() => handleWorkspaceSelect(workspace)}
+                      className="flex items-center gap-2 px-2 py-2 cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        {workspace.icon ? (
+                          <span className="text-base flex-shrink-0">{workspace.icon}</span>
+                        ) : (
+                          <Users className="h-4 w-4 flex-shrink-0" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate">{workspace.name}</div>
+                          {workspace.description && (
+                            <div className="text-xs text-muted-foreground truncate">
+                              {workspace.description}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      {currentWorkspace?.id === workspace.id && (
+                        <Check className="h-4 w-4 flex-shrink-0 text-primary" />
+                      )}
+                    </DropdownMenuItem>
+                  ))
+                )}
+              </div>
+            </div>
+            <DropdownMenuSeparator />
+            <div className="p-1">
+              <Dialog open={isCreateWorkspaceOpen} onOpenChange={setIsCreateWorkspaceOpen}>
+                <DialogTrigger asChild>
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setIsCreateWorkspaceOpen(true);
+                    }}
+                    className="flex items-center gap-2 px-2 py-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>새 워크스페이스 생성</span>
+                  </DropdownMenuItem>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>새 워크스페이스 생성</DialogTitle>
+                    <DialogDescription>
+                      팀 협업을 위한 새로운 워크스페이스를 생성하세요.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="workspace-name">워크스페이스 이름</Label>
+                      <Input
+                        id="workspace-name"
+                        value={newWorkspaceName}
+                        onChange={(e) => setNewWorkspaceName(e.target.value)}
+                        placeholder="예: 개발팀, 프로젝트 A"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="workspace-description">설명 (선택사항)</Label>
+                      <Textarea
+                        id="workspace-description"
+                        value={newWorkspaceDescription}
+                        onChange={(e) => setNewWorkspaceDescription(e.target.value)}
+                        placeholder="워크스페이스에 대한 설명을 입력하세요"
+                        rows={3}
+                      />
+                    </div>
+                    <Button onClick={handleCreateWorkspace} className="w-full">
+                      생성
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+              {currentWorkspace && (
+                <DropdownMenuItem
+                  onClick={() => {
                     setIsSettingsOpen(true);
+                    setIsWorkspaceDropdownOpen(false);
                   }}
-                  title="워크스페이스 설정"
+                  className="flex items-center gap-2 px-2 py-2"
                 >
-                  <Settings className="h-3.5 w-3.5" />
-                </Button>
+                  <Settings className="h-4 w-4" />
+                  <span>워크스페이스 설정</span>
+                </DropdownMenuItem>
               )}
             </div>
-          ))}
-        </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* 채널 목록 */}

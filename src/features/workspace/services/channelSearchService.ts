@@ -12,9 +12,14 @@ import {
   getDocs,
 } from 'firebase/firestore';
 import { db } from '@/shared/services/firebase/config';
-import type { ChatMessage } from '@/features/chat/types/chat.types';
+import type { ChannelMessage } from '../types/channelMessage.types';
 
-const CHANNEL_MESSAGES_COLLECTION = 'channelMessages';
+/**
+ * 채널 메시지 서브컬렉션 경로 가져오기
+ */
+const getMessagesCollectionPath = (workspaceId: string, channelId: string) => {
+  return `workspaces/${workspaceId}/channels/${channelId}/messages`;
+};
 
 export interface SearchOptions {
   channelId?: string;
@@ -28,7 +33,7 @@ export interface SearchOptions {
 }
 
 export interface SearchResult {
-  message: ChatMessage;
+  message: ChannelMessage;
   channelId: string;
   relevance?: number;
 }
@@ -39,6 +44,8 @@ export class ChannelSearchService {
    */
   static async searchMessages(
     searchQuery: string,
+    workspaceId: string,
+    channelId: string,
     options: SearchOptions = {}
   ): Promise<SearchResult[]> {
     if (!db) throw new Error('Firestore is not initialized');
@@ -49,19 +56,68 @@ export class ChannelSearchService {
     const queryText = searchQuery.toLowerCase().trim();
     const searchLimit = options.limit || 50;
 
-    let q = query(collection(db, CHANNEL_MESSAGES_COLLECTION));
+    let q = query(
+      collection(db, getMessagesCollectionPath(workspaceId, channelId)),
+      orderBy('timestamp', 'desc'),
+      limit(searchLimit)
+    );
 
-    // 채널 필터
-    if (options.channelId) {
-      q = query(q, where('chatRoomId', '==', options.channelId));
-    }
-
-    // 작성자 필터
     if (options.authorId) {
       q = query(q, where('sender.uid', '==', options.authorId));
     }
+    if (options.fromDate) {
+      q = query(q, where('timestamp', '>=', options.fromDate));
+    }
+    if (options.toDate) {
+      q = query(q, where('timestamp', '<=', options.toDate));
+    }
+    if (options.hasFiles) {
+      q = query(q, where('attachments', '!=', []));
+    }
+    if (options.hasMentions) {
+      q = query(q, where('mentionedUserIds', '!=', []));
+    }
 
-    // 날짜 필터
+    const querySnapshot = await getDocs(q);
+    const results: SearchResult[] = [];
+
+    querySnapshot.forEach((doc) => {
+      const message = {
+        id: doc.id,
+        channelId,
+        workspaceId,
+        ...doc.data(),
+      } as ChannelMessage;
+
+      // 텍스트 검색 (클라이언트 사이드 필터링)
+      if (message.text && message.text.toLowerCase().includes(queryText)) {
+        results.push({ message, channelId });
+      }
+    });
+
+    return results;
+  }
+
+  /**
+   * 특정 사용자가 멘션된 메시지 검색
+   */
+  static async searchMentionedMessages(
+    userId: string,
+    workspaceId: string,
+    channelId: string,
+    options: SearchOptions = {}
+  ): Promise<SearchResult[]> {
+    if (!db) throw new Error('Firestore is not initialized');
+
+    const searchLimit = options.limit || 50;
+
+    let q = query(
+      collection(db, getMessagesCollectionPath(workspaceId, channelId)),
+      where('mentionedUserIds', 'array-contains', userId),
+      orderBy('timestamp', 'desc'),
+      limit(searchLimit)
+    );
+
     if (options.fromDate) {
       q = query(q, where('timestamp', '>=', options.fromDate));
     }
@@ -69,104 +125,19 @@ export class ChannelSearchService {
       q = query(q, where('timestamp', '<=', options.toDate));
     }
 
-    // 파일 첨부 필터
-    if (options.hasFiles) {
-      // Firestore에서는 배열 필드가 존재하는지 확인
-      // 실제 구현 시 더 정교한 필터링 필요
-    }
-
-    // 정렬 및 제한
-    q = query(q, orderBy('timestamp', 'desc'), limit(searchLimit));
-
     const querySnapshot = await getDocs(q);
     const results: SearchResult[] = [];
 
     querySnapshot.forEach((doc) => {
       const message = {
         id: doc.id,
+        channelId,
+        workspaceId,
         ...doc.data(),
-      } as ChatMessage;
-
-      // 텍스트 검색 (클라이언트 사이드 필터링)
-      if (message.text && message.text.toLowerCase().includes(queryText)) {
-        // 관련도 계산 (간단한 구현)
-        const relevance = this.calculateRelevance(message.text, queryText);
-        results.push({
-          message,
-          channelId: message.chatRoomId || message.directMessageRoomId || '',
-          relevance,
-        });
-      }
-    });
-
-    // 관련도 순으로 정렬
-    return results.sort((a, b) => (b.relevance || 0) - (a.relevance || 0));
-  }
-
-  /**
-   * 관련도 계산 (간단한 구현)
-   */
-  private static calculateRelevance(text: string, query: string): number {
-    const lowerText = text.toLowerCase();
-    const lowerQuery = query.toLowerCase();
-
-    // 정확한 일치
-    if (lowerText === lowerQuery) return 100;
-
-    // 시작 부분 일치
-    if (lowerText.startsWith(lowerQuery)) return 80;
-
-    // 단어 시작 부분 일치
-    const words = lowerText.split(/\s+/);
-    const queryWords = lowerQuery.split(/\s+/);
-    let wordMatches = 0;
-    queryWords.forEach((qWord) => {
-      if (words.some((word) => word.startsWith(qWord))) {
-        wordMatches++;
-      }
-    });
-    if (wordMatches > 0) {
-      return 60 + wordMatches * 10;
-    }
-
-    // 포함 여부
-    if (lowerText.includes(lowerQuery)) return 40;
-
-    return 0;
-  }
-
-  /**
-   * 멘션된 메시지 검색
-   */
-  static async searchMentionedMessages(
-    userId: string,
-    options: SearchOptions = {}
-  ): Promise<SearchResult[]> {
-    if (!db) throw new Error('Firestore is not initialized');
-
-    let q = query(collection(db, CHANNEL_MESSAGES_COLLECTION));
-
-    if (options.channelId) {
-      q = query(q, where('chatRoomId', '==', options.channelId));
-    }
-
-    // 멘션 필터는 클라이언트 사이드에서 처리 (Firestore 배열 쿼리 제한)
-    q = query(q, orderBy('timestamp', 'desc'), limit(options.limit || 100));
-
-    const querySnapshot = await getDocs(q);
-    const results: SearchResult[] = [];
-
-    querySnapshot.forEach((doc) => {
-      const message = {
-        id: doc.id,
-        ...doc.data(),
-      } as ChatMessage;
+      } as ChannelMessage;
 
       if (message.mentionedUserIds && message.mentionedUserIds.includes(userId)) {
-        results.push({
-          message,
-          channelId: message.chatRoomId || message.directMessageRoomId || '',
-        });
+        results.push({ message, channelId });
       }
     });
 
@@ -177,17 +148,27 @@ export class ChannelSearchService {
    * 파일이 첨부된 메시지 검색
    */
   static async searchMessagesWithFiles(
+    workspaceId: string,
+    channelId: string,
     options: SearchOptions = {}
   ): Promise<SearchResult[]> {
     if (!db) throw new Error('Firestore is not initialized');
 
-    let q = query(collection(db, CHANNEL_MESSAGES_COLLECTION));
+    const searchLimit = options.limit || 50;
 
-    if (options.channelId) {
-      q = query(q, where('chatRoomId', '==', options.channelId));
+    let q = query(
+      collection(db, getMessagesCollectionPath(workspaceId, channelId)),
+      where('attachments', '!=', []),
+      orderBy('timestamp', 'desc'),
+      limit(searchLimit)
+    );
+
+    if (options.fromDate) {
+      q = query(q, where('timestamp', '>=', options.fromDate));
     }
-
-    q = query(q, orderBy('timestamp', 'desc'), limit(options.limit || 100));
+    if (options.toDate) {
+      q = query(q, where('timestamp', '<=', options.toDate));
+    }
 
     const querySnapshot = await getDocs(q);
     const results: SearchResult[] = [];
@@ -195,18 +176,16 @@ export class ChannelSearchService {
     querySnapshot.forEach((doc) => {
       const message = {
         id: doc.id,
+        channelId,
+        workspaceId,
         ...doc.data(),
-      } as ChatMessage;
+      } as ChannelMessage;
 
       if (message.attachments && message.attachments.length > 0) {
-        results.push({
-          message,
-          channelId: message.chatRoomId || message.directMessageRoomId || '',
-        });
+        results.push({ message, channelId });
       }
     });
 
     return results;
   }
 }
-

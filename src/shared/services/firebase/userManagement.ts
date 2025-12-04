@@ -1,5 +1,6 @@
+import { collection, getDocs } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { functions } from './config';
+import { db, functions } from './config';
 import { updateUserProfile } from './userProfile';
 import type { UserRole } from '@/features/auth/types';
 
@@ -7,11 +8,12 @@ import type { UserRole } from '@/features/auth/types';
  * 유저 관리 서비스
  */
 
-// Firebase Auth와 Firestore 정보를 병합한 유저 정보
+// Firestore 정보를 포함한 유저 정보
 export interface UserManagementInfo {
   uid: string;
   email?: string | null;
   displayName?: string | null;
+  name?: string | null;
   photoURL?: string | null;
   phoneNumber?: string | null;
   role: UserRole;
@@ -23,69 +25,51 @@ export interface UserManagementInfo {
 }
 
 /**
- * 모든 유저 목록을 가져옵니다 (Firebase Auth 정보 포함)
- * Firebase Functions를 통해 Firebase Auth에서 displayName, phoneNumber 등을 가져옵니다.
+ * 모든 유저 목록을 Firestore에서 직접 가져옵니다
+ * Firebase Functions를 사용하지 않고 Firestore에서만 조회합니다.
  */
 export const getAllUsersWithAuthInfo = async (): Promise<UserManagementInfo[]> => {
-  if (!functions) {
-    throw new Error('Firebase Functions가 초기화되지 않았습니다.');
+  if (!db) {
+    throw new Error('Firestore가 초기화되지 않았습니다.');
   }
 
   try {
-    const getAllUsers = httpsCallable(functions, 'getAllUsersWithAuthInfo');
-    const result = await getAllUsers();
+    const querySnapshot = await getDocs(collection(db, 'users'));
     
-    const data = result.data as { users: UserManagementInfo[] };
+    // 날짜 필드 안전하게 변환
+    const toDate = (field: unknown): Date | null => {
+      if (!field) return null;
+      if (field instanceof Date) return field;
+      if (typeof (field as { toDate?: () => Date }).toDate === 'function') {
+        return (field as { toDate: () => Date }).toDate();
+      }
+      if (typeof field === 'string') {
+        const date = new Date(field);
+        return isNaN(date.getTime()) ? null : date;
+      }
+      return null;
+    };
     
-    // 날짜 필드를 Date 객체로 변환 (ISO 문자열로 받아서 변환)
-    return data.users.map(user => ({
-      ...user,
-      createdAt: user.createdAt && typeof user.createdAt === 'string' ? (() => {
-        const date = new Date(user.createdAt);
-        return isNaN(date.getTime()) ? null : date;
-      })() : null,
-      updatedAt: user.updatedAt && typeof user.updatedAt === 'string' ? (() => {
-        const date = new Date(user.updatedAt);
-        return isNaN(date.getTime()) ? null : date;
-      })() : null,
-      lastLoginAt: user.lastLoginAt && typeof user.lastLoginAt === 'string' ? (() => {
-        const date = new Date(user.lastLoginAt);
-        return isNaN(date.getTime()) ? null : date;
-      })() : null,
-    }));
+    return querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      
+      return {
+        uid: doc.id,
+        email: data.email || null,
+        displayName: data.displayName || null,
+        name: data.name || null,
+        photoURL: data.photoURL || null,
+        phoneNumber: data.phoneNumber || null,
+        role: (data.role || 'Member') as UserRole,
+        position: data.position || null,
+        department: data.department || null,
+        createdAt: toDate(data.createdAt),
+        updatedAt: toDate(data.updatedAt),
+        lastLoginAt: toDate(data.lastLoginAt),
+      } as UserManagementInfo;
+    });
   } catch (error: unknown) {
     console.error('유저 목록 조회 실패:', error);
-    
-    // Firebase Functions 에러 처리
-    if (error && typeof error === 'object' && 'code' in error) {
-      const firebaseError = error as { code: string; message?: string; details?: unknown };
-      
-      // INTERNAL 에러 (500)인 경우
-      if (firebaseError.code === 'functions/internal' || 
-          firebaseError.code === 'internal' ||
-          firebaseError.message?.includes('INTERNAL')) {
-        const errorMessage = firebaseError.message || '서버 내부 오류가 발생했습니다.';
-        console.error('Firebase Functions INTERNAL 에러:', {
-          code: firebaseError.code,
-          message: firebaseError.message,
-          details: firebaseError.details
-        });
-        throw new Error(`유저 목록 조회 실패: ${errorMessage} 잠시 후 다시 시도해주세요.`);
-      }
-      
-      // 권한 관련 에러인 경우 더 명확한 메시지 제공
-      if (firebaseError.code === 'functions/permission-denied' || 
-          firebaseError.code === 'unauthenticated' ||
-          (firebaseError.message?.includes('Unauthorized') || firebaseError.message?.includes('not found'))) {
-        const errorMessage = firebaseError.message || '권한이 없거나 사용자 프로필을 찾을 수 없습니다.';
-        throw new Error(`유저 목록 조회 실패: ${errorMessage} 계정 설정을 확인해주세요.`);
-      }
-      
-      // 기타 에러
-      throw new Error(`유저 목록 조회 실패: ${firebaseError.message || firebaseError.code}`);
-    }
-    
-    // 일반 에러
     const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.';
     throw new Error(`유저 목록 조회 실패: ${errorMessage}`);
   }

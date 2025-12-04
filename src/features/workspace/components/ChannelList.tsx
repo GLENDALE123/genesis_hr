@@ -52,6 +52,7 @@ export const ChannelList: React.FC<ChannelListProps> = ({ workspaceId }) => {
   const [newChannelDescription, setNewChannelDescription] = useState('');
   const [newChannelType, setNewChannelType] = useState<ChannelType>('public');
   const [newChannelCategory, setNewChannelCategory] = useState<ChannelCategory | 'none'>('none');
+  const [newChannelViewType, setNewChannelViewType] = useState<'message' | 'board'>('message');
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const [bookmarkedChannels, setBookmarkedChannels] = useState<Set<string>>(new Set());
 
@@ -86,6 +87,7 @@ export const ChannelList: React.FC<ChannelListProps> = ({ workspaceId }) => {
     workspaceChannels.forEach((channel) => {
       const unsubscribe = UnreadMessageService.subscribeToChannelUnreadCount(
         channel.id,
+        workspaceId,
         user.uid,
         (count) => {
           setUnreadCounts((prev) => ({
@@ -103,7 +105,7 @@ export const ChannelList: React.FC<ChannelListProps> = ({ workspaceId }) => {
     return () => {
       unsubscribes.forEach((unsub) => unsub());
     };
-  }, [user?.uid, workspaceChannels]);
+  }, [user?.uid, workspaceChannels, workspaceId]);
 
   // 채널을 카테고리별로 그룹화
   const groupedChannels = React.useMemo(() => {
@@ -136,12 +138,13 @@ export const ChannelList: React.FC<ChannelListProps> = ({ workspaceId }) => {
           description: newChannelDescription.trim() || undefined,
           type: newChannelType,
           category: newChannelCategory === 'none' ? undefined : newChannelCategory,
+          viewType: newChannelViewType,
         },
         user.uid
       );
 
       // 생성된 채널로 전환
-      const newChannel = await ChannelService.getChannel(channelId);
+      const newChannel = await ChannelService.getChannel(channelId, workspaceId);
       if (newChannel) {
         setCurrentChannel(newChannel);
         navigate(`/workspace?channel=${channelId}`);
@@ -152,16 +155,18 @@ export const ChannelList: React.FC<ChannelListProps> = ({ workspaceId }) => {
       setNewChannelDescription('');
       setNewChannelType('public');
       setNewChannelCategory('none');
+      setNewChannelViewType('message');
     } catch (error) {
       console.error('Failed to create channel:', error);
     }
   };
 
   const handleChannelClick = (channelId: string) => {
-    const channel = workspaceChannels.find((c) => c.id === channelId);
+    // workspaceId와 channelId를 모두 확인하여 정확한 채널 찾기
+    const channel = workspaceChannels.find((c) => c.id === channelId && c.workspaceId === workspaceId);
     if (channel) {
       setCurrentChannel(channel);
-      navigate(`/workspace?channel=${channelId}`);
+      navigate(`/workspace?channel=${channelId}`, { replace: true });
     }
   };
 
@@ -242,6 +247,24 @@ export const ChannelList: React.FC<ChannelListProps> = ({ workspaceId }) => {
                       <SelectItem value="general">일반</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div>
+                  <Label htmlFor="channel-view-type">뷰 타입</Label>
+                  <Select
+                    value={newChannelViewType}
+                    onValueChange={(value) => setNewChannelViewType(value as 'message' | 'board')}
+                  >
+                    <SelectTrigger id="channel-view-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="message">메시지 뷰</SelectItem>
+                      <SelectItem value="board">보드뷰</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    뷰 타입은 채널 생성 후 변경할 수 없습니다.
+                  </p>
                 </div>
                 <Button onClick={handleCreateChannel} className="w-full">
                   생성

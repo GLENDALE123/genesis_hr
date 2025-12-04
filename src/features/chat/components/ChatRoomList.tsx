@@ -1,5 +1,5 @@
 /**
- * 채팅방 목록 컴포넌트
+ * 다이렉트 메시지 방 목록 컴포넌트
  */
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';

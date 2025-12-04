@@ -71,7 +71,7 @@ export const ROUTE_TITLES: Record<string, string> = {
   '/calendar': '일정 관리',
   '/work-schedule': '근무계획',
   '/workspace': '워크스페이스 (채널)',
-  '/direct-message': '1:1 채팅',
+  '/direct-message': '다이렉트 메시지',
   '/announcements': '공지사항',
   '/notifications': '알림',
   // Legacy routes

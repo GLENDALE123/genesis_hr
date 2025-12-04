@@ -1,8 +1,9 @@
 /**
  * 메시지 관련 확장 타입 정의
+ * 워크스페이스 전용 - 1:1 채팅과 독립적
  */
 
-import type { ChatMessage } from '@/features/chat/types/chat.types';
+import type { ChannelMessage } from './channelMessage.types';
 
 /**
  * 고정된 메시지
@@ -14,7 +15,7 @@ export interface PinnedMessage {
   workspaceId: string;
   pinnedBy: string; // UID
   pinnedAt: string; // ISO string
-  message: ChatMessage;
+  message: ChannelMessage;
 }
 
 /**
@@ -23,6 +24,8 @@ export interface PinnedMessage {
 export interface MessageEditHistory {
   id: string;
   messageId: string;
+  channelId: string; // Added
+  workspaceId: string; // Added
   editedBy: string; // UID
   editedAt: string; // ISO string
   previousText: string;

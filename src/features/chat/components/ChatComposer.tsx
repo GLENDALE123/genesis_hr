@@ -9,7 +9,10 @@ import React, {
 } from 'react';
 import { Button } from '@/shared/components/ui/button';
 import { Avatar, AvatarFallback } from '@/shared/components/ui/avatar';
-import { getUserDisplayName, getUserInitial } from '@/shared/utils/userUtils';
+import { getUserDisplayName } from '@/shared/utils/userUtils';
+import { extractText, extractMentionedUserIds } from '@/shared/utils/mentionUtils';
+import { useMentionInput } from '@/shared/hooks/useMentionInput';
+import { MentionDropdown } from '@/shared/components/common/MentionDropdown';
 import type { UserProfile } from '@/features/auth/types';
 import type { MessageAttachment } from '@/features/chat/types/chat.types';
 import type {
@@ -50,11 +53,6 @@ interface ChatComposerProps {
   onUploadError?: (payload: { id: string; error: Error }) => void;
 }
 
-interface MentionUser {
-  id: string;
-  displayName: string;
-  uid: string;
-}
 
 export interface ChatComposerHandle {
   retryPendingUpload: (pending: PendingUpload) => Promise<void>;
@@ -87,64 +85,34 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(({
   onUploadComplete,
   onUploadError,
 }, ref) => {
-  const [showMentionList, setShowMentionList] = useState(false);
-  const [mentionSearch, setMentionSearch] = useState('');
-  const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
-  const [mentionedUsers, setMentionedUsers] = useState<MentionUser[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [currentText, setCurrentText] = useState('');
 
-  const editorRef = useRef<HTMLDivElement>(null);
-  const mentionListRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<HTMLDivElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+
+  // 멘션 입력 훅 사용
+  const {
+    showMentionList,
+    mentionedUsers,
+    filteredUsers,
+    mentionListRef,
+    selectedMentionIndex,
+    insertMention,
+    handleInput: handleMentionInput,
+    handleKeyDown: handleMentionKeyDown,
+    setMentionedUsers,
+    setShowMentionList,
+  } = useMentionInput({
+    users,
+    currentUserUid,
+    editorRef,
+  });
 
   useEffect(() => {
     onUploadingStateChange?.(isUploading);
   }, [isUploading, onUploadingStateChange]);
-
-  const filteredUsers = users
-    .filter(
-      (user) =>
-        user.uid !== currentUserUid &&
-        (getUserDisplayName(user, null) || '').toLowerCase().includes(mentionSearch.toLowerCase())
-    )
-    .slice(0, 5);
-
-  const extractText = (html: string): string => {
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = html;
-
-    const mentions = tempDiv.querySelectorAll('.mention');
-    mentions.forEach((mention) => {
-      const displayName = mention.getAttribute('data-display-name');
-      const userId = mention.getAttribute('data-user-id');
-      if (displayName && userId) {
-        mention.textContent = `@[${displayName}](${userId})`;
-      } else if (displayName) {
-        mention.textContent = `@${displayName}`;
-      }
-    });
-
-    return tempDiv.textContent || '';
-  };
-
-  const extractMentionedUserIds = (html: string): string[] => {
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = html;
-
-    const mentions = tempDiv.querySelectorAll('.mention');
-    const userIds: string[] = [];
-
-    mentions.forEach((mention) => {
-      const userId = mention.getAttribute('data-user-id');
-      if (userId && !userIds.includes(userId)) {
-        userIds.push(userId);
-      }
-    });
-
-    return userIds;
-  };
 
   const performAttachmentUpload = useCallback(
     async ({
@@ -415,185 +383,17 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(({
     [retryPendingUpload]
   );
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (showMentionList) {
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        setSelectedMentionIndex((prev) =>
-          prev < filteredUsers.length - 1 ? prev + 1 : 0
-        );
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        setSelectedMentionIndex((prev) =>
-          prev > 0 ? prev - 1 : filteredUsers.length - 1
-        );
-      } else if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        if (filteredUsers[selectedMentionIndex]) {
-          insertMention(filteredUsers[selectedMentionIndex]);
-        }
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        setShowMentionList(false);
-        setMentionSearch('');
-      }
-      return;
-    }
-
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit();
-    }
-  };
-
   const handleInput = () => {
     if (!editorRef.current) return;
-
     const html = editorRef.current.innerHTML;
     const textContent = extractText(html);
     setCurrentText(textContent);
-
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
-
-    const range = selection.getRangeAt(0);
-    const textBeforeCursor = range.startContainer.textContent?.slice(0, range.startOffset) || '';
-
-    const mentionMatch = textBeforeCursor.match(/@([^\s]*)$/);
-
-    if (mentionMatch) {
-      setMentionSearch(mentionMatch[1]);
-      setShowMentionList(true);
-      setSelectedMentionIndex(0);
-    } else {
-      setShowMentionList(false);
-      setMentionSearch('');
-    }
+    handleMentionInput();
   };
 
-  const insertMention = (user: UserWithUid) => {
-    if (!editorRef.current) return;
-
-    const selection = window.getSelection();
-    if (!selection || !selection.rangeCount) {
-      editorRef.current.focus();
-      setTimeout(() => {
-        const newSelection = window.getSelection();
-        if (newSelection && newSelection.rangeCount > 0) {
-          insertMentionWithSelection(user, newSelection);
-        }
-      }, 0);
-      return;
-    }
-
-    insertMentionWithSelection(user, selection);
+  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    handleMentionKeyDown(e, handleSubmit);
   };
-
-  const insertMentionWithSelection = (user: UserWithUid, selection: Selection) => {
-    if (!editorRef.current) return;
-
-    const range = selection.getRangeAt(0);
-    const currentNode = range.startContainer;
-
-    if (currentNode.nodeType === Node.TEXT_NODE) {
-      const textContent = currentNode.textContent || '';
-      const cursorPosition = range.startOffset;
-      const textBeforeCursor = textContent.substring(0, cursorPosition);
-      const textAfterCursor = textContent.substring(cursorPosition);
-
-      const mentionMatch = textBeforeCursor.match(/@([^\s]*)$/);
-
-      if (mentionMatch) {
-        const mentionStart = mentionMatch.index ?? textBeforeCursor.length - mentionMatch[0].length;
-        const newTextBefore = textBeforeCursor.substring(0, mentionStart);
-        const newTextAfter = textAfterCursor;
-
-        currentNode.textContent = newTextBefore;
-
-        const mentionSpan = document.createElement('span');
-        mentionSpan.className = 'mention';
-        mentionSpan.setAttribute('contenteditable', 'false');
-        mentionSpan.setAttribute('data-user-id', user.uid || '');
-        mentionSpan.setAttribute('data-display-name', getUserDisplayName(user, null) || '');
-        mentionSpan.textContent = `@${getUserDisplayName(user, null)}`;
-
-        mentionSpan.style.cssText = `
-          color: hsl(var(--primary));
-          font-weight: 500;
-        `;
-
-        if (currentNode.parentNode) {
-          currentNode.parentNode.insertBefore(mentionSpan, currentNode.nextSibling);
-          const spaceNode = document.createTextNode(' ' + newTextAfter);
-          currentNode.parentNode.insertBefore(spaceNode, mentionSpan.nextSibling);
-
-          const newRange = document.createRange();
-          newRange.setStart(spaceNode, 1);
-          newRange.collapse(true);
-
-          selection.removeAllRanges();
-          selection.addRange(newRange);
-        }
-      }
-    }
-
-    const newMentionUser: MentionUser = {
-      id: user.uid || '',
-      displayName: getUserDisplayName(user, null) || '',
-      uid: user.uid || '',
-    };
-
-    if (!mentionedUsers.find((u) => u.id === newMentionUser.id)) {
-      setMentionedUsers((prev) => [...prev, newMentionUser]);
-    }
-
-    setShowMentionList(false);
-    setMentionSearch('');
-    editorRef.current?.focus();
-  };
-
-  // Placeholder 효과 추가
-  useEffect(() => {
-    if (!editorRef.current) return;
-
-    const editor = editorRef.current;
-    const placeholderText = editor.getAttribute('data-placeholder') || '';
-
-    const updatePlaceholder = () => {
-      const isEmpty = editor.textContent?.trim() === '' || editor.textContent === null;
-      const existingPlaceholder = editor.querySelector('.composer-placeholder');
-      
-      if (isEmpty && !existingPlaceholder && placeholderText) {
-        const placeholderEl = document.createElement('span');
-        placeholderEl.className = 'composer-placeholder pointer-events-none absolute left-4 top-2.5 text-muted-foreground/50 text-sm';
-        placeholderEl.textContent = placeholderText;
-        editor.style.position = 'relative';
-        editor.appendChild(placeholderEl);
-      } else if (!isEmpty && existingPlaceholder) {
-        existingPlaceholder.remove();
-      }
-    };
-
-    updatePlaceholder();
-
-    const observer = new MutationObserver(updatePlaceholder);
-    observer.observe(editor, {
-      childList: true,
-      subtree: true,
-      characterData: true,
-    });
-
-    // 입력 이벤트도 감지
-    const handleInput = () => {
-      updatePlaceholder();
-    };
-    editor.addEventListener('input', handleInput);
-
-    return () => {
-      observer.disconnect();
-      editor.removeEventListener('input', handleInput);
-    };
-  }, [placeholder, replyTo]);
 
   useEffect(() => {
     if (replyToUser && editorRef.current) {
@@ -669,19 +469,19 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(({
   };
 
   return (
-    <div className="flex items-end gap-2 px-4 py-3 bg-background border-t border-border">
+    <div className="flex items-end gap-2.5">
       <div className="flex-1 relative">
         {replyTo && onCancelReply && (
-          <div className="mb-2 p-2 bg-muted/50 rounded-md flex items-center justify-between border border-border/50">
+          <div className="mb-2 p-2 bg-muted/50 rounded-md flex items-center justify-between">
             <span className="text-xs text-muted-foreground">@{replyTo}에게 답글</span>
             <Button
               type="button"
               variant="ghost"
               size="sm"
               onClick={onCancelReply}
-              className="h-6 w-6 p-0 hover:bg-muted"
+              className="h-6 w-6 p-0"
             >
-              <X className="h-3 w-3" />
+              <span className="text-xs">✕</span>
             </Button>
           </div>
         )}
@@ -692,55 +492,31 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(({
           </div>
         )}
 
-        <div className="relative">
-          <div
-            ref={editorRef}
-            contentEditable={!disabled && !isUploading}
-            onInput={handleInput}
-            onKeyDown={handleKeyDown}
-            className="w-full min-h-[44px] max-h-[200px] px-4 py-2.5 rounded-lg bg-muted/50 border border-border/50 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring overflow-y-auto resize-none transition-colors hover:bg-muted/70 relative"
-            style={{
-              whiteSpace: 'pre-wrap',
-              wordWrap: 'break-word',
-            }}
-            data-placeholder={replyTo ? `@${replyTo}에게 답글...` : placeholder}
-            suppressContentEditableWarning
-          />
-        </div>
+        <div
+          ref={editorRef}
+          contentEditable={!disabled && !isUploading}
+          onInput={handleInput}
+          onKeyDown={handleKeyDown}
+          className="w-full min-h-[72px] max-h-[300px] p-3 border border-border rounded-md bg-background text-foreground text-lg font-medium focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring overflow-y-auto"
+          style={{
+            whiteSpace: 'pre-wrap',
+            wordWrap: 'break-word',
+          }}
+          data-placeholder={replyTo ? `@${replyTo}에게 답글...` : placeholder}
+          suppressContentEditableWarning
+        />
 
         {showMentionList && filteredUsers.length > 0 && (
-          <div
-            ref={mentionListRef}
-            className="absolute z-50 bottom-full mb-1 w-64 bg-popover border border-border rounded-md shadow-lg overflow-hidden"
-            onMouseDown={(e) => e.preventDefault()}
-          >
-            <div className="max-h-60 overflow-y-auto">
-              {filteredUsers.map((user, index) => (
-                <div
-                  key={user.uid}
-                  onClick={() => insertMention(user)}
-                  className={`flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors ${
-                    index === selectedMentionIndex
-                      ? 'bg-accent text-accent-foreground'
-                      : 'hover:bg-accent/50'
-                  }`}
-                >
-                  <Avatar className="w-6 h-6">
-                    <AvatarFallback className="text-xs bg-muted">
-                      {getUserInitial(user, '?')}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-sm font-medium">
-                    {getUserDisplayName(user, null) || '알 수 없음'}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <MentionDropdown
+            users={filteredUsers}
+            selectedIndex={selectedMentionIndex}
+            onSelect={insertMention}
+            mentionListRef={mentionListRef}
+          />
         )}
 
         <div className="mt-2 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <Button
               type="button"
               size="icon"
@@ -748,9 +524,8 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(({
               onClick={() => imageInputRef.current?.click()}
               disabled={disabled || isUploading}
               aria-label="이미지 첨부"
-              className="h-8 w-8 hover:bg-muted"
             >
-              <ImageIcon className="h-4 w-4" />
+              <ImageIcon className="h-5 w-5" />
             </Button>
             <Button
               type="button"
@@ -761,22 +536,21 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(({
               }}
               disabled={disabled || isUploading}
               aria-label="파일 첨부"
-              className="h-8 w-8 hover:bg-muted"
             >
-              <Paperclip className="h-4 w-4" />
+              <Paperclip className="h-5 w-5" />
             </Button>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             {!disabled &&
               mentionedUsers.map((user) => (
                 <span
                   key={user.id}
-                  className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary"
+                  className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-xs text-primary"
                 >
                   @{user.displayName}
                   <button
                     type="button"
-                    className="text-primary/70 hover:text-primary transition-colors"
+                    className="text-primary/70 hover:text-primary"
                     onClick={() => handleRemoveMention(user.id)}
                   >
                     <X className="h-3 w-3" />
@@ -792,7 +566,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(({
                 isUploading ||
                 (currentText.trim().length === 0 && attachments.length === 0)
               }
-              className="h-8 px-3 text-sm"
             >
               {isUploading ? '업로드 중...' : '전송'}
             </Button>

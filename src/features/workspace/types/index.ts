@@ -7,4 +7,5 @@ export * from './channel.types';
 export * from './thread.types';
 export * from './reaction.types';
 export * from './message.types';
+export * from './channelMessage.types';
 

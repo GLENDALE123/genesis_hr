@@ -6,10 +6,14 @@
 import React, { useState, useEffect } from 'react';
 import { ThreadService } from '../services/threadService';
 import { UnreadMessageService } from '../services/unreadMessageService';
-import { ChatView } from '@/features/chat/components/ChatView';
+import { ChannelService } from '../services/channelService';
+import { ChannelMessageView } from './ChannelMessageView';
+import { ChannelBoardView } from './ChannelBoardView';
 import { ThreadView } from './ThreadView';
 import { ChannelHeader } from './ChannelHeader';
+import { ChannelRightSidebar } from './ChannelRightSidebar';
 import { useAuthStore } from '@/features/auth/store/authStore';
+import { useWorkspaceStore } from '../store/workspaceStore';
 import { cn } from '@/shared/lib/utils';
 import type { Channel } from '../types/channel.types';
 import type { Thread } from '../types/thread.types';
@@ -22,10 +26,11 @@ export const ChannelView: React.FC<ChannelViewProps> = ({ channel }) => {
   const { user } = useAuthStore();
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
+  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
 
   const handleThreadClick = async (messageId: string) => {
     try {
-      const thread = await ThreadService.getMessageThread(messageId);
+      const thread = await ThreadService.getMessageThread(messageId, channel.workspaceId, channel.id);
       if (thread) {
         setSelectedThreadId(thread.id);
         setSelectedThread(thread);
@@ -50,7 +55,7 @@ export const ChannelView: React.FC<ChannelViewProps> = ({ channel }) => {
     // 채널을 열었을 때 읽음 처리
     const markAsRead = async () => {
       try {
-        await UnreadMessageService.markChannelAsRead(channel.id, user.uid);
+        await UnreadMessageService.markChannelAsRead(channel.id, channel.workspaceId, user.uid);
       } catch (error) {
         console.error('Failed to mark channel as read:', error);
       }
@@ -70,19 +75,26 @@ export const ChannelView: React.FC<ChannelViewProps> = ({ channel }) => {
   return (
     <div className="flex h-full w-full">
       {/* 메인 채널 뷰 */}
-      <div className={cn('flex-1 min-w-0 w-full flex flex-col', selectedThreadId && 'border-r')}>
+      <div className={cn('flex-1 min-w-0 w-full flex flex-col', (selectedThreadId || isRightSidebarOpen) && 'border-r')}>
         {/* 채널 헤더 */}
-        <ChannelHeader channel={channel} />
-        {/* 메시지 뷰 */}
+        <ChannelHeader 
+          channel={channel} 
+          onRightSidebarToggle={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
+        />
+        {/* 메시지 뷰 또는 보드뷰 */}
         <div className="flex-1 min-h-0">
-          <ChatView
-            chatRoomId={channel.id}
-            currentUserId={user.uid}
-            hideInput={false}
-            channelId={channel.id}
-            workspaceId={channel.workspaceId}
-            onThreadClick={handleThreadClick}
-          />
+          {channel.viewType === 'board' ? (
+            <ChannelBoardView channel={channel} />
+          ) : (
+            <ChannelMessageView
+              channelId={channel.id}
+              workspaceId={channel.workspaceId}
+              currentUserId={user.uid}
+              hideInput={false}
+              onThreadClick={handleThreadClick}
+              channel={channel}
+            />
+          )}
         </div>
       </div>
 
@@ -96,6 +108,38 @@ export const ChannelView: React.FC<ChannelViewProps> = ({ channel }) => {
             parentMessageId={selectedThread.parentMessageId}
             onClose={handleCloseThread}
             currentUserId={user.uid}
+          />
+        </div>
+      )}
+
+      {/* 채널 우측 사이드바 */}
+      {isRightSidebarOpen && (
+        <div className="w-64 flex-shrink-0 border-l">
+          <ChannelRightSidebar
+            channel={channel}
+            open={isRightSidebarOpen}
+            onOpenChange={setIsRightSidebarOpen}
+            onChannelUpdate={async (updatedChannel) => {
+              // 채널 업데이트 시 채널 목록 새로고침
+              const { setChannels } = useWorkspaceStore.getState();
+              const channels = await ChannelService.getUserChannels(
+                channel.workspaceId,
+                user.uid
+              );
+              setChannels(channel.workspaceId, channels);
+            }}
+            onChannelDelete={async (deletedChannelId) => {
+              // 채널 삭제 시 채널 목록 새로고침 및 현재 채널 초기화
+              const { setChannels, setCurrentChannel } = useWorkspaceStore.getState();
+              const channels = await ChannelService.getUserChannels(
+                channel.workspaceId,
+                user.uid
+              );
+              setChannels(channel.workspaceId, channels);
+              if (deletedChannelId === channel.id) {
+                setCurrentChannel(null);
+              }
+            }}
           />
         </div>
       )}

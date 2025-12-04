@@ -17,6 +17,8 @@ import SampleCenterRequestsPage from '../pages/SampleCenterRequestsPage';
 import JigManagementPage from '../pages/JigManagementPage';
 import JigMasterListPage from '../pages/JigMasterListPage';
 import MessagePage from '../pages/MessagePage';
+import { WorkspaceMessagePage } from '@/features/workspace/components/WorkspaceMessagePage';
+import AllTodosPage from '../pages/AllTodosPage';
 
 export const routes = (
   <Routes>
@@ -27,10 +29,15 @@ export const routes = (
     <Route path="/work-schedule" element={<WorkSchedulePage />} />
     <Route path="/settings" element={<SettingsPage />} />
     
-    {/* Workspace/Direct Message Routes */}
-    <Route path="/workspace" element={<MessagePage />} />
-    {/* Direct Message (1:1 채팅) - /workspace?mode=direct-message 으로 접근 */}
+    {/* Workspace Routes */}
+    <Route path="/workspace" element={<WorkspaceMessagePage />} />
+    
+    {/* Direct Message Routes (다이렉트 메시지) */}
     <Route path="/direct-message" element={<MessagePage />} />
+    
+    {/* Todos Route */}
+    <Route path="/todos" element={<AllTodosPage />} />
+    
     {/* Legacy routes - 리다이렉트용 */}
     <Route path="/messages" element={<MessagePage />} />
     <Route path="/chat" element={<MessagePage />} />
