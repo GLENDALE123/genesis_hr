@@ -6,10 +6,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useWorkspaceStore } from '../store/workspaceStore';
 import { WorkspaceService } from '../services/workspaceService';
-import { ChannelService } from '../services/channelService';
+import { ChannelService, ChannelList } from '../channels';
 import type { Workspace } from '../types/workspace.types';
 import { useAuthStore } from '@/features/auth/store/authStore';
-import { ChannelList } from './ChannelList';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/shared/components/ui/button';
 import { Plus, Hash, Users, Settings, ChevronDown, Search, Check } from 'lucide-react';
@@ -379,32 +378,6 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({ className })
       {currentWorkspace && (
         <div className="flex-1 min-h-0 overflow-hidden">
           <ChannelList workspaceId={currentWorkspace.id} />
-        </div>
-      )}
-
-      {/* 사용자 정보 */}
-      {user && (
-        <div className="flex-shrink-0 px-2 py-2 border-t border-border bg-muted/50">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-sm font-medium text-primary-foreground">
-              {user.displayName?.charAt(0) || user.email?.charAt(0) || 'U'}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium truncate text-foreground">
-                {user.displayName || user.email || '사용자'}
-              </div>
-              <div className="text-xs text-muted-foreground truncate">
-                {user.email}
-              </div>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-accent rounded"
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
-          </div>
         </div>
       )}
 

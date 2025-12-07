@@ -1,4 +1,4 @@
-import React, {
+﻿import React, {
   useState,
   useRef,
   useEffect,
@@ -9,7 +9,7 @@ import React, {
 } from 'react';
 import { Button } from '@/shared/components/ui/button';
 import { Avatar, AvatarFallback } from '@/shared/components/ui/avatar';
-import { getUserDisplayName } from '@/shared/utils/userUtils';
+import { getUserDisplayName } from '@/shared/utils/user/userUtils';
 import { extractText, extractMentionedUserIds } from '@/shared/utils/mentionUtils';
 import { useMentionInput } from '@/shared/hooks/useMentionInput';
 import { MentionDropdown } from '@/shared/components/common/MentionDropdown';

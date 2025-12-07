@@ -1,4 +1,4 @@
-import React, { useEffect, useState, Suspense, useCallback } from 'react';
+﻿import React, { useEffect, useState, Suspense, useCallback } from 'react';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/shared/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
@@ -23,8 +23,8 @@ import { IssueItem } from '@/features/quality/types';
 import { addIssueItem, deleteQualityIssue, updateProcessedQuantity } from '@/features/quality/services/qualityIssueService';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/features/auth/store/authStore';
-import { getUserDisplayName } from '@/shared/utils/userUtils';
-import { ProtectedRoute } from '@/shared/components/auth';
+import { getUserDisplayName } from '@/shared/utils/user/userUtils';
+import { ProtectedRoute } from '@/features/auth';
 
 function QualityIssuesPageContent() {
   const { issues, isLoading, error, searchTerm, setSearchTerm, setStatusFilter, statusFilter, stats } = useQualityIssues();

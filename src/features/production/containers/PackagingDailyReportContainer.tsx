@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/shared/components/ui/button';
 import { 
@@ -49,8 +49,8 @@ import {
 import { useCanSyncDailyReports } from '@/features/auth/hooks';
 import { PackagingReport, PackagingFormData, ShortageRequest } from '@/features/production/types';
 import { toast } from 'sonner';
-import { getFirebaseErrorMessage } from '@/shared/utils/firebaseErrorHandler';
-import { getUserDisplayName, isAdmin } from '@/shared/utils/userUtils';
+import { getFirebaseErrorMessage } from '@/shared/utils/firebase/firebaseErrorHandler';
+import { getUserDisplayName, isAdmin } from '@/shared/utils/user/userUtils';
 import { syncDailyReportsToSheets, type SyncDailyReportsResult } from '@/shared/services/google/sheetsService';
 import {
   createShortageRequest,

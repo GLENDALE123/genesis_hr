@@ -2,10 +2,10 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { PackagingReport, PackagingFormData } from '@/features/production/types';
 import { PackagingReportsService } from '@/features/production/services/packagingReportsService';
 import { waitForFirebaseInit } from '@/shared/services/firebase/config';
-import { getUserDisplayName } from '@/shared/utils/userUtils';
+import { getUserDisplayName } from '@/shared/utils/user/userUtils';
 import { usePackagingReportsStore } from '@/features/production/store/packagingReportsStore';
 import { useAuthStore } from '@/features/auth/store/authStore';
-import { getLocalDateString } from '@/shared/utils/dateUtils';
+import { getLocalDateString } from '@/shared/utils/date/dateUtils';
 
 /**
  * Packaging Reports 데이터를 관리하는 커스텀 훅

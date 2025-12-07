@@ -1,8 +1,8 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { createQualityIssue, updateQualityIssue } from '../services/qualityIssueService';
 import { QualityIssueFormData, QualityIssue } from '../types';
 import { useAuthStore } from '@/features/auth/store/authStore';
-import { getUserDisplayName } from '@/shared/utils/userUtils';
+import { getUserDisplayName } from '@/shared/utils/user/userUtils';
 import { toast } from 'sonner';
 
 export const useQualityIssueForm = () => {

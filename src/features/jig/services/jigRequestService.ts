@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 지그 요청 서비스
  */
 
@@ -17,7 +17,7 @@ import { auth } from '@/shared/services/firebase/config';
 import { JigRequest, CreateJigRequestData, UpdateJigRequestData, HistoryEntry, JigComment, JigStatus } from '../types';
 import { JIG_COLLECTIONS, JIG_STORAGE_PATHS } from '../constants';
 import { generateJigRequestId } from '../utils';
-import { UnifiedNotificationService } from '@/shared/services/notificationService';
+import { UnifiedNotificationService } from '@/shared/services/notifications/notificationService';
 
 // undefined 값을 null로 변환하는 유틸리티 함수
 const cleanUndefinedValues = (obj: any): any => {

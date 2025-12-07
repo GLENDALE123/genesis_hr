@@ -4,25 +4,14 @@
 
 export * from './WorkspaceSidebar';
 export * from './WorkspaceSettingsDialog';
-export * from './ChannelList';
-export * from './ChannelView';
-export * from './ChannelHeader';
-export * from './ChannelSearchDialog';
-export * from './ChannelNotificationSettings';
-export * from './ChannelInviteDialog';
-export * from './MessageEditHistoryDialog';
-export * from './MessageEditDialog';
-export * from './ThreadView';
-export * from './ReactionPicker';
-export * from './EmojiPicker';
-export * from './UserProfileCard';
+// Channel 관련 컴포넌트는 channels 서브모듈로 이동
+// ChannelList, ChannelView, ChannelHeader, ChannelSearchDialog, ChannelNotificationSettings,
+// ChannelInviteDialog, ChannelRightSidebar, ChannelSettingsDialog, ChannelMemberManagement,
+// ChannelBoardView는 channels 서브모듈에서 export
+// UserProfileCard와 UserCustomStatusDialog는 members 서브모듈로 이동
 export * from './UrlPreview';
 export * from './KeyboardShortcutsDialog';
-export * from './UserCustomStatusDialog';
 export * from './WorkspaceMessagePage';
-export * from './ReportRequestDialog';
-export * from './ChannelRightSidebar';
-export * from './ChannelSettingsDialog';
-export * from './ChannelMemberManagement';
-export * from './ChannelBoardView';
-export * from './ApprovalManagementPanel';
+// Approval 관련 컴포넌트는 approvals 서브모듈로 이동
+// ReportRequestDialog, ApprovalManagementPanel, ReimbursementAdvanceManagementPanel,
+// ReimbursementAdvanceRequestDialog는 approvals 서브모듈에서 export

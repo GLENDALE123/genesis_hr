@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { WorkScheduleService } from '../services/workScheduleService';
 import { WorkType, WORK_TYPES } from '../types';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/features/auth';
-import { getUserDisplayName } from '@/shared/utils/userUtils';
+import { getUserDisplayName } from '@/shared/utils/user/userUtils';
 
 export const useScheduleActions = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);

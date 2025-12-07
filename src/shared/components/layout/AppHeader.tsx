@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { Button } from '@/shared/components/ui/button';
@@ -37,7 +37,7 @@ import {
 import { useTheme } from 'next-themes';
 import { logout } from '@/shared/services/firebase';
 import { cn } from '@/shared/lib/utils';
-import { getUserDisplayName, getUserInitial, getUserRoleText } from '@/shared/utils/userUtils';
+import { getUserDisplayName, getUserInitial, getUserRoleText } from '@/shared/utils/user/userUtils';
 import { toast } from 'sonner';
 import { getRouteIcon, getRouteTitle } from '@/shared/constants/navigation';
 import { useNotifications } from '@/shared/hooks/useNotifications';

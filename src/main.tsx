@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { HashRouter, BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './globals.css';
-import { applyGlobalScrollbarStyles } from './shared/utils/scrollbar';
+import { applyGlobalScrollbarStyles } from './shared/utils/ui/scrollbar';
 
 // Electron 환경 감지 (window.electron이 있거나 file: 프로토콜인 경우)
 const isElectron = (window as any).electron || window.location.protocol === 'file:';

@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { PackagingReport, ProductionReportFilter } from '@/features/production/types';
-import { getLocalDateString } from '@/shared/utils/dateUtils';
+import { getLocalDateString } from '@/shared/utils/date/dateUtils';
 
 /**
  * 생산일보 필터링, 검색, 요약 계산 훅

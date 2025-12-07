@@ -1,5 +1,5 @@
 import { AnnouncementContainer } from '@/features/announcements';
-import { ProtectedRoute } from '@/shared/components/auth';
+import { ProtectedRoute } from '@/features/auth';
 
 export default function AnnouncementsPage() {
   return (

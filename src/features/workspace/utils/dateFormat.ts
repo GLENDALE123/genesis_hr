@@ -62,4 +62,30 @@ export function formatChannelMessageTime(date: Date | string): string {
   return `${ampm} ${displayHours}:${displayMinutes}`;
 }
 
+/**
+ * 게시글 작성날짜 포맷
+ * - "오늘", "어제" 같은 상대적 표현 제거
+ * - 항상 월, 일, 시간 형식으로 표시
+ * - 올해: "MM월 DD일 오전/오후 HH:MM"
+ * - 작년 이전: "YYYY년 MM월 DD일 오전/오후 HH:MM"
+ */
+export function formatPostDateTime(date: Date | string): string {
+  const messageDate = typeof date === 'string' ? new Date(date) : date;
+  const now = new Date();
+  const timeStr = formatChannelMessageTime(messageDate);
+  
+  const year = messageDate.getFullYear();
+  const month = messageDate.getMonth() + 1;
+  const day = messageDate.getDate();
+  
+  // 올해
+  if (year === now.getFullYear()) {
+    return `${month}월 ${day}일 ${timeStr}`;
+  }
+  
+  // 작년 이전
+  return `${year}년 ${month}월 ${day}일 ${timeStr}`;
+}
+
+
 

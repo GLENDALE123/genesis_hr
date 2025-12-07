@@ -6,7 +6,7 @@ import { ConditionalLayout } from '@/shared/components/layout';
 import { ClientThemeProvider, NetworkStatusProvider, NotificationContainer, NotificationProviderWrapper, ElectronNavigationHandler, FontSizeProvider, UpdateNotificationContainer } from '@/shared/components/common';
 import { ErrorBoundary } from '@/shared/components/common/ErrorBoundary';
 import { AppStateProvider } from '@/shared/components/layout/AppStateProvider';
-import { useStorageOptimizer } from '@/shared/utils/storageOptimizer';
+import { useStorageOptimizer } from '@/shared/utils/cache/storageOptimizer';
 
 function AppContent() {
   // localStorage 자동 정리 활성화

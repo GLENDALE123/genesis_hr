@@ -6,8 +6,8 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import type {
   Workspace,
-  Channel,
 } from '../types';
+import type { Channel } from '../channels';
 
 interface WorkspaceState {
   // 현재 워크스페이스

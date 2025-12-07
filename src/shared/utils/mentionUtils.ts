@@ -56,8 +56,8 @@ export const extractMentionedUserIds = (html: string): string[] => {
 export const filterUsersForMention = <T extends { uid?: string }>(
   users: T[],
   searchQuery: string,
-  currentUserUid?: string,
-  getDisplayName: (user: T) => string | undefined
+  getDisplayName: (user: T) => string | undefined,
+  currentUserUid?: string
 ): T[] => {
   return users
     .filter(user => 

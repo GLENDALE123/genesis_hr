@@ -16,13 +16,10 @@ import {
 } from '@/shared/components/ui/dialog';
 import { Plus, Loader2, Check, X, CheckCircle2, Hash } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/store/authStore';
-import { TodoService } from '@/features/workspace/services/todoService';
+import { TodoService, TodoItem, TodoForm, TodoFilter } from '@/features/workspace/todos';
+import type { Todo, UpdateTodoData, TodoFilterOptions } from '@/features/workspace/todos';
 import { getAllUsersWithAuthInfo } from '@/shared/services/firebase/userManagement';
-import { TodoItem } from '@/features/workspace/components/TodoItem';
-import { TodoForm } from '@/features/workspace/components/TodoForm';
-import { TodoFilter } from '@/features/workspace/components/TodoFilter';
 import { LoadingSpinner } from '@/shared/components/common';
-import type { Todo, UpdateTodoData, TodoFilterOptions } from '@/features/workspace/types/todo.types';
 import { Timestamp } from 'firebase/firestore';
 
 export default function AllTodosPage() {

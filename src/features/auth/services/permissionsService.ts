@@ -7,7 +7,7 @@ import {
   setDoc, 
   getDoc 
 } from 'firebase/firestore';
-import { toDate } from '@/shared/utils/dateUtils';
+import { toDate } from '@/shared/utils/date/dateUtils';
 import type { UserPermissions, PagePermissions, PageIdentifier, CrudPermission } from '../types/permissions';
 import type { UserProfile, ExtendedUserProfile } from '../types';
 

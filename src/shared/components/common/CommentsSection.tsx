@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useEffect } from 'react';
 import { MoreVertical, Reply, Copy, Trash2, Edit2, X, Check } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
 import { toast } from 'sonner';
-import { getUserInitial } from '@/shared/utils/userUtils';
+import { getUserInitial } from '@/shared/utils/user/userUtils';
 import { getAllUsers } from '@/shared/services/firebase/userProfile';
 import { ChatInput } from '@/shared/components/common/ChatInput';
 import type { UserProfile } from '@/features/auth/types';

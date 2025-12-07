@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 채팅 입력 컴포넌트
  * 멘션 기능이 포함된 contentEditable 기반 입력 필드
  */
@@ -10,7 +10,7 @@ import type { MessageAttachment } from '@/features/chat/types/chat.types';
 import { extractText, extractMentionedUserIds } from '@/shared/utils/mentionUtils';
 import { useMentionInput } from '@/shared/hooks/useMentionInput';
 import { MentionDropdown } from './MentionDropdown';
-import { getUserDisplayName } from '@/shared/utils/userUtils';
+import { getUserDisplayName } from '@/shared/utils/user/userUtils';
 
 interface UserWithUid extends UserProfile {
   uid: string;

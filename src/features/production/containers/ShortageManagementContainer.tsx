@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+﻿import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   AlertDialog,
@@ -14,8 +14,8 @@ import { ShortageManagementListView } from '@/features/production/components/Sho
 import { ShortageRequest } from '@/features/production/types';
 import { useAuthStore } from '@/features/auth';
 import { toast } from 'sonner';
-import { getFirebaseErrorMessage } from '@/shared/utils/firebaseErrorHandler';
-import { getUserDisplayName, isAdmin } from '@/shared/utils/userUtils';
+import { getFirebaseErrorMessage } from '@/shared/utils/firebase/firebaseErrorHandler';
+import { getUserDisplayName, isAdmin } from '@/shared/utils/user/userUtils';
 import {
   updateShortageStatus,
   deleteShortageRequest

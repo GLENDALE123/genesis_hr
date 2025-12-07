@@ -26,7 +26,7 @@ import { ImageLightbox } from '@/shared/components/common/ImageLightbox';
 import { UploadingImageGrid, ImageGalleryGrid } from '@/shared/components/common';
 import { toast } from 'sonner';
 import { useImageUpload } from '@/shared/hooks';
-import { createUnifiedImagePath, deleteImagesWithThumbnails } from '@/shared/utils/imagePathMigration';
+import { createUnifiedImagePath, deleteImagesWithThumbnails } from '@/shared/utils/firebase/imagePathMigration';
 import { 
   Edit, 
   Trash2, 

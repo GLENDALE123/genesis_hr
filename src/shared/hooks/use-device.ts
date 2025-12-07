@@ -1,5 +1,5 @@
-import * as React from "react"
-import { isTabletDevice } from "@/shared/utils/platform"
+﻿import * as React from "react"
+import { isTabletDevice } from "@/shared/utils/platform/platform"
 
 // Breakpoints (대형 태블릿 지원)
 // smartphone: < 768

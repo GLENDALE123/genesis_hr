@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 부족분 신청 서비스
  * Firestore의 shortage-requests 컬렉션 관리
  * 
@@ -13,7 +13,7 @@ import {
   getDocument
 } from '@/shared/services/firebase/firestore';
 import { ShortageRequest, PackagingReport } from '@/features/production/types';
-import { createShortageNotification } from '@/shared/services/notificationService';
+import { createShortageNotification } from '@/shared/services/notifications/notificationService';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '@/shared/services/firebase/config';
 

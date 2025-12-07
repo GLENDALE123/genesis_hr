@@ -1,22 +1,20 @@
-/**
+﻿/**
  * 카드 형태 메시지 컴포넌트
  * 잔디 스타일의 카드뷰 메시지
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { Card, CardContent, CardHeader } from '@/shared/components/ui/card';
 import { formatChatDateTime } from '../utils/dateFormat';
-import { getUserInitial } from '@/shared/utils/userUtils';
+import { getUserInitial } from '@/shared/utils/user/userUtils';
 import { cn } from '@/shared/lib/utils';
-import { ImageLightbox } from '@/shared/components/common/ImageLightbox';
-import { FilePreview } from '@/features/workspace/components/FilePreview';
 import { MarkdownRenderer } from '@/shared/components/common/MarkdownRenderer';
 import type { ChatMessage } from '../types/chat.types';
-import type { MessageReaction } from '@/features/workspace/types';
-import { ReactionPicker } from '@/features/workspace/components/ReactionPicker';
+import type { MessageReaction } from '@/features/workspace/reactions';
 import { Button } from '@/shared/components/ui/button';
-import { MessageSquare, MoreVertical } from 'lucide-react';
+import { Download, File, MessageSquare, MoreVertical } from 'lucide-react';
+import { ReactionPicker } from '@/features/workspace/reactions';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,12 +44,15 @@ export const MessageCard: React.FC<MessageCardProps> = ({
   channelId,
   workspaceId,
 }) => {
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  
   const isOwnMessage = message.sender.uid === currentUserId;
   const hasAttachments = message.attachments && message.attachments.length > 0;
-  const hasImages = hasAttachments && message.attachments.some((att) => att.type === 'image');
-  const hasFiles = hasAttachments && message.attachments.some((att) => att.type === 'file');
-  const images = hasAttachments ? message.attachments.filter((att) => att.type === 'image') : [];
-  const files = hasAttachments ? message.attachments.filter((att) => att.type === 'file') : [];
+  const hasImages = hasAttachments && message.attachments && message.attachments.some((att) => att.type === 'image');
+  const hasFiles = hasAttachments && message.attachments && message.attachments.some((att) => att.type === 'file');
+  const images = hasAttachments && message.attachments ? message.attachments.filter((att) => att.type === 'image') : [];
+  const files = hasAttachments && message.attachments ? message.attachments.filter((att) => att.type === 'file') : [];
 
   return (
     <Card className={cn(
@@ -73,7 +74,7 @@ export const MessageCard: React.FC<MessageCardProps> = ({
                   {message.sender.displayName}
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  {formatChatDateTime(message.createdAt)}
+                  {formatChatDateTime(message.timestamp)}
                 </span>
               </div>
               {message.text && (
@@ -115,10 +116,14 @@ export const MessageCard: React.FC<MessageCardProps> = ({
           <div className="space-y-2">
             {images.map((image, index) => (
               <div key={index} className="rounded-lg overflow-hidden">
-                <ImageLightbox
+                <img
                   src={image.url || ''}
                   alt={`${message.sender.displayName}의 이미지 ${index + 1}`}
-                  className="w-full h-auto max-h-96 object-contain bg-muted"
+                  className="w-full h-auto max-h-96 object-contain bg-muted cursor-pointer"
+                  onClick={() => {
+                    setSelectedImageIndex(index);
+                    setLightboxOpen(true);
+                  }}
                 />
               </div>
             ))}
@@ -129,17 +134,26 @@ export const MessageCard: React.FC<MessageCardProps> = ({
         {hasFiles && files.length > 0 && (
           <div className="space-y-2">
             {files.map((file, index) => (
-              <FilePreview
+              <div
                 key={index}
-                file={{
-                  name: file.name || '파일',
-                  url: file.url || '',
-                  size: file.size || 0,
-                  type: file.mimeType || 'application/octet-stream',
-                }}
-                showDownload
-                className="border rounded-lg p-3"
-              />
+                className="border rounded-lg p-3 flex items-center gap-3 hover:bg-accent/50 transition-colors"
+              >
+                <File className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{file.name || '파일'}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {file.size ? `${(file.size / 1024).toFixed(1)} KB` : '크기 알 수 없음'}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => window.open(file.url || '', '_blank')}
+                  className="flex-shrink-0"
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+              </div>
             ))}
           </div>
         )}
@@ -159,10 +173,15 @@ export const MessageCard: React.FC<MessageCardProps> = ({
                 <span>{reaction.count}</span>
               </Button>
             ))}
-            {onAddReaction && (
+            {onAddReaction && channelId && workspaceId && (
               <ReactionPicker
                 messageId={message.id}
-                onSelect={(emoji) => onAddReaction(message.id, emoji)}
+                channelId={channelId}
+                workspaceId={workspaceId}
+                reactions={reactions}
+                onReactionsChange={(updatedReactions) => {
+                  // 반응이 변경되면 부모 컴포넌트에 알림
+                }}
               />
             )}
           </div>

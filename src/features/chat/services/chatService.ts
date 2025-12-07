@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 채팅 서비스
  * Firestore 기반 채팅방 및 메시지 관리
  */
@@ -63,7 +63,7 @@ import type {
   MessageAttachment,
   TemporaryChatRoom,
 } from '../types/chat.types';
-import { getUserDisplayName } from '@/shared/utils/userUtils';
+import { getUserDisplayName } from '@/shared/utils/user/userUtils';
 
 export class ChatService {
   /**
@@ -385,6 +385,7 @@ export class ChatService {
 
     const now = new Date().toISOString();
     const messageData: Omit<ChatMessage, 'id'> = {
+      directMessageRoomId: chatRoomId,
       chatRoomId,
       text,
       sender: {

@@ -9,7 +9,7 @@ import { QualityInspection, InspectionType, InspectionResult, TestResultDetail, 
 import { INSPECTION_TYPE_LABELS, INSPECTION_RESULT_COLORS, INJECTION_COLOR_OPTIONS } from '../constants';
 import { subscribeToAutocompleteData, updateAutocompleteData, AutocompleteData } from '../services/autocompleteService';
 import { updateQualityInspection } from '../services/qualityInspectionService';
-import { createUnifiedImagePath, deleteImagesWithThumbnails } from '@/shared/utils/imagePathMigration';
+import { createUnifiedImagePath, deleteImagesWithThumbnails } from '@/shared/utils/firebase/imagePathMigration';
 import { InspectionCommonForm } from './InspectionCommonForm';
 import { useImageUpload } from '@/shared/hooks';
 import { IncomingInspectionForm } from './IncomingInspectionForm';
@@ -24,7 +24,7 @@ import {
   updateProgressToast, 
   createTimeoutPromise
 } from '@/shared/components/common/ProgressToast';
-import { getLocalDateString } from '@/shared/utils/dateUtils';
+import { getLocalDateString } from '@/shared/utils/date/dateUtils';
 import { useInspectionHistory } from '../hooks/useInspectionHistory';
 import { InspectionHistorySummary } from './InspectionHistorySummary';
 
@@ -577,12 +577,12 @@ export const QualityInspectionForm: React.FC<QualityInspectionFormProps> = ({
       }
 
       // Storage 폴더 내용 확인 (디버깅용)
-      const { listStorageFiles } = await import('@/shared/utils/imagePathMigration');
+      const { listStorageFiles } = await import('@/shared/utils/firebase/imagePathMigration');
       const folderPath = createUnifiedImagePath(inspectionData.id);
       const storageFiles = await listStorageFiles(folderPath);
 
       // 존재하지 않는 이미지 URL들을 자동으로 필터링
-      const { filterExistingImageURLs } = await import('@/shared/utils/imagePathMigration');
+      const { filterExistingImageURLs } = await import('@/shared/utils/firebase/imagePathMigration');
       const originalImageUrls = [...imageUrls];
       imageUrls = await filterExistingImageURLs(imageUrls);
 

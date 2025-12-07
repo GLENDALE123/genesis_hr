@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { cn } from '@/shared/lib/utils';
-import { convertStorageBucketURL, getThumbnailURL } from '@/shared/utils/imagePathMigration';
+import { convertStorageBucketURL, getThumbnailURL } from '@/shared/utils/firebase/imagePathMigration';
 
 interface LazyImageProps extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'src'> {
   originalSrc: string;

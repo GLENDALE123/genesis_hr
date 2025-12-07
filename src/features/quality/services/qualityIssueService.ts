@@ -1,4 +1,4 @@
-import {
+﻿import {
   collection,
   doc,
   addDoc,
@@ -14,8 +14,8 @@ import {
 } from 'firebase/firestore';
 import { db, auth } from '@/shared/services/firebase/config';
 import { QualityIssue, QualityIssueFormData, isIssueItem } from '../types';
-import { getUserDisplayName } from '@/shared/utils/userUtils';
-import { QualityIssueNotificationService } from '@/shared/services/notificationService';
+import { getUserDisplayName } from '@/shared/utils/user/userUtils';
+import { QualityIssueNotificationService } from '@/shared/services/notifications/notificationService';
 import { updateAutocompleteData } from './autocompleteService';
 
 const COLLECTION_NAME = 'quality-issues';

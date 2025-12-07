@@ -1,10 +1,10 @@
-/**
+﻿/**
  * 멘션 드롭다운 컴포넌트
  */
 
 import React from 'react';
 import { Avatar, AvatarFallback } from '@/shared/components/ui/avatar';
-import { getUserDisplayName, getUserInitial } from '@/shared/utils/userUtils';
+import { getUserDisplayName, getUserInitial } from '@/shared/utils/user/userUtils';
 import type { UserProfile } from '@/features/auth/types';
 
 interface UserWithUid extends UserProfile {

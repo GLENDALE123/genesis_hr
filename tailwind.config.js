@@ -153,16 +153,21 @@ module.exports = {
 			'slide-in-x': {
 				'0%': { transform: 'translateX(2rem)', opacity: '0' },
 				'100%': { transform: 'translateX(0)', opacity: '1' }
+			},
+			'flash': {
+				'0%, 100%': { backgroundColor: 'transparent' },
+				'50%': { backgroundColor: 'rgb(254 249 195)' } /* yellow-100 */
 			}
- 		},
- 		animation: {
- 			'accordion-down': 'accordion-down 0.2s ease-out',
- 			'accordion-up': 'accordion-up 0.2s ease-out',
+		},
+		animation: {
+			'accordion-down': 'accordion-down 0.2s ease-out',
+			'accordion-up': 'accordion-up 0.2s ease-out',
 				'collapsible-down': 'collapsible-down 0.2s ease-out',
 				'collapsible-up': 'collapsible-up 0.2s ease-out',
 			'shake': 'shake 0.5s ease-in-out',
-			'slide-in-x': 'slide-in-x 0.2s ease-out'
- 		}
+			'slide-in-x': 'slide-in-x 0.2s ease-out',
+			'flash': 'flash 0.3s ease-in-out 1'
+		}
   	}
   },
   plugins: [

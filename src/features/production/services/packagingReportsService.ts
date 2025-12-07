@@ -1,4 +1,4 @@
-import { 
+﻿import { 
   collection, 
   query, 
   orderBy, 
@@ -13,8 +13,8 @@ import {
 } from 'firebase/firestore';
 import { PackagingReport, PackagingFormData, ProductionStatus } from '@/features/production/types';
 import { db } from '@/shared/services/firebase/config';
-import { getUserDisplayName } from '@/shared/utils/userUtils';
-import { DailyReportNotificationService } from '@/shared/services/notificationService';
+import { getUserDisplayName } from '@/shared/utils/user/userUtils';
+import { DailyReportNotificationService } from '@/shared/services/notifications/notificationService';
 import { parseOrderQuantityInput, sumOrderQuantities } from '@/features/production/utils/orderQuantity';
 
 // 기존 상태 계산 함수 (startTime, endTime 기반)

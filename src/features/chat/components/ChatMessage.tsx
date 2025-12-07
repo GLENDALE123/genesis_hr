@@ -1,11 +1,11 @@
-/**
+﻿/**
  * 다이렉트 메시지 컴포넌트
  */
 
 import React, { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { formatChatDateTime } from '../utils/dateFormat';
-import { getUserInitial } from '@/shared/utils/userUtils';
+import { getUserInitial } from '@/shared/utils/user/userUtils';
 import { getUserInfo, globalUsersRef } from './UserList';
 import { File } from 'lucide-react';
 import { ImageLightbox } from '@/shared/components/common/ImageLightbox';

@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/shared/components/ui/button';
 import {
@@ -26,7 +26,7 @@ import type { PageIdentifier, PagePermissions } from '@/features/auth/types/perm
 import type { ExtendedUserProfile } from '@/features/auth/types';
 import { PermissionsService } from '@/features/auth/services/permissionsService';
 import { toast } from 'sonner';
-import { getUserDisplayName, getUserRoleBadgeVariant, isAdmin as checkIsAdmin, hasRole } from '@/shared/utils/userUtils';
+import { getUserDisplayName, getUserRoleBadgeVariant, isAdmin as checkIsAdmin, hasRole } from '@/shared/utils/user/userUtils';
 
 interface PermissionSettingsButtonProps {
   pageId: PageIdentifier;

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 프로필 설정 탭
  */
 
@@ -30,8 +30,8 @@ import { clearSavedAccount } from '@/features/auth/utils/savedAccounts';
 import { clearSession } from '@/features/auth/services/sessionService';
 import { Spinner } from '@/shared/components/ui/spinner';
 import { toast } from 'sonner';
-import { getUserInitial } from '@/shared/utils/userUtils';
-import { formatPhoneNumber } from '@/shared/utils/phoneUtils';
+import { getUserInitial } from '@/shared/utils/user/userUtils';
+import { formatPhoneNumber } from '@/shared/utils/platform/phoneUtils';
 import { uploadProfilePhoto, compressImage, deleteProfilePhoto } from '@/shared/services/firebase/storage';
 import { updateUserProfile, updateAuthProfile } from '@/shared/services/firebase';
 import Cropper, { Area } from 'react-easy-crop';

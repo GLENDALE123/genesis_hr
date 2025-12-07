@@ -132,19 +132,19 @@ const ProductManagementTableComponent: React.FC<ProductManagementTableProps> = (
       <Card className="flex-1 min-h-0 flex flex-col">
         <CardContent className="p-0 flex-1 flex flex-col min-h-0">
           <div className="flex-1 overflow-auto">
-            <Table>
+            <Table className="table-auto">
               <TableHeader className="sticky top-0 bg-background z-10">
                 <TableRow>
-                  <TableHead className="w-[10%]">발주처</TableHead>
-                  <TableHead className="w-[12%]">제품명</TableHead>
-                  <TableHead className="w-[10%]">부속명</TableHead>
-                  <TableHead className="w-[10%]">사양</TableHead>
-                  <TableHead className="w-[12%]">최신 사용지그</TableHead>
-                  <TableHead className="w-[12%]">최신 하도데이터</TableHead>
-                  <TableHead className="w-[12%]">최신 상도데이터</TableHead>
-                  <TableHead className="w-[10%]">평균작업인원</TableHead>
-                  <TableHead className="w-[10%]">최근 비율</TableHead>
-                  <TableHead className="w-[10%]">평균 작업속도(RPM)</TableHead>
+                  <TableHead className="w-[10%] whitespace-nowrap">발주처</TableHead>
+                  <TableHead className="w-[12%] whitespace-nowrap">제품명</TableHead>
+                  <TableHead className="w-[10%] whitespace-nowrap">부속명</TableHead>
+                  <TableHead className="w-[10%] whitespace-nowrap">사양</TableHead>
+                  <TableHead className="min-w-[150px] whitespace-nowrap">최신 사용지그</TableHead>
+                  <TableHead className="min-w-[250px] whitespace-nowrap">최신 하도데이터</TableHead>
+                  <TableHead className="min-w-[250px] whitespace-nowrap">최신 상도데이터</TableHead>
+                  <TableHead className="w-[7%] whitespace-nowrap">평균작업인원</TableHead>
+                  <TableHead className="w-[7%] whitespace-nowrap">최근 비율</TableHead>
+                  <TableHead className="w-[8%] whitespace-nowrap">평균 작업속도(RPM)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -165,20 +165,14 @@ const ProductManagementTableComponent: React.FC<ProductManagementTableProps> = (
                       <TableCell className="whitespace-nowrap">{product.productName}</TableCell>
                       <TableCell className="whitespace-nowrap">{product.partName}</TableCell>
                       <TableCell className="whitespace-nowrap">{product.specification}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        <div className="line-clamp-2 break-words">
-                          {product.latestJig || '-'}
-                        </div>
+                      <TableCell className="text-sm text-muted-foreground break-words whitespace-normal">
+                        {product.latestJig || '-'}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        <div className="line-clamp-2 break-words">
-                          {product.latestUndercoatData || '-'}
-                        </div>
+                      <TableCell className="text-sm text-muted-foreground break-words whitespace-normal min-w-[250px]">
+                        {product.latestUndercoatData || '-'}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        <div className="line-clamp-2 break-words">
-                          {product.latestTopcoatData || '-'}
-                        </div>
+                      <TableCell className="text-sm text-muted-foreground break-words whitespace-normal min-w-[250px]">
+                        {product.latestTopcoatData || '-'}
                       </TableCell>
                       <TableCell className="text-sm text-center">
                         {product.averagePersonnelCount !== undefined ? product.averagePersonnelCount.toFixed(1) : '-'}

@@ -1,6 +1,6 @@
-import React from 'react';
+﻿import React from 'react';
 import { Badge } from '@/shared/components/ui/badge';
-import { getStatusColor } from '@/shared/utils/statusColors';
+import { getStatusColor } from '@/shared/utils/ui/statusColors';
 
 export interface HistoryEntry {
   id?: string;

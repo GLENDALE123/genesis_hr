@@ -1,5 +1,5 @@
-import { create } from 'zustand';
-import { getUserDisplayName } from '@/shared/utils/userUtils';
+﻿import { create } from 'zustand';
+import { getUserDisplayName } from '@/shared/utils/user/userUtils';
 import { devtools, persist } from 'zustand/middleware';
 import { User } from 'firebase/auth';
 import { onAuthStateChange } from '@/shared/services/firebase';

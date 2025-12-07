@@ -3,18 +3,10 @@
  */
 
 export * from './workspaceService';
-export * from './channelService';
-export * from './threadService';
-export * from './reactionService';
-export * from './channelMessageService';
-export * from './pinnedMessageService';
-export * from './mentionService';
-export * from './unreadMessageService';
-export * from './channelSearchService';
-export * from './bookmarkService';
-export * from './messageEditHistoryService';
-export * from './messageEditService';
-export * from './messageDeleteService';
-export * from './notificationSettingsService';
-export * from './approvalService';
+// channelService와 channelSearchService는 channels 서브모듈로 이동
+// threadService는 threads 서브모듈로 이동
+// reactionService는 reactions 서브모듈로 이동
+// messages 관련 서비스는 messages 서브모듈로 이동
+// notificationSettingsService는 notifications 서브모듈로 이동
+// approvalService, paymentService, reimbursementAdvanceService는 approvals 서브모듈로 이동
 

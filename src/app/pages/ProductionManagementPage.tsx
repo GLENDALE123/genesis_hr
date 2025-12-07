@@ -1,5 +1,5 @@
 import { ProductionManagementCenter } from '@/features/production';
-import { ProtectedRoute } from '@/shared/components/auth';
+import { ProtectedRoute } from '@/features/auth';
 
 export default function ProductionManagementPage() {
   return (

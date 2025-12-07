@@ -1,10 +1,10 @@
-/**
+﻿/**
  * 알림 권한 관리 훅
  */
 
 
 import { useState, useEffect, useCallback } from 'react';
-import { detectPlatform } from '@/shared/utils/platform';
+import { detectPlatform } from '@/shared/utils/platform/platform';
 import { requestNotificationPermission, checkNotificationPermission } from '@/shared/services/firebase/messaging';
 import { useFCM } from '@/shared/hooks/useFCM';
 import { useAuthStore } from '@/features/auth/store/authStore';

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthService } from '@/features/auth/services';
 import { useAuthStore } from '@/features/auth/store/authStore';
@@ -23,7 +23,7 @@ import {
 } from '@/features/auth/utils';
 import { Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
-import { formatPhoneNumber } from '@/shared/utils/phoneUtils';
+import { formatPhoneNumber } from '@/shared/utils/platform/phoneUtils';
 import { DEPARTMENT_OPTIONS } from '@/shared/constants/departments';
 import { 
   saveLoginAccount, 

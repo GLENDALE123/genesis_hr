@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 계정 선택 페이지
  * 네이버/구글 스타일의 저장된 계정 선택 UI
  */
@@ -19,7 +19,7 @@ import {
 } from '@/features/auth/utils/savedAccounts';
 import { registerSession } from '@/features/auth/services/sessionService';
 import { AuthService } from '@/features/auth/services';
-import { getUserInitial } from '@/shared/utils/userUtils';
+import { getUserInitial } from '@/shared/utils/user/userUtils';
 import { X, LogIn, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import {

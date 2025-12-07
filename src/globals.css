@@ -18,6 +18,12 @@
   to { transform: translateY(0); }
 }
 
+/* 하이라이트 깜빡임 애니메이션 */
+@keyframes flash {
+  0%, 100% { background-color: transparent; }
+  50% { background-color: rgb(254 249 195); } /* yellow-100 */
+}
+
 /* Pretendard Variable 폰트 정의 */
 @font-face {
   font-family: 'Pretendard Variable';

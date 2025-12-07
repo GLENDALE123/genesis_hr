@@ -6,7 +6,7 @@ import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { Announcement } from '../types/announcement.types';
 import type { UserRole } from '@/features/auth/types';
-import { getThumbnailURL, convertStorageBucketURL } from '@/shared/utils/imagePathMigration';
+import { getThumbnailURL, convertStorageBucketURL } from '@/shared/utils/firebase/imagePathMigration';
 
 interface AnnouncementCardProps {
   announcement: Announcement;
@@ -70,7 +70,7 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
 
   return (
     <Card 
-      className="cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] group h-full flex flex-col"
+      className="cursor-pointer transition-all duration-200 hover:scale-[1.02] group h-full flex flex-col"
       onClick={onClick}
     >
       {/* 이미지 섹션 */}

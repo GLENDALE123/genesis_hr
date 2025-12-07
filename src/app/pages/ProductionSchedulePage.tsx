@@ -4,8 +4,8 @@ import { ProductionScheduleListView } from '@/features/production/components/Pro
 import { ProductionScheduleUploadModal } from '@/features/production/components/ProductionScheduleUploadModal';
 import { useProductionSchedules } from '@/features/production/hooks/useProductionSchedules';
 import { useAuthStore } from '@/features/auth/store/authStore';
-import { getUserDisplayName } from '@/shared/utils/userUtils';
-import { getLocalDateString } from '@/shared/utils/dateUtils';
+import { getUserDisplayName } from '@/shared/utils/user/userUtils';
+import { getLocalDateString } from '@/shared/utils/date/dateUtils';
 import { toast } from 'sonner';
 
 export default function ProductionSchedulePage() {

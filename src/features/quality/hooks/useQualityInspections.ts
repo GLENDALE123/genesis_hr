@@ -6,7 +6,7 @@ import {
   groupInspectionsByOrder
 } from '../services/qualityInspectionService';
 import { useQualityInspectionStore } from '../store/qualityInspectionStore';
-import { getLocalDateString } from '@/shared/utils/dateUtils';
+import { getLocalDateString } from '@/shared/utils/date/dateUtils';
 
 interface UseQualityInspectionsReturn {
   inspections: QualityInspection[];

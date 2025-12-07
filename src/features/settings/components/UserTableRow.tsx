@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 유저 테이블 행 컴포넌트 (메모이제이션)
  */
 
@@ -14,7 +14,7 @@ import { ko } from 'date-fns/locale';
 import type { UserManagementInfo } from '@/shared/services/firebase/userManagement';
 import type { EditableUserData } from '../types/userManagement';
 import { ROLE_LABELS, ROLE_BADGE_COLORS, ROLE_OPTIONS } from '@/shared/constants/userRoles';
-import { formatPhoneNumber } from '@/shared/utils/phoneUtils';
+import { formatPhoneNumber } from '@/shared/utils/platform/phoneUtils';
 import type { UserRole } from '@/features/auth/types';
 
 interface UserTableRowProps {

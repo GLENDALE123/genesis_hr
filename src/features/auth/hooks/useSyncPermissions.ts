@@ -1,5 +1,5 @@
 import { useAuthStore } from '@/features/auth/store/authStore';
-import { canSyncDailyReports, canSyncProductionSchedules } from '@/shared/utils/permissions';
+import { canSyncDailyReports, canSyncProductionSchedules } from '@/shared/utils/user/permissions';
 
 export const useCanSyncDailyReports = (): boolean => {
   const { userProfile } = useAuthStore();
@@ -10,6 +10,7 @@ export const useCanSyncProductionSchedules = (): boolean => {
   const { userProfile } = useAuthStore();
   return canSyncProductionSchedules(userProfile);
 };
+
 
 
 

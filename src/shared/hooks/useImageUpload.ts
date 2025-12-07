@@ -5,7 +5,7 @@ import {
   uploadImageWithState, 
   ImageUploadState, 
   revokePreviewUrl
-} from '@/shared/utils/imageUpload';
+} from '@/shared/utils/firebase/imageUpload';
 import { uploadImageFilesParallel } from '@/shared/services/firebase/storage';
 import { UploadingImageItem } from '@/shared/components/common/UploadingImageGrid';
 

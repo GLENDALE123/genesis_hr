@@ -275,3 +275,5 @@ Firestore Root
    - `channels` 컬렉션의 각 채널 문서에 `unreadCount` 필드가 있을 수 있습니다 (별도 서비스에서 관리)
 
 
+
+

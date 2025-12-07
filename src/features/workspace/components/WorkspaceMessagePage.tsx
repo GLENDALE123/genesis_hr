@@ -9,7 +9,7 @@ import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 import { useWorkspaceStore } from '../store/workspaceStore';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { WorkspaceSidebar } from './WorkspaceSidebar';
-import { ChannelView } from './ChannelView';
+import { ChannelView } from '../channels';
 import { useDeviceType } from '@/shared/hooks/use-device';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/shared/components/ui/sheet';
 

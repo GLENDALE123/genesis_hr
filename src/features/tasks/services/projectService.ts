@@ -16,18 +16,17 @@ import {
   getCollectionRef,
 } from '@/shared/services/firebase/firestore';
 import { db, auth } from '@/shared/services/firebase/config';
-import {
-  Project,
-  CreateProjectData,
-  UpdateProjectData,
-  ProjectFilterOptions,
-  ProjectSortOptions,
-  ProjectMember,
-  ProjectRole,
-  ProjectSettings,
-} from '../types/project.types';
+// TODO: project.types.ts 파일 생성 필요
+type Project = any;
+type CreateProjectData = any;
+type UpdateProjectData = any;
+type ProjectFilterOptions = any;
+type ProjectSortOptions = any;
+type ProjectMember = any;
+type ProjectRole = any;
+type ProjectSettings = any;
 import { query, where, orderBy, Timestamp, arrayUnion, arrayRemove, onSnapshot } from 'firebase/firestore';
-import { ChannelService } from '@/features/workspace/services/channelService';
+import { ChannelService } from '@/features/workspace/channels';
 
 // 컬렉션 이름
 const PROJECTS_COLLECTION = 'projects';
@@ -190,8 +189,8 @@ export const createProject = async (
     if (data.members && data.members.length > 0) {
       const additionalMembers = await Promise.all(
         data.members
-          .filter(uid => uid !== currentUser.uid)
-          .map(uid => createMemberFromUid(uid, 'member'))
+          .filter((uid: string) => uid !== currentUser.uid)
+          .map((uid: string) => createMemberFromUid(uid, 'member'))
       );
       members.push(...additionalMembers);
     }
@@ -322,7 +321,7 @@ export const addProjectMember = async (
     }
 
     // 이미 멤버인지 확인
-    if (project.members.some(m => m.uid === uid)) {
+    if (project.members.some((m: any) => m.uid === uid)) {
       throw new Error('이미 프로젝트 멤버입니다.');
     }
 
@@ -350,7 +349,7 @@ export const removeProjectMember = async (
       throw new Error('프로젝트를 찾을 수 없습니다.');
     }
 
-    const memberToRemove = project.members.find(m => m.uid === uid);
+    const memberToRemove = project.members.find((m: any) => m.uid === uid);
     if (!memberToRemove) {
       throw new Error('멤버를 찾을 수 없습니다.');
     }
@@ -383,7 +382,7 @@ export const updateProjectMemberRole = async (
       throw new Error('프로젝트를 찾을 수 없습니다.');
     }
 
-    const memberIndex = project.members.findIndex(m => m.uid === uid);
+    const memberIndex = project.members.findIndex((m: any) => m.uid === uid);
     if (memberIndex === -1) {
       throw new Error('멤버를 찾을 수 없습니다.');
     }

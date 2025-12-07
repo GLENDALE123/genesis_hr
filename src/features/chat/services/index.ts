@@ -3,6 +3,6 @@
  */
 
 export * from './chatService';
-export { DirectMessageService as ChatService } from './chatService'; // 하위 호환성
+export { ChatService } from './chatService';
 export * from './userStatusService';
 

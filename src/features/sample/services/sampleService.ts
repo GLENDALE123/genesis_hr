@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Sample Requests Firebase 서비스
  * PackagingReportsService 패턴 참고
  */
@@ -20,9 +20,9 @@ import {
   arrayRemove
 } from 'firebase/firestore';
 import { uploadImageFilesParallel } from '@/shared/services/firebase/storage';
-import { getUserDisplayName } from '@/shared/utils/userUtils';
+import { getUserDisplayName } from '@/shared/utils/user/userUtils';
 import { auth } from '@/shared/services/firebase/config';
-import { deleteImagesWithThumbnails } from '@/shared/utils/imagePathMigration';
+import { deleteImagesWithThumbnails } from '@/shared/utils/firebase/imagePathMigration';
 import {
   SampleRequest,
   SampleFormData,
@@ -30,7 +30,7 @@ import {
   SampleHistoryItem
 } from '../types';
 import { SAMPLE_REQUESTS_COLLECTION } from '../constants';
-import { SampleStatusNotificationService } from '@/shared/services/notificationService';
+import { SampleStatusNotificationService } from '@/shared/services/notifications/notificationService';
 
 interface RequestUser {
   uid: string;

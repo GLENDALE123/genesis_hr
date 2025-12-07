@@ -1,11 +1,11 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+﻿import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { JigRequestTable, JigRequestCard, JigRequestKanban, JigRequestDetail, JigRequestForm, JigRequestFilterSection } from '../components';
 import { JigStatus, JigRequest, CreateJigRequestData } from '../types';
 import { useJigRequests } from '../hooks/useJigRequests';
 import { useJigRequestFilters } from '../hooks/useJigRequestFilters';
 import { useUserRole } from '@/features/auth/hooks/useUserRole';
-import { getUserDisplayName } from '@/shared/utils/userUtils';
+import { getUserDisplayName } from '@/shared/utils/user/userUtils';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { CommentsService } from '@/shared/services/comments/commentsService';
 import { Button } from '@/shared/components/ui/button';

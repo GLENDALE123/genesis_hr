@@ -161,3 +161,5 @@ Firestore Root
 이 경우 최상위 컬렉션은 `workspaces`와 `channels` 2개만 유지됩니다.
 
 
+
+

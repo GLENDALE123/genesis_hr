@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Dialog,
@@ -27,10 +27,10 @@ import { JigStatus, CreateJigRequestData, JigRequest } from '../types';
 import { PRODUCTION_TYPES } from '../constants';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useImageUpload } from '@/shared/hooks';
-import { getUserDisplayName } from '@/shared/utils/userUtils';
+import { getUserDisplayName } from '@/shared/utils/user/userUtils';
 import { useDeviceType } from '@/shared/hooks/use-device';
 import { ArrowLeft } from 'lucide-react';
-import { deleteImagesWithThumbnails } from '@/shared/utils/imagePathMigration';
+import { deleteImagesWithThumbnails } from '@/shared/utils/firebase/imagePathMigration';
 
 interface JigRequestFormProps {
   isOpen: boolean;

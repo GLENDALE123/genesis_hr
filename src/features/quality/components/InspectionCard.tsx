@@ -9,7 +9,7 @@ import { QualityInspection, TestResultDetail, DefectResultPair } from '../types'
 import { INSPECTION_RESULT_COLORS, INSPECTION_TYPE_COLORS } from '../constants';
 import { cn } from '@/shared/lib/utils';
 import { ImageGalleryGrid } from '@/shared/components/common/ImageGalleryGrid';
-import { filterValidImageURLs } from '@/shared/utils/imagePathMigration';
+import { filterValidImageURLs } from '@/shared/utils/firebase/imagePathMigration';
 
 interface InspectionCardProps {
   inspection: QualityInspection;

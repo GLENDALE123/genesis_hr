@@ -460,7 +460,7 @@ export const uploadImageFilesParallel = async (
     }
     
     // imageUpload.ts의 병렬처리 함수 사용
-    const { uploadImagesParallel } = await import('@/shared/utils/imageUpload');
+    const { uploadImagesParallel } = await import('@/shared/utils/firebase/imageUpload');
     
     const shouldShowToast = showProgressToast && !folderPath.startsWith('chat/');
     if (shouldShowToast) {

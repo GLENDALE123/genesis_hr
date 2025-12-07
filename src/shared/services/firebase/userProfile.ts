@@ -1,4 +1,4 @@
-import { 
+﻿import { 
   doc, 
   setDoc, 
   getDoc, 
@@ -19,9 +19,9 @@ import {
 } from 'firebase/auth';
 import { auth, db } from './config';
 import { UserProfile, SignUpData, LoginData } from '@/features/auth/types';
-import { toDate } from '@/shared/utils/dateUtils';
+import { toDate } from '@/shared/utils/date/dateUtils';
 import { settingsService } from '../settings/settingsService';
-import { normalizeToFirebaseAuthPhone } from '@/shared/utils/phoneUtils';
+import { normalizeToFirebaseAuthPhone } from '@/shared/utils/platform/phoneUtils';
 
 const USERS_COLLECTION = 'users';
 

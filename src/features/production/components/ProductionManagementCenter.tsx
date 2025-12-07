@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+﻿import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { AlertCircle, Plus, MessageSquare } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
@@ -29,7 +29,7 @@ import {
   getStatusColorClass,
   hasUnreadComments as checkUnreadComments 
 } from '../utils/productionUtils';
-import { isAdmin, isManager } from '@/shared/utils/userUtils';
+import { isAdmin, isManager } from '@/shared/utils/user/userUtils';
 import { TABLE_CELL_STYLES, TABLE_HEAD_STYLES } from '../constants/tableStyles';
 
 const ProductionManagementCenterComponent: React.FC = () => {

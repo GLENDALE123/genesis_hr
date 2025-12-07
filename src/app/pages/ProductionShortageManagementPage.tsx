@@ -1,5 +1,5 @@
 import { ShortageManagementContainer } from '@/features/production/containers/ShortageManagementContainer';
-import { ProtectedRoute } from '@/shared/components/auth';
+import { ProtectedRoute } from '@/features/auth';
 
 export default function ProductionShortageManagementPage() {
   return (

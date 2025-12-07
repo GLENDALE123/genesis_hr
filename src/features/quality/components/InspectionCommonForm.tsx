@@ -11,13 +11,13 @@ import { INJECTION_MATERIAL_OPTIONS, POST_PROCESS_OPTIONS } from '../constants';
 import type { AutocompleteData } from '../services/autocompleteService';
 import { useOrderNumberFormatter } from '@/shared/hooks/useOrderNumberFormatter';
 import { QualityInspection, KeywordPair } from '../types';
-import { getLocalDateString } from '@/shared/utils/dateUtils';
+import { getLocalDateString } from '@/shared/utils/date/dateUtils';
 import { 
   createImagePreview, 
   uploadImageWithState, 
   ImageUploadState, 
   revokePreviewUrl
-} from '@/shared/utils/imageUpload';
+} from '@/shared/utils/firebase/imageUpload';
 import { uploadImageFilesParallel } from '@/shared/services/firebase/storage';
 import { UploadingImageGrid, UploadingImageItem } from '@/shared/components/common/UploadingImageGrid';
 

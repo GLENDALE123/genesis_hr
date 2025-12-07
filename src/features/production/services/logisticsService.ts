@@ -1,9 +1,9 @@
-import { db } from '@/shared/services/firebase/config';
+﻿import { db } from '@/shared/services/firebase/config';
 import { collection, doc, runTransaction, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { LogisticsRequest, ProductionRequestStatus, ProductionRequestType } from '@/features/production/types/logistics';
 import type { PackagingReport } from '@/features/production/types';
 import { LogisticsTransferData } from '@/features/production/components/LogisticsTransferModal';
-import { createProductionRequestNotification } from '@/shared/services/notificationService';
+import { createProductionRequestNotification } from '@/shared/services/notifications/notificationService';
 
 /**
  * 물류이동 요청 생성

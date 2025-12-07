@@ -1,11 +1,11 @@
-
+﻿
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { JigMasterListView, JigMasterDetail, JigListForm, JigMasterFilterPanel } from '../components';
 import { JigMasterItem, CreateJigMasterItemData } from '../types';
 import { useJigMaster } from '../hooks/useJigMaster';
 import { useJigMasterFilters } from '../hooks/useJigMasterFilters';
 import { useUserRole } from '@/features/auth/hooks/useUserRole';
-import { getUserDisplayName, isAdmin } from '@/shared/utils/userUtils';
+import { getUserDisplayName, isAdmin } from '@/shared/utils/user/userUtils';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/shared/components/ui/alert';

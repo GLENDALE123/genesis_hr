@@ -727,6 +727,74 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     </CardContent>
                   </Card>
 
+                  {/* 생산이력 */}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        생산이력
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      {productDetail.productionHistory && productDetail.productionHistory.length > 0 ? (
+                        <>
+                          <div className="max-h-[400px] overflow-auto">
+                            <Table>
+                              <TableHeader className="sticky top-0 bg-background z-10">
+                                <TableRow>
+                                  <TableHead className="whitespace-nowrap text-xs py-1 px-2">작업일자</TableHead>
+                                  <TableHead className="whitespace-nowrap text-xs py-1 px-2">발주번호</TableHead>
+                                  <TableHead className="whitespace-nowrap text-xs py-1 px-2">생산라인</TableHead>
+                                  <TableHead className="whitespace-nowrap text-xs text-right py-1 px-2">발주수량</TableHead>
+                                  <TableHead className="whitespace-nowrap text-xs text-right py-1 px-2">투입수량</TableHead>
+                                  <TableHead className="whitespace-nowrap text-xs text-right py-1 px-2">양품수량</TableHead>
+                                  <TableHead className="whitespace-nowrap text-xs text-right py-1 px-2">불량수량</TableHead>
+                                  <TableHead className="whitespace-nowrap text-xs text-right py-1 px-2">작업인원</TableHead>
+                                  <TableHead className="whitespace-nowrap text-xs py-1 px-2">스핀들비율</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {productDetail.productionHistory.slice(0, 10).map((item) => (
+                                  <TableRow key={item.id}>
+                                    <TableCell className="text-xs whitespace-nowrap py-1 px-2">{item.workDate}</TableCell>
+                                    <TableCell className="text-xs whitespace-nowrap py-1 px-2">{item.orderNumber}</TableCell>
+                                    <TableCell className="text-xs whitespace-nowrap py-1 px-2">{item.productionLine || '-'}</TableCell>
+                                    <TableCell className="text-xs text-right whitespace-nowrap py-1 px-2">
+                                      {item.orderQuantity?.toLocaleString() || '-'}
+                                    </TableCell>
+                                    <TableCell className="text-xs text-right whitespace-nowrap py-1 px-2">
+                                      {item.inputQuantity?.toLocaleString() || '-'}
+                                    </TableCell>
+                                    <TableCell className="text-xs text-right whitespace-nowrap text-green-600 py-1 px-2">
+                                      {item.goodQuantity?.toLocaleString() || '-'}
+                                    </TableCell>
+                                    <TableCell className="text-xs text-right whitespace-nowrap text-red-600 py-1 px-2">
+                                      {item.defectQuantity?.toLocaleString() || '-'}
+                                    </TableCell>
+                                    <TableCell className="text-xs text-right whitespace-nowrap py-1 px-2">
+                                      {item.personnelCount !== undefined ? item.personnelCount : '-'}
+                                    </TableCell>
+                                    <TableCell className="text-xs whitespace-nowrap py-1 px-2">{item.lineRatio || '-'}</TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                          {productDetail.productionHistory.length > 10 && (
+                            <div className="mt-2 text-xs text-center text-muted-foreground">
+                              총 {productDetail.productionHistory.length}건 중 최근 10건 표시
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                          <p className="text-sm">생산이력이 없습니다.</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
                   {/* 최근 도료사용이력 (변경된 것만) */}
                   {recentCoatingHistory.length > 0 && (
                     <Card>

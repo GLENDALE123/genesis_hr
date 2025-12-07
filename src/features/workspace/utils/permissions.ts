@@ -3,7 +3,15 @@
  */
 
 import type { UserRole } from '@/features/auth/types';
-import type { WorkspaceRole, WorkspaceMember, Channel, ChannelPermissions } from '../types';
+import type { WorkspaceRole, WorkspaceMember } from '../types';
+import type {
+  Channel,
+  ChannelPermissions,
+} from '../channels';
+import {
+  DEFAULT_PUBLIC_CHANNEL_PERMISSIONS,
+  DEFAULT_PRIVATE_CHANNEL_PERMISSIONS,
+} from '../channels';
 
 /**
  * 워크스페이스 역할이 채널 관리 권한이 있는지 확인
@@ -109,7 +117,7 @@ export const canAccessChannel = (
   userId: string,
   channel: Channel
 ): boolean => {
-  if (channel.type === 'public' || channel.type === 'board') return true;
+  if (channel.type === 'public') return true;
   return channel.members.includes(userId);
 };
 
@@ -150,9 +158,4 @@ export const createDefaultChannelPermissions = (
   };
 };
 
-// DEFAULT_PRIVATE_CHANNEL_PERMISSIONS와 DEFAULT_PUBLIC_CHANNEL_PERMISSIONS는 channel.types.ts에서 import
-import {
-  DEFAULT_PUBLIC_CHANNEL_PERMISSIONS,
-  DEFAULT_PRIVATE_CHANNEL_PERMISSIONS,
-} from '../types/channel.types';
 

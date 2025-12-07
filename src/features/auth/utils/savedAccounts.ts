@@ -1,10 +1,10 @@
-/**
+﻿/**
  * 로그인 기록 저장/관리 유틸리티
  * 플랫폼별로 독립적으로 하나의 계정만 저장
  * 웹, 일렉트론, 모바일 각각 1개씩 독립적으로 관리
  */
 
-import { isElectron, isMobileApp } from '@/shared/utils/platform';
+import { isElectron, isMobileApp } from '@/shared/utils/platform/platform';
 import { encryptPassword, decryptPassword } from './encryption';
 import { getActiveSession } from '../services/sessionService';
 

@@ -3,7 +3,7 @@
  */
 
 import type { UserRole } from '@/features/auth/types';
-import type { ChannelPermissions } from './channel.types';
+import type { ChannelPermissions } from '../channels';
 
 /**
  * 워크스페이스 멤버

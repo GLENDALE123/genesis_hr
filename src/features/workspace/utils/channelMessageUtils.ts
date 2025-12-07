@@ -3,7 +3,7 @@
  * 1:1 채팅과 독립적인 워크스페이스 전용 유틸리티
  */
 
-import type { ChannelMessage } from '../types/channelMessage.types';
+import type { ChannelMessage } from '../messages';
 import type { PendingUpload } from '@/features/chat/types/pendingUpload.types';
 
 export type CombinedChannelMessageItem =
@@ -164,5 +164,7 @@ export const createChannelMessageGroupingMap = (
 
   return map;
 };
+
+
 
 

@@ -1,5 +1,5 @@
 import { ProductManagementView } from '@/features/production';
-import { ProtectedRoute } from '@/shared/components/auth';
+import { ProtectedRoute } from '@/features/auth';
 
 export default function ProductManagementPage() {
   return (
@@ -10,6 +10,7 @@ export default function ProductManagementPage() {
     </ProtectedRoute>
   );
 }
+
 
 
 

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 워크스페이스 설정 다이얼로그
  * 워크스페이스 이름 변경, 멤버 관리, 설정 변경
  */
@@ -39,7 +39,7 @@ import { Badge } from '@/shared/components/ui/badge';
 import { Switch } from '@/shared/components/ui/switch';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { toast } from 'sonner';
-import { getUserInitial } from '@/shared/utils/userUtils';
+import { getUserInitial } from '@/shared/utils/user/userUtils';
 import { Settings, Users, Info, UserPlus, Trash2, Crown, Shield, User } from 'lucide-react';
 import type { Workspace, WorkspaceMember, WorkspaceRole } from '../types/workspace.types';
 import { canManageWorkspace } from '../utils/permissions';

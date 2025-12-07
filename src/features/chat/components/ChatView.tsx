@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 다이렉트 메시지 뷰 컴포넌트
  * 메시지 목록 표시 및 실시간 구독
  */
@@ -11,9 +11,9 @@ import { ChatService } from '../services/chatService';
 import { ChatMessageComponent } from './ChatMessage';
 import { ChatAttachmentPreviewBar } from '@/shared/components/common/ChatAttachmentPreviewBar';
 import { ChatComposer } from './ChatComposer';
-import { ChannelMessageComposer } from '@/features/workspace/components/ChannelMessageComposer';
+import { ChannelMessageComposer } from '@/features/workspace/messages';
 import { useAuthStore } from '@/features/auth/store/authStore';
-import { getUserDisplayName } from '@/shared/utils/userUtils';
+import { getUserDisplayName } from '@/shared/utils/user/userUtils';
 import { MESSAGE_PAGINATION } from '../constants';
 import { getCachedMessages, setCachedMessages } from '../utils/chatCache';
 import type { ChatMessage, MessageAttachment } from '../types/chat.types';

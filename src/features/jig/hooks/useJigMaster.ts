@@ -11,7 +11,7 @@ import {
 } from '../services/jigMasterService';
 import { useJigMasterStore } from '../store/jigMasterStore';
 import { waitForFirebaseInit } from '@/shared/services/firebase/config';
-import { getLocalDateString } from '@/shared/utils/dateUtils';
+import { getLocalDateString } from '@/shared/utils/date/dateUtils';
 
 interface UseJigMasterReturn {
   masterItems: JigMasterItem[];

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 정보 탭
  */
 
@@ -16,7 +16,7 @@ import { useFirebaseRelease } from '@/shared/hooks/useFirebaseRelease';
 import { useFirebaseMobileRelease } from '@/shared/hooks/useFirebaseMobileRelease';
 import { WindowsIcon } from '@/shared/components/icons/WindowsIcon';
 import { AndroidIcon } from '@/shared/components/icons/AndroidIcon';
-import { isElectron, isMobileApp } from '@/shared/utils/platform';
+import { isElectron, isMobileApp } from '@/shared/utils/platform/platform';
 import {
   AlertDialog,
   AlertDialogAction,

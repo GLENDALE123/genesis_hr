@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -15,7 +15,7 @@ import { Spinner } from '@/shared/components/ui/spinner';
 import { useImageUpload } from '@/shared/hooks';
 import { toast } from 'sonner';
 import { AnnouncementFormData } from '../types/announcement.types';
-import { getUserDisplayName } from '@/shared/utils/userUtils';
+import { getUserDisplayName } from '@/shared/utils/user/userUtils';
 import { useAuthStore } from '@/features/auth/store/authStore';
 
 const announcementSchema = z.object({

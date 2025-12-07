@@ -1,4 +1,4 @@
-// 생산 요청 관리 서비스
+﻿// 생산 요청 관리 서비스
 import {
   collection,
   doc,
@@ -164,7 +164,7 @@ export const ProductionRequestService = {
 
     // 알림 발송 (물류이동 제외)
     if (requestData.requestType !== ProductionRequestType.LogisticsTransfer) {
-      const { createProductionRequestNotification } = await import('@/shared/services/notificationService');
+      const { createProductionRequestNotification } = await import('@/shared/services/notifications/notificationService');
       createProductionRequestNotification(
         docRef.id,
         requestData.requestType,

@@ -12,7 +12,7 @@ import {
   updateQualityInspection,
   deleteQualityInspection
 } from '@/features/quality';
-import { ProtectedRoute } from '@/shared/components/auth';
+import { ProtectedRoute } from '@/features/auth';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/shared/components/ui/alert';
 import { AlertCircle } from 'lucide-react';

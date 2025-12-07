@@ -3,8 +3,8 @@ import { PackagingReport, PackagingFormData, PackagedBoxFormData } from '@/featu
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useOrderNumberFormatter } from '@/shared/hooks/useOrderNumberFormatter';
 import { usePackagingCalculations } from './usePackagingCalculations';
-import { getUserDisplayName } from '@/shared/utils/userUtils';
-import { getLocalDateString } from '@/shared/utils/dateUtils';
+import { getUserDisplayName } from '@/shared/utils/user/userUtils';
+import { getLocalDateString } from '@/shared/utils/date/dateUtils';
 import { formatOrderQuantitiesForInput } from '@/features/production/utils/orderQuantity';
 
 const initialFormData: PackagingFormData = {

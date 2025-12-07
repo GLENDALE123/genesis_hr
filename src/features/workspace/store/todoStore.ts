@@ -4,14 +4,14 @@
 
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import { TodoService } from '../services/todoService';
+import { TodoService } from '../todos';
 import type {
   Todo,
   CreateTodoData,
   UpdateTodoData,
   TodoFilterOptions,
   TodoStats,
-} from '../types/todo.types';
+} from '../todos';
 
 interface TodoState {
   // 채널별 할 일 목록 (channelId -> todos[])
@@ -338,5 +338,7 @@ function getDefaultStats(): TodoStats {
     myTodos: 0,
   };
 }
+
+
 
 

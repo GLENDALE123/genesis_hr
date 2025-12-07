@@ -10,5 +10,5 @@ export * from './constants';
 
 // 하위 호환성 별칭
 export { useDirectMessageStore as useChatStore } from './store/chatStore';
-export { DirectMessageService as ChatService } from './services/chatService';
+export { ChatService } from './services/chatService';
 

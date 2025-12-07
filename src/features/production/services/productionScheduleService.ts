@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 생산일정 서비스
  * Firestore의 production-schedules 컬렉션 관리
  * 
@@ -14,7 +14,7 @@ import {
 } from '@/shared/services/firebase/firestore';
 import { ProductionSchedule } from '@/features/production/types';
 import { QuerySnapshot, DocumentData } from 'firebase/firestore';
-import { sendProductionScheduleNotification, sendBulkScheduleNotification } from '@/shared/services/notificationService';
+import { sendProductionScheduleNotification, sendBulkScheduleNotification } from '@/shared/services/notifications/notificationService';
 
 const PRODUCTION_SCHEDULES_COLLECTION = 'production-schedules';
 

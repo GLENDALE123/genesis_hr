@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 세션 관리 서비스
  * Firestore를 통한 플랫폼별 단일 세션 관리
  * 같은 플랫폼(웹/일렉트론/모바일)에서는 하나의 기기만 활성화되도록 관리
@@ -6,7 +6,7 @@
 
 import { doc, setDoc, getDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
 import { db } from '@/shared/services/firebase/config';
-import { isElectron, isMobileApp } from '@/shared/utils/platform';
+import { isElectron, isMobileApp } from '@/shared/utils/platform/platform';
 
 export type PlatformType = 'web' | 'electron' | 'mobile';
 

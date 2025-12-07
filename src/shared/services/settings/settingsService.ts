@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 설정 관리 서비스
  * Firestore를 통한 설정 저장/로드/구독
  */
@@ -15,7 +15,7 @@ import type {
   DEFAULT_SETTINGS,
 } from '@/shared/types/settings';
 import { DEFAULT_SETTINGS as DEFAULTS } from '@/shared/types/settings';
-import { detectPlatform } from '@/shared/utils/platform';
+import { detectPlatform } from '@/shared/utils/platform/platform';
 
 class SettingsService {
   /**

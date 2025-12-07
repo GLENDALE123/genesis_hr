@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 샘플 요청 데이터 관리 훅
  * usePackagingReports 패턴 참고
  */
@@ -10,7 +10,7 @@ import { waitForFirebaseInit, auth } from '@/shared/services/firebase/config';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useSampleRequestsStore } from '../store';
 import { toast } from 'sonner';
-import { getUserDisplayName } from '@/shared/utils/userUtils';
+import { getUserDisplayName } from '@/shared/utils/user/userUtils';
 
 /**
  * 샘플 요청 데이터를 관리하는 커스텀 훅

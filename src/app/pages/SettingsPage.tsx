@@ -10,7 +10,7 @@ import { ProfileSettings } from '@/features/settings/components/ProfileSettings'
 import { AppearanceSettings } from '@/features/settings/components/AppearanceSettings';
 import { AboutSettings } from '@/features/settings/components/AboutSettings';
 import { User, Bell, Palette, Info, Users, Settings } from 'lucide-react';
-import { ProtectedRoute } from '@/shared/components/auth';
+import { ProtectedRoute } from '@/features/auth';
 import { useIsAdmin } from '@/features/auth/hooks/useUserRole';
 import { UserManagementSettings } from '@/features/settings/components/UserManagementSettings';
 import { SystemManagementSettings } from '@/features/settings/components/SystemManagementSettings';

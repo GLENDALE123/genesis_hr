@@ -4,7 +4,7 @@
 
 import { useState, useCallback } from 'react';
 import { SampleFormData, SampleFormItem } from '../types';
-import { createQuickThumbnail } from '@/shared/utils/imageUpload';
+import { createQuickThumbnail } from '@/shared/utils/firebase/imageUpload';
 import { UploadingImageItem } from '@/shared/components/common/UploadingImageGrid';
 import { useImageUpload } from '@/shared/hooks';
 

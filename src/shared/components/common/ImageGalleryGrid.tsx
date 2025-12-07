@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ImageLightbox } from './ImageLightbox';
 import { LazyImage } from './LazyImage';
-import { getResizedImageURL, convertStorageBucketURL } from '@/shared/utils/imagePathMigration';
+import { getResizedImageURL, convertStorageBucketURL } from '@/shared/utils/firebase/imagePathMigration';
 
 interface ImageGalleryGridProps {
   images: string[];

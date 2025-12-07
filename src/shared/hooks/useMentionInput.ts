@@ -1,9 +1,9 @@
-/**
+﻿/**
  * 멘션 입력 처리 훅
  */
 
 import { useState, useRef, useEffect, KeyboardEvent, useCallback } from 'react';
-import { getUserDisplayName } from '@/shared/utils/userUtils';
+import { getUserDisplayName } from '@/shared/utils/user/userUtils';
 import { filterUsersForMention } from '@/shared/utils/mentionUtils';
 import type { UserProfile } from '@/features/auth/types';
 
@@ -42,8 +42,8 @@ export const useMentionInput = ({
   const filteredUsers = filterUsersForMention(
     users,
     mentionSearch,
-    currentUserUid,
-    (user) => getUserDisplayName(user, null)
+    (user) => getUserDisplayName(user, null),
+    currentUserUid
   );
 
   // 멘션 삽입

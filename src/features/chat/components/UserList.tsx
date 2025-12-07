@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 사용자 목록 컴포넌트
  * 우클릭 메뉴, 즐겨찾기 기능 포함
  */
@@ -20,7 +20,7 @@ import { Badge } from '@/shared/components/ui/badge';
 import { Spinner } from '@/shared/components/ui/spinner';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { getAllUsersWithAuthInfo } from '@/shared/services/firebase/userManagement';
-import { getUserDisplayName, getUserInitial } from '@/shared/utils/userUtils';
+import { getUserDisplayName, getUserInitial } from '@/shared/utils/user/userUtils';
 import { UserStatusService, type UserStatusData } from '../services/userStatusService';
 import { ChatService } from '../services/chatService';
 import { useChatStore } from '../store/chatStore';

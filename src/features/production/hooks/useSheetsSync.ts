@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Google 스프레드시트 동기화 훅
  */
 
 import { useState, useCallback } from 'react';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useCanSyncProductionSchedules } from '@/features/auth/hooks';
-import { getUserDisplayName } from '@/shared/utils/userUtils';
+import { getUserDisplayName } from '@/shared/utils/user/userUtils';
 import { syncSpreadsheetToFirestore, SyncResult } from '@/features/production/services/sheetsSyncService';
 import { toast } from 'sonner';
 

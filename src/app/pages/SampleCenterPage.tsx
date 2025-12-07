@@ -4,7 +4,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ProtectedRoute } from '@/shared/components/auth';
+import { ProtectedRoute } from '@/features/auth';
 import { SampleDashboard, SampleRequestDetail } from '@/features/sample';
 import { useSampleRequests, useSampleFilters } from '@/features/sample/hooks';
 import { SampleRequest, SampleStatus } from '@/features/sample/types';

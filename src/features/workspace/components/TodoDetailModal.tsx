@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 할 일 상세보기 모달
  * Jandi 스타일: 할 일 상세 정보, 댓글, 첨부파일
  */
@@ -30,15 +30,13 @@ import {
   Loader2,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import { getUserInitial } from '@/shared/utils/userUtils';
+import { getUserInitial } from '@/shared/utils/user/userUtils';
 import { useAuthStore } from '@/features/auth/store/authStore';
-import { ThreadService } from '../services/threadService';
-import { ChannelMessageComposer } from './ChannelMessageComposer';
-import { ChannelMessageComponent } from './ChannelMessage';
+import { ThreadService, type Thread } from '../threads';
+import { ChannelMessageComposer, ChannelMessageComponent } from '../messages';
+import type { ChannelMessage } from '../messages';
 import { getAllUsersWithAuthInfo } from '@/shared/services/firebase/userManagement';
-import type { Todo } from '../types/todo.types';
-import type { Thread } from '../types/thread.types';
-import type { ChannelMessage } from '../types/channelMessage.types';
+import type { Todo } from '../todos';
 import { Timestamp } from 'firebase/firestore';
 
 export interface TodoDetailModalProps {
@@ -95,8 +93,8 @@ export const TodoDetailModal: React.FC<TodoDetailModalProps> = ({
 
     const unsubscribe = ThreadService.subscribeToThread(
       thread.id,
-      todo.workspaceId,
-      todo.channelId,
+      todo?.workspaceId || '',
+      todo?.channelId || '',
       (updatedThread) => {
         setThread(updatedThread);
       },
@@ -421,7 +419,7 @@ export const TodoDetailModal: React.FC<TodoDetailModalProps> = ({
               <div className="space-y-3 pt-4 border-t bg-muted/30 -mx-6 px-6 py-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Avatar className="h-7 w-7">
-                    <AvatarImage src={user?.photoURL} alt={user?.displayName || ''} />
+                    <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || ''} />
                     <AvatarFallback className="text-xs">
                       {user?.displayName?.charAt(0) || 'U'}
                     </AvatarFallback>

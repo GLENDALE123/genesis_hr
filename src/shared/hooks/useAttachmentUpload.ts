@@ -87,7 +87,7 @@ export const useAttachmentUpload = ({
               id: uploadId,
               completed: index + 1,
               total: imageFiles.length,
-              progress,
+              timestamp: Date.now(),
             });
           };
 
@@ -95,7 +95,17 @@ export const useAttachmentUpload = ({
         });
 
         const uploadResults = await Promise.all(uploadPromises);
-        const attachments: MessageAttachment[] = uploadResults.flat();
+        const attachments: MessageAttachment[] = uploadResults.flat().map((url: string, index: number) => {
+          const file = imageFiles[index];
+          return {
+            id: `attachment-${Date.now()}-${index}`,
+            type: 'image' as const,
+            url,
+            name: file.name,
+            size: file.size,
+            mimeType: file.type,
+          };
+        });
 
         // 업로드 완료
         onUploadComplete?.({ id: uploadId });

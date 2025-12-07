@@ -14,18 +14,23 @@
 ### 🔴 주요 이슈
 
 1. **workspace 피처가 과도하게 큼**
-   - 31개 컴포넌트, 23개 서비스
-   - 여러 도메인(채널, 메시지, 결제, 승인 등)이 혼재
+   - 33개 컴포넌트, 21개 서비스, 11개 타입
+   - 여러 도메인(채널, 메시지, 스레드, 반응, Todo, 승인/결제, 멤버 등)이 혼재
+   - Todo 기능이 workspace 내부에 포함되어 있음
 
-2. **shared/utils가 과도하게 많음**
+2. **production 피처 구조화 필요**
+   - 20개 컴포넌트, 9개 서비스, 12개 훅, 2개 컨테이너가 단일 레벨에 존재
+   - 포장, 일정, 부족량, 제품, 생산 요청 등 서브모듈로 분리 필요
+
+3. **shared/utils가 과도하게 많음**
    - 15개 파일이 단일 디렉토리에 존재
-   - 카테고리별 분리 필요
+   - 카테고리별 분리 필요 (firebase, date, user, platform, ui, cache)
 
-3. **위치가 적절하지 않은 파일들**
-   - `app/production/schedule/excel/` → `features/production/`으로 이동 필요
-   - `shared/components/auth/` → `features/auth/`로 이동 필요
+4. **위치가 적절하지 않은 파일들**
+   - `app/production/schedule/excel/` → `features/production/schedule/excel/`으로 이동 필요
+   - `shared/components/auth/` → `features/auth/components/`로 이동 필요
 
-4. **shared/services 구조 불명확**
+5. **shared/services 구조 불명확**
    - migration 폴더가 비어있거나 미사용 가능성
 
 ---
@@ -70,6 +75,13 @@ src/
 │   │   │   │   ├── ChannelView.tsx
 │   │   │   │   ├── ChannelHeader.tsx
 │   │   │   │   ├── ChannelSettingsDialog.tsx
+│   │   │   │   ├── ChannelInviteDialog.tsx
+│   │   │   │   ├── ChannelSearchDialog.tsx
+│   │   │   │   ├── ChannelNotificationSettings.tsx
+│   │   │   │   ├── ChannelMemberManagement.tsx
+│   │   │   │   ├── ChannelRightSidebar.tsx
+│   │   │   │   ├── ChannelBoardView.tsx
+│   │   │   │   ├── DraggableChannelItem.tsx
 │   │   │   │   └── ...
 │   │   │   ├── services/
 │   │   │   │   ├── channelService.ts
@@ -77,13 +89,17 @@ src/
 │   │   │   │   └── ...
 │   │   │   └── types/
 │   │   │       └── channel.types.ts
+│   │   │   └── types/
+│   │   │       └── channel.types.ts
 │   │   │
 │   │   ├── messages/                # 메시지 관리 서브모듈
 │   │   │   ├── components/
+│   │   │   │   ├── ChannelMessage.tsx
+│   │   │   │   ├── ChannelMessageView.tsx
+│   │   │   │   ├── ChannelMessageComposer.tsx
 │   │   │   │   ├── MessageEditDialog.tsx
 │   │   │   │   ├── MessageEditHistoryDialog.tsx
-│   │   │   │   ├── MessageQuote.tsx
-│   │   │   │   ├── MessageBookmarkList.tsx
+│   │   │   │   ├── MessageToTodoButton.tsx
 │   │   │   │   └── ...
 │   │   │   ├── services/
 │   │   │   │   ├── channelMessageService.ts
@@ -91,9 +107,12 @@ src/
 │   │   │   │   ├── messageEditHistoryService.ts
 │   │   │   │   ├── messageDeleteService.ts
 │   │   │   │   ├── pinnedMessageService.ts
-│   │   │   │   └── ...
+│   │   │   │   ├── bookmarkService.ts
+│   │   │   │   ├── mentionService.ts
+│   │   │   │   └── unreadMessageService.ts
 │   │   │   └── types/
-│   │   │       └── message.types.ts
+│   │   │       ├── message.types.ts
+│   │   │       └── channelMessage.types.ts
 │   │   │
 │   │   ├── threads/                 # 스레드 관리 서브모듈
 │   │   │   ├── components/
@@ -129,33 +148,30 @@ src/
 │   │   │       ├── approval.types.ts
 │   │   │       └── payment.types.ts
 │   │   │
-│   │   ├── search/                  # 검색 서브모듈
+│   │   ├── todos/                   # 할 일 관리 서브모듈
 │   │   │   ├── components/
-│   │   │   │   ├── ChannelSearchDialog.tsx
-│   │   │   │   └── GlobalSearchDialog.tsx
+│   │   │   │   ├── TodoList.tsx
+│   │   │   │   ├── TodoItem.tsx
+│   │   │   │   ├── TodoForm.tsx
+│   │   │   │   ├── TodoFilter.tsx
+│   │   │   │   └── TodoDetailModal.tsx
 │   │   │   ├── services/
-│   │   │   │   ├── channelSearchService.ts (channels로 이동 가능)
-│   │   │   │   └── globalSearchService.ts
+│   │   │   │   ├── todoService.ts
+│   │   │   │   └── todoNotificationService.ts
+│   │   │   ├── store/
+│   │   │   │   └── todoStore.ts
 │   │   │   └── types/
-│   │   │
-│   │   ├── invitations/             # 초대 관리 서브모듈
-│   │   │   ├── components/
-│   │   │   │   ├── ChannelInviteDialog.tsx
-│   │   │   │   ├── InviteLinkDialog.tsx
-│   │   │   │   └── ...
-│   │   │   ├── services/
-│   │   │   │   └── inviteService.ts
-│   │   │   └── types/
+│   │   │       └── todo.types.ts
 │   │   │
 │   │   ├── members/                 # 멤버 관리 서브모듈
 │   │   │   ├── components/
-│   │   │   │   ├── ChannelMemberManagement.tsx
-│   │   │   │   └── UserProfileCard.tsx
+│   │   │   │   ├── UserProfileCard.tsx
+│   │   │   │   └── UserCustomStatusDialog.tsx
 │   │   │   └── types/
 │   │   │
 │   │   ├── notifications/           # 알림 설정 서브모듈
 │   │   │   ├── components/
-│   │   │   │   └── ChannelNotificationSettings.tsx
+│   │   │   │   └── ChannelNotificationSettings.tsx (channels로 이동 가능)
 │   │   │   ├── services/
 │   │   │   │   └── notificationSettingsService.ts
 │   │   │   └── types/
@@ -164,22 +180,21 @@ src/
 │   │   │   ├── WorkspaceMessagePage.tsx
 │   │   │   ├── WorkspaceSidebar.tsx
 │   │   │   ├── WorkspaceSettingsDialog.tsx
-│   │   │   ├── DragDropZone.tsx
-│   │   │   ├── FilePreview.tsx
 │   │   │   ├── UrlPreview.tsx
-│   │   │   ├── KeyboardShortcutsDialog.tsx
-│   │   │   └── UserCustomStatusDialog.tsx
+│   │   │   └── KeyboardShortcutsDialog.tsx
 │   │   │
 │   │   ├── hooks/                   # 워크스페이스 공통 훅
 │   │   │   └── useKeyboardShortcuts.ts
 │   │   │
 │   │   ├── services/                # 워크스페이스 공통 서비스
 │   │   │   ├── workspaceService.ts
-│   │   │   ├── bookmarkService.ts
-│   │   │   ├── mentionService.ts
-│   │   │   ├── typingService.ts
-│   │   │   ├── unreadMessageService.ts
-│   │   │   └── urlPreviewService.ts
+│   │   │   └── notificationSettingsService.ts
+│   │   │
+│   │   ├── utils/                   # 워크스페이스 공통 유틸
+│   │   │   ├── messageUtils.ts
+│   │   │   ├── channelMessageUtils.ts
+│   │   │   ├── permissions.ts
+│   │   │   └── dateFormat.ts
 │   │   │
 │   │   ├── store/                   # 워크스페이스 전역 상태
 │   │   │   ├── workspaceStore.ts
@@ -188,54 +203,48 @@ src/
 │   │   ├── types/                   # 워크스페이스 공통 타입
 │   │   │   └── workspace.types.ts
 │   │   │
-│   │   ├── utils/                   # 워크스페이스 공통 유틸
-│   │   │   ├── messageUtils.ts
-│   │   │   └── permissions.ts
+│   │   ├── constants/               # 워크스페이스 상수
+│   │   │   └── constants.ts
 │   │   │
 │   │   └── index.ts                 # 워크스페이스 진입점
 │   │
 │   ├── production/                  # 생산 관리 피처
-│   │   ├── daily-report/            # 일일 리포트 서브모듈
+│   │   ├── packaging/               # 포장 리포트 서브모듈
 │   │   │   ├── components/
+│   │   │   │   ├── PackagingReportForm.tsx
+│   │   │   │   ├── PackagingReportListView.tsx
+│   │   │   │   ├── PackagingReportStats.tsx
+│   │   │   │   ├── LogisticsTransferModal.tsx  # 물류 이동 모달
+│   │   │   │   └── ...
+│   │   │   ├── containers/
+│   │   │   │   └── PackagingDailyReportContainer.tsx
 │   │   │   ├── services/
+│   │   │   │   ├── packagingReportsService.ts
+│   │   │   │   └── logisticsService.ts  # 물류 이동 요청 서비스
+│   │   │   ├── hooks/
+│   │   │   │   ├── usePackagingReports.ts
+│   │   │   │   ├── usePackagingForm.ts
+│   │   │   │   ├── usePackagingCalculations.ts
+│   │   │   │   └── usePackagingReportFilters.ts
+│   │   │   ├── store/
+│   │   │   │   └── packagingReportsStore.ts
 │   │   │   └── types/
 │   │   │
 │   │   ├── schedule/                # 생산 일정 서브모듈
 │   │   │   ├── components/
-│   │   │   ├── services/
-│   │   │   ├── excel/               # ✅ app/production에서 이동
-│   │   │   └── types/
-│   │   │
-│   │   ├── management/              # 생산 관리 서브모듈
-│   │   │   ├── components/
-│   │   │   ├── services/
-│   │   │   └── types/
-│   │   │
-│   │   ├── shortage/                # 부족량 관리 서브모듈
-│   │   │   ├── components/
-│   │   │   ├── services/
-│   │   │   └── types/
-│   │   │
-│   │   ├── products/                # 제품 관리 서브모듈
-│   │   │   ├── components/
-│   │   │   ├── services/
-│   │   │   └── types/
-│   │   │
-│   │   ├── packaging/               # 포장 리포트 서브모듈
-│   │   │   ├── components/
-│   │   │   │   ├── LogisticsTransferModal.tsx  # 물류 이동 모달 (포장 리포트 관련)
-│   │   │   │   ├── PackagingReportForm.tsx
-│   │   │   │   ├── PackagingReportListView.tsx
-│   │   │   │   ├── PackagingReportStats.tsx
+│   │   │   │   ├── ProductionScheduleListView.tsx
+│   │   │   │   ├── ProductionScheduleUploadModal.tsx
 │   │   │   │   └── ...
 │   │   │   ├── services/
-│   │   │   │   ├── packagingReportsService.ts
-│   │   │   │   ├── logisticsService.ts  # 물류 이동 요청 서비스 (포장 리포트에서 사용)
-│   │   │   │   └── ...
+│   │   │   │   ├── productionScheduleService.ts
+│   │   │   │   ├── productionScheduleV0Service.ts
+│   │   │   │   └── excel/               # ✅ app/production에서 이동
+│   │   │   ├── hooks/
+│   │   │   │   ├── useProductionSchedules.ts
+│   │   │   │   └── useProductionSchedulesV0.ts
 │   │   │   ├── store/
-│   │   │   │   └── packagingReportsStore.ts
+│   │   │   │   └── productionSchedulesStore.ts
 │   │   │   └── types/
-│   │   │       └── logistics.ts  # 물류 관련 타입 (production-requests의 일부)
 │   │   │
 │   │   ├── requests/                # 생산 요청 서브모듈 (긴급건, 물류이동 등)
 │   │   │   ├── components/
@@ -244,16 +253,67 @@ src/
 │   │   │   │   ├── ProductionRequestDetailModal.tsx
 │   │   │   │   └── ...
 │   │   │   ├── services/
-│   │   │   │   ├── productionRequestService.ts
-│   │   │   │   └── ...
+│   │   │   │   └── productionRequestService.ts
+│   │   │   ├── hooks/
+│   │   │   │   └── useProductionRequests.ts
 │   │   │   └── types/
-│   │   │       └── productionRequest.types.ts  # ProductionRequestType, ProductionRequestStatus 등
+│   │   │       └── logistics.ts  # 물류 관련 타입 (ProductionRequestType, ProductionRequestStatus 등)
+│   │   │
+│   │   ├── shortage/                # 부족량 관리 서브모듈
+│   │   │   ├── components/
+│   │   │   │   ├── ShortageManagementListView.tsx
+│   │   │   │   ├── ShortageRequestDetail.tsx
+│   │   │   │   ├── ShortageRequestModal.tsx
+│   │   │   │   ├── ShortageRequestTable.tsx
+│   │   │   │   └── ...
+│   │   │   ├── containers/
+│   │   │   │   └── ShortageManagementContainer.tsx
+│   │   │   ├── services/
+│   │   │   │   └── shortageService.ts
+│   │   │   ├── hooks/
+│   │   │   │   └── useShortageRequests.ts
+│   │   │   ├── store/
+│   │   │   │   └── shortageRequestsStore.ts
+│   │   │   └── types/
+│   │   │
+│   │   ├── products/                # 제품 관리 서브모듈
+│   │   │   ├── components/
+│   │   │   │   ├── ProductManagementView.tsx
+│   │   │   │   ├── ProductManagementTable.tsx
+│   │   │   │   ├── ProductDetailModal.tsx
+│   │   │   │   └── ...
+│   │   │   ├── services/
+│   │   │   │   ├── productService.ts
+│   │   │   │   └── productAIService.ts
+│   │   │   ├── hooks/
+│   │   │   │   ├── useProducts.ts
+│   │   │   │   ├── useProductDetail.ts
+│   │   │   │   └── useProductAIReport.ts
+│   │   │   └── types/
+│   │   │       └── product.types.ts
+│   │   │
+│   │   ├── management/              # 생산 관리 서브모듈
+│   │   │   ├── components/
+│   │   │   │   ├── ProductionManagementCenter.tsx
+│   │   │   │   ├── MemoModal.tsx
+│   │   │   │   ├── ProcessConditionsModal.tsx
+│   │   │   │   ├── QualityHistoryCell.tsx  # 품질 관련이지만 production에서 사용
+│   │   │   │   └── ...
+│   │   │   └── services/
 │   │   │
 │   │   ├── services/                # 공통 생산 서비스
 │   │   │   └── sheetsSyncService.ts
 │   │   │
-│   │   ├── store/                   # 생산 전역 상태
-│   │   │   └── productionSchedulesStore.ts
+│   │   ├── hooks/                   # 공통 생산 훅
+│   │   │   └── useSheetsSync.ts
+│   │   │
+│   │   ├── utils/                   # 생산 공통 유틸
+│   │   │   ├── productionUtils.ts
+│   │   │   └── orderQuantity.ts
+│   │   │
+│   │   ├── constants/               # 생산 상수
+│   │   │   ├── index.ts
+│   │   │   └── tableStyles.ts
 │   │   │
 │   │   └── index.ts
 │   │

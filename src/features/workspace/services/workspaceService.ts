@@ -24,7 +24,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db } from '@/shared/services/firebase/config';
-import { removeUndefinedFields } from '@/shared/utils/firestoreUtils';
+import { removeUndefinedFields } from '@/shared/utils/firebase/firestoreUtils';
 import type {
   Workspace,
   WorkspaceRole,

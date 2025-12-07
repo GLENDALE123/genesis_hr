@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 다이렉트 메시지 방 목록 컴포넌트
  */
 
@@ -15,7 +15,7 @@ import { useAuthStore } from '@/features/auth/store/authStore';
 import { ChatService } from '../services/chatService';
 import { formatChatDate } from '../utils/dateFormat';
 import { getUserInfo } from './UserList';
-import { getUserDisplayName, getUserInitial } from '@/shared/utils/userUtils';
+import { getUserDisplayName, getUserInitial } from '@/shared/utils/user/userUtils';
 import type { ChatRoom } from '../types/chat.types';
 import { Input } from '@/shared/components/ui/input';
 import {

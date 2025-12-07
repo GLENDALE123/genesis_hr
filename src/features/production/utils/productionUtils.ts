@@ -3,7 +3,7 @@
 import { ProductionRequestType, ProductionRequestStatus } from '../services/productionRequestService';
 
 // 사용자 관련 유틸리티는 shared에서 가져옴
-export { getUserDisplayName } from '@/shared/utils/userUtils';
+export { getUserDisplayName } from '@/shared/utils/user/userUtils';
 
 /**
  * 발주번호 포맷팅 (물류이동일 경우 "외 N건" 형식)

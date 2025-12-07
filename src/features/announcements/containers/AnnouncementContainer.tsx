@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useEffect } from 'react';
 import { Plus, Grid3X3, List, Search } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
@@ -17,8 +17,8 @@ import { AnnouncementList } from '../components/AnnouncementList';
 import { AnnouncementDetailModal } from '../components/AnnouncementDetailModal';
 import { Announcement, AnnouncementFormData, ViewMode } from '../types/announcement.types';
 import { useAuthStore } from '@/features/auth/store/authStore';
-import { UnifiedNotificationService } from '@/shared/services/notificationService';
-import { getUserDisplayName, isAdmin } from '@/shared/utils/userUtils';
+import { UnifiedNotificationService } from '@/shared/services/notifications/notificationService';
+import { getUserDisplayName, isAdmin } from '@/shared/utils/user/userUtils';
 
 interface AnnouncementContainerProps {
   className?: string;

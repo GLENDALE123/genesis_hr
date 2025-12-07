@@ -3,7 +3,7 @@ import { ProductionSchedule } from '@/features/production/types';
 import * as ProductionScheduleService from '@/features/production/services/productionScheduleService';
 import { waitForFirebaseInit } from '@/shared/services/firebase/config';
 import { useProductionSchedulesStore } from '@/features/production/store/productionSchedulesStore';
-import { getLocalDateString } from '@/shared/utils/dateUtils';
+import { getLocalDateString } from '@/shared/utils/date/dateUtils';
 
 // 생산라인 정렬 순서 (HS-Jig과 동일)
 const productionLineSortOrder = [

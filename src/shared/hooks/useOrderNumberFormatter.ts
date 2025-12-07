@@ -1,5 +1,5 @@
-import { useRef, useEffect } from 'react';
-import { orderLookupService, type OrderData } from '@/shared/services/orderLookupService';
+﻿import { useRef, useEffect } from 'react';
+import { orderLookupService, type OrderData } from '@/shared/services/lookup/orderLookupService';
 import { toast } from 'sonner';
 
 interface UseOrderNumberFormatterProps {

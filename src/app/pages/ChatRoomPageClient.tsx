@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 개별 채팅방 페이지 클라이언트 컴포넌트
  */
 
@@ -12,7 +12,7 @@ import { useChatStore } from '@/features/chat/store/chatStore';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { ChatService } from '@/features/chat/services/chatService';
 import { getUserInfo } from '@/features/chat/components/UserList';
-import { getUserDisplayName } from '@/shared/utils/userUtils';
+import { getUserDisplayName } from '@/shared/utils/user/userUtils';
 import { Input } from '@/shared/components/ui/input';
 import { Button } from '@/shared/components/ui/button';
 import { Search, ChevronUp, ChevronDown, ArrowLeft, X } from 'lucide-react';
