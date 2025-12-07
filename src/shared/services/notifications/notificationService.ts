@@ -2,7 +2,7 @@ import { db, auth } from '@/shared/services/firebase/config';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '@/shared/services/firebase/config';
-import { PackagingReport, ProductionStatus } from '@/features/production/types';
+import { PackagingReport, ProductionStatus } from '@/features/production/packaging';
 import { settingsService } from '@/shared/services/settings/settingsService';
 import { NotificationChannelType } from '@/shared/types/settings';
 import { formatDateRangeKorean } from '@/shared/utils/date/dateUtils';

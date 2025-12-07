@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   getDoc,
+  getDocFromCache,
   getDocs,
   getDocsFromCache,
   getDocsFromServer,
@@ -38,10 +39,22 @@ export const getDocRef = (collectionName: string, docId: string) => {
   return doc(db, collectionName, docId);
 };
 
-// 단일 문서 가져오기
+// 단일 문서 가져오기 (캐시 우선 - 로컬 프로그램처럼 빠르게)
 export const getDocument = async (collectionName: string, docId: string) => {
   try {
     const docRef = getDocRef(collectionName, docId);
+    
+    // 캐시에서 먼저 시도 (로컬 프로그램처럼 즉시 반환)
+    try {
+      const cacheSnap = await getDocFromCache(docRef);
+      if (cacheSnap.exists()) {
+        return { id: cacheSnap.id, ...cacheSnap.data() };
+      }
+    } catch (cacheError) {
+      // 캐시에 없으면 서버에서 가져오기
+    }
+    
+    // 서버에서 가져오기
     const docSnap = await getDoc(docRef);
     
     if (docSnap.exists()) {

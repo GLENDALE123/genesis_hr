@@ -45,6 +45,80 @@
     </script>
   </head>
   <body>
+    <script>
+      // 포스트잇 모드 체크 및 즉시 배경 투명 처리 (React 로드 전)
+      (function() {
+        try {
+          const hash = window.location.hash || '';
+          const queryParams = new URLSearchParams(window.location.search);
+          
+          // 포스트잇 모드 확인
+          let isPostItMode = false;
+          
+          // 일반 쿼리 파라미터 확인
+          if (queryParams.get('mode') === 'postit') {
+            isPostItMode = true;
+          }
+          
+          // HashRouter 쿼리 파라미터 확인 (#/?mode=postit)
+          if (hash) {
+            const hashQuery = hash.split('?')[1];
+            if (hashQuery) {
+              const hashParams = new URLSearchParams(hashQuery);
+              if (hashParams.get('mode') === 'postit') {
+                isPostItMode = true;
+              }
+            }
+            // Hash 경로 확인 (#/postit)
+            if (hash === '#/postit' || hash.startsWith('#/postit?')) {
+              isPostItMode = true;
+            }
+          }
+          
+          // Electron 환경 확인
+          const isElectron = typeof window !== 'undefined' && 
+            ((window as any).__ELECTRON__ === true || (window as any).electron || window.location.protocol === 'file:');
+          
+          // 포스트잇 모드이고 Electron 환경이면 즉시 배경 투명 처리
+          if (isPostItMode && isElectron) {
+            // 즉시 배경 투명 처리
+            document.documentElement.style.setProperty('background', 'transparent', 'important');
+            document.documentElement.style.setProperty('background-color', 'transparent', 'important');
+            document.documentElement.setAttribute('data-postit-mode', 'true');
+            
+            // body도 즉시 투명 처리
+            if (document.body) {
+              document.body.style.setProperty('background', 'transparent', 'important');
+              document.body.style.setProperty('background-color', 'transparent', 'important');
+              document.body.setAttribute('data-postit-mode', 'true');
+            } else {
+              // body가 아직 없으면 DOMContentLoaded에서 처리
+              document.addEventListener('DOMContentLoaded', function() {
+                document.body.style.setProperty('background', 'transparent', 'important');
+                document.body.style.setProperty('background-color', 'transparent', 'important');
+                document.body.setAttribute('data-postit-mode', 'true');
+              });
+            }
+            
+            // root 요소도 미리 준비
+            const rootStyle = document.createElement('style');
+            rootStyle.textContent = `
+              #root {
+                background: transparent !important;
+                background-color: transparent !important;
+              }
+              html, body, #root, #root > * {
+                background: transparent !important;
+                background-color: transparent !important;
+              }
+            `;
+            document.head.appendChild(rootStyle);
+          }
+        } catch (e) {
+          // 에러 무시
+        }
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

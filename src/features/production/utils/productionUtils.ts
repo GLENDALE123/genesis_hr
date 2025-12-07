@@ -1,6 +1,6 @@
 // 생산관리 유틸리티 함수들
 
-import { ProductionRequestType, ProductionRequestStatus } from '../services/productionRequestService';
+import { ProductionRequestType, ProductionRequestStatus } from '@/features/production/requests';
 
 // 사용자 관련 유틸리티는 shared에서 가져옴
 export { getUserDisplayName } from '@/shared/utils/user/userUtils';

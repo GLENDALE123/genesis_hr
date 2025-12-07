@@ -18,6 +18,28 @@ export const ConditionalLayout: React.FC<ConditionalLayoutProps> = ({
   // Electron 환경 감지 (타이틀바가 fixed일 때만 여백 필요)
   const [isElectron, setIsElectron] = useState(false);
 
+  // 포스트잇 모드 확인
+  const isPostItMode = (() => {
+    if (typeof window === 'undefined') return false;
+    const queryParams = new URLSearchParams(window.location.search);
+    if (queryParams.get('mode') === 'postit') return true;
+    const hash = window.location.hash;
+    if (hash) {
+      const hashQuery = hash.split('?')[1];
+      if (hashQuery) {
+        const hashParams = new URLSearchParams(hashQuery);
+        if (hashParams.get('mode') === 'postit') return true;
+      }
+      if (hash === '#/postit' || hash.startsWith('#/postit?')) return true;
+    }
+    return false;
+  })();
+
+  // 포스트잇 모드일 때는 아무것도 렌더링하지 않음 (App.tsx에서 처리됨)
+  if (isPostItMode) {
+    return null;
+  }
+
   useEffect(() => {
     setMounted(true);
     

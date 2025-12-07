@@ -28,11 +28,13 @@ export const NetworkStatusProvider: React.FC<NetworkStatusProviderProps> = ({ ch
       toast.error('인터넷 연결이 끊어졌습니다.', {
         duration: Infinity,
         id: 'network-offline',
+        description: '오프라인 상태입니다. 캐시된 데이터를 보고 있습니다.',
       });
       wasOffline.current = true;
     } else if (isOnline && wasOffline.current) {
       // 오프라인 → 온라인
       toast.dismiss('network-offline');
+      toast.dismiss('cache-warning');
       toast.success('인터넷에 다시 연결되었습니다.', {
         duration: 3000,
       });

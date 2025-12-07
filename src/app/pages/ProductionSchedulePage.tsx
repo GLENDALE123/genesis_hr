@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
-import { ProductionScheduleListView } from '@/features/production/components/ProductionScheduleListView';
-import { ProductionScheduleUploadModal } from '@/features/production/components/ProductionScheduleUploadModal';
-import { useProductionSchedules } from '@/features/production/hooks/useProductionSchedules';
+import { ProductionScheduleListView, ProductionScheduleUploadModal, useProductionSchedules } from '@/features/production/schedule';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { getUserDisplayName } from '@/shared/utils/user/userUtils';
 import { getLocalDateString } from '@/shared/utils/date/dateUtils';

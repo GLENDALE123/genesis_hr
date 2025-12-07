@@ -1,6 +1,8 @@
-const { ipcMain, BrowserWindow, clipboard, desktopCapturer, screen, nativeImage, webContents } = require('electron');
+const { ipcMain, BrowserWindow, clipboard, desktopCapturer, screen, nativeImage, webContents, app } = require('electron');
 const { startAreaSelection } = require('./area-selector');
 const { createScreenshotPreview } = require('./screenshot-preview');
+const path = require('path');
+const fs = require('fs');
 
 /**
  * IPC 핸들러 등록
@@ -360,6 +362,54 @@ module.exports = function registerIpcHandlers() {
       return { success: true };
     } catch (error) {
       console.error('스크린샷 캡처 오류:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // ==================== 포스트잇 기능 (Electron 전용) ====================
+  
+  // 포스트잇 데이터 파일 경로
+  const POSTIT_FILE = path.join(app.getPath('userData'), 'postits.json');
+  
+  // 포스트잇 데이터 파일 읽기
+  ipcMain.handle('postit-read', async () => {
+    try {
+      if (!fs.existsSync(POSTIT_FILE)) {
+        // 파일이 없으면 기본 데이터 반환
+        return {
+          postits: [],
+          folders: [],
+          version: '1.0.0'
+        };
+      }
+      
+      const data = fs.readFileSync(POSTIT_FILE, 'utf-8');
+      const parsed = JSON.parse(data);
+      return parsed;
+    } catch (error) {
+      console.error('포스트잇 데이터 읽기 실패:', error);
+      return {
+        postits: [],
+        folders: [],
+        version: '1.0.0'
+      };
+    }
+  });
+  
+  // 포스트잇 데이터 파일 저장
+  ipcMain.handle('postit-write', async (event, data) => {
+    try {
+      // 디렉토리가 없으면 생성
+      const dir = path.dirname(POSTIT_FILE);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      
+      // 데이터 저장
+      fs.writeFileSync(POSTIT_FILE, JSON.stringify(data, null, 2), 'utf-8');
+      return { success: true };
+    } catch (error) {
+      console.error('포스트잇 데이터 저장 실패:', error);
       return { success: false, error: error.message };
     }
   });

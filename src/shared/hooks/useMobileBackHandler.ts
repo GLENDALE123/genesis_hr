@@ -63,6 +63,29 @@ export const useMobileBackHandler = ({
   const onCloseRef = useRef(onClose);
   const isMobileRef = useRef(window.innerWidth < 1440);
   
+  // 컴포넌트 언마운트 시 정리 함수
+  const cleanupFromStack = () => {
+    if (historyStateAddedRef.current) {
+      historyStateAddedRef.current = false;
+      // 스택에서 제거
+      const index = historyStack.findIndex(item => item.componentId === componentIdRef.current);
+      if (index !== -1) {
+        historyStack.splice(index, 1);
+      }
+      // 히스토리 제거
+      if (window.history.state?.componentId === componentIdRef.current) {
+        window.history.back();
+      }
+    }
+  };
+  
+  // 컴포넌트 언마운트 시 정리
+  useEffect(() => {
+    return () => {
+      cleanupFromStack();
+    };
+  }, []);
+  
   // onClose를 항상 최신 값으로 유지
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -81,18 +104,7 @@ export const useMobileBackHandler = ({
   useEffect(() => {
     if (!isOpen || !isMobileRef.current) {
       // 닫혔을 때 정리
-      if (historyStateAddedRef.current) {
-        historyStateAddedRef.current = false;
-        // 스택에서 제거
-        const index = historyStack.findIndex(item => item.componentId === componentIdRef.current);
-        if (index !== -1) {
-          historyStack.splice(index, 1);
-        }
-        // UI로 닫았을 때 히스토리 제거
-        if (window.history.state?.componentId === componentIdRef.current) {
-          window.history.back();
-        }
-      }
+      cleanupFromStack();
       return;
     }
 

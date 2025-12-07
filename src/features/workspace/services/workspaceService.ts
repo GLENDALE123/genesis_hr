@@ -241,8 +241,12 @@ export class WorkspaceService {
       throw new Error('User is already a member');
     }
 
+    // undefined 필드 제거 (Firestore는 undefined를 허용하지 않음)
+    const cleanedMember = removeUndefinedFields(member);
     const newMember: WorkspaceMember = {
-      ...member,
+      ...cleanedMember,
+      uid: member.uid, // uid는 필수이므로 보장
+      role: member.role, // role도 필수이므로 보장
       joinedAt: new Date().toISOString(),
     };
 

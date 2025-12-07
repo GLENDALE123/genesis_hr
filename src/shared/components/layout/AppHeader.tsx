@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { Button } from '@/shared/components/ui/button';
@@ -48,6 +48,7 @@ import {
   SheetTrigger
 } from '@/shared/components/ui/sheet';
 import { useDeviceType } from '@/shared/hooks/use-device';
+import { DataSyncStatusIndicator } from '@/shared/components/common/DataSyncStatusIndicator';
 
 interface AppHeaderProps {
   className?: string;
@@ -250,6 +251,9 @@ const AppHeaderComponent: React.FC<AppHeaderProps> = ({
         {/* Right Section */}
         <div className="flex items-center gap-2">
           {/* Theme Customizer removed */}
+
+          {/* Data Sync Status Indicator */}
+          <DataSyncStatusIndicator />
 
           {/* Messages */}
           <Button

@@ -175,11 +175,9 @@ const DialogContent = React.forwardRef<
           adjustedClassName
         )}
         style={{
-          WebkitFontSmoothing: 'subpixel-antialiased',
-          MozOsxFontSmoothing: 'auto',
-          textRendering: 'auto',
-          willChange: 'auto',
-          backfaceVisibility: 'visible',
+          WebkitFontSmoothing: 'antialiased',
+          MozOsxFontSmoothing: 'grayscale',
+          textRendering: 'optimizeLegibility',
         } as React.CSSProperties}
         {...props}
       >
@@ -257,9 +255,9 @@ const DialogHeader = ({
       className
     )}
     style={{
-      WebkitFontSmoothing: 'subpixel-antialiased',
-      MozOsxFontSmoothing: 'auto',
-      textRendering: 'auto',
+      WebkitFontSmoothing: 'antialiased',
+      MozOsxFontSmoothing: 'grayscale',
+      textRendering: 'optimizeLegibility',
     } as React.CSSProperties}
     {...props}
   />

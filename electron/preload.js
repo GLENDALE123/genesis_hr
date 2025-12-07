@@ -55,10 +55,57 @@ async function preloadFirestoreCache() {
   }
 }
 
-// 앱 시작 시 프리로드 시작 (비동기, 블로킹 안 함)
-setTimeout(() => {
-  preloadFirestoreCache();
-}, 100);
+/**
+ * 중요 데이터 프리로드 (인증 상태, 사용자 프로필 등)
+ */
+async function preloadCriticalData() {
+  try {
+    // 1. 인증 상태 확인 (이미 localStorage에서 로드됨)
+    const authData = localStorage.getItem('auth-store');
+    let userId = null;
+    
+    if (authData) {
+      try {
+        const parsed = JSON.parse(authData);
+        userId = parsed.state?.user?.uid || null;
+      } catch (e) {
+        // JSON 파싱 실패 무시
+      }
+    }
+    
+    // 2. 네이티브 파일 캐시 로드 (인증 상태와 무관하게 실행)
+    await preloadFirestoreCache();
+    
+    // 3. IndexedDB 준비 대기 (Firebase 초기화 대기)
+    if (typeof indexedDB !== 'undefined' && indexedDB.databases) {
+      try {
+        await indexedDB.databases(); // IndexedDB 준비 확인
+        console.log('✅ [Preload] IndexedDB 준비 완료');
+      } catch (e) {
+        console.warn('⚠️ [Preload] IndexedDB 확인 실패:', e.message);
+      }
+    }
+    
+    // 4. 프리로드 완료 표시
+    if (typeof window !== 'undefined') {
+      window.__PRELOAD_COMPLETE__ = true;
+      console.log('✅ [Preload] 중요 데이터 프리로드 완료');
+    }
+  } catch (error) {
+    console.warn('⚠️ [Preload] 중요 데이터 프리로드 실패:', error);
+    // 실패해도 진행 (프리로드는 선택적)
+    if (typeof window !== 'undefined') {
+      window.__PRELOAD_COMPLETE__ = true;
+    }
+  }
+}
+
+// 앱 시작 시 즉시 프리로드 시작 (비동기, 블로킹 안 함)
+// Preload 스크립트는 렌더러 프로세스 시작 전에 실행되므로,
+// 가능한 한 빨리 시작하여 앱 로드 속도 향상
+setImmediate(() => {
+  preloadCriticalData();
+});
 
 // Electron API를 window.electron 객체로 노출
 contextBridge.exposeInMainWorld('electron', {
@@ -398,6 +445,138 @@ contextBridge.exposeInMainWorld('electron', {
         console.error('❌ [Preload] 캐시 통계 조회 실패:', error);
         return null;
       }
+    },
+  },
+
+  /**
+   * 포스트잇 기능 (Electron 전용)
+   */
+  postit: {
+    /**
+     * 포스트잇 데이터 읽기
+     * @returns {Promise<{postits: Array, folders: Array, version: string}>}
+     */
+    read: async () => {
+      try {
+        const result = await ipcRenderer.invoke('postit-read');
+        return result;
+      } catch (error) {
+        console.error('❌ [Preload] 포스트잇 데이터 읽기 실패:', error);
+        return {
+          postits: [],
+          folders: [],
+          version: '1.0.0'
+        };
+      }
+    },
+    
+    /**
+     * 포스트잇 데이터 저장
+     * @param {Object} data - 저장할 데이터
+     * @returns {Promise<{success: boolean, error?: string}>}
+     */
+    write: async (data) => {
+      try {
+        const result = await ipcRenderer.invoke('postit-write', data);
+        return result;
+      } catch (error) {
+        console.error('❌ [Preload] 포스트잇 데이터 저장 실패:', error);
+        return { success: false, error: error.message };
+      }
+    },
+    
+    /**
+     * 포스트잇 창 제어
+     */
+    window: {
+      /**
+       * 포스트잇 창 표시
+       */
+      show: async () => {
+        try {
+          return await ipcRenderer.invoke('postit-window-show');
+        } catch (error) {
+          console.error('❌ [Preload] 포스트잇 창 표시 실패:', error);
+          return { success: false, error: error.message };
+        }
+      },
+      
+      /**
+       * 포스트잇 창 숨기기
+       */
+      hide: async () => {
+        try {
+          return await ipcRenderer.invoke('postit-window-hide');
+        } catch (error) {
+          console.error('❌ [Preload] 포스트잇 창 숨기기 실패:', error);
+          return { success: false, error: error.message };
+        }
+      },
+      
+      /**
+       * 포스트잇 창 닫기
+       */
+      close: async () => {
+        try {
+          return await ipcRenderer.invoke('postit-window-close');
+        } catch (error) {
+          console.error('❌ [Preload] 포스트잇 창 닫기 실패:', error);
+          return { success: false, error: error.message };
+        }
+      },
+      
+      /**
+       * 포스트잇 창이 열려있는지 확인
+       */
+      isOpen: async () => {
+        try {
+          const result = await ipcRenderer.invoke('postit-window-is-open');
+          return result.isOpen || false;
+        } catch (error) {
+          console.error('❌ [Preload] 포스트잇 창 상태 확인 실패:', error);
+          return false;
+        }
+      },
+      
+      /**
+       * 포스트잇 창 모드 설정
+       * @param {string} mode - 'always-on-top', 'desktop', 'hidden'
+       * @returns {Promise<{success: boolean, mode: string}>}
+       */
+      setMode: async (mode) => {
+        try {
+          return await ipcRenderer.invoke('postit-window-set-mode', mode);
+        } catch (error) {
+          console.error('❌ [Preload] 포스트잇 창 모드 설정 실패:', error);
+          return { success: false, error: error.message };
+        }
+      },
+      
+      /**
+       * 포스트잇 창 모드 가져오기
+       * @returns {Promise<{mode: string}>}
+       */
+      getMode: async () => {
+        try {
+          return await ipcRenderer.invoke('postit-window-get-mode');
+        } catch (error) {
+          console.error('❌ [Preload] 포스트잇 창 모드 가져오기 실패:', error);
+          return { mode: 'always-on-top' };
+        }
+      },
+      
+      /**
+       * 포스트잇 창 모드 순환 (always-on-top -> desktop -> hidden -> always-on-top)
+       * @returns {Promise<{success: boolean, mode: string}>}
+       */
+      cycleMode: async () => {
+        try {
+          return await ipcRenderer.invoke('postit-window-cycle-mode');
+        } catch (error) {
+          console.error('❌ [Preload] 포스트잇 창 모드 순환 실패:', error);
+          return { success: false, error: error.message };
+        }
+      },
     },
   },
 });

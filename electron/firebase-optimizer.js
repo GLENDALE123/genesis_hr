@@ -15,6 +15,10 @@ const https = require('https');
 const FIREBASE_OPTIMIZATION_CONFIG = {
   // Storage 캐시 디렉토리
   STORAGE_CACHE_DIR: path.join(app.getPath('userData'), 'storage-cache'),
+  // Storage 캐시 최대 크기 (MB) - 새로 추가
+  MAX_STORAGE_CACHE_MB: 200,
+  // Storage 캐시 TTL (3일로 단축)
+  STORAGE_CACHE_TTL: 3 * 24 * 60 * 60 * 1000,
   // Firestore 캐시 프리로드 설정
   PRELOAD_COLLECTIONS: [
     'users',
@@ -215,10 +219,10 @@ class FirebaseOptimizer {
       return;
     }
 
-    // Firestore 캐시 최적화 명령 전송
+    // Firestore 캐시 최적화 명령 전송 (로컬 프로그램처럼 빠르게)
     this.mainWindow.webContents.send('firebase-optimize', {
       preloadCollections: FIREBASE_OPTIMIZATION_CONFIG.PRELOAD_COLLECTIONS,
-      cacheSize: 100 * 1024 * 1024, // 100MB
+      cacheSize: 200 * 1024 * 1024, // 200MB (Electron 환경에서 더 많은 로컬 데이터 저장)
     });
   }
 
@@ -250,11 +254,10 @@ class FirebaseOptimizer {
     const cached = this.storageCache.get(cacheKey);
     
     if (cached && fs.existsSync(cached.filePath)) {
-      // 캐시 만료 확인 (7일)
+      // 캐시 만료 확인 (3일)
       const age = Date.now() - cached.timestamp;
-      const maxAge = 7 * 24 * 60 * 60 * 1000;
       
-      if (age < maxAge) {
+      if (age < FIREBASE_OPTIMIZATION_CONFIG.STORAGE_CACHE_TTL) {
         return cached.filePath;
       } else {
         // 만료된 캐시 삭제
@@ -323,13 +326,15 @@ class FirebaseOptimizer {
   }
 
   /**
-   * Storage 캐시 정리 (오래된 파일 삭제)
+   * Storage 캐시 정리 (오래된 파일 삭제 및 크기 제한)
    */
   cleanupStorageCache() {
     const now = Date.now();
-    const maxAge = 7 * 24 * 60 * 60 * 1000; // 7일
+    const maxAge = FIREBASE_OPTIMIZATION_CONFIG.STORAGE_CACHE_TTL;
     let cleanedCount = 0;
+    let totalSizeMB = 0;
 
+    // 1. 오래된 캐시 파일 삭제
     for (const [key, cached] of this.storageCache.entries()) {
       const age = now - cached.timestamp;
       
@@ -342,11 +347,53 @@ class FirebaseOptimizer {
         
         this.storageCache.delete(key);
         cleanedCount++;
+      } else if (fs.existsSync(cached.filePath)) {
+        // 현재 파일 크기 계산
+        try {
+          const stats = fs.statSync(cached.filePath);
+          cached.size = stats.size;
+          totalSizeMB += stats.size / 1024 / 1024;
+        } catch {}
       }
     }
 
+    // 2. 캐시 크기 제한 확인 및 정리
+    const maxSizeMB = FIREBASE_OPTIMIZATION_CONFIG.MAX_STORAGE_CACHE_MB;
+    if (totalSizeMB > maxSizeMB) {
+      console.warn(`⚠️ [Firebase Optimizer] Storage 캐시 크기 초과: ${totalSizeMB.toFixed(2)}MB > ${maxSizeMB}MB`);
+      
+      // 가장 오래된 파일부터 정리
+      const sortedEntries = Array.from(this.storageCache.entries())
+        .map(([key, cached]) => ({
+          key,
+          timestamp: cached.timestamp || 0,
+          size: cached.size || 0,
+          filePath: cached.filePath,
+        }))
+        .sort((a, b) => a.timestamp - b.timestamp);
+      
+      let removedSize = 0;
+      const targetSize = maxSizeMB * 0.7 * 1024 * 1024; // 70%까지 감소
+      
+      for (const entry of sortedEntries) {
+        if (removedSize >= targetSize) break;
+        
+        try {
+          if (fs.existsSync(entry.filePath)) {
+            fs.unlinkSync(entry.filePath);
+          }
+        } catch {}
+        
+        this.storageCache.delete(entry.key);
+        removedSize += entry.size;
+        cleanedCount++;
+      }
+      
+      console.log(`🧹 [Firebase Optimizer] Storage 캐시 크기 정리: ${(removedSize / 1024 / 1024).toFixed(2)}MB 제거`);
+    }
+
     if (cleanedCount > 0) {
-      console.log(`🧹 [Firebase Optimizer] Storage 캐시 ${cleanedCount}개 정리`);
+      console.log(`🧹 [Firebase Optimizer] Storage 캐시 ${cleanedCount}개 정리 완료 (현재 크기: ${totalSizeMB.toFixed(2)}MB)`);
       this.saveStorageCache();
     }
   }

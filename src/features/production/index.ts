@@ -1,63 +1,18 @@
 // Production Feature Exports
 
-// Types
-export type {
-  PackagingReport,
-  PackagedBox,
-  ProcessCoat,
-  ExcelProductionReport,
-  PackagingFormData,
-  ProductionReportFilter,
-  ProductionReportStatsData,
-  ProductionSchedule,
-  ProductionScheduleV0,
-  ProductionScheduleV0Row,
-  ShortageRequest
-} from './types';
-export * from './types/product.types';
+// 서브모듈 export
+export * from './packaging';
+export * from './schedule';
+export * from './shortage';
+export * from './products';
+export * from './requests';
+export * from './management';
 
-// Components
-export { PackagingReportListView } from './components/PackagingReportListView';
-export { PackagingReportForm } from './components/PackagingReportForm';
-export { ProductionRequestForm } from './components/ProductionRequestForm';
-export { PackagingReportStats } from './components/PackagingReportStats';
-export { ProcessConditionsModal } from './components/ProcessConditionsModal';
-export { MemoModal } from './components/MemoModal';
-export { ProductionManagementCenter } from './components/ProductionManagementCenter';
-export { ProductionRequestFormModal } from './components/ProductionRequestFormModal';
-export { ProductionRequestDetailModal } from './components/ProductionRequestDetailModal';
-export { ProductionScheduleListView } from './components/ProductionScheduleListView';
-export { ProductionScheduleUploadModal } from './components/ProductionScheduleUploadModal';
-export { ShortageManagementListView } from './components/ShortageManagementListView';
-export { ProductManagementView } from './components/ProductManagementView';
-export { ProductManagementTable } from './components/ProductManagementTable';
-
-// Containers
-export { PackagingDailyReportContainer } from './containers/PackagingDailyReportContainer';
-
-// Hooks
-export { usePackagingReports } from './hooks/usePackagingReports';
-export { usePackagingReportFilters } from './hooks/usePackagingReportFilters';
-export { usePackagingForm } from './hooks/usePackagingForm';
-export { usePackagingCalculations } from './hooks/usePackagingCalculations';
-export { useProductionSchedules } from './hooks/useProductionSchedules';
-export { useProductionSchedulesV0 } from './hooks/useProductionSchedulesV0';
+// Hooks (서브모듈로 분리되지 않은 훅만)
 export { useSheetsSync } from './hooks/useSheetsSync';
-export { useProducts } from './hooks/useProducts';
-export { useProductDetail } from './hooks/useProductDetail';
-export { useProductAIReport } from './hooks/useProductAIReport';
 
-// Services
-export { PackagingReportsService } from './services/packagingReportsService';
-export { ProductionRequestService, ProductionRequestType, ProductionRequestStatus } from './services/productionRequestService';
-export type { ProductionRequest } from './services/productionRequestService';
-export * as ProductionScheduleService from './services/productionScheduleService';
-export * as ProductionScheduleV0Service from './services/productionScheduleV0Service';
+// Services (서브모듈로 분리되지 않은 서비스만)
 export * as SheetsSyncService from './services/sheetsSyncService';
-export * as ShortageService from './services/shortageService';
-
-// Production Request Hooks
-export { useProductionRequests } from './hooks/useProductionRequests';
 
 // Utils
 export { 

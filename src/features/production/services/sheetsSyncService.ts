@@ -4,8 +4,8 @@
  */
 
 import { readSpreadsheetWithHeaders } from '@/shared/services/google/sheetsService';
-import { ProductionScheduleV0 } from '@/features/production/types';
-import * as ProductionScheduleV0Service from './productionScheduleV0Service';
+import { ProductionScheduleV0 } from '@/features/production/schedule';
+import * as ProductionScheduleV0Service from '@/features/production/schedule/services/productionScheduleV0Service';
 
 export interface SyncResult {
   added: number;

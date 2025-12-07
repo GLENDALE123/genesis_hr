@@ -27,13 +27,16 @@ export const FIREBASE_VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY || 'BC
 // 주의: default 데이터베이스는 사용하지 않음 (완전 배제)
 export const FIREBASE_FIRESTORE_DATABASE_ID = import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || 'tms-production';
 
-// Firestore 캐시 크기 설정 (메모리 관리)
-// 기본값: 100MB (40MB 기본값보다 크지만 무제한은 아님)
-// 환경변수로 조정 가능 (바이트 단위, 예: 104857600 = 100MB)
-// 무제한을 원하면 CACHE_SIZE_UNLIMITED 사용 (권장하지 않음)
+// Firestore 캐시 크기 설정 (로컬 프로그램처럼 빠르게 작동하기 위해 크게 설정)
+// Electron 환경: 200MB (더 많은 데이터를 로컬에 저장)
+// 웹 환경: 100MB
+// 환경변수로 조정 가능 (바이트 단위)
+const isElectronEnv = typeof window !== 'undefined' && (window as unknown as Record<string, unknown>).__ELECTRON__;
 const FIREBASE_CACHE_SIZE = import.meta.env.VITE_FIREBASE_CACHE_SIZE 
   ? parseInt(import.meta.env.VITE_FIREBASE_CACHE_SIZE, 10)
-  : 100 * 1024 * 1024; // 100MB 기본값
+  : isElectronEnv 
+    ? 200 * 1024 * 1024 // Electron: 200MB (로컬 데이터 저장 확대)
+    : 100 * 1024 * 1024; // 웹: 100MB
 
 // Firebase 앱이 이미 초기화되어 있는지 확인
 let app: FirebaseApp;
@@ -82,8 +85,10 @@ export const db = (() => {
       console.log('✅ [Firebase Config] Firestore 초기화 성공');
       
       // IndexedDB Persistence 활성화 (오프라인 캐싱 및 빠른 데이터 로드)
-      // 여러 탭에서 동시에 사용할 수 있도록 multi-tab 지원
-      enableIndexedDbPersistence(dbService).catch((err) => {
+      // 로컬 프로그램처럼 빠르게 작동하기 위해 필수
+      enableIndexedDbPersistence(dbService).then(() => {
+        console.log('✅ [Firebase Config] IndexedDB Persistence 활성화됨 - 로컬 데이터 저장 가능');
+      }).catch((err) => {
         // 이미 다른 탭에서 활성화된 경우 무시
         if (err.code === 'failed-precondition') {
           console.warn('⚠️ [Firebase Config] Persistence는 다른 탭에서 이미 활성화되어 있습니다.');

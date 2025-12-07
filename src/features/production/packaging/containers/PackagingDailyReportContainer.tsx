@@ -38,9 +38,8 @@ import {
 } from 'lucide-react';
 import { PackagingReportListView } from '../components/PackagingReportListView';
 import { PackagingReportForm } from '../components/PackagingReportForm';
-import { ProcessConditionsModal } from '../../components/ProcessConditionsModal';
-import { MemoModal } from '../../components/MemoModal';
-import { ShortageRequestModal } from '../../components/ShortageRequestModal';
+import { ProcessConditionsModal, MemoModal } from '@/features/production/management';
+import { ShortageRequestModal, ShortageRequest } from '@/features/production/shortage';
 import { usePackagingReports } from '../hooks/usePackagingReports';
 import { usePackagingReportFilters } from '../hooks/usePackagingReportFilters';
 import { 
@@ -48,7 +47,6 @@ import {
 } from '@/features/auth';
 import { useCanSyncDailyReports } from '@/features/auth/hooks';
 import { PackagingReport, PackagingFormData } from '../types';
-import type { ShortageRequest } from '../../types';
 import { toast } from 'sonner';
 import { getFirebaseErrorMessage } from '@/shared/utils/firebase/firebaseErrorHandler';
 import { getUserDisplayName, isAdmin } from '@/shared/utils/user/userUtils';
@@ -58,7 +56,7 @@ import {
   updateShortageRequest,
   getShortageRequestByReportId,
   getAllShortageRequests
-} from '../../services/shortageService';
+} from '@/features/production/shortage';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/shared/components/ui/alert';
 import { parseOrderQuantityInput, sumOrderQuantities } from '../../utils/orderQuantity';
@@ -524,7 +522,7 @@ const PackagingDailyReportContainerComponent: React.FC = () => {
         const selectedReports = reports.filter(report => selectedReportIds.has(report.id));
         
         // Firestore에 저장
-        const { createLogisticsRequest } = await import('@/features/production/services/logisticsService');
+        const { createLogisticsRequest } = await import('@/features/production/packaging');
         const requestId = await createLogisticsRequest(
           selectedReports,
           transferData,

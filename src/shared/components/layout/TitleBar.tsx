@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Minus, Square, Copy, X, Camera, Crop, MousePointer } from 'lucide-react';
+import { Minus, Square, Copy, X, Camera, Crop, MousePointer, StickyNote, Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { toast } from 'sonner';
 import { useElementCapture } from '@/shared/hooks/use-element-capture';
@@ -17,6 +17,8 @@ interface TitleBarProps {
 export const TitleBar: React.FC<TitleBarProps> = ({ className }) => {
   const [isElectron, setIsElectron] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
+  const [isPostItWindowVisible, setIsPostItWindowVisible] = useState(false);
+  const [postItWindowMode, setPostItWindowMode] = useState<'always-on-top' | 'desktop' | 'hidden'>('always-on-top');
   const { isSelecting, startElementCapture, stopElementCapture } = useElementCapture();
   const isMountedRef = React.useRef(true);
 
@@ -44,8 +46,34 @@ export const TitleBar: React.FC<TitleBarProps> = ({ className }) => {
         });
       };
       window.addEventListener('resize', handleResize);
+      
+      // 포스트잇 창 상태 및 모드 확인
+      const checkPostItWindowStatus = async () => {
+        try {
+          const isOpenResult = await (window as any).electron?.postit?.window?.isOpen();
+          const modeResult = await (window as any).electron?.postit?.window?.getMode();
+          if (isMountedRef.current) {
+            setIsPostItWindowVisible(isOpenResult || false);
+            if (modeResult?.mode) {
+              setPostItWindowMode(modeResult.mode as 'always-on-top' | 'desktop' | 'hidden');
+            }
+          }
+        } catch (error) {
+          console.error('포스트잇 창 상태 확인 실패:', error);
+        }
+      };
+      
+      // 초기 상태 확인
+      checkPostItWindowStatus();
+      
+      // 주기적으로 상태 확인 (1초마다)
+      const statusInterval = setInterval(() => {
+        checkPostItWindowStatus();
+      }, 1000);
+      
       return () => {
         window.removeEventListener('resize', handleResize);
+        clearInterval(statusInterval);
       };
     }
   }, []);
@@ -118,6 +146,43 @@ export const TitleBar: React.FC<TitleBarProps> = ({ className }) => {
     }
   };
 
+  // 포스트잇 창 모드 순환 (항상 위 -> 배경화면 위 -> 숨기기 -> 항상 위)
+  const cyclePostItWindowMode = async () => {
+    try {
+      const result = await (window as any).electron?.postit?.window?.cycleMode();
+      if (result?.success && result?.mode) {
+        setPostItWindowMode(result.mode as 'always-on-top' | 'desktop' | 'hidden');
+        
+        // 모드에 따른 토스트 메시지
+        const modeMessages = {
+          'always-on-top': '항상 위 모드',
+          'desktop': '배경화면 위 모드',
+          'hidden': '숨김 모드',
+        };
+        toast.info(modeMessages[result.mode as keyof typeof modeMessages] || '모드 변경됨');
+        
+        // 상태 재확인
+        setTimeout(async () => {
+          try {
+            const isOpenResult = await (window as any).electron?.postit?.window?.isOpen();
+            const modeResult = await (window as any).electron?.postit?.window?.getMode();
+            if (isMountedRef.current) {
+              setIsPostItWindowVisible(isOpenResult || false);
+              if (modeResult?.mode) {
+                setPostItWindowMode(modeResult.mode as 'always-on-top' | 'desktop' | 'hidden');
+              }
+            }
+          } catch (error) {
+            // 무시
+          }
+        }, 200);
+      }
+    } catch (error: any) {
+      console.error('포스트잇 창 모드 변경 실패:', error);
+      toast.error('포스트잇 창 모드 변경 실패', { description: error.message });
+    }
+  };
+
 
   return (
     <div
@@ -146,17 +211,46 @@ export const TitleBar: React.FC<TitleBarProps> = ({ className }) => {
       {/* 중앙: 드래그 영역 */}
       <div className="flex-1" />
 
-      {/* 오른쪽: 캡처도구 + 윈도우 컨트롤 버튼 (Windows 스타일) */}
+      {/* 오른쪽: 포스트잇 + 캡처도구 + 윈도우 컨트롤 버튼 (Windows 스타일) */}
       <div 
         className="flex items-center h-full"
         style={{
           WebkitAppRegion: 'no-drag',
         } as React.CSSProperties}
       >
+        {/* 포스트잇 레이블 */}
+        <div className="h-full flex items-center px-2 border-r border-border text-[11px] text-muted-foreground">
+          포스트잇
+        </div>
+        
+        {/* 포스트잇 모드 순환 버튼 */}
+        <button
+          className={`h-full w-8 flex items-center justify-center transition-colors border-r border-border ${
+            postItWindowMode !== 'hidden'
+              ? 'bg-primary text-primary-foreground' 
+              : 'hover:bg-accent'
+          }`}
+          onClick={cyclePostItWindowMode}
+          title={
+            postItWindowMode === 'always-on-top' ? '항상 위 모드 (클릭: 배경화면 위)' :
+            postItWindowMode === 'desktop' ? '배경화면 위 모드 (클릭: 숨기기)' :
+            '숨김 모드 (클릭: 항상 위)'
+          }
+        >
+          {postItWindowMode === 'hidden' ? (
+            <EyeOff className="h-3.5 w-3.5" strokeWidth={1.5} />
+          ) : postItWindowMode === 'desktop' ? (
+            <StickyNote className="h-3.5 w-3.5" strokeWidth={1.5} />
+          ) : (
+            <Eye className="h-3.5 w-3.5" strokeWidth={1.5} />
+          )}
+        </button>
+
         {/* 캡처도구 레이블 */}
         <div className="h-full flex items-center px-2 border-r border-border text-[11px] text-muted-foreground">
           캡처도구
         </div>
+        
         {/* 전체 윈도우 캡처 */}
         <button
           className="h-full w-8 flex items-center justify-center hover:bg-accent transition-colors border-r border-border"

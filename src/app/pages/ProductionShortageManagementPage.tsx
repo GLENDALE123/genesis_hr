@@ -1,4 +1,4 @@
-import { ShortageManagementContainer } from '@/features/production/containers/ShortageManagementContainer';
+import { ShortageManagementContainer } from '@/features/production/shortage';
 import { ProtectedRoute } from '@/features/auth';
 
 export default function ProductionShortageManagementPage() {

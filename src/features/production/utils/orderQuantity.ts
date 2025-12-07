@@ -1,4 +1,5 @@
-import { PackagingReport, ShortageRequest } from '@/features/production/types';
+import { PackagingReport } from '@/features/production/packaging';
+import { ShortageRequest } from '@/features/production/shortage';
 
 type OrderQuantitySource =
   | Pick<PackagingReport, 'orderQuantities' | 'orderQuantity'>
@@ -77,6 +78,8 @@ export const formatOrderQuantitiesForInput = (
 
   return source.orderQuantity != null ? source.orderQuantity.toString() : '';
 };
+
+
 
 
 

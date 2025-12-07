@@ -87,8 +87,19 @@ export const ElectronNotificationProvider: React.FC<ElectronNotificationProvider
 
           // 중복 방지 목록에 추가
           recentIds.add(notificationId);
+          
+          // 기존 타이머가 있으면 정리 (중복 방지)
+          const existingTimer = Array.from(timeoutRefsRef.current).find(
+            (t) => timeoutRefsRef.current.has(t)
+          );
+          if (existingTimer) {
+            clearTimeout(existingTimer);
+            timeoutRefsRef.current.delete(existingTimer);
+          }
+          
           const timer = setTimeout(() => {
-            if (isMountedRef.current) {
+            // cleanup 후 실행되는 경우를 대비한 체크
+            if (timeoutRefsRef.current.has(timer) && isMountedRef.current) {
               recentIds.delete(notificationId);
             }
             timeoutRefsRef.current.delete(timer);

@@ -1,20 +1,9 @@
 // 물류 이동 요청 관련 타입 정의 (packaging 서브모듈 전용)
 
-// 생산 요청 타입 (HS-Jig와 동일)
-export enum ProductionRequestType {
-  Urgent = '긴급건',
-  SalesUrgent = '영업부 긴급요청',
-  LogisticsTransfer = '물류이동',
-}
-
-// 생산 요청 상태 (HS-Jig와 동일)
-export enum ProductionRequestStatus {
-  Requested = '요청',
-  InProgress = '진행중',
-  Hold = '보류',
-  Completed = '완료',
-  Rejected = '반려',
-}
+import {
+  ProductionRequestType,
+  ProductionRequestStatus,
+} from '@/features/production/requests';
 
 // 물류이동 요청 인터페이스
 export interface LogisticsRequest {

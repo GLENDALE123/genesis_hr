@@ -1,9 +1,9 @@
-﻿/**
+/**
  * 워크스페이스 설정 다이얼로그
  * 워크스페이스 이름 변경, 멤버 관리, 설정 변경
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { WorkspaceService } from '../services/workspaceService';
 import { getAllUsersWithAuthInfo } from '@/shared/services/firebase/userManagement';
@@ -40,7 +40,7 @@ import { Switch } from '@/shared/components/ui/switch';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { toast } from 'sonner';
 import { getUserInitial } from '@/shared/utils/user/userUtils';
-import { Settings, Users, Info, UserPlus, Trash2, Crown, Shield, User } from 'lucide-react';
+import { Settings, Users, Info, UserPlus, Trash2, Crown, Shield, User, Search } from 'lucide-react';
 import type { Workspace, WorkspaceMember, WorkspaceRole } from '../types/workspace.types';
 import { canManageWorkspace } from '../utils/permissions';
 import {
@@ -87,6 +87,7 @@ export const WorkspaceSettingsDialog: React.FC<WorkspaceSettingsDialogProps> = (
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [workspaceMembers, setWorkspaceMembers] = useState<WorkspaceMember[]>(workspace.members);
   const [selectedUsersToAdd, setSelectedUsersToAdd] = useState<Set<string>>(new Set());
+  const [memberSearchQuery, setMemberSearchQuery] = useState('');
 
   // 워크스페이스 설정
   const [allowMemberInvite, setAllowMemberInvite] = useState(workspace.settings.allowMemberInvite);
@@ -135,6 +136,26 @@ export const WorkspaceSettingsDialog: React.FC<WorkspaceSettingsDialogProps> = (
       loadUsers();
     }
   }, [open, activeTab, workspaceMembers]);
+
+  // 검색어로 필터링된 사용자 목록
+  const filteredUsers = useMemo(() => {
+    if (!memberSearchQuery.trim()) {
+      return allUsers;
+    }
+    const query = memberSearchQuery.toLowerCase().trim();
+    return allUsers.filter((user) => {
+      const displayName = (user.displayName || '').toLowerCase();
+      const email = (user.email || '').toLowerCase();
+      const department = (user.department || '').toLowerCase();
+      const position = (user.position || '').toLowerCase();
+      return (
+        displayName.includes(query) ||
+        email.includes(query) ||
+        department.includes(query) ||
+        position.includes(query)
+      );
+    });
+  }, [allUsers, memberSearchQuery]);
 
   // 일반 설정 저장
   const handleSaveGeneral = async () => {
@@ -193,14 +214,22 @@ export const WorkspaceSettingsDialog: React.FC<WorkspaceSettingsDialogProps> = (
       }
 
       // 모든 사용자를 한 번에 추가
-      const addPromises = usersToAdd.map((userToAdd) =>
-        WorkspaceService.addMember(workspace.id, {
+      const addPromises = usersToAdd.map((userToAdd) => {
+        const memberData: Omit<WorkspaceMember, 'joinedAt'> = {
           uid: userToAdd.uid || '',
           role: 'member',
-          displayName: userToAdd.displayName || undefined,
-          photoURL: userToAdd.photoURL || undefined,
-        })
-      );
+        };
+        
+        // undefined가 아닌 값만 추가
+        if (userToAdd.displayName) {
+          memberData.displayName = userToAdd.displayName;
+        }
+        if (userToAdd.photoURL) {
+          memberData.photoURL = userToAdd.photoURL;
+        }
+        
+        return WorkspaceService.addMember(workspace.id, memberData);
+      });
 
       await Promise.all(addPromises);
 
@@ -214,6 +243,7 @@ export const WorkspaceSettingsDialog: React.FC<WorkspaceSettingsDialogProps> = (
       }
 
       setSelectedUsersToAdd(new Set());
+      setMemberSearchQuery(''); // 멤버 추가 후 검색어 초기화
       toast.success(`${usersToAdd.length}명의 멤버가 추가되었습니다.`);
     } catch (error: any) {
       console.error('Failed to add members:', error);
@@ -236,13 +266,25 @@ export const WorkspaceSettingsDialog: React.FC<WorkspaceSettingsDialogProps> = (
     });
   };
 
-  // 전체 선택/해제
+  // 전체 선택/해제 (필터링된 사용자 기준)
   const handleSelectAll = () => {
-    if (selectedUsersToAdd.size === allUsers.length) {
-      setSelectedUsersToAdd(new Set());
+    const availableUserIds = filteredUsers.filter((u) => u.uid).map((u) => u.uid || '');
+    const allFilteredSelected = availableUserIds.every((uid) => selectedUsersToAdd.has(uid));
+    
+    if (allFilteredSelected) {
+      // 필터링된 사용자만 해제
+      setSelectedUsersToAdd((prev) => {
+        const newSet = new Set(prev);
+        availableUserIds.forEach((uid) => newSet.delete(uid));
+        return newSet;
+      });
     } else {
-      const allUserIds = allUsers.filter((u) => u.uid).map((u) => u.uid || '');
-      setSelectedUsersToAdd(new Set(allUserIds));
+      // 필터링된 사용자 모두 선택
+      setSelectedUsersToAdd((prev) => {
+        const newSet = new Set(prev);
+        availableUserIds.forEach((uid) => newSet.add(uid));
+        return newSet;
+      });
     }
   };
 
@@ -539,34 +581,48 @@ export const WorkspaceSettingsDialog: React.FC<WorkspaceSettingsDialogProps> = (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <Label>멤버 추가</Label>
-                    {allUsers.length > 0 && (
+                    {filteredUsers.length > 0 && (
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={handleSelectAll}
                         className="text-xs"
                       >
-                        {selectedUsersToAdd.size === allUsers.length ? '전체 해제' : '전체 선택'}
+                        {filteredUsers.filter((u) => u.uid).every((u) => selectedUsersToAdd.has(u.uid || '')) 
+                          ? '전체 해제' 
+                          : '전체 선택'}
                       </Button>
                     )}
+                  </div>
+                  {/* 검색 입력 필드 */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="이름, 직책, 부서로 검색..."
+                      value={memberSearchQuery}
+                      onChange={(e) => setMemberSearchQuery(e.target.value)}
+                      className="pl-9"
+                    />
                   </div>
                   {isLoading ? (
                     <div className="text-sm text-muted-foreground py-4 text-center">
                       사용자 목록을 불러오는 중...
                     </div>
-                  ) : allUsers.length === 0 ? (
+                  ) : filteredUsers.length === 0 ? (
                     <div className="text-sm text-muted-foreground py-4 text-center">
-                      추가할 수 있는 사용자가 없습니다.
+                      {memberSearchQuery.trim() 
+                        ? '검색 결과가 없습니다.' 
+                        : '추가할 수 있는 사용자가 없습니다.'}
                     </div>
                   ) : (
                     <div className="border rounded-lg max-h-60 overflow-y-auto">
                       <div className="p-2 space-y-1">
-                        {allUsers.map((user) => {
+                        {filteredUsers.map((user) => {
                           const isSelected = user.uid && selectedUsersToAdd.has(user.uid);
                           return (
                             <div
                               key={user.uid}
-                              className="flex items-center gap-3 p-2 rounded-md hover:bg-accent cursor-pointer"
+                              className="flex items-center gap-3 p-2 rounded-md hover:bg-accent cursor-pointer transition-colors"
                               onClick={() => user.uid && handleToggleUserSelection(user.uid)}
                             >
                               <Checkbox
@@ -574,23 +630,19 @@ export const WorkspaceSettingsDialog: React.FC<WorkspaceSettingsDialogProps> = (
                                 onCheckedChange={() => user.uid && handleToggleUserSelection(user.uid)}
                                 onClick={(e) => e.stopPropagation()}
                               />
-                              <Avatar className="h-8 w-8">
+                              <Avatar className="h-8 w-8 flex-shrink-0">
                                 <AvatarImage src={user.photoURL} alt={user.displayName || user.email} />
                                 <AvatarFallback>
                                   {getUserInitial({ displayName: user.displayName || user.email || 'U', photoURL: user.photoURL })}
                                 </AvatarFallback>
                               </Avatar>
                               <div className="flex-1 min-w-0">
-                                <div className="font-medium truncate">
-                                  {user.displayName || user.email || '사용자'}
+                                <div className="font-medium truncate text-foreground" style={{ textRendering: 'optimizeLegibility', WebkitFontSmoothing: 'antialiased' }}>
+                                  {user.displayName || user.name || '사용자'}
+                                  {user.position && ` ${user.position}`}
                                 </div>
-                                {user.email && user.displayName && (
-                                  <div className="text-xs text-muted-foreground truncate">
-                                    {user.email}
-                                  </div>
-                                )}
                                 {user.department && (
-                                  <div className="text-xs text-muted-foreground">
+                                  <div className="text-xs text-muted-foreground truncate" style={{ textRendering: 'optimizeLegibility', WebkitFontSmoothing: 'antialiased' }}>
                                     {user.department}
                                   </div>
                                 )}
@@ -635,16 +687,18 @@ export const WorkspaceSettingsDialog: React.FC<WorkspaceSettingsDialogProps> = (
                         <TableRow key={member.uid}>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              <Avatar className="h-8 w-8">
+                              <Avatar className="h-8 w-8 flex-shrink-0">
                                 <AvatarImage src={photoURL} alt={displayName} />
                                 <AvatarFallback>
                                   {getUserInitial({ displayName, photoURL })}
                                 </AvatarFallback>
                               </Avatar>
-                              <div>
-                                <div className="font-medium">{displayName}</div>
+                              <div className="min-w-0">
+                                <div className="font-medium text-foreground" style={{ textRendering: 'optimizeLegibility' }}>
+                                  {displayName}
+                                </div>
                                 {userInfo?.email && (
-                                  <div className="text-xs text-muted-foreground">
+                                  <div className="text-xs text-muted-foreground" style={{ textRendering: 'optimizeLegibility', WebkitFontSmoothing: 'antialiased' }}>
                                     {userInfo.email}
                                   </div>
                                 )}

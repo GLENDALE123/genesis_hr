@@ -384,7 +384,10 @@ analyzeInspectionHistory 호출.`;
 
     // REST API 직접 호출을 우선 시도 (SDK 오버헤드 제거)
     // 가장 빠르고 안정적인 모델만 선정 (2.5-flash 우선)
-    const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest'];
+    // 비용 효율적인 모델 우선 사용: gemini-2.0-flash (가장 저렴)
+    // 2.0 Flash: 입력 $0.15/1M, 출력 $0.60/1M
+    // 2.5 Flash: 입력 $0.30/1M, 출력 $2.50/1M (약 4배 비쌈)
+    const modelsToTry = ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-flash-latest'];
     
     // 1. REST API 시도 (Function Calling 사용)
     for (const modelName of modelsToTry) {

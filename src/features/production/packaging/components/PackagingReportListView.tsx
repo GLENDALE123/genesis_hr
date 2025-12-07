@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { PackagingReport, ProductionReportFilter } from '../types';
-import type { ShortageRequest } from '../../types';
+import type { ShortageRequest } from '@/features/production/shortage';
 import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
 import { PRODUCTION_LINE_OPTIONS } from '../../constants';
 import { useIsSmartphone, useIsTablet } from '@/shared/hooks/use-device';

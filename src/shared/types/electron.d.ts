@@ -69,6 +69,29 @@ export interface ElectronAPI {
    * @returns 리스너 제거 함수
    */
   onNavigateTo: (callback: (link: string) => void) => (() => void);
+
+  /**
+   * 포스트잇 기능 (Electron 전용)
+   */
+  postit?: {
+    /**
+     * 포스트잇 데이터 읽기
+     */
+    read: () => Promise<{
+      postits: unknown[];
+      folders: unknown[];
+      version: string;
+    }>;
+    
+    /**
+     * 포스트잇 데이터 저장
+     */
+    write: (data: {
+      postits: unknown[];
+      folders: unknown[];
+      version: string;
+    }) => Promise<{ success: boolean; error?: string }>;
+  };
 }
 
 declare global {

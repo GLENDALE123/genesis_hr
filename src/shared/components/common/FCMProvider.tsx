@@ -252,12 +252,16 @@ export const FCMProvider: React.FC<FCMProviderProps> = ({ children }) => {
               const existingTimer = recentIdsTimersRef.current.get(notificationId);
               if (existingTimer) {
                 clearTimeout(existingTimer);
+                recentIdsTimersRef.current.delete(notificationId);
               }
               
               // 새 타이머 생성 및 추적
               const timerId = setTimeout(() => {
-                recentIds.delete(notificationId);
-                recentIdsTimersRef.current.delete(notificationId);
+                // cleanup 후 실행되는 경우를 대비한 체크
+                if (recentIdsTimersRef.current.has(notificationId)) {
+                  recentIds.delete(notificationId);
+                  recentIdsTimersRef.current.delete(notificationId);
+                }
               }, 5000);
               recentIdsTimersRef.current.set(notificationId, timerId);
 
@@ -426,22 +430,33 @@ const getRecentNotificationIds = () => {
     };
 
     // 권한 변경 이벤트 리스너 (일부 브라우저에서 지원)
+    let permissionResult: PermissionStatus | null = null;
+    let isCancelled = false;
+
     if ('permissions' in navigator) {
-      navigator.permissions.query({ name: 'notifications' as PermissionName }).then((result) => {
-        result.addEventListener('change', handlePermissionChange);
-        cleanup = () => {
-          result.removeEventListener('change', handlePermissionChange);
-        };
-      }).catch(() => {
-        // 권한 API를 지원하지 않는 경우 폴링으로 대체
-        permissionIntervalRef.current = setInterval(handlePermissionChange, 2000);
-        cleanup = () => {
-          if (permissionIntervalRef.current) {
-            clearInterval(permissionIntervalRef.current);
-            permissionIntervalRef.current = null;
-          }
-        };
-      });
+      navigator.permissions.query({ name: 'notifications' as PermissionName })
+        .then((result) => {
+          if (isCancelled) return; // 이미 취소된 경우 처리하지 않음
+          permissionResult = result;
+          result.addEventListener('change', handlePermissionChange);
+          cleanup = () => {
+            if (permissionResult) {
+              permissionResult.removeEventListener('change', handlePermissionChange);
+              permissionResult = null;
+            }
+          };
+        })
+        .catch(() => {
+          if (isCancelled) return; // 이미 취소된 경우 처리하지 않음
+          // 권한 API를 지원하지 않는 경우 폴링으로 대체
+          permissionIntervalRef.current = setInterval(handlePermissionChange, 2000);
+          cleanup = () => {
+            if (permissionIntervalRef.current) {
+              clearInterval(permissionIntervalRef.current);
+              permissionIntervalRef.current = null;
+            }
+          };
+        });
     } else {
       // 권한 API를 지원하지 않는 경우 폴링으로 대체
       permissionIntervalRef.current = setInterval(handlePermissionChange, 2000);
@@ -454,6 +469,7 @@ const getRecentNotificationIds = () => {
     }
 
     return () => {
+      isCancelled = true; // Promise 완료 전 취소 플래그 설정
       if (cleanup) {
         cleanup();
       }
@@ -461,6 +477,11 @@ const getRecentNotificationIds = () => {
       if (permissionIntervalRef.current) {
         clearInterval(permissionIntervalRef.current);
         permissionIntervalRef.current = null;
+      }
+      // PermissionStatus 리스너 정리 (Promise 완료 전 취소된 경우 대비)
+      if (permissionResult) {
+        permissionResult.removeEventListener('change', handlePermissionChange);
+        permissionResult = null;
       }
     };
   }, [state.permission, state.token]);

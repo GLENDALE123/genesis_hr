@@ -274,6 +274,23 @@
     line-height: 1.5;
   }
   
+  /* 포스트잇 모드일 때 기본 배경색 무시 */
+  html[data-postit-mode="true"] body {
+    background-color: transparent !important;
+    background: transparent !important;
+  }
+  
+  /* 포스트잇 모드일 때 배경 완전 투명 처리 */
+  html[data-postit-mode="true"],
+  html[data-postit-mode="true"] body,
+  body[data-postit-mode="true"],
+  html[data-postit-mode="true"] #root,
+  html[data-postit-mode="true"] #root > *,
+  html[data-postit-mode="true"] #root > * > * {
+    background: transparent !important;
+    background-color: transparent !important;
+  }
+  
   
   /* SVG 아이콘 안티앨리어싱 최적화 */
   svg {
@@ -487,6 +504,19 @@ button[data-state="unchecked"]:not([role="checkbox"]) {
 
 .mentions-input .react-mentions__suggestions__item--focused {
   background-color: hsl(var(--muted)) !important;
+}
+
+/* 포스트잇 contentEditable 플레이스홀더 스타일 (Windows Sticky Notes 스타일) */
+.content-editable[contenteditable="true"]:empty:before {
+  content: attr(data-placeholder);
+  color: rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  position: absolute;
+}
+
+.content-editable[contenteditable="true"]:not(:focus):empty:before {
+  content: attr(data-placeholder);
+  color: rgba(0, 0, 0, 0.4);
 }
 
 /* 전역 스크롤바 스타일링 (ScrollArea 컴포넌트와 동일한 스타일) */

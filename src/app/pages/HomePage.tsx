@@ -18,6 +18,28 @@ export default function HomePage() {
     // 클라이언트에서만 실행
     if (!isClient) return;
 
+    // 포스트잇 모드 확인 (리다이렉트 방지)
+    const isPostItMode = (() => {
+      if (typeof window === 'undefined') return false;
+      const queryParams = new URLSearchParams(window.location.search);
+      if (queryParams.get('mode') === 'postit') return true;
+      const hash = window.location.hash;
+      if (hash) {
+        const hashQuery = hash.split('?')[1];
+        if (hashQuery) {
+          const hashParams = new URLSearchParams(hashQuery);
+          if (hashParams.get('mode') === 'postit') return true;
+        }
+        if (hash === '#/postit' || hash.startsWith('#/postit?')) return true;
+      }
+      return false;
+    })();
+
+    // 포스트잇 모드일 때는 리다이렉트하지 않음
+    if (isPostItMode) {
+      return;
+    }
+
     // 로딩 중이면 대기
     if (loading) {
       return;

@@ -1,6 +1,7 @@
 ﻿import { db } from '@/shared/services/firebase/config';
 import { collection, doc, runTransaction, query, orderBy, limit, getDocs } from 'firebase/firestore';
-import { LogisticsRequest, ProductionRequestStatus, ProductionRequestType } from '../types/logistics.types';
+import { LogisticsRequest } from '../types/logistics.types';
+import { ProductionRequestStatus, ProductionRequestType } from '@/features/production/requests';
 import type { PackagingReport } from '../types';
 import { LogisticsTransferData } from '../components/LogisticsTransferModal';
 import { createProductionRequestNotification } from '@/shared/services/notifications/notificationService';
