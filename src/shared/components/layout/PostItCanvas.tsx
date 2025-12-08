@@ -62,7 +62,7 @@ const PostItItem: React.FC<PostItItemProps> = ({
   const updateSizeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedPositionRef = useRef<{ x: number; y: number } | null>(postit.position || null);
   const lastSavedSizeRef = useRef<{ width: number; height: number } | null>(postit.size || null);
-  
+
   // 드래그로 인식할 최소 이동 거리 (픽셀)
   const DRAG_THRESHOLD = 5;
 
@@ -71,7 +71,7 @@ const PostItItem: React.FC<PostItItemProps> = ({
   // 드래그 시작 (지연을 두어 클릭과 드래그 구분)
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
-    
+
     // 드래그 불가능한 요소 체크 - 가장 먼저 체크하여 즉시 반환
     if (target.closest('button')) {
       e.stopPropagation();
@@ -125,47 +125,47 @@ const PostItItem: React.FC<PostItItemProps> = ({
       e.stopPropagation();
       return;
     }
-    
+
     // SVG 아이콘도 체크
     if (target.closest('svg') && target.closest('button')) {
       e.stopPropagation();
       return;
     }
-    
+
     // 텍스트 선택 중이면 드래그 방지
     const selection = window.getSelection();
     if (selection && selection.toString().length > 0) {
       return;
     }
-    
+
     // 마우스 다운 위치와 시간 저장
-    mouseDownPosRef.current = { 
-      x: e.clientX, 
+    mouseDownPosRef.current = {
+      x: e.clientX,
       y: e.clientY,
       time: Date.now()
     };
     hasMovedRef.current = false;
     isMouseMovingRef.current = false;
-    
+
     // 마우스 이동 감지를 위한 전역 리스너 등록
     const handleMouseMoveForDrag = (moveEvent: MouseEvent) => {
       if (!mouseDownPosRef.current) return;
-      
+
       const deltaX = Math.abs(moveEvent.clientX - mouseDownPosRef.current.x);
       const deltaY = Math.abs(moveEvent.clientY - mouseDownPosRef.current.y);
       const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-      
+
       // 드래그 임계값을 넘으면 드래그 시작
       if (distance > DRAG_THRESHOLD) {
         hasMovedRef.current = true;
         isMouseMovingRef.current = true;
-        
+
         // 드래그 타임아웃 취소
         if (dragTimeoutRef.current) {
           clearTimeout(dragTimeoutRef.current);
           dragTimeoutRef.current = null;
         }
-        
+
         // 드래그 시작
         if (postit.position) {
           setIsDragging(true);
@@ -174,23 +174,23 @@ const PostItItem: React.FC<PostItItemProps> = ({
             y: moveEvent.clientY - (postit.position.y ?? 50),
           });
           onFocus(postit.id);
-          
+
           // 텍스트 선택 방지
           if (contentEditableRef.current) {
             contentEditableRef.current.style.userSelect = 'none';
             contentEditableRef.current.style.pointerEvents = 'none';
           }
         }
-        
+
         // 전역 리스너 제거 (이제 handleMouseMove가 처리)
         document.removeEventListener('mousemove', handleMouseMoveForDrag);
         mouseDownPosRef.current = null;
       }
     };
-    
+
     // 전역 마우스 이동 리스너 등록
     document.addEventListener('mousemove', handleMouseMoveForDrag);
-    
+
     // 일정 시간 후 전역 리스너 제거 (마우스가 움직이지 않았을 경우)
     dragTimeoutRef.current = setTimeout(() => {
       document.removeEventListener('mousemove', handleMouseMoveForDrag);
@@ -198,7 +198,7 @@ const PostItItem: React.FC<PostItItemProps> = ({
         mouseDownPosRef.current = null;
       }
     }, 200);
-    
+
     e.stopPropagation();
   }, [postit.position, postit.id, onFocus]);
 
@@ -206,29 +206,29 @@ const PostItItem: React.FC<PostItItemProps> = ({
     if (isDragging && postit.size) {
       const newX = e.clientX - dragStart.x;
       const newY = e.clientY - dragStart.y;
-      
+
       // 화면 경계 체크
       const maxX = window.innerWidth - (postit.size.width ?? 200);
       const maxY = window.innerHeight - (postit.size.height ?? 200);
-      
+
       const newPosition = {
         x: Math.max(0, Math.min(newX, maxX)),
         y: Math.max(0, Math.min(newY, maxY)),
       };
-      
+
       // UI 즉시 업데이트 (임시 상태 사용)
       setTempPosition(newPosition);
-      
+
       // 저장은 디바운싱 (300ms마다)
       if (updatePositionTimeoutRef.current) {
         clearTimeout(updatePositionTimeoutRef.current);
       }
-      
+
       // 마지막 저장 위치와 다를 때만 저장 (10px 이상 차이)
       const shouldSave = !lastSavedPositionRef.current ||
         Math.abs(lastSavedPositionRef.current.x - newPosition.x) > 10 ||
         Math.abs(lastSavedPositionRef.current.y - newPosition.y) > 10;
-      
+
       if (shouldSave) {
         updatePositionTimeoutRef.current = setTimeout(() => {
           onUpdate(postit.id, {
@@ -243,32 +243,32 @@ const PostItItem: React.FC<PostItItemProps> = ({
     } else if (isResizing && postit.position) {
       const deltaX = e.clientX - resizeStart.x;
       const deltaY = e.clientY - resizeStart.y;
-      
+
       const newWidth = Math.max(MIN_WIDTH, resizeStart.width + deltaX);
       const newHeight = Math.max(MIN_HEIGHT, resizeStart.height + deltaY);
-      
+
       // 화면 경계 체크
       const maxWidth = window.innerWidth - (postit.position.x ?? 50);
       const maxHeight = window.innerHeight - (postit.position.y ?? 50);
-      
+
       const newSize = {
         width: Math.min(newWidth, maxWidth),
         height: Math.min(newHeight, maxHeight),
       };
-      
+
       // UI 즉시 업데이트 (임시 상태 사용)
       setTempSize(newSize);
-      
+
       // 리사이즈 중에도 디바운싱
       if (updateSizeTimeoutRef.current) {
         clearTimeout(updateSizeTimeoutRef.current);
       }
-      
+
       // 마지막 저장 크기와 다를 때만 저장 (10px 이상 차이)
       const shouldSave = !lastSavedSizeRef.current ||
         Math.abs(lastSavedSizeRef.current.width - newSize.width) > 10 ||
         Math.abs(lastSavedSizeRef.current.height - newSize.height) > 10;
-      
+
       if (shouldSave) {
         updateSizeTimeoutRef.current = setTimeout(() => {
           onUpdate(postit.id, {
@@ -290,14 +290,14 @@ const PostItItem: React.FC<PostItItemProps> = ({
       clearTimeout(dragTimeoutRef.current);
       dragTimeoutRef.current = null;
     }
-    
+
     // 드래그 종료 시 대기 중인 업데이트 취소하고 즉시 최종 위치 저장
     if (isDragging) {
       if (updatePositionTimeoutRef.current) {
         clearTimeout(updatePositionTimeoutRef.current);
         updatePositionTimeoutRef.current = null;
       }
-      
+
       // 임시 위치가 있으면 최종 위치로 저장
       const finalPosition = tempPosition || postit.position;
       if (finalPosition) {
@@ -311,14 +311,14 @@ const PostItItem: React.FC<PostItItemProps> = ({
         });
       }
     }
-    
+
     // 리사이즈 종료 시 대기 중인 업데이트 취소하고 즉시 최종 크기 저장
     if (isResizing) {
       if (updateSizeTimeoutRef.current) {
         clearTimeout(updateSizeTimeoutRef.current);
         updateSizeTimeoutRef.current = null;
       }
-      
+
       // 임시 크기가 있으면 최종 크기로 저장
       const finalSize = tempSize || postit.size;
       if (finalSize) {
@@ -332,7 +332,7 @@ const PostItItem: React.FC<PostItItemProps> = ({
         });
       }
     }
-    
+
     // 마우스 다운 위치 초기화
     mouseDownPosRef.current = null;
     hasMovedRef.current = false;
@@ -410,7 +410,7 @@ const PostItItem: React.FC<PostItItemProps> = ({
       // 포스트잇 내용이 변경되었을 때만 업데이트 (사용자가 편집 중이 아닐 때)
       const currentContent = contentEditableRef.current.innerHTML;
       const newContent = postit.content || '';
-      
+
       // 내용이 다르고, 사용자가 편집 중이 아니거나 포커스가 없을 때만 업데이트
       if (currentContent !== newContent && document.activeElement !== contentEditableRef.current) {
         // 빈 내용이면 빈 문자열로 설정 (플레이스홀더 표시를 위해)
@@ -423,7 +423,7 @@ const PostItItem: React.FC<PostItItemProps> = ({
       }
     }
   }, [postit.content]);
-  
+
   // 포스트잇 위치/크기가 업데이트될 때 임시 상태 동기화 (드래그/리사이즈 중이 아닐 때만)
   React.useEffect(() => {
     if (!isDragging && !isResizing) {
@@ -447,15 +447,15 @@ const PostItItem: React.FC<PostItItemProps> = ({
   // 텍스트 서식 적용
   const handleFormatText = useCallback((command: string, value?: string) => {
     if (!contentEditableRef.current) return;
-    
+
     // contentEditable에 포커스가 없으면 포커스 설정
     if (document.activeElement !== contentEditableRef.current) {
       contentEditableRef.current.focus();
     }
-    
+
     // document.execCommand 사용 (브라우저 호환성)
     document.execCommand(command, false, value);
-    
+
     // 자동 저장 (디바운스)
     if (contentEditableRef.current) {
       let htmlContent = contentEditableRef.current.innerHTML;
@@ -472,7 +472,7 @@ const PostItItem: React.FC<PostItItemProps> = ({
   // 이미지 삽입
   const handleInsertImage = useCallback(() => {
     if (!contentEditableRef.current) return;
-    
+
     // 파일 입력 요소 생성
     const input = document.createElement('input');
     input.type = 'file';
@@ -480,7 +480,7 @@ const PostItItem: React.FC<PostItItemProps> = ({
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
-      
+
       // FileReader로 이미지를 Data URL로 변환
       const reader = new FileReader();
       reader.onload = (event) => {
@@ -488,13 +488,13 @@ const PostItItem: React.FC<PostItItemProps> = ({
         if (contentEditableRef.current && dataUrl) {
           // contentEditable에 포커스
           contentEditableRef.current.focus();
-          
+
           // 이미지 삽입
           const img = document.createElement('img');
           img.src = dataUrl;
           img.style.maxWidth = '100%';
           img.style.height = 'auto';
-          
+
           // 현재 선택 위치에 이미지 삽입
           const selection = window.getSelection();
           if (selection && selection.rangeCount > 0) {
@@ -506,7 +506,7 @@ const PostItItem: React.FC<PostItItemProps> = ({
           } else {
             contentEditableRef.current.appendChild(img);
           }
-          
+
           // 자동 저장
           let htmlContent = contentEditableRef.current.innerHTML;
           // 빈 내용 정규화
@@ -528,10 +528,10 @@ const PostItItem: React.FC<PostItItemProps> = ({
     <div
       ref={postitRef}
       className={cn(
-        'fixed rounded-md shadow-lg cursor-move select-none',
-        colorConfig.bgClass,
+        'fixed rounded-md shadow-lg cursor-move select-none !opacity-100',
+        `!${colorConfig.bgClass}`, // 강제 배경색 적용
         isFocused && 'ring-2 ring-primary ring-offset-2',
-        isDragging && 'opacity-90'
+        isDragging && '!opacity-90'
       )}
       style={{
         left: `${(tempPosition || postit.position)?.x ?? 50}px`,
@@ -539,10 +539,15 @@ const PostItItem: React.FC<PostItItemProps> = ({
         width: `${(tempSize || postit.size)?.width ?? 200}px`,
         height: `${(tempSize || postit.size)?.height ?? 200}px`,
         zIndex: 1000 + (postit.zIndex ?? 0), // 다른 UI 요소 위에 표시
+        backgroundColor: colorConfig.value === 'yellow' ? '#fef08a' :
+          colorConfig.value === 'blue' ? '#bfdbfe' :
+            colorConfig.value === 'pink' ? '#fbcfe8' :
+              colorConfig.value === 'green' ? '#bbf7d0' :
+                colorConfig.value === 'purple' ? '#e9d5ff' : '#fef08a', // 인라인 스타일로도 백업
       }}
     >
       {/* 헤더 (Windows Sticky Notes 스타일) */}
-      <div 
+      <div
         className={cn(
           "flex items-center justify-between px-2 py-1.5 border-b border-black/10",
           // 헤더 배경색이 메모 본문보다 살짝 진함
@@ -574,16 +579,16 @@ const PostItItem: React.FC<PostItItemProps> = ({
         >
           <Plus className="h-3.5 w-3.5 text-black/70" />
         </Button>
-        
+
         {/* 중앙: 드래그 영역 (빈 공간) */}
-        <div 
+        <div
           className={cn(
             "flex-1 h-full",
             isDragging ? "cursor-grabbing" : "cursor-move"
           )}
           onMouseDown={handleMouseDown}
         />
-        
+
         {/* 우측: 더 보기 버튼, 닫기 버튼 */}
         <div
           className="relative z-10 flex-shrink-0 flex items-center gap-0.5"
@@ -641,97 +646,97 @@ const PostItItem: React.FC<PostItItemProps> = ({
                 <MoreVertical className="h-3.5 w-3.5 text-black/70" />
               </Button>
             </DropdownMenuTrigger>
-          <DropdownMenuContent 
-            align="end" 
-            className="w-40"
-            onMouseDown={(e) => e.stopPropagation()}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <DropdownMenuItem 
-                  onSelect={(e) => e.preventDefault()}
-                  onMouseDown={(e) => e.stopPropagation()}
-                >
-                  <Palette className="h-3 w-3 mr-2" />
-                  색상 변경
-                </DropdownMenuItem>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent 
-                side="left"
-                onMouseDown={(e) => e.stopPropagation()}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {POSTIT_COLORS.map((color) => (
-                  <DropdownMenuItem
-                    key={color.value}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleChangeColor(color.value);
-                    }}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    className={cn(
-                      postit.color === color.value && 'bg-accent'
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        'w-4 h-4 rounded mr-2',
-                        color.bgClass
-                      )}
-                    />
-                    {color.label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <DropdownMenuItem
-              onClick={async (e) => {
-                e.stopPropagation();
-                await onDelete(postit.id);
-              }}
+            <DropdownMenuContent
+              align="end"
+              className="w-40"
               onMouseDown={(e) => e.stopPropagation()}
-              className="text-destructive"
+              onClick={(e) => e.stopPropagation()}
             >
-              <X className="h-3 w-3 mr-2" />
-              삭제
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        
-        {/* 닫기 버튼 */}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 w-6 p-0 hover:bg-white/40 rounded"
-          onClick={async (e) => {
-            e.stopPropagation();
-            await onDelete(postit.id);
-          }}
-          onMouseDown={(e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            if (dragTimeoutRef.current) {
-              clearTimeout(dragTimeoutRef.current);
-              dragTimeoutRef.current = null;
-            }
-            mouseDownPosRef.current = null;
-          }}
-          type="button"
-        >
-          <X className="h-3.5 w-3.5 text-black/70" />
-        </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <DropdownMenuItem
+                    onSelect={(e) => e.preventDefault()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                  >
+                    <Palette className="h-3 w-3 mr-2" />
+                    색상 변경
+                  </DropdownMenuItem>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  side="left"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {POSTIT_COLORS.map((color) => (
+                    <DropdownMenuItem
+                      key={color.value}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleChangeColor(color.value);
+                      }}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      className={cn(
+                        postit.color === color.value && 'bg-accent'
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          'w-4 h-4 rounded mr-2',
+                          color.bgClass
+                        )}
+                      />
+                      {color.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <DropdownMenuItem
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  await onDelete(postit.id);
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
+                className="text-destructive"
+              >
+                <X className="h-3 w-3 mr-2" />
+                삭제
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* 닫기 버튼 */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0 hover:bg-white/40 rounded"
+            onClick={async (e) => {
+              e.stopPropagation();
+              await onDelete(postit.id);
+            }}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              if (dragTimeoutRef.current) {
+                clearTimeout(dragTimeoutRef.current);
+                dragTimeoutRef.current = null;
+              }
+              mouseDownPosRef.current = null;
+            }}
+            type="button"
+          >
+            <X className="h-3.5 w-3.5 text-black/70" />
+          </Button>
         </div>
       </div>
 
       {/* 내용 영역 (Windows Sticky Notes 스타일) */}
-      <div 
+      <div
         className="flex flex-col h-[calc(100%-32px-40px)] min-h-0"
         onMouseDown={(e) => {
           // 콘텐츠 영역에서는 드래그를 시작하지 않고, 클릭만 처리
           // 드래그는 헤더 영역에서만 가능
           const target = e.target as HTMLElement;
-          
+
           // contentEditable 영역이면 드래그 완전 차단
           if (target === contentEditableRef.current || target.closest('.content-editable') || target.closest('.formatting-toolbar')) {
             // 텍스트 편집 영역이면 드래그 방지
@@ -743,7 +748,7 @@ const PostItItem: React.FC<PostItItemProps> = ({
             hasMovedRef.current = false;
             return;
           }
-          
+
           // 그 외 영역(콘텐츠 영역의 빈 공간)에서는 드래그 허용
           handleMouseDown(e);
         }}
@@ -772,7 +777,7 @@ const PostItItem: React.FC<PostItItemProps> = ({
             }
             mouseDownPosRef.current = null;
             hasMovedRef.current = false;
-            
+
             // 포커스 설정 (클릭 시)
             onFocus(postit.id);
           }}
@@ -820,7 +825,7 @@ const PostItItem: React.FC<PostItItemProps> = ({
           }}
           suppressContentEditableWarning
         />
-        
+
         {/* 하단 서식 도구 모음 (Windows Sticky Notes 스타일) */}
         <div className="formatting-toolbar flex items-center gap-1 px-2 py-1.5 border-t border-black/10">
           <Button
@@ -918,23 +923,52 @@ const PostItItem: React.FC<PostItItemProps> = ({
 
 export const PostItCanvas: React.FC = () => {
   console.log('[OK] [PostItCanvas] 컴포넌트 마운트됨');
-  
+
   // Electron 환경이 아니면 렌더링하지 않음
-  const isElectronEnv = typeof window !== 'undefined' && 
+  const isElectronEnv = typeof window !== 'undefined' &&
     ((window as any).__ELECTRON__ === true || (window as any).electron);
-  
+
   // Electron 환경이 아니면 빈 컴포넌트 반환 (가장 먼저 체크)
   if (!isElectronEnv) {
     console.warn('[WARN] [PostItCanvas] Electron 환경이 아님, 렌더링하지 않음');
     return null;
   }
-  
+
   console.log('[OK] [PostItCanvas] Electron 환경 확인됨, 포스트잇 로드 시작');
-  
-  const { postits, updatePostIt, removePostIt, bringToView, createPostIt } = usePostIt();
-  
+  console.log('[DEBUG] [PostItCanvas] window.electron:', typeof (window as any).electron !== 'undefined');
+  console.log('[DEBUG] [PostItCanvas] window.electron.postit:', typeof (window as any).electron?.postit !== 'undefined');
+  console.log('[DEBUG] [PostItCanvas] window.electron.postit.read:', typeof (window as any).electron?.postit?.read === 'function');
+
+  const { postits, updatePostIt, removePostIt, bringToView, createPostIt, refreshPostIts, isLoading } = usePostIt();
+
   console.log('[OK] [PostItCanvas] 포스트잇 개수:', postits.length);
+  console.log('[OK] [PostItCanvas] 로딩 상태:', isLoading);
+  console.log('[DEBUG] [PostItCanvas] 포스트잇 데이터:', postits);
   const [focusedId, setFocusedId] = useState<string | null>(null);
+
+  // 컴포넌트 마운트 시 즉시 데이터 새로고침 (포스트잇 창이 열릴 때 강제 로드)
+  React.useEffect(() => {
+    console.log('[OK] [PostItCanvas] 컴포넌트 마운트됨, 데이터 강제 새로고침 시작');
+    refreshPostIts()
+      .then(() => {
+        console.log('[OK] [PostItCanvas] 초기 데이터 새로고침 완료');
+      })
+      .catch((error) => {
+        console.error('[ERROR] [PostItCanvas] 초기 데이터 새로고침 실패:', error);
+      });
+  }, [refreshPostIts]);
+
+  // 데이터 동기화를 위한 주기적 폴링
+  // 메인 창에서 추가/수정된 내용을 포스트잇 창에 반영하기 위함
+  React.useEffect(() => {
+    const intervalId = setInterval(() => {
+      refreshPostIts().catch((error) => {
+        console.error('[ERROR] [PostItCanvas] 주기적 데이터 새로고침 실패:', error);
+      });
+    }, 2000); // 2초마다 갱신
+
+    return () => clearInterval(intervalId);
+  }, [refreshPostIts]);
 
   // 새 메모 생성 핸들러
   const handleCreateNew = useCallback(async () => {
@@ -961,10 +995,10 @@ export const PostItCanvas: React.FC = () => {
       const customEvent = event as CustomEvent<{ id: string }>;
       if (customEvent.detail && customEvent.detail.id) {
         const { id } = customEvent.detail;
-          bringToView(id).catch((error) => {
-            console.error('포스트잇 bringToView 실패:', error);
-          });
-          handleFocus(id);
+        bringToView(id).catch((error) => {
+          console.error('포스트잇 bringToView 실패:', error);
+        });
+        handleFocus(id);
       }
     };
 
@@ -979,24 +1013,85 @@ export const PostItCanvas: React.FC = () => {
     return postits.filter((postit) => postit.visible !== false);
   }, [postits]);
 
-  // 포스트잇이 없어도 컴포넌트는 항상 렌더링 (탭 전환 시 사라지지 않도록)
   console.log('[OK] [PostItCanvas] 렌더링 중, 표시할 포스트잇:', visiblePostits.length);
-  
+
   return (
     <>
       {visiblePostits.length === 0 && (
-        <div style={{ 
-          position: 'fixed', 
-          top: '50%', 
-          left: '50%', 
+        <div style={{
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
           transform: 'translate(-50%, -50%)',
           padding: '1rem',
-          background: 'rgba(255, 255, 255, 0.9)',
+          background: 'rgba(255, 255, 255, 0.9) !important',
+          backgroundColor: 'rgba(255, 255, 255, 0.9) !important',
           borderRadius: '0.5rem',
           boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
           zIndex: 10000,
+          maxWidth: '400px',
         }}>
-          <p style={{ margin: 0, color: '#333' }}>포스트잇이 없습니다. 새로 추가하려면 메인 앱에서 추가하세요.</p>
+          <p style={{ margin: 0, color: '#333', fontWeight: 'bold', marginBottom: '8px' }}>
+            포스트잇이 없습니다. 메인 앱에서 추가하세요.
+          </p>
+          <div style={{ marginBottom: '8px', fontSize: '11px', color: '#666' }}>
+            <div>Electron API: {typeof (window as any).electron !== 'undefined' ? '✅' : '❌'}</div>
+            <div>PostIt API: {typeof (window as any).electron?.postit !== 'undefined' ? '✅' : '❌'}</div>
+            <div>Read 함수: {typeof (window as any).electron?.postit?.read === 'function' ? '✅' : '❌'}</div>
+          </div>
+          <button
+            onClick={async () => {
+              console.log('[DEBUG] [PostItCanvas] 새로고침 버튼 클릭');
+              console.log('[DEBUG] [PostItCanvas] window.electron:', typeof (window as any).electron !== 'undefined');
+              console.log('[DEBUG] [PostItCanvas] window.electron.postit:', typeof (window as any).electron?.postit !== 'undefined');
+              try {
+                await refreshPostIts();
+                console.log('[OK] [PostItCanvas] 새로고침 완료, 포스트잇 개수:', postits.length);
+              } catch (error) {
+                console.error('[ERROR] [PostItCanvas] 새로고침 실패:', error);
+              }
+            }}
+            style={{
+              fontSize: '12px',
+              padding: '6px 12px',
+              backgroundColor: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              marginRight: '8px'
+            }}
+          >
+            데이터 새로고침 ({postits.length}개)
+          </button>
+          <button
+            onClick={() => {
+              const electron = (window as any).electron;
+              console.log('[DEBUG] [PostItCanvas] 디버그 정보:');
+              console.log('  - window.electron:', electron);
+              console.log('  - window.electron.postit:', electron?.postit);
+              console.log('  - postits.length:', postits.length);
+              console.log('  - isLoading:', isLoading);
+              if (electron?.postit?.read) {
+                electron.postit.read().then((data: any) => {
+                  console.log('[DEBUG] [PostItCanvas] 직접 읽기 결과:', data);
+                }).catch((err: any) => {
+                  console.error('[ERROR] [PostItCanvas] 직접 읽기 실패:', err);
+                });
+              }
+            }}
+            style={{
+              fontSize: '12px',
+              padding: '6px 12px',
+              backgroundColor: '#6b7280',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            디버그 정보
+          </button>
         </div>
       )}
       {visiblePostits.map((postit) => (

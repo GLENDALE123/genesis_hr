@@ -51,3 +51,17 @@ function startPerformanceMonitoring(mainWindow, evictLRUItems, nativeCache) {
 module.exports = {
   startPerformanceMonitoring,
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+

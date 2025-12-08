@@ -42,3 +42,17 @@ export interface ShortageRequest {
   }>;
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+

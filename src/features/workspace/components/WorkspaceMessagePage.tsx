@@ -8,6 +8,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 import { useWorkspaceStore } from '../store/workspaceStore';
 import { useAuthStore } from '@/features/auth/store/authStore';
+import { ProjectDetailModal } from './ProjectDetailModal';
+import { WorkspaceSettingsDialog } from './WorkspaceSettingsDialog';
 import { WorkspaceSidebar } from './WorkspaceSidebar';
 import { ChannelView } from '../channels';
 import { useDeviceType } from '@/shared/hooks/use-device';
@@ -36,9 +38,9 @@ const WorkspaceMessagePageClient: React.FC = () => {
   // URL에서 채널 ID가 변경되면 채널 설정 (URL이 소스)
   useEffect(() => {
     if (!currentWorkspace) return;
-    
+
     const channels = useWorkspaceStore.getState().channels[currentWorkspace.id] || [];
-    
+
     if (channelId) {
       // URL에 channelId가 있으면 해당 채널 찾기
       const channel = channels.find((c) => c.id === channelId && c.workspaceId === currentWorkspace.id);
@@ -125,6 +127,7 @@ const WorkspaceMessagePageClient: React.FC = () => {
             </SheetContent>
           </Sheet>
         )}
+        <ProjectDetailModal />
       </>
     );
   }

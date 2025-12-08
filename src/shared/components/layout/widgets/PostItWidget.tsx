@@ -22,12 +22,12 @@ import type { PostItColor } from '@/shared/types/postit.types';
 export const PostItWidget: React.FC = () => {
   // Electron 환경이 아니면 렌더링하지 않음
   const isElectronEnv = typeof window !== 'undefined' && (window as any).__ELECTRON__ === true;
-  
+
   // Electron 환경이 아니면 빈 컴포넌트 반환 (가장 먼저 체크)
   if (!isElectronEnv) {
     return null;
   }
-  
+
   const { postits, createPostIt, bringToView, updatePostIt, removePostIt, createFolder } = usePostIt();
   const [isAdding, setIsAdding] = useState(false);
   const [newContent, setNewContent] = useState('');
@@ -131,7 +131,7 @@ export const PostItWidget: React.FC = () => {
                   const isHidden = postit.visible === false;
                   const isDragged = draggedId === postit.id;
                   const isDragOver = dragOverId === postit.id;
-                  
+
                   return (
                     <ContextMenu key={postit.id}>
                       <ContextMenuTrigger asChild>
@@ -141,8 +141,8 @@ export const PostItWidget: React.FC = () => {
                             isHidden
                               ? 'bg-muted/20 hover:bg-muted/30 border border-dashed border-muted-foreground/20 opacity-60'
                               : visible
-                              ? 'bg-muted/50 hover:bg-muted'
-                              : 'bg-muted/30 hover:bg-muted/50 border border-dashed border-muted-foreground/30',
+                                ? 'bg-muted/50 hover:bg-muted'
+                                : 'bg-muted/30 hover:bg-muted/50 border border-dashed border-muted-foreground/30',
                             isDragged && 'opacity-50',
                             isDragOver && 'ring-2 ring-primary'
                           )}
@@ -168,8 +168,8 @@ export const PostItWidget: React.FC = () => {
                             if (sourceId && sourceId !== postit.id) {
                               // 두 포스트잇을 폴더로 묶기
                               createFolder(sourceId, postit.id).catch((error) => {
-                              console.error('폴더 생성 실패:', error);
-                            });
+                                console.error('폴더 생성 실패:', error);
+                              });
                             }
                             setDraggedId(null);
                             setDragOverId(null);
@@ -179,26 +179,23 @@ export const PostItWidget: React.FC = () => {
                             setDragOverId(null);
                           }}
                           onClick={(e) => {
-                            e.stopPropagation();
                             e.preventDefault();
-                            // visible 토글
-                            const currentVisible = postit.visible !== false; // undefined도 true로 처리
-                            updatePostIt(postit.id, { visible: !currentVisible });
-                            
-                            // 보이는 상태로 토글한 경우에만 bringToView 호출
-                            if (currentVisible === false) {
-                              bringToView(postit.id);
-                              // PostItCanvas에 포커스 이벤트 전달 (약간의 지연으로 상태 업데이트 보장)
-                              setTimeout(() => {
-                                window.dispatchEvent(
-                                  new CustomEvent('postit-focus', { 
-                                    detail: { id: postit.id },
-                                    bubbles: true,
-                                    cancelable: true
-                                  })
-                                );
-                              }, 100);
+                            // 클릭 시 포커스 및 보이기만 처리 (숨기기는 아이콘으로만)
+                            if (!visible) {
+                              updatePostIt(postit.id, { visible: true });
                             }
+
+                            bringToView(postit.id);
+                            // PostItCanvas에 포커스 이벤트 전달
+                            setTimeout(() => {
+                              window.dispatchEvent(
+                                new CustomEvent('postit-focus', {
+                                  detail: { id: postit.id },
+                                  bubbles: true,
+                                  cancelable: true
+                                })
+                              );
+                            }, 100);
                           }}
                           title={postit.content || '(빈 포스트잇)'}
                         >
@@ -206,13 +203,25 @@ export const PostItWidget: React.FC = () => {
                             <span className="flex-1 truncate">
                               {postit.content || '(빈 포스트잇)'}
                             </span>
-                            {isHidden ? (
-                              <EyeOff className="h-3 w-3 text-muted-foreground/50 flex-shrink-0" />
-                            ) : visible ? (
-                              <Eye className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                            ) : (
-                              <EyeOff className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 hover:bg-black/10 rounded-full"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const currentVisible = postit.visible !== false;
+                                updatePostIt(postit.id, { visible: !currentVisible });
+                              }}
+                              onMouseDown={(e) => e.stopPropagation()} // 드래그 방지
+                            >
+                              {isHidden ? (
+                                <EyeOff className="h-3 w-3 text-muted-foreground/50 flex-shrink-0" />
+                              ) : visible ? (
+                                <Eye className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                              ) : (
+                                <EyeOff className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                              )}
+                            </Button>
                           </div>
                         </div>
                       </ContextMenuTrigger>

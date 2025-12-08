@@ -173,3 +173,17 @@ function showNativeNotification(title, body, icon, mainWindow, link) {
 module.exports = {
   setupNotificationIpcHandlers,
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+

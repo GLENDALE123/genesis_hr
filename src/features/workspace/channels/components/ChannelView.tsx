@@ -9,6 +9,7 @@ import type { Thread } from '../../threads';
 import { UnreadMessageService, ChannelMessageView } from '../../messages';
 import { ChannelService } from '../services/channelService';
 import { ChannelBoardView } from './ChannelBoardView';
+import { ChannelProjectView } from './ChannelProjectView';
 import { ChannelHeader } from './ChannelHeader';
 import { ChannelRightSidebar } from './ChannelRightSidebar';
 import { useAuthStore } from '@/features/auth/store/authStore';
@@ -79,10 +80,12 @@ export const ChannelView: React.FC<ChannelViewProps> = ({ channel }) => {
           channel={channel} 
           onRightSidebarToggle={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
         />
-        {/* 메시지 뷰 또는 보드뷰 */}
+        {/* 메시지 뷰, 보드뷰, 또는 프로젝트 뷰 */}
         <div className="flex-1 min-h-0">
           {channel.viewType === 'board' ? (
             <ChannelBoardView channel={channel} />
+          ) : channel.viewType === 'project' ? (
+            <ChannelProjectView channel={channel} />
           ) : (
             <ChannelMessageView
               channelId={channel.id}

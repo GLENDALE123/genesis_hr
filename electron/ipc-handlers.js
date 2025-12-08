@@ -100,7 +100,7 @@ module.exports = function registerIpcHandlers() {
 
       // 전체 창 캡처
       const fullWindowImage = await window.capturePage();
-      
+
       if (!fullWindowImage) {
         return { success: false, error: 'Failed to capture window' };
       }
@@ -127,7 +127,7 @@ module.exports = function registerIpcHandlers() {
           const margins = parseInt(printOptions.margins || '0');
           const scale = printOptions.scale || 'fit';
           const printBackground = printOptions.printBackground !== undefined ? printOptions.printBackground : true;
-          
+
           // 인쇄용 임시 윈도우 생성
           const { BrowserWindow } = require('electron');
           const printWindow = new BrowserWindow({
@@ -142,7 +142,7 @@ module.exports = function registerIpcHandlers() {
           const pageSize = `${paperSize} ${orientation}`;
           const imageWidth = scale === 'fit' || scale === 'fill' ? '100%' : scale + '%';
           const imageHeight = scale === 'fit' || scale === 'fill' ? '100%' : scale + '%';
-          
+
           const htmlContent = `
 <!DOCTYPE html>
 <html>
@@ -187,9 +187,9 @@ module.exports = function registerIpcHandlers() {
           `;
 
           printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
-          
+
           printWindow.webContents.once('did-finish-load', () => {
-            printWindow.webContents.print({ 
+            printWindow.webContents.print({
               silent: false,
               printBackground: printBackground
             }, (success) => {
@@ -222,7 +222,7 @@ module.exports = function registerIpcHandlers() {
       }
 
       let image;
-      
+
       if (mode === 'window') {
         // 현재 윈도우만 캡처
         image = await window.capturePage();
@@ -231,17 +231,17 @@ module.exports = function registerIpcHandlers() {
         try {
           // 사용자가 영역 선택
           const bounds = await startAreaSelection(window);
-          
+
           // 선택한 영역 캡처 (좌표는 메인 창 기준)
           const { x, y, width, height } = bounds;
-          
+
           // 메인 창 전체를 캡처
           const fullWindowImage = await window.capturePage();
-          
+
           if (!fullWindowImage) {
             return { success: false, error: 'Failed to capture window' };
           }
-          
+
           // 선택한 영역만 잘라내기 (메인 창 내부 좌표)
           image = fullWindowImage.crop({
             x: Math.round(x),
@@ -278,7 +278,7 @@ module.exports = function registerIpcHandlers() {
             const margins = parseInt(printOptions.margins || '0');
             const scale = printOptions.scale || 'fit';
             const printBackground = printOptions.printBackground !== undefined ? printOptions.printBackground : true;
-            
+
             // 인쇄용 임시 윈도우 생성
             const printWindow = new BrowserWindow({
               show: false,
@@ -292,7 +292,7 @@ module.exports = function registerIpcHandlers() {
             const pageSize = `${paperSize} ${orientation}`;
             const imageWidth = scale === 'fit' || scale === 'fill' ? '100%' : scale + '%';
             const imageHeight = scale === 'fit' || scale === 'fill' ? '100%' : scale + '%';
-            
+
             const htmlContent = `
 <!DOCTYPE html>
 <html>
@@ -337,9 +337,9 @@ module.exports = function registerIpcHandlers() {
             `;
 
             printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
-            
+
             printWindow.webContents.once('did-finish-load', () => {
-              printWindow.webContents.print({ 
+              printWindow.webContents.print({
                 silent: false,
                 printBackground: printBackground
               }, (success) => {
@@ -367,27 +367,41 @@ module.exports = function registerIpcHandlers() {
   });
 
   // ==================== 포스트잇 기능 (Electron 전용) ====================
-  
+
   // 포스트잇 데이터 파일 경로
   const POSTIT_FILE = path.join(app.getPath('userData'), 'postits.json');
-  
+
   // 포스트잇 데이터 파일 읽기
   ipcMain.handle('postit-read', async () => {
     try {
+      console.log('[OK] [IPC Handler] postit-read 호출됨');
+      console.log('[OK] [IPC Handler] 파일 경로:', POSTIT_FILE);
+      console.log('[OK] [IPC Handler] 파일 존재 여부:', fs.existsSync(POSTIT_FILE));
+      
       if (!fs.existsSync(POSTIT_FILE)) {
         // 파일이 없으면 기본 데이터 반환
+        console.log('[WARN] [IPC Handler] 포스트잇 파일이 없어 기본 데이터 반환');
         return {
           postits: [],
           folders: [],
           version: '1.0.0'
         };
       }
-      
+
       const data = fs.readFileSync(POSTIT_FILE, 'utf-8');
       const parsed = JSON.parse(data);
+      console.log('[OK] [IPC Handler] 포스트잇 데이터 읽기 성공:', {
+        postitsCount: parsed.postits?.length || 0,
+        foldersCount: parsed.folders?.length || 0,
+        version: parsed.version
+      });
       return parsed;
     } catch (error) {
-      console.error('포스트잇 데이터 읽기 실패:', error);
+      console.error('[ERROR] [IPC Handler] 포스트잇 데이터 읽기 실패:', error);
+      if (error instanceof Error) {
+        console.error('[ERROR] [IPC Handler] 에러 메시지:', error.message);
+        console.error('[ERROR] [IPC Handler] 에러 스택:', error.stack);
+      }
       return {
         postits: [],
         folders: [],
@@ -395,7 +409,7 @@ module.exports = function registerIpcHandlers() {
       };
     }
   });
-  
+
   // 포스트잇 데이터 파일 저장
   ipcMain.handle('postit-write', async (event, data) => {
     try {
@@ -404,9 +418,18 @@ module.exports = function registerIpcHandlers() {
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }
-      
+
       // 데이터 저장
       fs.writeFileSync(POSTIT_FILE, JSON.stringify(data, null, 2), 'utf-8');
+
+      // 모든 윈도우에 변경 알림 전송 (실시간 동기화)
+      const windows = BrowserWindow.getAllWindows();
+      for (const win of windows) {
+        if (!win.isDestroyed()) {
+          win.webContents.send('postit-updated', data);
+        }
+      }
+
       return { success: true };
     } catch (error) {
       console.error('포스트잇 데이터 저장 실패:', error);

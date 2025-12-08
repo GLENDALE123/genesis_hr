@@ -47,17 +47,17 @@ const convertCreatedAt = (createdAt: unknown): string => {
       return date.toISOString();
     }
   }
-  
+
   // 이미 ISO 문자열인 경우
   if (typeof createdAt === 'string' && createdAt) {
     return createdAt;
   }
-  
+
   // Date 객체인 경우
   if (createdAt instanceof Date && !isNaN(createdAt.getTime())) {
     return createdAt.toISOString();
   }
-  
+
   // 변환할 수 없는 경우 기존 값을 문자열로 반환 (현재 시간으로 대체하지 않음)
   return createdAt ? String(createdAt) : new Date().toISOString();
 };
@@ -98,7 +98,7 @@ export const createQualityIssue = async (
   try {
     // 이미지 파일들을 Firebase Storage에 업로드
     const imageUrls: string[] = [];
-    
+
     if (imageFiles.length > 0) {
       const { uploadImageFilesParallel } = await import('@/shared/services/firebase/storage');
       try {
@@ -113,17 +113,17 @@ export const createQualityIssue = async (
     // Firestore에 저장할 데이터 준비
     // 모든 이슈에 작성시간 추가
     const currentTime = new Date().toISOString();
-    
+
     // issueItems가 있으면 상태 정보 포함하여 생성
     let issuesWithTimestamp: Array<{ content: string; createdAt: string; status: string }>;
     if (issueItems && issueItems.length > 0) {
       // status 매핑 (한국어 -> 영어)
-        const statusMapping: Record<string, string> = {
-          '대기중': 'open',
-          '진행중': 'in-progress',
-          '해결완료': 'resolved',
-        };
-      
+      const statusMapping: Record<string, string> = {
+        '대기중': 'open',
+        '진행중': 'in-progress',
+        '해결완료': 'resolved',
+      };
+
       issuesWithTimestamp = issueItems
         .filter(item => item.content.trim() !== '')
         .map((item) => {
@@ -188,12 +188,12 @@ export const createQualityIssue = async (
       // FirebaseAuth를 먼저 사용하여 사용자 정보 가져오기
       let senderName = '사용자';
       let senderAvatar: string | undefined = undefined;
-      
+
       if (auth?.currentUser) {
-        senderName = auth.currentUser.displayName || 
-                     auth.currentUser.email?.split('@')[0] || 
-                     getUserDisplayName(user, userProfile) || 
-                     '사용자';
+        senderName = auth.currentUser.displayName ||
+          auth.currentUser.email?.split('@')[0] ||
+          getUserDisplayName(user, userProfile) ||
+          '사용자';
         senderAvatar = auth.currentUser.photoURL || (user as any).photoURL || undefined;
       } else {
         senderName = getUserDisplayName(user, userProfile);
@@ -260,7 +260,7 @@ export const subscribeToQualityIssues = (
       (snapshot) => {
         const issues = snapshot.docs.map(doc => {
           const data = doc.data();
-          
+
           return {
             id: doc.id,
             ...data,
@@ -277,7 +277,7 @@ export const subscribeToQualityIssues = (
     );
   } catch (error) {
     onError?.(error as Error);
-    return () => {}; // 빈 unsubscribe 함수 반환
+    return () => { }; // 빈 unsubscribe 함수 반환
   }
 };
 
@@ -305,7 +305,7 @@ export const subscribeToQualityIssuesByProductInfo = (
 
     if (conditions.length < 2) {
       callback([]);
-      return () => {}; // 빈 unsubscribe 함수 반환
+      return () => { }; // 빈 unsubscribe 함수 반환
     }
 
     let q = query(getCollectionRef());
@@ -363,7 +363,7 @@ export const subscribeToQualityIssuesByProductInfo = (
   } catch (error) {
     console.error('Error subscribing to quality issues by product info:', error);
     onError?.(error as Error);
-    return () => {}; // 빈 unsubscribe 함수 반환
+    return () => { }; // 빈 unsubscribe 함수 반환
   }
 };
 
@@ -374,7 +374,7 @@ export const getQualityIssue = async (docId: string): Promise<QualityIssue | nul
   try {
     const docRef = getDocRef(docId);
     const docSnap = await getDoc(docRef);
-    
+
     if (docSnap.exists()) {
       const data = docSnap.data();
       return {
@@ -458,8 +458,8 @@ export const searchQualityIssues = async (
  * 품질이슈에 새로운 이슈사항을 추가합니다
  */
 export const addIssueItem = async (
-  issueId: string, 
-  newIssueItem: string, 
+  issueId: string,
+  newIssueItem: string,
   newStatus?: string,
   currentUser?: {
     uid: string;
@@ -474,7 +474,7 @@ export const addIssueItem = async (
 
     if (!db) throw new Error('Firestore is not initialized');
     const issueRef = doc(db, COLLECTION_NAME, issueId);
-    
+
     // 새로운 이슈 객체 생성 (작성시간 포함)
     const newIssueObject = {
       content: newIssueItem.trim(),
@@ -499,7 +499,7 @@ export const addIssueItem = async (
       try {
         const issueDoc = await getDoc(issueRef);
         const issueData = issueDoc.data();
-        
+
         if (issueData) {
           const lastIssue = Array.isArray(issueData.issues) && issueData.issues.length > 0
             ? issueData.issues[issueData.issues.length - 1]
@@ -511,12 +511,12 @@ export const addIssueItem = async (
           // FirebaseAuth를 먼저 사용하여 사용자 정보 가져오기
           let senderName = '사용자';
           let senderAvatar: string | undefined = undefined;
-          
+
           if (auth?.currentUser) {
-            senderName = auth.currentUser.displayName || 
-                         auth.currentUser.email?.split('@')[0] || 
-                         getUserDisplayName(null, currentUser) || 
-                         '사용자';
+            senderName = auth.currentUser.displayName ||
+              auth.currentUser.email?.split('@')[0] ||
+              getUserDisplayName(null, currentUser) ||
+              '사용자';
             senderAvatar = auth.currentUser.photoURL || (currentUser as any).photoURL || undefined;
           } else {
             senderName = getUserDisplayName(null, currentUser);
@@ -570,7 +570,7 @@ export const updateIssueStatus = async (issueId: string, newStatus: string): Pro
  * 출하대기 처리 수량 업데이트
  */
 export const updateProcessedQuantity = async (
-  issueId: string, 
+  issueId: string,
   additionalQuantity: number
 ): Promise<void> => {
   try {
@@ -580,7 +580,7 @@ export const updateProcessedQuantity = async (
 
     if (!db) throw new Error('Firestore is not initialized');
     const issueRef = doc(db, COLLECTION_NAME, issueId);
-    
+
     // 현재 문서 조회
     const issueDoc = await getDoc(issueRef);
     if (!issueDoc.exists()) {
@@ -590,25 +590,25 @@ export const updateProcessedQuantity = async (
     const currentData = issueDoc.data() as QualityIssue;
     const currentProcessed = currentData.processedQuantity || 0;
     const totalQuantity = currentData.shippingWaitQuantity || 0;
-    
+
     // 처리 수량이 전체 수량을 초과하지 않도록 검증
     if (currentProcessed + additionalQuantity > totalQuantity) {
       throw new Error(`처리 수량이 전체 수량(${totalQuantity})을 초과할 수 없습니다. 현재 처리: ${currentProcessed}`);
     }
 
     const newProcessedQuantity = currentProcessed + additionalQuantity;
-    
+
     // 처리완료수량이 전체수량과 동일하거나 넘어가면 해결완료 상태로 변경
     const shouldMarkAsCompleted = newProcessedQuantity >= totalQuantity;
-    
+
     const updateData: Partial<QualityIssue> = {
       processedQuantity: newProcessedQuantity
     };
-    
+
     if (shouldMarkAsCompleted) {
       updateData.status = '해결완료';
     }
-    
+
     await updateDoc(issueRef, updateData);
 
   } catch (error) {
@@ -624,7 +624,30 @@ export const deleteQualityIssue = async (issueId: string): Promise<void> => {
     if (!db) throw new Error('Firestore is not initialized');
     const issueRef = doc(db, COLLECTION_NAME, issueId);
     await deleteDoc(issueRef);
-    
+
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * 품질이슈 프로젝트 정보 업데이트
+ */
+export const updateIssueProjectInfo = async (
+  issueId: string,
+  projectInfo: {
+    workspaceId: string;
+    channelId: string;
+    projectId: string;
+    createdAt: string;
+  }
+): Promise<void> => {
+  try {
+    const docRef = getDocRef(issueId);
+    await updateDoc(docRef, {
+      projectInfo,
+      updatedAt: new Date().toISOString(),
+    });
   } catch (error) {
     throw error;
   }

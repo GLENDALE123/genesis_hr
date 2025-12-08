@@ -19,9 +19,18 @@ export const usePostIt = () => {
 
   // 컴포넌트 마운트 시 최신 상태로 새로고침
   useEffect(() => {
-    refreshPostIts().catch((error) => {
-      console.error('포스트잇 새로고침 실패:', error);
-    });
+    console.log('[OK] [usePostIt] 컴포넌트 마운트됨, 포스트잇 새로고침 시작');
+    refreshPostIts()
+      .then(() => {
+        console.log('[OK] [usePostIt] 포스트잇 새로고침 완료');
+      })
+      .catch((error) => {
+        console.error('[ERROR] [usePostIt] 포스트잇 새로고침 실패:', error);
+        if (error instanceof Error) {
+          console.error('[ERROR] [usePostIt] 에러 메시지:', error.message);
+          console.error('[ERROR] [usePostIt] 에러 스택:', error.stack);
+        }
+      });
   }, [refreshPostIts]);
 
   return {
@@ -33,6 +42,7 @@ export const usePostIt = () => {
     reorderPostIts,
     bringToView,
     createFolder,
+    refreshPostIts, // 외부에서 강제로 새로고침 할 수 있도록 노출
   };
 };
 

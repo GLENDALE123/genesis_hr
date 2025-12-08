@@ -75,3 +75,17 @@ import { PackagingReport } from '@/features/production';
 2. 원본 types 폴더 정리 (선택사항)
 3. 문서화 및 가이드 작성
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+

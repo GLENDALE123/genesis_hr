@@ -15,7 +15,7 @@ function cleanupPreloadCache() {
   if (preloadedDataCache.size <= MAX_PRELOAD_CACHE_SIZE) {
     return;
   }
-  
+
   // 가장 오래된 항목 제거 (Map은 삽입 순서 유지)
   const itemsToRemove = preloadedDataCache.size - MAX_PRELOAD_CACHE_SIZE;
   const keys = Array.from(preloadedDataCache.keys());
@@ -37,7 +37,7 @@ async function preloadFirestoreCache() {
     // Firestore는 자동으로 IndexedDB에 캐시를 저장하므로,
     // 앱이 로드되면 이미 캐시가 준비되어 있을 것
     console.log('🔄 [Preload] Firestore 캐시 프리로드 시작...');
-    
+
     // IndexedDB에서 직접 읽기는 복잡하므로,
     // 대신 메인 프로세스에 요청하여 네이티브 파일 시스템 캐시 활용
     const cacheData = await ipcRenderer.invoke('get-cached-data');
@@ -63,7 +63,7 @@ async function preloadCriticalData() {
     // 1. 인증 상태 확인 (이미 localStorage에서 로드됨)
     const authData = localStorage.getItem('auth-store');
     let userId = null;
-    
+
     if (authData) {
       try {
         const parsed = JSON.parse(authData);
@@ -72,10 +72,10 @@ async function preloadCriticalData() {
         // JSON 파싱 실패 무시
       }
     }
-    
+
     // 2. 네이티브 파일 캐시 로드 (인증 상태와 무관하게 실행)
     await preloadFirestoreCache();
-    
+
     // 3. IndexedDB 준비 대기 (Firebase 초기화 대기)
     if (typeof indexedDB !== 'undefined' && indexedDB.databases) {
       try {
@@ -85,7 +85,7 @@ async function preloadCriticalData() {
         console.warn('⚠️ [Preload] IndexedDB 확인 실패:', e.message);
       }
     }
-    
+
     // 4. 프리로드 완료 표시
     if (typeof window !== 'undefined') {
       window.__PRELOAD_COMPLETE__ = true;
@@ -128,7 +128,7 @@ contextBridge.exposeInMainWorld('electron', {
    * 플랫폼 정보
    */
   platform: process.platform,
-  
+
   /**
    * Electron 버전 정보
    */
@@ -201,7 +201,7 @@ contextBridge.exposeInMainWorld('electron', {
       callback(link);
     };
     ipcRenderer.on('navigate-to', listener);
-    
+
     // 리스너 제거 함수 반환
     return () => {
       ipcRenderer.removeListener('navigate-to', listener);
@@ -222,7 +222,7 @@ contextBridge.exposeInMainWorld('electron', {
         return { success: false, error: error.message };
       }
     },
-    
+
     // 업데이트 다운로드 시작
     downloadUpdate: async () => {
       try {
@@ -233,7 +233,7 @@ contextBridge.exposeInMainWorld('electron', {
         return { success: false, error: error.message };
       }
     },
-    
+
     // 업데이트 설치 및 재시작
     installUpdate: async () => {
       try {
@@ -244,35 +244,35 @@ contextBridge.exposeInMainWorld('electron', {
         return { success: false, error: error.message };
       }
     },
-    
+
     // 업데이트 이벤트 리스너
     onUpdateAvailable: (callback) => {
       const listener = (event, data) => callback(data);
       ipcRenderer.on('update-available', listener);
       return () => ipcRenderer.removeListener('update-available', listener);
     },
-    
+
     onUpdateDownloadProgress: (callback) => {
       const listener = (event, data) => callback(data);
       ipcRenderer.on('update-download-progress', listener);
       return () => ipcRenderer.removeListener('update-download-progress', listener);
     },
-    
+
     onUpdateDownloaded: (callback) => {
       const listener = (event, data) => callback(data);
       ipcRenderer.on('update-downloaded', listener);
       return () => ipcRenderer.removeListener('update-downloaded', listener);
     },
-    
+
     onUpdateError: (callback) => {
       const listener = (event, data) => callback(data);
       ipcRenderer.on('update-error', listener);
       return () => ipcRenderer.removeListener('update-error', listener);
     },
-    
+
     onUpdateNotAvailable: (callback) => {
       ipcRenderer.on('update-not-available', () => callback());
-      return () => ipcRenderer.removeListener('update-not-available', () => {});
+      return () => ipcRenderer.removeListener('update-not-available', () => { });
     },
   },
 
@@ -363,13 +363,13 @@ contextBridge.exposeInMainWorld('electron', {
     setNative: async (key, data, options = {}) => {
       try {
         const result = await ipcRenderer.invoke('set-cached-data', key, data, options);
-        
+
         // 메모리 캐시에도 저장 (크기 제한 적용)
         if (preloadedDataCache.size >= MAX_PRELOAD_CACHE_SIZE) {
           cleanupPreloadCache();
         }
         preloadedDataCache.set(key, data);
-        
+
         return result;
       } catch (error) {
         console.error('❌ [Preload] 네이티브 캐시 저장 실패:', error);
@@ -469,7 +469,7 @@ contextBridge.exposeInMainWorld('electron', {
         };
       }
     },
-    
+
     /**
      * 포스트잇 데이터 저장
      * @param {Object} data - 저장할 데이터
@@ -484,7 +484,17 @@ contextBridge.exposeInMainWorld('electron', {
         return { success: false, error: error.message };
       }
     },
-    
+
+    /**
+     * 포스트잇 데이터 변경 이벤트 리스너
+     * @param {Function} callback - 변경된 데이터(PostItStorage)를 받는 콜백
+     */
+    onUpdate: (callback) => {
+      const listener = (event, data) => callback(data);
+      ipcRenderer.on('postit-updated', listener);
+      return () => ipcRenderer.removeListener('postit-updated', listener);
+    },
+
     /**
      * 포스트잇 창 제어
      */
@@ -500,7 +510,7 @@ contextBridge.exposeInMainWorld('electron', {
           return { success: false, error: error.message };
         }
       },
-      
+
       /**
        * 포스트잇 창 숨기기
        */
@@ -512,7 +522,7 @@ contextBridge.exposeInMainWorld('electron', {
           return { success: false, error: error.message };
         }
       },
-      
+
       /**
        * 포스트잇 창 닫기
        */
@@ -524,7 +534,7 @@ contextBridge.exposeInMainWorld('electron', {
           return { success: false, error: error.message };
         }
       },
-      
+
       /**
        * 포스트잇 창이 열려있는지 확인
        */
@@ -537,7 +547,7 @@ contextBridge.exposeInMainWorld('electron', {
           return false;
         }
       },
-      
+
       /**
        * 포스트잇 창 모드 설정
        * @param {string} mode - 'always-on-top', 'desktop', 'hidden'
@@ -551,7 +561,7 @@ contextBridge.exposeInMainWorld('electron', {
           return { success: false, error: error.message };
         }
       },
-      
+
       /**
        * 포스트잇 창 모드 가져오기
        * @returns {Promise<{mode: string}>}
@@ -564,7 +574,7 @@ contextBridge.exposeInMainWorld('electron', {
           return { mode: 'always-on-top' };
         }
       },
-      
+
       /**
        * 포스트잇 창 모드 순환 (always-on-top -> desktop -> hidden -> always-on-top)
        * @returns {Promise<{success: boolean, mode: string}>}

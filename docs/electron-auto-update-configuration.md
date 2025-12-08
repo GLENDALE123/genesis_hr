@@ -156,3 +156,17 @@ electron-updater는 `blockmap` 파일을 사용하여 **delta 업데이트**를 
 - [electron-updater 문서](https://www.electron.build/auto-update)
 - [Firebase Storage 공개 접근 설정](https://firebase.google.com/docs/storage/security)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+

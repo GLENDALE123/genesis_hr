@@ -40,7 +40,7 @@ let firebaseOptimizer = null; // Firebase 최적화 인스턴스
 try {
   app.commandLine.appendSwitch('ignore-certificate-errors', 'true');
   app.commandLine.appendSwitch('allow-insecure-localhost', 'true');
-} catch {}
+} catch { }
 
 // 성능 최적화: Chromium 플래그 설정
 try {
@@ -49,22 +49,22 @@ try {
   app.commandLine.appendSwitch('disable-background-timer-throttling'); // 백그라운드 타이머 스로틀링 비활성화
   app.commandLine.appendSwitch('disable-renderer-backgrounding'); // 렌더러 백그라운딩 비활성화
   app.commandLine.appendSwitch('disable-backgrounding-occluded-windows'); // 가려진 윈도우 백그라운딩 비활성화
-  
+
   // GPU 가속 최적화
   app.commandLine.appendSwitch('enable-gpu-rasterization'); // GPU 래스터화 활성화
   app.commandLine.appendSwitch('enable-zero-copy'); // 제로 카피 활성화 (메모리 효율)
-  
+
   // 렌더링 최적화
   app.commandLine.appendSwitch('disable-features', 'TranslateUI'); // 번역 UI 비활성화
   app.commandLine.appendSwitch('disable-ipc-flooding-protection'); // IPC 플러딩 보호 비활성화 (성능)
-  
+
   // 메모리 절약
   app.commandLine.appendSwitch('disable-dev-shm-usage'); // /dev/shm 사용 비활성화 (리눅스)
   app.commandLine.appendSwitch('disable-extensions'); // 확장 프로그램 비활성화 (필요시)
-  
+
   // 네트워크 최적화
   app.commandLine.appendSwitch('enable-features', 'NetworkService,NetworkServiceInProcess'); // 네트워크 서비스 최적화
-  
+
   console.log('✅ [Electron Main] 성능 최적화 플래그 설정 완료');
 } catch (error) {
   console.warn('⚠️ [Electron Main] 성능 플래그 설정 실패:', error.message);
@@ -76,7 +76,7 @@ try {
   if (process.platform === 'win32') {
     app.commandLine.appendSwitch('high-dpi-support', '1');
   }
-} catch {}
+} catch { }
 let staticServerInstance = null;
 let staticServerPort = null;
 let devServerInUse = false;
@@ -95,7 +95,7 @@ function createWindow() {
     openDevToolsOnStart,
     (value) => { devServerInUse = value; }
   );
-  
+
   // 알림 권한 설정
   const { session } = mainWindow.webContents;
   session.setPermissionRequestHandler((webContents, permission, callback) => {
@@ -109,11 +109,11 @@ function createWindow() {
       callback(false);
     }
   });
-  
+
   if (app.isPackaged && process.platform === 'win32') {
     console.log('ℹ️ [Electron Main] Windows 알림 권한 확인 - 시스템 설정에서 알림이 활성화되어 있어야 합니다.');
   }
-  
+
   // 윈도우 닫기 이벤트
   mainWindow.on('close', (event) => {
     if (!app.isQuitting && process.platform !== 'darwin') {
@@ -136,7 +136,7 @@ function createWindow() {
   mainWindow.webContents.on('destroyed', () => {
     windowManager.cleanupWindowResources(mainWindow);
   });
-  
+
   return mainWindow;
 }
 
@@ -201,13 +201,13 @@ function safeIpcHandle(channel, handler) {
       console.error(`❌ [Electron Main] 허용되지 않은 IPC 채널: ${channel}`);
       return { success: false, error: 'Unauthorized channel' };
     }
-    
+
     // WebContents 검증 (보안)
     if (!event.sender || event.sender.isDestroyed()) {
       console.error(`❌ [Electron Main] 유효하지 않은 IPC 발신자: ${channel}`);
       return { success: false, error: 'Invalid sender' };
     }
-    
+
     try {
       return await handler(event, ...args);
     } catch (error) {
@@ -251,7 +251,7 @@ ipcMain.handle('postit-window-is-open', () => {
 
 // 포스트잇 창 모드 변경
 ipcMain.handle('postit-window-set-mode', (event, mode) => {
-  postitWindow.setPostItWindowMode(mode);
+  postitWindow.setPostItWindowMode(mode, mainWindow);
   return { success: true, mode: postitWindow.getPostItWindowMode() };
 });
 
@@ -262,7 +262,7 @@ ipcMain.handle('postit-window-get-mode', () => {
 
 // 포스트잇 창 모드 순환
 ipcMain.handle('postit-window-cycle-mode', () => {
-  const newMode = postitWindow.cyclePostItWindowMode();
+  const newMode = postitWindow.cyclePostItWindowMode(mainWindow);
   return { success: true, mode: newMode };
 });
 
@@ -330,16 +330,16 @@ if (!gotTheLock) {
   app.on('ready', () => {
     // 스플래시 화면 먼저 표시 (앱 시작 시 즉시)
     splashWindow.createSplashWindow(app);
-    
+
     // 스플래시 화면이 표시된 후 초기화 진행
     setTimeout(async () => {
       // 네이티브 캐시가 이미 로드되었지만 사용자에게 표시
       splashWindow.updateSplashStatus('네이티브 캐시 로드 중...', '로컬 캐시 데이터 활성화', 5);
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       splashWindow.updateSplashStatus('초기 설정을 확인하는 중...', '시스템 설정 로드', 8);
       await new Promise(resolve => setTimeout(resolve, 50));
-      
+
       // 성능 최적화: 앱 우선순위 설정 (Windows)
       if (process.platform === 'win32') {
         try {
@@ -349,42 +349,43 @@ if (!gotTheLock) {
           console.warn('⚠️ [Electron Main] 프로세스 우선순위 설정 실패:', error.message);
         }
       }
-      
+
       // IPC 핸들러 등록 (윈도우 컨트롤용)
       splashWindow.updateSplashStatus('IPC 핸들러 등록 중...', '통신 시스템 초기화', 12);
       registerIpcHandlers();
       await new Promise(resolve => setTimeout(resolve, 50));
-      
+
       // 전역 에러 핸들러 등록
       splashWindow.updateSplashStatus('에러 핸들러 설정 중...', '오류 처리 시스템 준비', 15);
       setupGlobalErrorHandlers();
       await new Promise(resolve => setTimeout(resolve, 50));
-      
+
       // 업데이터 설정
       splashWindow.updateSplashStatus('업데이트 시스템 설정 중...', '자동 업데이트 준비', 18);
       updater.setupUpdater(app, mainWindow, preferDevServer);
       await new Promise(resolve => setTimeout(resolve, 50));
-      
+
       splashWindow.updateSplashStatus('메인 윈도우 생성 중...', '애플리케이션 인터페이스 준비', 20);
       createWindow(); // createWindow 내부에서 load()가 호출되어 HTML 로드 및 창 표시
-      
+
+
       // 포스트잇 창은 자동으로 생성하지 않음 (TitleBar 버튼으로만 생성)
       // 메인 윈도우가 완전히 로드된 후 초기화 완료
-      
+
       // createTray는 백그라운드에서 실행 (사용자 경험에 큰 영향 없음)
       tray = trayManager.createTray(app, mainWindow, postitWindow);
-      
+
       // 성능 모니터링 시작 (mainWindow 생성 후)
       performanceMonitor.startPerformanceMonitoring(mainWindow, cacheManager.evictLRUItems, cacheManager.getCache());
-      
+
       // 캐시 정기 작업 설정
       cacheManager.setupCachePeriodicTasks(mainWindow);
-    
+
       // 앱 시작 후 10초 뒤에 첫 업데이트 체크
       setTimeout(() => {
         updater.checkForUpdates();
       }, 10000);
-      
+
       // 주기적으로 업데이트 체크
       setInterval(() => {
         updater.checkForUpdates();
@@ -401,7 +402,7 @@ app.on('window-all-closed', () => {
   if (app.isQuitting) {
     return;
   }
-  
+
   // macOS를 제외하고 앱 종료
   if (process.platform !== 'darwin') {
     // 포스트잇 창이 열려있는지 확인
@@ -431,9 +432,9 @@ app.on('before-quit', (event) => {
   if (!app.isQuitting) {
     app.isQuitting = true;
   }
-  
+
   console.log('[INFO] [Electron Main] 앱 종료 준비 중...');
-  
+
   // 포스트잇 창 닫기
   try {
     if (postitWindow && postitWindow.isPostItWindowOpen()) {
@@ -443,7 +444,7 @@ app.on('before-quit', (event) => {
   } catch (error) {
     console.error('[ERROR] [Electron Main] 포스트잇 창 닫기 실패:', error);
   }
-  
+
   // 캐시 저장
   try {
     cacheManager.cleanupExpiredCache();
@@ -451,7 +452,7 @@ app.on('before-quit', (event) => {
   } catch (error) {
     console.error('[ERROR] [Electron Main] 캐시 저장 실패:', error);
   }
-  
+
   // Firebase 최적화 정리
   try {
     if (firebaseOptimizer) {
@@ -461,7 +462,7 @@ app.on('before-quit', (event) => {
   } catch (error) {
     console.error('[ERROR] [Electron Main] Firebase 정리 실패:', error);
   }
-  
+
   // 정적 서버가 켜져있으면 종료
   try {
     if (staticServerInstance) {
@@ -472,19 +473,19 @@ app.on('before-quit', (event) => {
   } catch (error) {
     console.error('[ERROR] [Electron Main] 정적 서버 종료 실패:', error);
   }
-  
+
   console.log('[INFO] [Electron Main] 종료 준비 완료');
 });
 
 // Windows 7 호환성을 위한 추가 설정
 if (process.platform === 'win32') {
   app.setAppUserModelId('com.hs.hr');
-  
+
   // Windows 성능 최적화
   try {
     // Windows 메모리 관리 최적화
     app.commandLine.appendSwitch('disable-features', 'VizDisplayCompositor'); // 디스플레이 컴포지터 비활성화 (성능)
-  } catch {}
+  } catch { }
 }
 
 // 성능 모니터링은 mainWindow가 생성된 후 시작 (아래에서 호출)
@@ -495,3 +496,17 @@ setInterval(() => {
     firebaseOptimizer.cleanupStorageCache();
   }
 }, 6 * 60 * 60 * 1000);
+
+
+
+
+
+
+
+
+
+
+
+
+
+

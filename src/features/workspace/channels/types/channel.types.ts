@@ -12,7 +12,7 @@ export type ChannelType = 'public' | 'private';
 /**
  * 채널 뷰 타입
  */
-export type ChannelViewType = 'message' | 'board';
+export type ChannelViewType = 'message' | 'board' | 'project';
 
 /**
  * 채널 카테고리
@@ -112,6 +112,7 @@ export interface UpdateChannelData {
   type?: ChannelType;
   category?: ChannelCategory;
   permissions?: Partial<ChannelPermissions>;
+  viewType?: ChannelViewType;
 }
 
 /**

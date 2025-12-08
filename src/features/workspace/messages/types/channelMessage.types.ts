@@ -17,6 +17,15 @@ export interface ChannelMessageAttachment {
 }
 
 /**
+ * 메시지 메타데이터 (프로젝트, 품질이슈 등)
+ */
+export interface ChannelMessageMetadata {
+  type?: 'project-quality-issue'; // 메시지 타입
+  projectId?: string; // 프로젝트 ID
+  issueId?: string; // 품질이슈 ID
+}
+
+/**
  * 워크스페이스 채널 메시지
  */
 export interface ChannelMessage {
@@ -37,6 +46,7 @@ export interface ChannelMessage {
   replyTo?: string; // 답장 대상 메시지 ID
   threadId?: string; // 스레드 ID (스레드 메시지인 경우)
   parentMessageId?: string; // 부모 메시지 ID (스레드 메시지인 경우)
+  metadata?: ChannelMessageMetadata; // 메시지 메타데이터
 }
 
 /**

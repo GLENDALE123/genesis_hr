@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 워크스페이스 채널 메시지 컴포넌트
  * 1:1 채팅과 완전히 독립적인 워크스페이스 전용 메시지 컴포넌트
  */
@@ -14,6 +14,8 @@ import type { UploadingImageItem } from '@/shared/components/common/UploadingIma
 import { Progress } from '@/shared/components/ui/progress';
 import type { ChannelMessage, ChannelMessageAttachment } from '../types/channelMessage.types';
 import type { UserProfile } from '@/features/auth/types';
+import { useProjectModalStore } from '@/features/workspace/store/projectModalStore';
+import { ProjectQualityIssueMessage } from './ProjectQualityIssueMessage';
 
 export interface ChannelMessageProps {
   message: ChannelMessage;
@@ -47,130 +49,110 @@ export const ChannelMessageComponent = React.memo<ChannelMessageProps>(({
 }) => {
   const isOwnMessage = message.sender.uid === currentUserId;
   const isPendingUpload = Boolean(pendingUpload);
-  
+
   // 보낸 사람 이름 (직급 포함)
-  const senderDisplayName = isOwnMessage 
-    ? '' 
+  const senderDisplayName = isOwnMessage
+    ? ''
     : getUserDisplayName(
-        { displayName: message.sender.displayName },
-        userProfile || null,
-        '사용자'
-      );
-  
+      { displayName: message.sender.displayName },
+      userProfile || null,
+      '사용자'
+    );
+
   // 읽지 않은 사람 수 계산 (자신 제외)
   const unreadCount = React.useMemo(() => {
     if (!isOwnMessage || !channelMembers.length) return 0;
-    
+
     // 자신을 제외한 멤버 수
     const otherMembers = channelMembers.filter(uid => uid !== currentUserId);
     const totalOthers = otherMembers.length;
-    
+
     // 읽은 사람 수 (자신 제외)
     const readByOthers = message.readBy.filter(uid => uid !== currentUserId).length;
-    
+
     // 읽지 않은 사람 수
     return Math.max(0, totalOthers - readByOthers);
   }, [message.readBy, channelMembers, currentUserId, isOwnMessage]);
 
+  // 멘션과 검색어 하이라이트 처리에 더해, Project/Issue 링크 처리 추가 필요
+  // 하지만 현재 구조상 텍스트를 파싱하는 로직이 복잡해질 수 있음.
+  // 따라서, 메시지가 "project://" 링크를 포함하는 경우를 감지하여 별도의 Card를 렌더링하도록 함.
+
+  // 프로젝트 링크 감지
+  const projectLinkMatch = message.text?.match(/\[프로젝트 보기\]\(project:\/\/([a-zA-Z0-9]+)\)/);
+  const projectId = projectLinkMatch ? projectLinkMatch[1] : null;
+
+  // 품질이슈 프로젝트 메시지인지 확인
+  const isQualityIssueProjectMessage = message.metadata?.type === 'project-quality-issue';
+
   // 멘션과 검색어 하이라이트 처리
   const renderMessageText = (text: string, mentionedUserIds?: string[], searchQuery?: string) => {
+    // 프로젝트 링크 제거 (카드로 보여줄 것이므로 텍스트에서는 숨김)
+    let displayTx = text;
+    if (projectId) {
+      displayTx = text.replace(/\[프로젝트 보기\]\(project:\/\/[a-zA-Z0-9]+\)/, '');
+    }
+
     // 검색어가 2글자 미만이면 하이라이트하지 않음
     const trimmedQuery = searchQuery?.trim() || '';
     const validSearchQuery = trimmedQuery.length >= 2 ? trimmedQuery : '';
-    
+
     if (!validSearchQuery && (!mentionedUserIds || mentionedUserIds.length === 0)) {
-      return <span>{text}</span>;
+      return <span className="whitespace-pre-wrap">{displayTx}</span>;
     }
 
-    // 멘션과 검색어를 함께 처리
+    // ... (기존 하이라이트 로직 유지하되 displayTx 사용) ...
     const parts: Array<{ text: string; isMention: boolean; isSearch: boolean }> = [];
     const mentionRegex = /@(\S+)/g;
     const searchRegex = validSearchQuery
       ? new RegExp(`(${validSearchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
       : null;
-    
-    // 모든 매치 위치 수집
+
+    // ... (기존 로직: displayTx 대상으로 수행) ...
+    // Note: To simplify, I will just re-implement the highlight logic on displayTx.
     const matches: Array<{ index: number; length: number; type: 'mention' | 'search' }> = [];
-    
-    // 멘션 매치
+
     let mentionMatch: RegExpExecArray | null;
-    while ((mentionMatch = mentionRegex.exec(text)) !== null) {
-      matches.push({
-        index: mentionMatch.index,
-        length: mentionMatch[0].length,
-        type: 'mention' as const,
-      });
+    while ((mentionMatch = mentionRegex.exec(displayTx)) !== null) {
+      matches.push({ index: mentionMatch.index, length: mentionMatch[0].length, type: 'mention' });
     }
-    
-    // 검색어 매치
+
     if (searchRegex) {
-      searchRegex.lastIndex = 0; // 리셋
+      searchRegex.lastIndex = 0;
       let searchMatch: RegExpExecArray | null;
-      while ((searchMatch = searchRegex.exec(text)) !== null) {
-        // 멘션과 겹치지 않는 경우만 추가
-        const isOverlapping = matches.some(m => 
+      while ((searchMatch = searchRegex.exec(displayTx)) !== null) {
+        const isOverlapping = matches.some(m =>
           searchMatch!.index < m.index + m.length && searchMatch!.index + searchMatch![0].length > m.index
         );
         if (!isOverlapping) {
-          matches.push({
-            index: searchMatch.index,
-            length: searchMatch[0].length,
-            type: 'search' as const,
-          });
+          matches.push({ index: searchMatch.index, length: searchMatch[0].length, type: 'search' });
         }
       }
     }
-    
-    // 인덱스 순으로 정렬
+
     matches.sort((a, b) => a.index - b.index);
-    
-    // 텍스트 분할
+
     let lastIndex = 0;
     matches.forEach((match) => {
-      // 매치 이전 텍스트
       if (match.index > lastIndex) {
-        parts.push({
-          text: text.substring(lastIndex, match.index),
-          isMention: false,
-          isSearch: false,
-        });
+        parts.push({ text: displayTx.substring(lastIndex, match.index), isMention: false, isSearch: false });
       }
-      
-      // 매치된 텍스트
-      parts.push({
-        text: text.substring(match.index, match.index + match.length),
-        isMention: match.type === 'mention',
-        isSearch: match.type === 'search',
-      });
-      
+      parts.push({ text: displayTx.substring(match.index, match.index + match.length), isMention: match.type === 'mention', isSearch: match.type === 'search' });
       lastIndex = match.index + match.length;
     });
-    
-    // 나머지 텍스트
-    if (lastIndex < text.length) {
-      parts.push({
-        text: text.substring(lastIndex),
-        isMention: false,
-        isSearch: false,
-      });
+
+    if (lastIndex < displayTx.length) {
+      parts.push({ text: displayTx.substring(lastIndex), isMention: false, isSearch: false });
     }
-    
+
     return (
-      <span>
+      <span className="whitespace-pre-wrap">
         {parts.map((part, index) => {
           if (part.isMention) {
-            return (
-              <span key={index} className="text-blue-600 dark:text-blue-400 font-medium">
-                {part.text}
-              </span>
-            );
+            return <span key={index} className="text-blue-600 dark:text-blue-400 font-medium">{part.text}</span>;
           } else if (part.isSearch) {
             return (
-              <mark key={index} className={`px-1 py-0.5 rounded ${
-                isOwnMessage 
-                  ? 'bg-yellow-600/90 dark:bg-yellow-700/90 text-white' 
-                  : 'bg-yellow-300/90 dark:bg-yellow-600/90'
-              }`}>
+              <mark key={index} className={`px-1 py-0.5 rounded ${isOwnMessage ? 'bg-yellow-600/90 dark:bg-yellow-700/90 text-white' : 'bg-yellow-300/90 dark:bg-yellow-600/90'}`}>
                 {part.text}
               </mark>
             );
@@ -268,11 +250,19 @@ export const ChannelMessageComponent = React.memo<ChannelMessageProps>(({
     );
   };
 
+  // 품질이슈 프로젝트 메시지인 경우 특별한 UI 렌더링
+  if (isQualityIssueProjectMessage) {
+    return (
+      <div className="px-4 py-2">
+        <ProjectQualityIssueMessage message={message} />
+      </div>
+    );
+  }
+
   return (
     <div
-      className={`flex gap-3 px-4 py-1 group ${
-        isOwnMessage ? 'flex-row-reverse' : 'flex-row'
-      }`}
+      className={`flex gap-3 px-4 py-1 group ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'
+        }`}
     >
       {/* 아바타 (상대방 메시지만, showAvatar가 true일 때) */}
       {!isOwnMessage && showAvatar && (
@@ -302,53 +292,53 @@ export const ChannelMessageComponent = React.memo<ChannelMessageProps>(({
             <div className={cn('relative flex flex-wrap overflow-hidden rounded-lg w-60 sm:w-72 md:w-80', isPendingUpload ? 'border border-border/40' : undefined)}>
               {isPendingUpload
                 ? pendingImageAttachments.map((item, index) => (
-                    <div
-                      key={`pending-${index}`}
-                      className={cn(
-                        'relative w-full block overflow-hidden bg-muted border border-border/40',
-                        getImageFlexBasis(index),
-                        index % imageColumns === 0 ? 'ml-0' : '-ml-px',
-                        index < imageColumns ? 'mt-0' : '-mt-px',
-                        getImageAspectClass(index)
-                      )}
-                    >
-                      {item.preview ? (
-                        <img
-                          src={item.preview}
-                          alt={item.file?.name || '이미지 업로드 중'}
-                          className="h-full w-full object-cover"
-                          draggable={false}
-                        />
-                      ) : (
-                        <div className="h-full w-full animate-pulse bg-muted-foreground/20" />
-                      )}
-                    </div>
-                  ))
-                : imageAttachments.map((image, index) => (
-                    <button
-                      type="button"
-                      key={image.id}
-                      onClick={() => {
-                        setLightboxIndex(index);
-                        setLightboxOpen(true);
-                      }}
-                      className={cn(
-                        'relative w-full block overflow-hidden bg-muted focus:outline-none border border-border/40',
-                        getImageFlexBasis(index),
-                        index % imageColumns === 0 ? 'ml-0' : '-ml-px',
-                        index < imageColumns ? 'mt-0' : '-mt-px',
-                        getImageAspectClass(index)
-                      )}
-                    >
+                  <div
+                    key={`pending-${index}`}
+                    className={cn(
+                      'relative w-full block overflow-hidden bg-muted border border-border/40',
+                      getImageFlexBasis(index),
+                      index % imageColumns === 0 ? 'ml-0' : '-ml-px',
+                      index < imageColumns ? 'mt-0' : '-mt-px',
+                      getImageAspectClass(index)
+                    )}
+                  >
+                    {item.preview ? (
                       <img
-                        src={image.thumbnailUrl || image.url}
-                        alt={image.name || '이미지 첨부'}
-                        className="absolute inset-0 w-full h-full object-cover"
-                        loading="eager"
-                        decoding="async"
+                        src={item.preview}
+                        alt={item.file?.name || '이미지 업로드 중'}
+                        className="h-full w-full object-cover"
+                        draggable={false}
                       />
-                    </button>
-                  ))}
+                    ) : (
+                      <div className="h-full w-full animate-pulse bg-muted-foreground/20" />
+                    )}
+                  </div>
+                ))
+                : imageAttachments.map((image, index) => (
+                  <button
+                    type="button"
+                    key={image.id}
+                    onClick={() => {
+                      setLightboxIndex(index);
+                      setLightboxOpen(true);
+                    }}
+                    className={cn(
+                      'relative w-full block overflow-hidden bg-muted focus:outline-none border border-border/40',
+                      getImageFlexBasis(index),
+                      index % imageColumns === 0 ? 'ml-0' : '-ml-px',
+                      index < imageColumns ? 'mt-0' : '-mt-px',
+                      getImageAspectClass(index)
+                    )}
+                  >
+                    <img
+                      src={image.thumbnailUrl || image.url}
+                      alt={image.name || '이미지 첨부'}
+                      className="absolute inset-0 w-full h-full object-cover"
+                      loading="eager"
+                      decoding="async"
+                    />
+                  </button>
+                ))}
               {isPendingUpload && pendingUpload && (
                 <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-black/60 text-white p-4">
                   <Progress value={pendingPercent} className="w-24 h-2" />
@@ -366,17 +356,51 @@ export const ChannelMessageComponent = React.memo<ChannelMessageProps>(({
                 'px-3 py-2 border break-words overflow-wrap-anywhere',
                 hasImages && 'mt-2',
                 isOwnMessage
-                  ? `bg-yellow-400 dark:bg-yellow-500 text-foreground dark:text-black border-yellow-400 dark:border-yellow-500 ${
-                      isFirstInGroup ? 'rounded-s-xl rounded-ee-xl' : 'rounded-xl'
-                    }`
-                  : `bg-card dark:bg-muted text-foreground border-border dark:border-muted ${
-                      isFirstInGroup ? 'rounded-e-xl rounded-es-xl' : 'rounded-xl'
-                    }`
+                  ? `bg-yellow-400 dark:bg-yellow-500 text-foreground dark:text-black border-yellow-400 dark:border-yellow-500 ${isFirstInGroup ? 'rounded-s-xl rounded-ee-xl' : 'rounded-xl'
+                  }`
+                  : `bg-card dark:bg-muted text-foreground border-border dark:border-muted ${isFirstInGroup ? 'rounded-e-xl rounded-es-xl' : 'rounded-xl'
+                  }`
               )}
             >
               {hasText && (
                 <div className="text-lg font-medium">
                   {renderMessageText(sanitizedText, message.mentionedUserIds, searchQuery)}
+
+                  {/* 프로젝트 카드 렌더링 */}
+                  {projectLinkMatch && (
+                    <div className="mt-3 p-3 bg-white dark:bg-zinc-800 rounded-lg border border-border shadow-sm">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-xl">🚀</span>
+                        <span className="font-bold text-sm text-primary">프로젝트 시작됨</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground mb-3">
+                        새로운 프로젝트가 생성되었습니다. 상세 내용은 프로젝트 보기에서 확인하세요.
+                      </div>
+                      <button
+                        className="w-full py-1.5 px-3 bg-primary text-primary-foreground text-sm font-medium rounded hover:bg-primary/90 transition-colors flex items-center justify-center gap-1"
+                        onClick={async () => {
+                          if (projectLinkMatch && projectLinkMatch[1]) {
+                            const projectId = projectLinkMatch[1];
+                            try {
+                              // 프로젝트 정보를 가져와서 source 타입 확인
+                              const { ProjectService } = await import('@/features/workspace/services/projectService');
+                              const project = await ProjectService.getProject(projectId);
+                              
+                              // 품질이슈에서 생성된 프로젝트인 경우 품질이슈 탭을 기본으로 열기
+                              const initialTab = project?.source?.type === 'quality-issue' ? 'issue' : 'info';
+                              useProjectModalStore.getState().openProjectModal(projectId, initialTab);
+                            } catch (error) {
+                              console.error('Failed to load project:', error);
+                              // 프로젝트 로드 실패 시 기본 탭으로 열기
+                              useProjectModalStore.getState().openProjectModal(projectId);
+                            }
+                          }
+                        }}
+                      >
+                        프로젝트 보기
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
               {renderFileAttachments()}

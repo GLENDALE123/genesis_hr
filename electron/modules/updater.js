@@ -124,3 +124,17 @@ module.exports = {
   setupUpdateIpcHandlers,
   UPDATE_CHECK_INTERVAL,
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+

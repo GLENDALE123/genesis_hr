@@ -4,7 +4,7 @@
 
 import React from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { Lock, Star, LayoutGrid, ChevronRight, Folder, MoreHorizontal, Plus, Edit, Trash2 } from 'lucide-react';
+import { Lock, Star, LayoutGrid, Briefcase, ChevronRight, Folder, MoreHorizontal, Plus, Edit, Trash2 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import type { Channel } from '../types/channel.types';
 import {
@@ -158,6 +158,9 @@ export const DraggableChannelItem: React.FC<DraggableChannelItemProps> = ({
         )}
         {channel.viewType === 'board' && !channel.isFolder && (
           <LayoutGrid className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+        )}
+        {channel.viewType === 'project' && !channel.isFolder && (
+          <Briefcase className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
         )}
       </div>
 

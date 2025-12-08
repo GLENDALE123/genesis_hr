@@ -17,26 +17,50 @@ const DEFAULT_HEIGHT = 200;
  */
 export const getPostIts = async (): Promise<PostIt[]> => {
   if (typeof window === 'undefined') {
+    console.warn('[WARN] [PostIt Storage] window 객체가 없습니다');
     return [];
   }
 
   // Electron 환경이 아니면 빈 배열 반환
   if (!isElectron()) {
+    console.warn('[WARN] [PostIt Storage] Electron 환경이 아닙니다');
     return [];
   }
 
   try {
     // Electron IPC를 통해 파일 시스템에서 읽기
     const electron = (window as any).electron;
+    console.log('[OK] [PostIt Storage] Electron 객체 확인:', !!electron, 'postit API:', !!electron?.postit);
+    
     if (!electron?.postit) {
+      console.error('[ERROR] [PostIt Storage] electron.postit API가 없습니다');
+      console.log('[DEBUG] [PostIt Storage] window.electron:', electron);
       return [];
     }
 
-    const data: PostItStorage = await electron.postit.read();
+    console.log('[OK] [PostIt Storage] 포스트잇 데이터 읽기 시작...');
+    let data: PostItStorage;
+    try {
+      data = await electron.postit.read();
+      console.log('[OK] [PostIt Storage] 포스트잇 데이터 읽기 완료:', {
+        postitsCount: data.postits?.length || 0,
+        foldersCount: data.folders?.length || 0,
+        version: data.version,
+        rawData: data // 전체 데이터 로그 (디버깅용)
+      });
+    } catch (readError) {
+      console.error('[ERROR] [PostIt Storage] IPC read 호출 실패:', readError);
+      if (readError instanceof Error) {
+        console.error('[ERROR] [PostIt Storage] 에러 메시지:', readError.message);
+        console.error('[ERROR] [PostIt Storage] 에러 스택:', readError.stack);
+      }
+      throw readError;
+    }
     
     // 버전 체크 (향후 마이그레이션용)
     if (data.version !== STORAGE_VERSION) {
       // 버전이 다르면 초기화
+      console.warn('[WARN] [PostIt Storage] 버전 불일치:', data.version, 'vs', STORAGE_VERSION);
       return [];
     }
 
@@ -54,12 +78,18 @@ export const getPostIts = async (): Promise<PostIt[]> => {
 
     // 마이그레이션이 필요한 경우 저장
     if (migratedPostits.some((p, i) => !data.postits?.[i]?.size || !data.postits?.[i]?.zIndex)) {
+      console.log('[OK] [PostIt Storage] 마이그레이션 필요, 저장 중...');
       await savePostIts(migratedPostits);
     }
 
+    console.log('[OK] [PostIt Storage] 최종 포스트잇 개수:', migratedPostits.length);
     return migratedPostits;
   } catch (error) {
-    console.error('포스트잇 로드 실패:', error);
+    console.error('[ERROR] [PostIt Storage] 포스트잇 로드 실패:', error);
+    if (error instanceof Error) {
+      console.error('[ERROR] [PostIt Storage] 에러 메시지:', error.message);
+      console.error('[ERROR] [PostIt Storage] 에러 스택:', error.stack);
+    }
     return [];
   }
 };

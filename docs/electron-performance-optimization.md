@@ -167,3 +167,17 @@ const FIREBASE_OPTIMIZATION_CONFIG = {
 - [Electron 성능 최적화 가이드](https://www.electronjs.org/docs/latest/tutorial/performance)
 - [V8 메모리 관리](https://v8.dev/blog/trash-talk)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+

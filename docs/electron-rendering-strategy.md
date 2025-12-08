@@ -267,3 +267,17 @@ const HeavyComponent = lazy(() => import('./HeavyComponent'));
 - [Vite 빌드 가이드](https://vitejs.dev/guide/build.html)
 - [Electron 파일 로딩](https://www.electronjs.org/docs/latest/api/browser-window#winloadfilepath-options)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+

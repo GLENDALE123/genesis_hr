@@ -155,6 +155,7 @@ export class ChannelService {
     if (data.topic !== undefined) updateData.topic = data.topic;
     if (data.type !== undefined) updateData.type = data.type;
     if (data.category !== undefined) updateData.category = data.category;
+    if (data.viewType !== undefined) updateData.viewType = data.viewType;
     if (data.permissions !== undefined) {
       const channel = await this.getChannel(channelId, workspaceId);
       if (channel) {
@@ -256,7 +257,7 @@ export class ChannelService {
     if (!db) throw new Error('Firestore is not initialized');
 
     const channelRef = doc(db, getChannelsCollectionPath(workspaceId), channelId);
-    
+
     // 채널 존재 확인
     const channelDoc = await getDoc(channelRef);
     if (!channelDoc.exists()) {
@@ -282,7 +283,7 @@ export class ChannelService {
         `${getChannelsCollectionPath(workspaceId)}/${channelId}/${subcollectionName}`
       );
       const subcollectionSnapshot = await getDocs(subcollectionRef);
-      
+
       subcollectionSnapshot.docs.forEach((doc) => {
         batch.delete(doc.ref);
       });
@@ -334,7 +335,7 @@ export class ChannelService {
     if (!db) {
       const error = new Error('Firestore is not initialized');
       onError?.(error);
-      return () => {};
+      return () => { };
     }
 
     const docRef = doc(db, getChannelsCollectionPath(workspaceId), channelId);
@@ -371,7 +372,7 @@ export class ChannelService {
     if (!db) {
       const error = new Error('Firestore is not initialized');
       onError?.(error);
-      return () => {};
+      return () => { };
     }
 
     // 서브컬렉션에서 직접 구독
@@ -619,7 +620,7 @@ export class ChannelService {
     // 폴더 정보 가져오기
     const folderRef = doc(channelsRef, folderId);
     const folderDoc = await getDoc(folderRef);
-    
+
     if (!folderDoc.exists()) {
       throw new Error('Folder not found');
     }
@@ -657,6 +658,35 @@ export class ChannelService {
       name: newName,
       updatedAt: new Date().toISOString(),
     });
+  }
+
+  /**
+   * 채널을 폴더에서 꺼내기 (루트로 이동)
+   */
+  static async moveChannelToRoot(
+    channelId: string,
+    folderId: string,
+    workspaceId: string
+  ): Promise<void> {
+    if (!db) throw new Error('Firestore is not initialized');
+
+    const batch = writeBatch(db);
+
+    // 1. 채널 업데이트: parentFolderId 제거
+    const channelRef = doc(db, getChannelsCollectionPath(workspaceId), channelId);
+    batch.update(channelRef, {
+      parentFolderId: null,
+      updatedAt: new Date().toISOString(),
+    });
+
+    // 2. 폴더 업데이트: folderChannelIds에서 채널 ID 제거
+    const folderRef = doc(db, getChannelsCollectionPath(workspaceId), folderId);
+    batch.update(folderRef, {
+      folderChannelIds: arrayRemove(channelId),
+      updatedAt: new Date().toISOString(),
+    });
+
+    await batch.commit();
   }
 }
 

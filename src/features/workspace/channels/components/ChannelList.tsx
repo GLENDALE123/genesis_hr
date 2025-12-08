@@ -10,7 +10,7 @@ import { ChannelService } from '../services/channelService';
 import { UnreadMessageService, BookmarkService } from '../../messages';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { Button } from '@/shared/components/ui/button';
-import { Lock, Plus, Settings, Star, LayoutGrid } from 'lucide-react';
+import { Lock, Plus, Settings, Star, LayoutGrid, Briefcase } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import {
   DndContext,
@@ -23,6 +23,7 @@ import {
   DragStartEvent,
 } from '@dnd-kit/core';
 import { DraggableChannelItem } from './DraggableChannelItem';
+import { DroppableCategoryHeader } from './DroppableCategoryHeader';
 import {
   Dialog,
   DialogContent,
@@ -72,7 +73,7 @@ export const ChannelList: React.FC<ChannelListProps> = ({ workspaceId }) => {
   const [newChannelDescription, setNewChannelDescription] = useState('');
   const [newChannelType, setNewChannelType] = useState<ChannelType>('public');
   const [newChannelCategory, setNewChannelCategory] = useState<ChannelCategory | 'none'>('none');
-  const [newChannelViewType, setNewChannelViewType] = useState<'message' | 'board'>('message');
+  const [newChannelViewType, setNewChannelViewType] = useState<'message' | 'board' | 'project'>('message');
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const [bookmarkedChannels, setBookmarkedChannels] = useState<Set<string>>(new Set());
   const [openFolders, setOpenFolders] = useState<Set<string>>(new Set());
@@ -174,7 +175,7 @@ export const ChannelList: React.FC<ChannelListProps> = ({ workspaceId }) => {
       if (channel.parentFolderId) {
         return;
       }
-      
+
       const category = channel.category || 'general';
       if (!groups[category]) {
         groups[category] = [];
@@ -264,12 +265,39 @@ export const ChannelList: React.FC<ChannelListProps> = ({ workspaceId }) => {
     const activeId = active.id as string;
     const overId = over.id as string;
 
+    const activeChannel = workspaceChannels.find((c) => c.id === activeId);
+
+    // 카테고리 헤더에 드롭한 경우 (폴더에서 꺼내기)
+    if (overId.startsWith('category-header-') && activeChannel?.parentFolderId) {
+      const category = overId.replace('category-header-', '');
+      try {
+        // 폴더에서 꺼내기
+        await ChannelService.moveChannelToRoot(
+          activeId,
+          activeChannel.parentFolderId,
+          workspaceId
+        );
+
+        // 카테고리가 다르면 업데이트
+        if (activeChannel.category !== category) {
+          await ChannelService.updateChannel(activeId, workspaceId, {
+            category: category as ChannelCategory
+          });
+        }
+      } catch (error) {
+        console.error('Failed to move channel to root:', error);
+      }
+      return;
+    }
+
     if (activeId === overId) return;
 
-    const activeChannel = workspaceChannels.find((c) => c.id === activeId);
-    const overChannel = workspaceChannels.find((c) => c.id === overId);
+    // activeChannel is already found above, no need to find again if valid
+    // const activeChannel = workspaceChannels.find((c) => c.id === activeId);
+    if (!activeChannel) return;
 
-    if (!activeChannel || !overChannel) return;
+    const overChannel = workspaceChannels.find((c) => c.id === overId);
+    if (!overChannel) return;
 
     // 폴더는 드래그 불가
     if (activeChannel.isFolder) return;
@@ -388,9 +416,9 @@ export const ChannelList: React.FC<ChannelListProps> = ({ workspaceId }) => {
           </h3>
           <Dialog open={isCreateChannelOpen} onOpenChange={setIsCreateChannelOpen}>
             <DialogTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 className="h-5 w-5 text-muted-foreground hover:text-foreground hover:bg-accent rounded"
               >
                 <Plus className="h-3.5 w-3.5" />
@@ -460,7 +488,7 @@ export const ChannelList: React.FC<ChannelListProps> = ({ workspaceId }) => {
                   <Label htmlFor="channel-view-type">뷰 타입</Label>
                   <Select
                     value={newChannelViewType}
-                    onValueChange={(value) => setNewChannelViewType(value as 'message' | 'board')}
+                    onValueChange={(value) => setNewChannelViewType(value as 'message' | 'board' | 'project')}
                   >
                     <SelectTrigger id="channel-view-type">
                       <SelectValue />
@@ -468,10 +496,16 @@ export const ChannelList: React.FC<ChannelListProps> = ({ workspaceId }) => {
                     <SelectContent>
                       <SelectItem value="message">메시지 뷰</SelectItem>
                       <SelectItem value="board">보드뷰</SelectItem>
+                      <SelectItem value="project">프로젝트 뷰</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground mt-1">
                     뷰 타입은 채널 생성 후 변경할 수 없습니다.
+                    {newChannelViewType === 'project' && (
+                      <span className="block mt-1">
+                        프로젝트 뷰는 품질이슈에서 생성된 프로젝트를 표시하는 전용 뷰입니다.
+                      </span>
+                    )}
                   </p>
                 </div>
                 <Button onClick={handleCreateChannel} className="w-full">
@@ -494,215 +528,228 @@ export const ChannelList: React.FC<ChannelListProps> = ({ workspaceId }) => {
           {/* 일반 채널 */}
           {groupedChannels.general.length > 0 && (
             <div className="mb-4">
-              <div className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                일반
-              </div>
+              <DroppableCategoryHeader
+                category="general"
+                label="일반"
+              />
               <div className="space-y-0.5">
-                  {groupedChannels.general.map((channel) => {
-                    const isBookmarked = bookmarkedChannels.has(channel.id);
-                    const isFolderOpen = openFolders.has(channel.id);
-                    const folderChannels = channel.isFolder
-                      ? workspaceChannels.filter((c) => c.parentFolderId === channel.id)
-                      : [];
+                {groupedChannels.general.map((channel) => {
+                  const isBookmarked = bookmarkedChannels.has(channel.id);
+                  const isFolderOpen = openFolders.has(channel.id);
+                  const folderChannels = channel.isFolder
+                    ? workspaceChannels.filter((c) => c.parentFolderId === channel.id)
+                    : [];
 
-                    return (
-                      <React.Fragment key={channel.id}>
-                        <DraggableChannelItem
-                          channel={channel}
-                          isBookmarked={isBookmarked}
-                          isActive={currentChannel?.id === channel.id}
-                          unreadCount={unreadCounts[channel.id] || 0}
-                          isFolderOpen={isFolderOpen}
-                          onChannelClick={handleChannelClick}
-                          onBookmarkToggle={handleBookmarkToggle}
-                          onFolderToggle={handleFolderToggle}
-                          onFolderCreateChannel={handleFolderCreateChannel}
-                          onFolderRename={handleFolderRename}
-                          onFolderDelete={handleFolderDelete}
-                        />
-                        {channel.isFolder && isFolderOpen && folderChannels.length > 0 && (
-                          <div className="ml-4 space-y-0.5">
-                            {folderChannels.map((folderChannel) => {
-                              const isFolderBookmarked = bookmarkedChannels.has(folderChannel.id);
-                              return (
-                                <DraggableChannelItem
-                                  key={folderChannel.id}
-                                  channel={folderChannel}
-                                  isBookmarked={isFolderBookmarked}
-                                  isActive={currentChannel?.id === folderChannel.id}
-                                  unreadCount={unreadCounts[folderChannel.id] || 0}
-                                  onChannelClick={handleChannelClick}
-                                  onBookmarkToggle={handleBookmarkToggle}
-                                />
-                              );
-                            })}
-                          </div>
-                        )}
-                      </React.Fragment>
-                    );
-                  })}
-                </div>
+                  return (
+                    <React.Fragment key={channel.id}>
+                      <DraggableChannelItem
+                        channel={channel}
+                        isBookmarked={isBookmarked}
+                        isActive={currentChannel?.id === channel.id}
+                        unreadCount={unreadCounts[channel.id] || 0}
+                        isFolderOpen={isFolderOpen}
+                        onChannelClick={handleChannelClick}
+                        onBookmarkToggle={handleBookmarkToggle}
+                        onFolderToggle={handleFolderToggle}
+                        onFolderCreateChannel={handleFolderCreateChannel}
+                        onFolderRename={handleFolderRename}
+                        onFolderDelete={handleFolderDelete}
+                      />
+                      {channel.isFolder && isFolderOpen && folderChannels.length > 0 && (
+                        <div className="ml-4 space-y-0.5">
+                          {folderChannels.map((folderChannel) => {
+                            const isFolderBookmarked = bookmarkedChannels.has(folderChannel.id);
+                            return (
+                              <DraggableChannelItem
+                                key={folderChannel.id}
+                                channel={folderChannel}
+                                isBookmarked={isFolderBookmarked}
+                                isActive={currentChannel?.id === folderChannel.id}
+                                unreadCount={unreadCounts[folderChannel.id] || 0}
+                                onChannelClick={handleChannelClick}
+                                onBookmarkToggle={handleBookmarkToggle}
+                              />
+                            );
+                          })}
+                        </div>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </div>
             </div>
           )}
 
-        {/* 부서 채널 */}
-        {groupedChannels.department.length > 0 && (
-          <div className="mb-4">
-            <div className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              부서
-            </div>
-            <div className="space-y-0.5">
-              {groupedChannels.department.map((channel) => {
-                const isBookmarked = bookmarkedChannels.has(channel.id);
-                return (
-                  <button
-                    key={channel.id}
-                    onClick={() => handleChannelClick(channel.id)}
-                    className={cn(
-                      'w-full text-left px-2 py-1.5 rounded text-sm transition-colors',
-                      'hover:bg-accent hover:text-accent-foreground',
-                      'flex items-center gap-2 group',
-                      currentChannel?.id === channel.id
-                        ? 'bg-accent text-accent-foreground'
-                        : 'text-muted-foreground'
-                    )}
-                  >
-                    <div
-                      className="h-4 w-4 flex-shrink-0 flex items-center justify-center relative"
-                      onClick={(e) => handleBookmarkToggle(e, channel.id)}
+          {/* 부서 채널 */}
+          {groupedChannels.department.length > 0 && (
+            <div className="mb-4">
+              <DroppableCategoryHeader
+                category="department"
+                label="부서"
+              />
+              <div className="space-y-0.5">
+                {groupedChannels.department.map((channel) => {
+                  const isBookmarked = bookmarkedChannels.has(channel.id);
+                  return (
+                    <button
+                      key={channel.id}
+                      onClick={() => handleChannelClick(channel.id)}
+                      className={cn(
+                        'w-full text-left px-2 py-1.5 rounded text-sm transition-colors',
+                        'hover:bg-accent hover:text-accent-foreground',
+                        'flex items-center gap-2 group',
+                        currentChannel?.id === channel.id
+                          ? 'bg-accent text-accent-foreground'
+                          : 'text-muted-foreground'
+                      )}
                     >
-                      {isBookmarked ? (
-                        <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500" />
-                      ) : (
-                        <Star className="h-3.5 w-3.5 opacity-0 group-hover:opacity-50 transition-opacity text-yellow-500" />
+                      <div
+                        className="h-4 w-4 flex-shrink-0 flex items-center justify-center relative"
+                        onClick={(e) => handleBookmarkToggle(e, channel.id)}
+                      >
+                        {isBookmarked ? (
+                          <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500" />
+                        ) : (
+                          <Star className="h-3.5 w-3.5 opacity-0 group-hover:opacity-50 transition-opacity text-yellow-500" />
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        <span className="truncate">{channel.name}</span>
+                        {channel.type === 'private' && (
+                          <Lock className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                        )}
+                        {channel.viewType === 'board' && (
+                          <LayoutGrid className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                        )}
+                        {channel.viewType === 'project' && (
+                          <Briefcase className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                        )}
+                      </div>
+                      {unreadCounts[channel.id] > 0 && (
+                        <span className="flex-shrink-0 ml-2 px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold min-w-[20px] text-center">
+                          {unreadCounts[channel.id] > 99 ? '99+' : unreadCounts[channel.id]}
+                        </span>
                       )}
-                    </div>
-                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                      <span className="truncate">{channel.name}</span>
-                      {channel.type === 'private' && (
-                        <Lock className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
-                      )}
-                      {channel.viewType === 'board' && (
-                        <LayoutGrid className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
-                      )}
-                    </div>
-                    {unreadCounts[channel.id] > 0 && (
-                      <span className="flex-shrink-0 ml-2 px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold min-w-[20px] text-center">
-                        {unreadCounts[channel.id] > 99 ? '99+' : unreadCounts[channel.id]}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* 프로젝트 채널 */}
-        {groupedChannels.project.length > 0 && (
-          <div className="mb-4">
-            <div className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              프로젝트
-            </div>
-            <div className="space-y-0.5">
-              {groupedChannels.project.map((channel) => {
-                const isBookmarked = bookmarkedChannels.has(channel.id);
-                return (
-                  <button
-                    key={channel.id}
-                    onClick={() => handleChannelClick(channel.id)}
-                    className={cn(
-                      'w-full text-left px-2 py-1.5 rounded text-sm transition-colors',
-                      'hover:bg-accent hover:text-accent-foreground',
-                      'flex items-center gap-2 group',
-                      currentChannel?.id === channel.id
-                        ? 'bg-accent text-accent-foreground'
-                        : 'text-muted-foreground'
-                    )}
-                  >
-                    <div
-                      className="h-4 w-4 flex-shrink-0 flex items-center justify-center relative"
-                      onClick={(e) => handleBookmarkToggle(e, channel.id)}
+          {/* 프로젝트 채널 */}
+          {groupedChannels.project.length > 0 && (
+            <div className="mb-4">
+              <DroppableCategoryHeader
+                category="project"
+                label="프로젝트"
+              />
+              <div className="space-y-0.5">
+                {groupedChannels.project.map((channel) => {
+                  const isBookmarked = bookmarkedChannels.has(channel.id);
+                  return (
+                    <button
+                      key={channel.id}
+                      onClick={() => handleChannelClick(channel.id)}
+                      className={cn(
+                        'w-full text-left px-2 py-1.5 rounded text-sm transition-colors',
+                        'hover:bg-accent hover:text-accent-foreground',
+                        'flex items-center gap-2 group',
+                        currentChannel?.id === channel.id
+                          ? 'bg-accent text-accent-foreground'
+                          : 'text-muted-foreground'
+                      )}
                     >
-                      {isBookmarked ? (
-                        <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500" />
-                      ) : (
-                        <Star className="h-3.5 w-3.5 opacity-0 group-hover:opacity-50 transition-opacity text-yellow-500" />
+                      <div
+                        className="h-4 w-4 flex-shrink-0 flex items-center justify-center relative"
+                        onClick={(e) => handleBookmarkToggle(e, channel.id)}
+                      >
+                        {isBookmarked ? (
+                          <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500" />
+                        ) : (
+                          <Star className="h-3.5 w-3.5 opacity-0 group-hover:opacity-50 transition-opacity text-yellow-500" />
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        <span className="truncate">{channel.name}</span>
+                        {channel.type === 'private' && (
+                          <Lock className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                        )}
+                        {channel.viewType === 'board' && (
+                          <LayoutGrid className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                        )}
+                        {channel.viewType === 'project' && (
+                          <Briefcase className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                        )}
+                      </div>
+                      {unreadCounts[channel.id] > 0 && (
+                        <span className="flex-shrink-0 ml-2 px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold min-w-[20px] text-center">
+                          {unreadCounts[channel.id] > 99 ? '99+' : unreadCounts[channel.id]}
+                        </span>
                       )}
-                    </div>
-                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                      <span className="truncate">{channel.name}</span>
-                      {channel.type === 'private' && (
-                        <Lock className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
-                      )}
-                      {channel.viewType === 'board' && (
-                        <LayoutGrid className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
-                      )}
-                    </div>
-                    {unreadCounts[channel.id] > 0 && (
-                      <span className="flex-shrink-0 ml-2 px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold min-w-[20px] text-center">
-                        {unreadCounts[channel.id] > 99 ? '99+' : unreadCounts[channel.id]}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* 주제 채널 */}
-        {groupedChannels.topic.length > 0 && (
-          <div className="mb-4">
-            <div className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              주제
-            </div>
-            <div className="space-y-0.5">
-              {groupedChannels.topic.map((channel) => {
-                const isBookmarked = bookmarkedChannels.has(channel.id);
-                return (
-                  <button
-                    key={channel.id}
-                    onClick={() => handleChannelClick(channel.id)}
-                    className={cn(
-                      'w-full text-left px-2 py-1.5 rounded text-sm transition-colors',
-                      'hover:bg-accent hover:text-accent-foreground',
-                      'flex items-center gap-2 group',
-                      currentChannel?.id === channel.id
-                        ? 'bg-accent text-accent-foreground'
-                        : 'text-muted-foreground'
-                    )}
-                  >
-                    <div
-                      className="h-4 w-4 flex-shrink-0 flex items-center justify-center relative"
-                      onClick={(e) => handleBookmarkToggle(e, channel.id)}
+          {/* 주제 채널 */}
+          {groupedChannels.topic.length > 0 && (
+            <div className="mb-4">
+              <DroppableCategoryHeader
+                category="topic"
+                label="주제"
+              />
+              <div className="space-y-0.5">
+                {groupedChannels.topic.map((channel) => {
+                  const isBookmarked = bookmarkedChannels.has(channel.id);
+                  return (
+                    <button
+                      key={channel.id}
+                      onClick={() => handleChannelClick(channel.id)}
+                      className={cn(
+                        'w-full text-left px-2 py-1.5 rounded text-sm transition-colors',
+                        'hover:bg-accent hover:text-accent-foreground',
+                        'flex items-center gap-2 group',
+                        currentChannel?.id === channel.id
+                          ? 'bg-accent text-accent-foreground'
+                          : 'text-muted-foreground'
+                      )}
                     >
-                      {isBookmarked ? (
-                        <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500" />
-                      ) : (
-                        <Star className="h-3.5 w-3.5 opacity-0 group-hover:opacity-50 transition-opacity text-yellow-500" />
+                      <div
+                        className="h-4 w-4 flex-shrink-0 flex items-center justify-center relative"
+                        onClick={(e) => handleBookmarkToggle(e, channel.id)}
+                      >
+                        {isBookmarked ? (
+                          <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500" />
+                        ) : (
+                          <Star className="h-3.5 w-3.5 opacity-0 group-hover:opacity-50 transition-opacity text-yellow-500" />
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        <span className="truncate">{channel.name}</span>
+                        {channel.type === 'private' && (
+                          <Lock className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                        )}
+                        {channel.viewType === 'board' && (
+                          <LayoutGrid className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                        )}
+                        {channel.viewType === 'project' && (
+                          <Briefcase className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                        )}
+                      </div>
+                      {unreadCounts[channel.id] > 0 && (
+                        <span className="flex-shrink-0 ml-2 px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold min-w-[20px] text-center">
+                          {unreadCounts[channel.id] > 99 ? '99+' : unreadCounts[channel.id]}
+                        </span>
                       )}
-                    </div>
-                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                      <span className="truncate">{channel.name}</span>
-                      {channel.type === 'private' && (
-                        <Lock className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
-                      )}
-                      {channel.viewType === 'board' && (
-                        <LayoutGrid className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
-                      )}
-                    </div>
-                    {unreadCounts[channel.id] > 0 && (
-                      <span className="flex-shrink-0 ml-2 px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold min-w-[20px] text-center">
-                        {unreadCounts[channel.id] > 99 ? '99+' : unreadCounts[channel.id]}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
           {/* 채널이 없을 때 */}
           {workspaceChannels.length === 0 && (

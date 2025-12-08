@@ -114,3 +114,17 @@ onSnapshot(query, (snapshot) => {
 - [Firestore 오프라인 지원](https://firebase.google.com/docs/firestore/manage-data/enable-offline)
 - [Snapshot Metadata](https://firebase.google.com/docs/reference/js/firebase.firestore.SnapshotMetadata)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+

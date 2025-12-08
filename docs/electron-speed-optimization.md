@@ -196,3 +196,17 @@ IndexedDB
 - [Firestore 오프라인 지원](https://firebase.google.com/docs/firestore/manage-data/enable-offline)
 - [IndexedDB 사용법](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+

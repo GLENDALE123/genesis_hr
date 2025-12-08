@@ -50,6 +50,13 @@ export interface QualityIssue {
   shippingWaitType?: string; // 출하대기 세부 타입 (선별대기, 한도대기, 세척대기 등)
   shippingWaitQuantity?: number; // 출하대기 제품 수량
   processedQuantity?: number; // 처리 완료된 수량
+  // 프로젝트 정보
+  projectInfo?: {
+    workspaceId: string;
+    channelId: string;
+    projectId: string;
+    createdAt: string;
+  };
 }
 
 export interface KeywordPair {
@@ -143,25 +150,25 @@ export interface QualityInspection {
   injectionMaterial?: string;
   injectionColor?: string;
   packagingInfo?: string;
-  
+
   // 검사 결과
   result: InspectionResult;
   resultReason?: string;
-  
+
   // 키워드 페어 (공정-불량)
   keywordPairs?: KeywordPair[];
-  
+
   // 이미지
   imageUrls?: string[];
-  
+
   // 검사자 정보
   inspector: string | { uid: string; displayName: string; email: string };
   inspectionDate?: string; // Optional - createdAt으로 대체 가능
-  
+
   // 생성/수정 정보
   createdBy?: string; // 작성자 UID
   updatedBy?: string; // 수정자 UID
-  
+
   // 공정검사 및 출하검사 공통 (workLine)
   // 출하검사 전용 (workerCount)
   workLine?: string; // 공정검사 및 출하검사에서 사용
@@ -177,7 +184,7 @@ export interface QualityInspection {
   internalJigUpper?: string;
   dryerUsed?: '사용' | '미사용' | '';
   flameTreatment?: '사용' | '미사용' | '';
-  
+
   // 출하검사 전용
   workers?: WorkerInspectionData[];
   reliabilityReview?: ReliabilityReview;
@@ -188,19 +195,19 @@ export interface QualityInspection {
   reinspectionKeyword?: string;
   reinspectionContent?: string;
   defectResultPairs?: DefectResultPair[] | SimpleDefectResultPair[]; // 호환성을 위한 추가 속성
-  
+
   // 수입검사 전용
   appearanceHistory?: string;
   functionHistory?: string;
   finalConsultationDept?: string;
   finalConsultationName?: string;
   finalConsultationRank?: string;
-  
+
   // 메타데이터
   createdAt: string;
   updatedAt?: string;
   sequentialId?: number; // Q1, Q2, Q3...
-  
+
   // 품질이슈 관련 필드
   department?: string;
   registrationKeyword?: string;

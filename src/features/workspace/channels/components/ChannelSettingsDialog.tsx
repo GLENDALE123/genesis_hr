@@ -288,11 +288,13 @@ export const ChannelSettingsDialog: React.FC<ChannelSettingsDialogProps> = ({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>채널 삭제 확인</AlertDialogTitle>
-            <AlertDialogDescription>
-              정말로 <strong>{channel.name}</strong> 채널을 삭제하시겠습니까?
-              <br />
-              <br />
-              이 작업은 되돌릴 수 없으며, 다음 데이터가 모두 삭제됩니다:
+            <div className="text-sm text-muted-foreground">
+              <AlertDialogDescription>
+                정말로 <strong>{channel.name}</strong> 채널을 삭제하시겠습니까?
+              </AlertDialogDescription>
+              <p className="mt-2">
+                이 작업은 되돌릴 수 없으며, 다음 데이터가 모두 삭제됩니다:
+              </p>
               <ul className="list-disc list-inside mt-2 space-y-1">
                 <li>모든 메시지</li>
                 <li>모든 스레드</li>
@@ -300,7 +302,7 @@ export const ChannelSettingsDialog: React.FC<ChannelSettingsDialogProps> = ({
                 <li>고정된 메시지</li>
                 <li>메시지 수정 이력</li>
               </ul>
-            </AlertDialogDescription>
+            </div>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>취소</AlertDialogCancel>

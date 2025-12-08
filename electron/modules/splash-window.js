@@ -121,3 +121,17 @@ module.exports = {
   updateSplashStatus,
   getSplashWindow,
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+

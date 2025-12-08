@@ -19,7 +19,7 @@ import {
   arrayUnion,
 } from 'firebase/firestore';
 import { db } from '@/shared/services/firebase/config';
-import type { ChannelMessage, ChannelMessageAttachment } from '../types/channelMessage.types';
+import type { ChannelMessage, ChannelMessageAttachment, ChannelMessageMetadata } from '../types/channelMessage.types';
 import { MentionService } from './mentionService';
 import { ChannelService } from '@/features/workspace/channels';
 
@@ -50,7 +50,8 @@ export class ChannelMessageService {
     },
     attachments?: ChannelMessageAttachment[],
     mentionedUserIds?: string[],
-    replyTo?: string
+    replyTo?: string,
+    metadata?: ChannelMessageMetadata
   ): Promise<string> {
     if (!db) throw new Error('Firestore is not initialized');
 
@@ -91,6 +92,11 @@ export class ChannelMessageService {
     // replyTo가 있으면 추가
     if (replyTo) {
       messageData.replyTo = replyTo;
+    }
+
+    // metadata가 있으면 추가
+    if (metadata) {
+      messageData.metadata = metadata;
     }
 
     const messagesRef = collection(

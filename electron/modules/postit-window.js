@@ -22,14 +22,14 @@ function getResourcePath(relativePath) {
   } else {
     finalPath = path.join(__dirname, '..', relativePath);
   }
-  
+
   if (app.isPackaged && !fs.existsSync(finalPath)) {
     const altPath = path.join(process.resourcesPath, relativePath);
     if (fs.existsSync(altPath)) {
       return altPath;
     }
   }
-  
+
   return finalPath;
 }
 
@@ -43,10 +43,10 @@ let mainWindowRef = null;
  */
 function createPostItWindow(mainWindow) {
   console.log('[OK] [PostIt Window] createPostItWindow 시작');
-  
+
   // 메인 창 참조 저장
   mainWindowRef = mainWindow;
-  
+
   // 이미 창이 있으면 기존 창 표시
   if (postitWindow && !postitWindow.isDestroyed()) {
     console.log('[OK] [PostIt Window] 기존 창 재사용');
@@ -54,37 +54,37 @@ function createPostItWindow(mainWindow) {
     postitWindow.focus();
     return postitWindow;
   }
-  
+
   console.log('[OK] [PostIt Window] 새 창 생성 중...');
 
   // 모든 모니터 정보 가져오기
   const allDisplays = screen.getAllDisplays();
   const primaryDisplay = screen.getPrimaryDisplay();
-  
+
   // 포스트잇 창 위치 및 크기 설정 (저장된 위치가 있으면 사용, 없으면 기본값)
   // 기본값: 주 모니터의 작업 영역 전체
   const { width: defaultWidth, height: defaultHeight } = primaryDisplay.workAreaSize;
   const defaultX = primaryDisplay.workArea.x;
   const defaultY = primaryDisplay.workArea.y;
-  
+
   // 저장된 창 위치 가져오기
   let windowX = defaultX;
   let windowY = defaultY;
   let windowWidth = defaultWidth;
   let windowHeight = defaultHeight;
-  
+
   try {
     const positionFilePath = path.join(app.getPath('userData'), 'postit-window-position.json');
     if (fs.existsSync(positionFilePath)) {
       const positionData = JSON.parse(fs.readFileSync(positionFilePath, 'utf-8'));
-      
+
       // 저장된 위치가 유효한 모니터에 있는지 확인
       const isValidPosition = allDisplays.some(display => {
         const { x, y, width, height } = display.bounds;
-        return positionData.x >= x && positionData.y >= y && 
-               positionData.x < x + width && positionData.y < y + height;
+        return positionData.x >= x && positionData.y >= y &&
+          positionData.x < x + width && positionData.y < y + height;
       });
-      
+
       if (isValidPosition && positionData.width && positionData.height) {
         windowX = positionData.x;
         windowY = positionData.y;
@@ -100,7 +100,7 @@ function createPostItWindow(mainWindow) {
   }
 
   console.log(`[OK] [PostIt Window] BrowserWindow 생성 - 위치: (${windowX}, ${windowY}), 크기: ${windowWidth}x${windowHeight}`);
-  
+
   const postitWindowInstance = new BrowserWindow({
     width: windowWidth,
     height: windowHeight,
@@ -135,18 +135,25 @@ function createPostItWindow(mainWindow) {
       v8CacheOptions: 'code',
       backgroundThrottling: false,
       offscreen: false,
+      devTools: true, // 개발자 도구 활성화
     },
     show: false, // 준비 완료 후 표시
   });
 
-  // 포스트잇은 클릭 가능해야 하므로 마우스 이벤트를 받아야 함
-  // setIgnoreMouseEvents는 사용하지 않음
-  
+  // 포스트잇 창이 투명한 영역은 클릭을 통과시키고, 불투명한 영역(포스트잇)만 클릭을 받도록 설정
+  // 이를 위해 매 렌더링마다 ipc 통신이 필요할 수 있으나, 일단은 전체 창이 이벤트를 받도록 설정 (투명 영역도 클릭 됨 - 디버깅 용)
+  // 추후 setIgnoreMouseEvents(true, { forward: true }) 로 개선 가능
+
+  // 개발자 도구 자동 오픈 (디버깅용)
+  if (!app.isPackaged) {
+    // postitWindowInstance.webContents.openDevTools({ mode: 'detach' });
+  }
+
   // load 전에는 창을 표시하지 않음 (did-finish-load에서 표시)
 
   const load = async () => {
     console.log('[OK] [PostIt Window] 로드 시작');
-    
+
     // did-start-loading 이벤트에서 즉시 배경 투명 처리 (가장 빠른 시점)
     postitWindowInstance.webContents.on('did-start-loading', () => {
       console.log('[OK] [PostIt Window] did-start-loading 이벤트 발생');
@@ -169,13 +176,13 @@ function createPostItWindow(mainWindow) {
             root.style.setProperty('background-color', 'transparent', 'important');
           }
         })();
-      `).catch(() => {});
+      `).catch(() => { });
     });
-    
+
     // dom-ready 이벤트에서 hash 설정 및 배경 투명 재확인
     postitWindowInstance.webContents.once('dom-ready', () => {
       console.log('[OK] [PostIt Window] dom-ready 이벤트 발생');
-      
+
       // DOM이 준비되면 즉시 hash 설정 및 배경 투명 강제 적용
       postitWindowInstance.webContents.executeJavaScript(`
         (function() {
@@ -200,10 +207,19 @@ function createPostItWindow(mainWindow) {
             root.style.setProperty('background', 'transparent', 'important');
             root.style.setProperty('background-color', 'transparent', 'important');
           }
+          
+          // Electron API 확인 로그
+          console.log('[DEBUG] [PostIt Window] window.electron 존재:', typeof window.electron !== 'undefined');
+          console.log('[DEBUG] [PostIt Window] window.electron.postit 존재:', typeof window.electron?.postit !== 'undefined');
+          if (window.electron?.postit) {
+            console.log('[DEBUG] [PostIt Window] window.electron.postit.read:', typeof window.electron.postit.read === 'function');
+          }
         })();
-      `).catch(() => {});
+      `).catch((err) => {
+        console.error('[ERROR] [PostIt Window] dom-ready JavaScript 실행 실패:', err);
+      });
     });
-    
+
     // did-finish-load 이벤트에서도 재확인
     postitWindowInstance.webContents.once('did-finish-load', () => {
       postitWindowInstance.webContents.executeJavaScript(`
@@ -232,14 +248,14 @@ function createPostItWindow(mainWindow) {
             }
           }
         })();
-      `).catch(() => {});
+      `).catch(() => { });
     });
-    
+
     if (app.isPackaged) {
       // 프로덕션: 별도 HTML 파일 로드
       const indexPath = getResourcePath('dist/index.html');
       console.log(`[OK] [PostIt Window] 파일 직접 로드: ${indexPath}`);
-      
+
       await postitWindowInstance.loadFile(indexPath, {
         hash: '?mode=postit'
       });
@@ -248,7 +264,7 @@ function createPostItWindow(mainWindow) {
       const DEV_SERVER_URL = process.env.ELECTRON_DEV_SERVER_URL || 'http://localhost:5173';
       const postitUrl = `${DEV_SERVER_URL}#/?mode=postit`;
       console.log(`[OK] [PostIt Window] 개발 서버 사용: ${postitUrl}`);
-      
+
       try {
         await postitWindowInstance.loadURL(postitUrl);
         console.log('[OK] [PostIt Window] URL 로드 완료');
@@ -258,17 +274,17 @@ function createPostItWindow(mainWindow) {
         updatePostItWindowMode(postitWindowInstance, postitWindowMode, mainWindowRef);
       }
     }
-    
+
     // 창 모드에 따라 표시 (updatePostItWindowMode에서 show 호출)
     // React가 완전히 로드될 때까지 기다린 후 표시
     postitWindowInstance.webContents.once('did-finish-load', () => {
       console.log('[OK] [PostIt Window] did-finish-load 이벤트 발생');
-      
+
       // React가 완전히 렌더링될 때까지 대기
       // 포스트잇 모드가 제대로 인식되고 배경이 투명해질 때까지 기다림
       setTimeout(() => {
         console.log('[OK] [PostIt Window] 창 표시 준비 중...');
-        
+
         // 한 번 더 배경 투명 확인 및 강제 적용
         postitWindowInstance.webContents.executeJavaScript(`
           (function() {
@@ -296,11 +312,11 @@ function createPostItWindow(mainWindow) {
         `).catch((err) => {
           console.error('[ERROR] [PostIt Window] JavaScript 실행 실패:', err);
         });
-        
+
         // 그 후 창 표시
-        updatePostItWindowMode(postitWindowInstance, postitWindowMode, mainWindowRef);
+        updatePostItWindowMode(postitWindowInstance, postitWindowMode);
         console.log(`[OK] [PostIt Window] 포스트잇 창 표시 완료 (모드: ${postitWindowMode})`);
-        
+
         // 창이 실제로 표시되는지 확인
         setTimeout(() => {
           if (postitWindowInstance && !postitWindowInstance.isDestroyed()) {
@@ -330,11 +346,11 @@ function createPostItWindow(mainWindow) {
         return;
       }
       const bounds = postitWindowInstance.getBounds();
-      
+
       // 창 위치를 파일에 저장
       const userDataPath = app.getPath('userData');
       const positionFilePath = path.join(userDataPath, 'postit-window-position.json');
-      
+
       try {
         const positionData = {
           x: bounds.x,
@@ -350,23 +366,23 @@ function createPostItWindow(mainWindow) {
       }
     }, 500);
   };
-  
+
   // 창 이동 시 위치 저장
   postitWindowInstance.on('moved', () => {
     saveWindowPosition();
   });
-  
+
   // 창 크기 변경 시 위치 및 크기 저장
   postitWindowInstance.on('resized', () => {
     saveWindowPosition();
   });
-  
+
   // 화면 변경 감지 (모니터 추가/제거 시)
   screen.on('display-added', (event, newDisplay) => {
     console.log(`[OK] [PostIt Window] 새 모니터 추가됨:`, newDisplay);
     // 필요시 창 위치 조정
   });
-  
+
   screen.on('display-removed', (event, oldDisplay) => {
     console.log(`[OK] [PostIt Window] 모니터 제거됨:`, oldDisplay);
     // 제거된 모니터에 창이 있으면 주 모니터로 이동
@@ -374,10 +390,10 @@ function createPostItWindow(mainWindow) {
     const allDisplays = screen.getAllDisplays();
     const isOnValidDisplay = allDisplays.some(display => {
       const { x, y, width, height } = display.bounds;
-      return bounds.x >= x && bounds.y >= y && 
-             bounds.x < x + width && bounds.y < y + height;
+      return bounds.x >= x && bounds.y >= y &&
+        bounds.x < x + width && bounds.y < y + height;
     });
-    
+
     if (!isOnValidDisplay && !postitWindowInstance.isDestroyed()) {
       // 유효한 모니터에 없으면 주 모니터로 이동
       const primaryDisplay = screen.getPrimaryDisplay();
@@ -391,7 +407,7 @@ function createPostItWindow(mainWindow) {
       console.log(`[OK] [PostIt Window] 주 모니터로 이동`);
     }
   });
-  
+
   // 창 닫힘 시 참조 정리
   postitWindowInstance.on('closed', () => {
     if (savePositionTimeout) {
@@ -403,7 +419,7 @@ function createPostItWindow(mainWindow) {
 
   postitWindow = postitWindowInstance;
   console.log('[OK] [PostIt Window] 창 생성 완료, 전역 변수에 저장됨');
-  
+
   return postitWindowInstance;
 }
 
@@ -412,22 +428,22 @@ function createPostItWindow(mainWindow) {
  */
 function showPostItWindow(mainWindow) {
   console.log('[OK] [PostIt Window] showPostItWindow 호출됨');
-  
+
   // 메인 창 참조 업데이트
   mainWindowRef = mainWindow;
-  
+
   if (postitWindow && !postitWindow.isDestroyed()) {
     console.log('[OK] [PostIt Window] 기존 창 발견, 모드 확인:', postitWindowMode);
-    
+
     // 창이 있으면 현재 모드에 따라 표시/숨김 처리
     if (postitWindowMode === 'hidden') {
       // 숨김 모드면 항상 위 모드로 변경
       console.log('[OK] [PostIt Window] 숨김 모드에서 항상 위 모드로 변경');
-      setPostItWindowMode('always-on-top');
+      setPostItWindowMode('always-on-top', mainWindow);
     } else {
       // 다른 모드면 현재 모드 유지하며 표시
       console.log('[OK] [PostIt Window] 현재 모드 유지하며 표시:', postitWindowMode);
-      updatePostItWindowMode(postitWindow, postitWindowMode, mainWindowRef);
+      updatePostItWindowMode(postitWindow, postitWindowMode);
     }
   } else if (mainWindow) {
     // 창이 없으면 새로 생성
@@ -485,10 +501,10 @@ function updatePostItWindowMode(windowInstance, mode) {
     console.error('[ERROR] [PostIt Window] updatePostItWindowMode: 창 인스턴스가 유효하지 않음');
     return;
   }
-  
+
   console.log(`[OK] [PostIt Window] 모드 업데이트: ${mode}`);
   postitWindowMode = mode;
-  
+
   switch (mode) {
     case 'always-on-top':
       // 항상 위 모드: 모든 창 위에 표시
@@ -498,7 +514,7 @@ function updatePostItWindowMode(windowInstance, mode) {
       windowInstance.show();
       console.log('[OK] [PostIt Window] 항상 위 모드 설정 완료, 창 표시됨');
       break;
-      
+
     case 'desktop':
       // 배경화면 위 모드: 메인 창 아래, 바탕화면 위
       // alwaysOnTop을 false로 설정하여 일반 창처럼 동작 (다른 창 아래 표시)
@@ -507,21 +523,21 @@ function updatePostItWindowMode(windowInstance, mode) {
       windowInstance.show();
       // Windows에서는 setAlwaysOnTop(false)만으로도 메인 창 아래에 표시됨
       // 필요시 메인 창을 다시 활성화하여 포스트잇 창을 뒤로 보냄
-      if (mainWindow && !mainWindow.isDestroyed() && process.platform === 'win32') {
+      if (mainWindowRef && !mainWindowRef.isDestroyed() && process.platform === 'win32') {
         // 메인 창을 활성화하여 포스트잇 창을 뒤로 보내기
         setTimeout(() => {
-          if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.focus();
+          if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+            mainWindowRef.focus();
           }
         }, 100);
       }
       break;
-      
+
     case 'hidden':
       // 숨김 모드
       windowInstance.hide();
       break;
-      
+
     default:
       // 기본값: 항상 위
       windowInstance.setAlwaysOnTop(true, 'screen-saver', 1);
@@ -532,12 +548,21 @@ function updatePostItWindowMode(windowInstance, mode) {
 /**
  * 포스트잇 창 모드 변경
  * @param {string} mode - 'always-on-top', 'desktop', 'hidden'
+ * @param {BrowserWindow} mainWindow - 메인 창 (선택적, 창이 없을 때 생성 시 필요)
  */
-function setPostItWindowMode(mode) {
+function setPostItWindowMode(mode, mainWindow) {
   postitWindowMode = mode;
-  
+
   if (postitWindow && !postitWindow.isDestroyed()) {
-    updatePostItWindowMode(postitWindow, mode, mainWindowRef);
+    updatePostItWindowMode(postitWindow, mode);
+  } else if (mode !== 'hidden' && mainWindow) {
+    // 창이 없고 모드가 'hidden'이 아니면 창을 생성
+    console.log('[OK] [PostIt Window] setPostItWindowMode: 창이 없어 새로 생성합니다.');
+    showPostItWindow(mainWindow);
+    // showPostItWindow는 기본 모드로 표시하므로, 모드를 다시 설정
+    if (postitWindow && !postitWindow.isDestroyed()) {
+      updatePostItWindowMode(postitWindow, mode);
+    }
   }
 }
 
@@ -551,13 +576,31 @@ function getPostItWindowMode() {
 
 /**
  * 포스트잇 창 모드 순환 (always-on-top -> desktop -> hidden -> always-on-top)
+ * @param {BrowserWindow} mainWindow - 메인 창 (선택적, 창이 없을 때 생성 시 필요)
  */
-function cyclePostItWindowMode() {
+function cyclePostItWindowMode(mainWindow) {
   const modes = ['always-on-top', 'desktop', 'hidden'];
   const currentIndex = modes.indexOf(postitWindowMode);
   const nextIndex = (currentIndex + 1) % modes.length;
-  setPostItWindowMode(modes[nextIndex]);
-  return modes[nextIndex];
+  const nextMode = modes[nextIndex];
+  
+  // 창이 없고 다음 모드가 'hidden'이 아니면 창을 생성해야 함
+  if ((!postitWindow || postitWindow.isDestroyed()) && nextMode !== 'hidden') {
+    console.log('[OK] [PostIt Window] cyclePostItWindowMode: 창이 없어 새로 생성합니다.');
+    if (mainWindow) {
+      showPostItWindow(mainWindow);
+      // showPostItWindow는 기본 모드로 표시하므로, 모드를 다시 설정
+      setPostItWindowMode(nextMode);
+    } else {
+      console.error('[ERROR] [PostIt Window] cyclePostItWindowMode: 메인 창이 없어 포스트잇 창을 생성할 수 없음');
+      return postitWindowMode; // 현재 모드 유지
+    }
+  } else {
+    // 창이 있으면 모드만 변경
+    setPostItWindowMode(nextMode);
+  }
+  
+  return nextMode;
 }
 
 module.exports = {
