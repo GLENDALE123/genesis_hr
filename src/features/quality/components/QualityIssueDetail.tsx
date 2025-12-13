@@ -13,14 +13,11 @@ import {
   Edit,
   Trash2,
   Plus,
-  CheckCircle,
-  MessageSquarePlus
+  CheckCircle
 } from 'lucide-react';
 import { QualityIssue } from '../types';
 import { STATUS_COLORS, DEPARTMENT_COLORS } from '../constants';
 import { cn } from '@/shared/lib/utils';
-import { CreateProjectModal } from '@/features/workspace/components/CreateProjectModal';
-import { updateIssueProjectInfo } from '../services/qualityIssueService';
 
 interface QualityIssueDetailProps {
   issue: QualityIssue | null;
@@ -51,7 +48,6 @@ export const QualityIssueDetail: React.FC<QualityIssueDetailProps> = ({
   const [isAddingIssue, setIsAddingIssue] = useState(false);
   const [newIssue, setNewIssue] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('해결완료');
-  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
 
   // 출하대기 처리 관련 상태
   const [isProcessing, setIsProcessing] = useState(false);
@@ -118,20 +114,6 @@ export const QualityIssueDetail: React.FC<QualityIssueDetailProps> = ({
     });
   };
 
-  const handleProjectCreated = async (workspaceId: string, channelId: string, projectId: string) => {
-    if (issue) {
-      try {
-        await updateIssueProjectInfo(issue.id, {
-          workspaceId,
-          channelId,
-          projectId,
-          createdAt: new Date().toISOString(),
-        });
-      } catch (error) {
-        console.error('Failed to update issue project info:', error);
-      }
-    }
-  };
 
 
   return (
@@ -214,16 +196,6 @@ export const QualityIssueDetail: React.FC<QualityIssueDetailProps> = ({
                   </div>
                 )}
 
-                {issue && (
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsProjectModalOpen(true)}
-                    className="flex items-center gap-2 mr-2"
-                  >
-                    <MessageSquarePlus className="h-4 w-4" />
-                    프로젝트 생성
-                  </Button>
-                )}
 
                 <div className="flex gap-2">
                   {canDelete && onDelete && issue && (
@@ -497,19 +469,6 @@ export const QualityIssueDetail: React.FC<QualityIssueDetailProps> = ({
           </div>
         )}
       </DialogContent>
-
-      {issue && (
-        <CreateProjectModal
-          isOpen={isProjectModalOpen}
-          onClose={() => setIsProjectModalOpen(false)}
-          initialTitle={`${issue.productName} - ${issue.partName}`}
-          initialContent={`**이슈 사항**:\n${issue.issues.map(i => typeof i === 'string' ? i : i.content).join('\n')}\n\n**발주번호**: ${issue.orderNumber}\n**발주처**: ${issue.supplier}`}
-          sourceId={issue.id}
-          sourceType="quality-issue"
-          initialImages={issue.imageUrls || []}
-          onSuccess={handleProjectCreated}
-        />
-      )}
     </Dialog>
   );
 };

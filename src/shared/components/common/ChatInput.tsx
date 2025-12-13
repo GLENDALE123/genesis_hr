@@ -6,8 +6,17 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/shared/components/ui/button';
 import type { UserProfile } from '@/features/auth/types';
-import type { MessageAttachment } from '@/features/chat/types/chat.types';
 import { extractText, extractMentionedUserIds } from '@/shared/utils/mentionUtils';
+
+// 첨부파일 타입 정의
+interface MessageAttachment {
+  id: string;
+  type: 'image' | 'file';
+  url: string;
+  name: string;
+  size: number;
+  mimeType: string;
+}
 import { useMentionInput } from '@/shared/hooks/useMentionInput';
 import { MentionDropdown } from './MentionDropdown';
 import { getUserDisplayName } from '@/shared/utils/user/userUtils';

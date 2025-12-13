@@ -47,6 +47,35 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
   const [users, setUsers] = useState<UserWithUid[]>([]);
+  
+  // 낙관적 업데이트를 위한 로컬 상태
+  const [optimisticComments, setOptimisticComments] = useState<Comment[]>([]);
+  const [pendingAdds, setPendingAdds] = useState<Set<string>>(new Set());
+  const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set());
+  
+  // props의 comments가 변경되면 로컬 상태 동기화 (낙관적 업데이트가 아닌 실제 업데이트)
+  useEffect(() => {
+    // 삭제 대기 중인 댓글 제외하고 동기화
+    setOptimisticComments(prev => {
+      const serverComments = comments.filter(c => !pendingDeletes.has(c.id));
+      
+      // 서버에서 온 댓글과 로컬에 추가된 댓글 병합
+      const localAdds = prev.filter(c => pendingAdds.has(c.id));
+      const merged = [...serverComments, ...localAdds];
+      
+      // 중복 제거 (id 기준)
+      const unique = merged.filter((c, index, self) => 
+        index === self.findIndex(comment => comment.id === c.id)
+      );
+      
+      // timestamp 기준 정렬
+      return unique.sort((a, b) => {
+        const timeA = a.timestamp || a.date || '';
+        const timeB = b.timestamp || b.date || '';
+        return timeA.localeCompare(timeB);
+      });
+    });
+  }, [comments, pendingAdds, pendingDeletes]);
 
   // 사용자 목록 가져오기
   useEffect(() => {
@@ -61,16 +90,52 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
     fetchUsers();
   }, []);
 
-  const handleChatInputSubmit = (text: string, mentionedUserIds?: string[]) => {
+  const handleChatInputSubmit = async (text: string, mentionedUserIds?: string[]) => {
     if (canComment) {
       const commentText = replyTo 
         ? `@${replyTo}\n${text}` 
         : text;
       
-      onAddComment(commentText, mentionedUserIds);
+      // 낙관적 업데이트: 즉시 댓글 추가
+      const tempId = `temp-${Date.now()}`;
+      const currentUser = users.find(u => u.uid === currentUserUid);
+      const newComment: Comment = {
+        id: tempId,
+        text: commentText,
+        user: currentUser?.displayName || currentUser?.name || '나',
+        uid: currentUserUid,
+        timestamp: new Date().toISOString(),
+        date: new Date().toISOString(),
+        readBy: [currentUserUid],
+      };
+      
+      setOptimisticComments(prev => [...prev, newComment]);
+      setPendingAdds(prev => new Set(prev).add(tempId));
       
       // 답글 상태 초기화
       setReplyTo(null);
+      
+      // 백그라운드에서 서버 업데이트
+      try {
+        onAddComment(commentText, mentionedUserIds);
+        // 서버 업데이트 성공 시 임시 ID 제거 (실시간 구독이 실제 댓글로 교체)
+        setTimeout(() => {
+          setPendingAdds(prev => {
+            const next = new Set(prev);
+            next.delete(tempId);
+            return next;
+          });
+        }, 1000);
+      } catch (error) {
+        // 실패 시 롤백
+        setOptimisticComments(prev => prev.filter(c => c.id !== tempId));
+        setPendingAdds(prev => {
+          const next = new Set(prev);
+          next.delete(tempId);
+          return next;
+        });
+        console.error('댓글 추가 실패:', error);
+      }
     }
   };
 
@@ -97,9 +162,43 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
     }
   };
 
-  const handleDeleteComment = (commentId: string) => {
-    if (onDeleteComment) {
-      onDeleteComment(commentId);
+  const handleDeleteComment = async (commentId: string) => {
+    if (!onDeleteComment) return;
+    
+    // 낙관적 업데이트: 즉시 댓글 제거
+    const commentToDelete = optimisticComments.find(c => c.id === commentId);
+    setOptimisticComments(prev => prev.filter(c => c.id !== commentId));
+    setPendingDeletes(prev => new Set(prev).add(commentId));
+    
+    // 백그라운드에서 서버 업데이트
+    try {
+      await onDeleteComment(commentId);
+      // 서버 업데이트 성공 시 삭제 대기 목록에서 제거 (실시간 구독이 처리)
+      setTimeout(() => {
+        setPendingDeletes(prev => {
+          const next = new Set(prev);
+          next.delete(commentId);
+          return next;
+        });
+      }, 1000);
+    } catch (error) {
+      // 실패 시 롤백
+      if (commentToDelete) {
+        setOptimisticComments(prev => {
+          const merged = [...prev, commentToDelete];
+          return merged.sort((a, b) => {
+            const timeA = a.timestamp || a.date || '';
+            const timeB = b.timestamp || b.date || '';
+            return timeA.localeCompare(timeB);
+          });
+        });
+      }
+      setPendingDeletes(prev => {
+        const next = new Set(prev);
+        next.delete(commentId);
+        return next;
+      });
+      console.error('댓글 삭제 실패:', error);
     }
   };
 
@@ -113,11 +212,28 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
     setEditingText('');
   };
 
-  const handleSaveEdit = () => {
-    if (editingCommentId && editingText.trim() && onEditComment) {
-      onEditComment(editingCommentId, editingText.trim());
-      setEditingCommentId(null);
-      setEditingText('');
+  const handleSaveEdit = async () => {
+    if (!editingCommentId || !editingText.trim() || !onEditComment) return;
+    
+    const newText = editingText.trim();
+    
+    // 낙관적 업데이트: 즉시 댓글 수정
+    setOptimisticComments(prev => prev.map(comment =>
+      comment.id === editingCommentId
+        ? { ...comment, text: newText, editedAt: new Date().toISOString() }
+        : comment
+    ));
+    
+    const editingId = editingCommentId;
+    setEditingCommentId(null);
+    setEditingText('');
+    
+    // 백그라운드에서 서버 업데이트
+    try {
+      await onEditComment(editingId, newText);
+    } catch (error) {
+      // 실패 시 롤백 (실시간 구독이 원래 상태로 복원)
+      console.error('댓글 수정 실패:', error);
     }
   };
 
@@ -236,18 +352,21 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
     );
   };
 
+  // 표시할 댓글 목록 (낙관적 업데이트 반영)
+  const displayComments = optimisticComments.length > 0 ? optimisticComments : comments;
+  
   return (
     <div className="mt-6 border-t border-border pt-6">
-      <h4 className="font-semibold text-foreground mb-4">댓글 ({comments.length})</h4>
+      <h4 className="font-semibold text-foreground mb-4">댓글 ({displayComments.length})</h4>
       
       {/* 댓글 목록 */}
       <div className="space-y-4 mb-6">
-        {comments.length === 0 ? (
+        {displayComments.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">
             아직 댓글이 없습니다.
           </p>
         ) : (
-          comments.map((comment) => {
+          displayComments.map((comment) => {
             const isUnread = currentUserUid && comment.readBy && !comment.readBy.includes(currentUserUid);
             const commentDate = comment.timestamp || '';
             const displayName = comment.user || '알 수 없음';

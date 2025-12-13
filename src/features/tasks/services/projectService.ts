@@ -26,7 +26,6 @@ type ProjectMember = any;
 type ProjectRole = any;
 type ProjectSettings = any;
 import { query, where, orderBy, Timestamp, arrayUnion, arrayRemove, onSnapshot } from 'firebase/firestore';
-import { ChannelService } from '@/features/workspace/channels';
 
 // 컬렉션 이름
 const PROJECTS_COLLECTION = 'projects';
@@ -101,10 +100,6 @@ export const getProjects = async (
       }
     }
 
-    // 워크스페이스 필터
-    if (filterOptions?.workspaceId) {
-      queries.push({ field: 'workspaceId', operator: '==', value: filterOptions.workspaceId });
-    }
 
     // 멤버 필터
     if (filterOptions?.memberId) {
@@ -201,8 +196,6 @@ export const createProject = async (
       color: data.color || undefined,
       icon: data.icon || undefined,
       type: data.type,
-      workspaceId: data.workspaceId || undefined,
-      channelId: data.channelId || undefined,
       createdBy: currentUser.uid,
       createdAt: now,
       updatedAt: now,
@@ -217,29 +210,6 @@ export const createProject = async (
     };
 
     const projectId = await addDocument(PROJECTS_COLLECTION, projectData);
-    
-    // 워크스페이스 프로젝트인 경우 채널 자동 생성
-    let channelId: string | undefined = data.channelId || undefined;
-    if (data.type === 'workspace' && data.workspaceId && !data.channelId) {
-      try {
-        const createdChannelId = await ChannelService.createChannel(
-          {
-            workspaceId: data.workspaceId,
-            name: data.name,
-            description: data.description || `프로젝트 "${data.name}" 관련 채널`,
-            type: 'public',
-            category: 'project',
-          },
-          currentUser.uid
-        );
-        channelId = createdChannelId;
-        
-        // 프로젝트에 채널 ID 업데이트
-        await updateDocument(PROJECTS_COLLECTION, projectId, { channelId });
-      } catch (error) {
-        console.warn('채널 생성 실패 (프로젝트는 생성됨):', error);
-      }
-    }
     
     // 기본 섹션 생성 (보드 뷰용)
     const defaultSections = [
@@ -263,7 +233,6 @@ export const createProject = async (
     return {
       id: projectId,
       ...projectData,
-      channelId,
     };
   } catch (error) {
     console.error('프로젝트 생성 실패:', error);
@@ -421,10 +390,6 @@ export const subscribeToProjects = (
       if (filterOptions.type.length === 1) {
         queries.push({ field: 'type', operator: '==', value: filterOptions.type[0] });
       }
-    }
-
-    if (filterOptions?.workspaceId) {
-      queries.push({ field: 'workspaceId', operator: '==', value: filterOptions.workspaceId });
     }
 
     queries.push({ field: 'isArchived', operator: '==', value: false });

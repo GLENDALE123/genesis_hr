@@ -23,7 +23,7 @@ function getResourcePath(relativePath, app) {
   return finalPath;
 }
 
-function createTray(app, mainWindow, postitWindowModule) {
+function createTray(app, mainWindow) {
   try {
     let iconPath = null;
     let trayIcon = null;
@@ -123,20 +123,6 @@ function createTray(app, mainWindow, postitWindowModule) {
           
           // 종료 플래그 설정
           app.isQuitting = true;
-          
-          // 포스트잇 창 닫기
-          try {
-            if (postitWindowModule && postitWindowModule.isPostItWindowOpen) {
-              if (postitWindowModule.isPostItWindowOpen()) {
-                console.log('[INFO] [Tray Manager] 포스트잇 창 닫는 중...');
-                if (postitWindowModule.closePostItWindow) {
-                  postitWindowModule.closePostItWindow();
-                }
-              }
-            }
-          } catch (error) {
-            console.error('[ERROR] [Tray Manager] 포스트잇 창 닫기 실패:', error);
-          }
           
           // 메인 윈도우 닫기
           if (mainWindow && !mainWindow.isDestroyed()) {

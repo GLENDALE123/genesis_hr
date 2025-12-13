@@ -9,7 +9,11 @@ import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { cn } from '@/shared/lib/utils';
-import { UrlPreview, extractUrls } from '@/features/workspace/components/UrlPreview';
+
+const extractUrls = (text: string): string[] => {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  return text.match(urlRegex) || [];
+};
 
 interface MarkdownRendererProps {
   content: string;
@@ -133,7 +137,9 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
                     </a>
                     {isExternal && href && (
                       <div className="mt-2">
-                        <UrlPreview url={href} />
+                        <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                          {href}
+                        </a>
                       </div>
                     )}
                   </>
@@ -207,7 +213,9 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         return previewUrls.length > 0 ? (
           <div className="mt-2 space-y-2">
             {previewUrls.map((url, index) => (
-              <UrlPreview key={`${url}-${index}`} url={url} />
+              <a key={`${url}-${index}`} href={url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                {url}
+              </a>
             ))}
           </div>
         ) : null;

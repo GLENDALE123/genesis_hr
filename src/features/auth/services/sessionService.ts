@@ -2,11 +2,13 @@
  * 세션 관리 서비스
  * Firestore를 통한 플랫폼별 단일 세션 관리
  * 같은 플랫폼(웹/일렉트론/모바일)에서는 하나의 기기만 활성화되도록 관리
+ * 서버 타임스탬프를 사용하여 한국 시간(UTC+9)으로 저장
  */
 
-import { doc, setDoc, getDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, onSnapshot, deleteDoc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db } from '@/shared/services/firebase/config';
 import { isElectron, isMobileApp } from '@/shared/utils/platform/platform';
+import { getKoreaTime } from '@/shared/utils/date/dateUtils';
 
 export type PlatformType = 'web' | 'electron' | 'mobile';
 
@@ -35,8 +37,48 @@ const getSessionRef = (uid: string, platform: PlatformType) => {
 };
 
 /**
+ * Firestore Timestamp를 한국 시간(UTC+9)으로 변환
+ * 서버 타임스탬프(UTC)를 한국 시간으로 변환하여 반환
+ * 
+ * Firestore Timestamp는 내부적으로 UTC seconds를 저장하므로,
+ * seconds를 직접 사용하여 UTC 시간을 계산한 후 한국 시간 오프셋(+9시간)을 추가합니다.
+ */
+const convertToKoreaTime = (timestamp: Timestamp | Date | null | undefined): Date => {
+  if (!timestamp) {
+    return getKoreaTime();
+  }
+  
+  // Firestore Timestamp인 경우 (서버 타임스탬프는 UTC)
+  if (timestamp instanceof Timestamp || (typeof timestamp === 'object' && 'toDate' in timestamp && 'seconds' in timestamp)) {
+    // Timestamp의 seconds를 직접 사용하여 UTC 시간 계산
+    const timestampObj = timestamp instanceof Timestamp 
+      ? timestamp 
+      : (timestamp as { seconds: number; nanoseconds?: number });
+    
+    // seconds를 밀리초로 변환 (UTC 기준)
+    const utcTimeMs = timestampObj.seconds * 1000 + (timestampObj.nanoseconds || 0) / 1000000;
+    // UTC 시간에 한국 시간대 오프셋(+9시간) 추가
+    const koreaTime = new Date(utcTimeMs + 9 * 60 * 60 * 1000);
+    return koreaTime;
+  }
+  
+  // Date 객체인 경우
+  // Date 객체는 이미 로컬 시간대로 해석되므로, UTC로 변환 후 한국 시간으로
+  if (timestamp instanceof Date) {
+    // Date 객체의 UTC 시간을 얻기 위해 getTime() 사용 (이미 UTC 기준 밀리초)
+    const utcTimeMs = timestamp.getTime();
+    // UTC 시간에 한국 시간대 오프셋(+9시간) 추가
+    const koreaTime = new Date(utcTimeMs + 9 * 60 * 60 * 1000);
+    return koreaTime;
+  }
+  
+  return getKoreaTime();
+};
+
+/**
  * 현재 기기 세션 등록
  * 기존 세션을 덮어쓰고, 다른 기기에서 세션 변경을 감지할 수 있도록 함
+ * 서버 타임스탬프를 사용하여 한국 시간(UTC+9)으로 저장
  */
 export const registerSession = async (
   uid: string,
@@ -48,19 +90,30 @@ export const registerSession = async (
     const platform = getCurrentPlatform();
     const sessionRef = getSessionRef(uid, platform);
     
-    const session: ActiveSession = {
-      deviceId,
-      platform,
-      lastActiveAt: new Date(),
-      createdAt: new Date(),
-    };
+    // 기존 세션 확인 (createdAt 보존을 위해)
+    const existingSession = await getDoc(sessionRef);
+    const hasExistingSession = existingSession.exists();
     
-    // 기존 세션 덮어쓰기 (같은 플랫폼에서 하나의 세션만 허용)
-    await setDoc(sessionRef, {
-      ...session,
-      lastActiveAt: session.lastActiveAt,
-      createdAt: session.createdAt,
-    });
+    // serverTimestamp()를 사용하여 서버 시간 저장 (UTC)
+    // 읽을 때 한국 시간으로 변환하여 사용
+    
+    if (hasExistingSession) {
+      // 기존 세션이 있으면 updateDoc 사용 (createdAt 보존)
+      await updateDoc(sessionRef, {
+        deviceId,
+        platform,
+        lastActiveAt: serverTimestamp(),
+        // createdAt은 업데이트하지 않음 (기존 값 보존)
+      });
+    } else {
+      // 새 세션이면 setDoc 사용 (createdAt 포함)
+      await setDoc(sessionRef, {
+        deviceId,
+        platform,
+        lastActiveAt: serverTimestamp(),
+        createdAt: serverTimestamp(),
+      });
+    }
     
     console.log(`✅ [SessionService] 세션 등록 완료: ${platform} (deviceId: ${deviceId})`);
   } catch (error) {
@@ -71,6 +124,7 @@ export const registerSession = async (
 
 /**
  * 현재 플랫폼의 활성 세션 조회
+ * 서버 타임스탬프를 한국 시간으로 변환하여 반환
  */
 export const getActiveSession = async (
   uid: string
@@ -84,11 +138,16 @@ export const getActiveSession = async (
     
     if (sessionDoc.exists()) {
       const data = sessionDoc.data();
+      
+      // 서버 타임스탬프를 한국 시간으로 변환
+      const lastActiveAt = convertToKoreaTime(data.lastActiveAt);
+      const createdAt = convertToKoreaTime(data.createdAt);
+      
       return {
         deviceId: data.deviceId,
         platform: data.platform,
-        lastActiveAt: data.lastActiveAt?.toDate() || new Date(),
-        createdAt: data.createdAt?.toDate() || new Date(),
+        lastActiveAt,
+        createdAt,
       };
     }
     
@@ -126,11 +185,16 @@ export const onSessionChange = (
       (snapshot) => {
         if (snapshot.exists()) {
           const data = snapshot.data();
+          
+          // 서버 타임스탬프를 한국 시간으로 변환
+          const lastActiveAt = convertToKoreaTime(data.lastActiveAt);
+          const createdAt = convertToKoreaTime(data.createdAt);
+          
           const session: ActiveSession = {
             deviceId: data.deviceId,
             platform: data.platform,
-            lastActiveAt: data.lastActiveAt?.toDate() || new Date(),
-            createdAt: data.createdAt?.toDate() || new Date(),
+            lastActiveAt,
+            createdAt,
           };
           
           // 첫 번째 스냅샷(초기 로드)은 무시하고, 현재 세션의 deviceId만 저장

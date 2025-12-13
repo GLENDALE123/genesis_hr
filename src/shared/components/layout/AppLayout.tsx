@@ -2,7 +2,6 @@ import React from 'react';
 import { TitleBar } from '@/shared/components/layout/TitleBar';
 import { AppHeader } from '@/shared/components/layout/AppHeader';
 import { AppSidebar } from '@/shared/components/layout/AppSidebar';
-import { RightSidebarPanel } from '@/shared/components/layout/RightSidebarPanel';
 import { PostItCanvas } from '@/shared/components/layout/PostItCanvas';
 import { cn } from '@/shared/lib/utils';
 import { useGlobalStore } from '@/shared/store/globalStore';
@@ -199,11 +198,6 @@ const AppLayoutComponent: React.FC<AppLayoutProps> = ({
             )}
           </main>
         </div>
-
-        {/* Desktop Right Sidebar Panel - Electron 전용 */}
-        {!isMobile && isElectron && (
-          <RightSidebarPanel />
-        )}
       </div>
 
       {/* 포스트잇 캔버스 - 메인 윈도우에서는 렌더링하지 않음 (별도 창에서 렌더링) */}

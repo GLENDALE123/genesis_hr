@@ -28,6 +28,10 @@ const cleanupTriggers = require('./triggers/cleanupReadNotifications');
 const autoLogoutTriggers = require('./triggers/autoLogout');
 const scheduleDailyReportsSync = require('./triggers/scheduleDailyReportsSync');
 
+// Product Summary 트리거들
+const productSummaryTriggers = require('./triggers/productSummary');
+const processProductSummaryQueue = require('./triggers/processProductSummaryQueue');
+
 // HTTPS 함수들
 const notificationHttps = require('./https/notifications');
 const createNotificationHttps = require('./https/createNotification');
@@ -38,6 +42,7 @@ const updateUserAuthInfoHttps = require('./https/updateUserAuthInfo');
 const syncGoogleSheetsHttps = require('./https/syncGoogleSheets');
 const syncDailyReportsToSheetsHttps = require('./https/syncDailyReportsToSheets');
 const normalizeProductNamesHttps = require('./https/normalizeProductNames');
+const initializeProductSummaryHttps = require('./https/initializeProductSummary');
 
 // 모든 함수들을 export
 module.exports = {
@@ -47,6 +52,8 @@ module.exports = {
   ...cleanupTriggers,
   ...autoLogoutTriggers,
   ...scheduleDailyReportsSync,
+  ...productSummaryTriggers,
+  ...processProductSummaryQueue,
   
   // HTTPS 함수들
   ...notificationHttps,
@@ -58,5 +65,6 @@ module.exports = {
   ...syncGoogleSheetsHttps,
   ...syncDailyReportsToSheetsHttps,
   ...normalizeProductNamesHttps,
+  ...initializeProductSummaryHttps,
 };
 

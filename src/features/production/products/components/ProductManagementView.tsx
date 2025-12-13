@@ -55,9 +55,7 @@ const ProductManagementViewComponent: React.FC = () => {
   );
 };
 
-// React.memo에 커스텀 비교 함수 제공 - products 배열의 길이와 내용이 변경되었는지 확인
-export const ProductManagementView = React.memo(ProductManagementViewComponent, (prevProps, nextProps) => {
-  // 이 컴포넌트는 props가 없으므로 항상 false 반환 (항상 리렌더링)
-  return false;
-});
+// props가 없는 컴포넌트이므로 React.memo는 의미 없음
+// 내부 상태(useProducts) 변경에 따라 리렌더링되어야 하므로 메모이제이션 제거
+export const ProductManagementView = ProductManagementViewComponent;
 

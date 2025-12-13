@@ -64,64 +64,43 @@
     --font-inter: 'Inter', 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
   }
 
-  /* 전역 렌더링 최적화 */
+  /* 전역 렌더링 최적화 - 완화된 설정 */
   * {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
   }
 
-  /* 스크롤 영역 최적화 */
+  /* 스크롤 영역 최적화 - 완화된 설정 */
   .overflow-y-auto,
   .overflow-auto {
     -webkit-overflow-scrolling: touch;
-    will-change: scroll-position;
-    transform: translateZ(0);
-    backface-visibility: hidden;
   }
 
-  /* 모달 및 포털 최적화 */
+  /* 모달 및 포털 최적화 - 완화된 설정 */
   [data-radix-portal],
   [role="dialog"],
   [data-state="open"] {
-    will-change: transform;
-    transform: translateZ(0);
-    backface-visibility: hidden;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
   }
 
-  /* Dialog Content 최적화 */
+  /* Dialog Content 최적화 - 완화된 설정 (흐림 방지) */
   [data-radix-dialog-content] {
-    will-change: transform;
-    transform: translateZ(0);
-    backface-visibility: hidden;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
-    image-rendering: -webkit-optimize-contrast;
-    image-rendering: crisp-edges;
   }
 
-  /* 모달 내부 스크롤 영역 최적화 */
+  /* 모달 내부 스크롤 영역 최적화 - 완화된 설정 */
   [data-radix-dialog-content] .overflow-y-auto {
     -webkit-overflow-scrolling: touch;
-    will-change: scroll-position;
-    transform: translateZ(0);
-    backface-visibility: hidden;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
   }
 
-  /* 모달 배경 오버레이 최적화 */
+  /* 모달 배경 오버레이 최적화 - 완화된 설정 */
   [data-radix-dialog-overlay] {
-    will-change: opacity;
-    transform: translateZ(0);
-    backface-visibility: hidden;
+    /* 최소한의 최적화만 유지 */
   }
 
-  /* 모든 텍스트 요소 최적화 */
+  /* 모든 텍스트 요소 최적화 - 완화된 설정 */
   p,
   span,
   div,
@@ -137,15 +116,13 @@
   select {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
   }
 
-  /* 텍스트 렌더링 최적화 */
+  /* 텍스트 렌더링 최적화 - 완화된 설정 */
   body,
   html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
   }
 
   :root {

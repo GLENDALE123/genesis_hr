@@ -23,6 +23,8 @@ interface UseNotificationsReturn {
   unreadCount: number;
   isLoading: boolean;
   error: string | null;
+  markAllAsReadOptimistic: () => void;
+  markAsReadOptimistic: (notificationId: string) => void;
 }
 
 /**
@@ -128,11 +130,28 @@ export const useNotifications = (): UseNotificationsReturn => {
     };
   }, [user?.uid]);
 
+  // 낙관적 업데이트: 모든 알림을 즉시 읽음 처리
+  const markAllAsReadOptimistic = () => {
+    setNotifications([]);
+    setUnreadCount(0);
+  };
+
+  // 낙관적 업데이트: 개별 알림을 즉시 읽음 처리
+  const markAsReadOptimistic = (notificationId: string) => {
+    setNotifications(prev => {
+      const filtered = prev.filter(n => n.id !== notificationId);
+      setUnreadCount(filtered.length);
+      return filtered;
+    });
+  };
+
   return {
     notifications,
     unreadCount,
     isLoading,
-    error
+    error,
+    markAllAsReadOptimistic,
+    markAsReadOptimistic
   };
 };
 

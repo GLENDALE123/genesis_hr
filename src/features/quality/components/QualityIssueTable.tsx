@@ -8,15 +8,13 @@ import { QualityIssue } from '../types';
 import { DEPARTMENT_COLORS, STATUS_COLORS } from '../constants';
 import { cn } from '@/shared/lib/utils';
 import { Spinner } from '@/shared/components/ui/spinner';
-import { Search, Plus, MessageSquarePlus } from 'lucide-react';
+import { Search, Plus } from 'lucide-react';
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
 } from '@/shared/components/ui/context-menu';
-import { CreateProjectModal } from '@/features/workspace/components/CreateProjectModal';
-import { updateIssueProjectInfo } from '../services/qualityIssueService';
 
 interface QualityIssueTableProps {
   issues: QualityIssue[];
@@ -66,8 +64,7 @@ const QualityIssueRow: React.FC<{
   issue: QualityIssue;
   onSelectIssue?: (issue: QualityIssue) => void;
   showShippingWaitColumns?: boolean;
-  onCreateProject?: (issue: QualityIssue) => void;
-}> = ({ issue, onSelectIssue, showShippingWaitColumns = false, onCreateProject }) => {
+}> = ({ issue, onSelectIssue, showShippingWaitColumns = false }) => {
   const handleClick = useCallback((e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     if (target.closest('button, a, input, select, textarea')) {
@@ -78,12 +75,6 @@ const QualityIssueRow: React.FC<{
     }
   }, [issue, onSelectIssue]);
 
-  const handleCreateProject = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (onCreateProject) {
-      onCreateProject(issue);
-    }
-  };
 
   const lastIssue = useMemo(() => {
     return issue.issues[issue.issues.length - 1];
@@ -211,10 +202,6 @@ const QualityIssueRow: React.FC<{
         </TableRow>
       </ContextMenuTrigger>
       <ContextMenuContent>
-        <ContextMenuItem onClick={handleCreateProject}>
-          <MessageSquarePlus className="mr-2 h-4 w-4" />
-          프로젝트 생성
-        </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
   );
@@ -231,29 +218,6 @@ export const QualityIssueTable: React.FC<QualityIssueTableProps> = ({
   onOpenFormModal,
   showShippingWaitColumns = false
 }) => {
-  const [projectModalOpen, setProjectModalOpen] = React.useState(false);
-  const [selectedIssueForProject, setSelectedIssueForProject] = React.useState<QualityIssue | null>(null);
-
-  const handleCreateProject = (issue: QualityIssue) => {
-    setSelectedIssueForProject(issue);
-    setProjectModalOpen(true);
-  };
-
-  const handleProjectCreated = async (workspaceId: string, channelId: string, projectId: string) => {
-    if (selectedIssueForProject) {
-      try {
-        await updateIssueProjectInfo(selectedIssueForProject.id, {
-          workspaceId,
-          channelId,
-          projectId,
-          createdAt: new Date().toISOString(),
-        });
-      } catch (error) {
-        console.error('Failed to update issue project info:', error);
-      }
-    }
-  };
-
   return (
     <>
       <Card className="h-full flex flex-col">
@@ -364,7 +328,6 @@ export const QualityIssueTable: React.FC<QualityIssueTableProps> = ({
                       issue={issue}
                       onSelectIssue={onSelectIssue}
                       showShippingWaitColumns={showShippingWaitColumns}
-                      onCreateProject={handleCreateProject}
                     />
                   ))
                 )}
@@ -373,22 +336,6 @@ export const QualityIssueTable: React.FC<QualityIssueTableProps> = ({
           </div>
         </CardContent>
       </Card>
-
-      {selectedIssueForProject && (
-        <CreateProjectModal
-          isOpen={projectModalOpen}
-          onClose={() => {
-            setProjectModalOpen(false);
-            setSelectedIssueForProject(null);
-          }}
-          initialTitle={`${selectedIssueForProject.productName} - ${selectedIssueForProject.partName}`}
-          initialContent={`**이슈 사항**:\n${selectedIssueForProject.issues.map(i => typeof i === 'string' ? i : i.content).join('\n')}\n\n**발주번호**: ${selectedIssueForProject.orderNumber}\n**발주처**: ${selectedIssueForProject.supplier}`}
-          sourceId={selectedIssueForProject.id}
-          sourceType="quality-issue"
-          initialImages={selectedIssueForProject.imageUrls || []}
-          onSuccess={handleProjectCreated}
-        />
-      )}
     </>
   );
 };

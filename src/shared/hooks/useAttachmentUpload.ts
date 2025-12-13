@@ -4,13 +4,39 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { uploadImageFilesParallel } from '@/shared/services/firebase/storage';
-import type { MessageAttachment } from '@/features/chat/types/chat.types';
 import type { UploadingImageItem } from '@/shared/components/common/UploadingImageGrid';
-import type {
-  PendingUpload,
-  PendingUploadPayload,
-  PendingUploadProgressPayload,
-} from '@/features/chat/types/pendingUpload.types';
+
+// 첨부파일 타입 정의
+interface MessageAttachment {
+  id: string;
+  type: 'image' | 'file';
+  url: string;
+  name: string;
+  size: number;
+  mimeType: string;
+}
+
+// PendingUpload 관련 타입 정의
+interface PendingUploadPayload {
+  id: string;
+  attachments: Array<{
+    id: string;
+    file: File;
+    preview: string;
+  }>;
+  text: string;
+  mentionedUserIds: string[];
+  timeoutAt: number;
+  isRetry: boolean;
+  totalBytes: number;
+}
+
+interface PendingUploadProgressPayload {
+  id: string;
+  completed: number;
+  total: number;
+  timestamp: number;
+}
 
 interface UseAttachmentUploadOptions {
   uploadFolder: string;

@@ -4,10 +4,11 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { ProductDetail } from '../types';
+import { ProductDetail, Product } from '../types';
 import { getProductDetail } from '../services/productService';
+import { getCachedProductDetail, cacheProductDetail } from '@/shared/services/cache/productDetailCache';
 
-export const useProductDetail = (productId: string | null) => {
+export const useProductDetail = (productId: string | null, product?: Product | null) => {
   const [productDetail, setProductDetail] = useState<ProductDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -28,6 +29,15 @@ export const useProductDetail = (productId: string | null) => {
       return;
     }
 
+    // 캐시 확인 (중복 조회 방지)
+    const cached = getCachedProductDetail(productId);
+    if (cached) {
+      setProductDetail(cached);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     // 이전 요청 취소
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -41,12 +51,25 @@ export const useProductDetail = (productId: string | null) => {
     setError(null);
 
     try {
-      const detail = await getProductDetail(productId);
+      // 이미 알고 있는 기본 정보를 전달하여 중복 조회 방지
+      const productInfo = product ? {
+        supplier: product.supplier,
+        productName: product.productName,
+        partName: product.partName,
+        specification: product.specification
+      } : undefined;
+      
+      const detail = await getProductDetail(productId, productInfo);
       
       // 요청이 취소되지 않았고 컴포넌트가 마운트된 상태인 경우에만 상태 업데이트
       if (!abortController.signal.aborted && isMountedRef.current) {
         setProductDetail(detail);
         setLoading(false);
+        
+        // 캐시에 저장 (다음 조회 시 재사용)
+        if (detail) {
+          cacheProductDetail(productId, detail);
+        }
       }
     } catch (err) {
       // AbortError는 무시 (의도적인 취소)
@@ -63,7 +86,7 @@ export const useProductDetail = (productId: string | null) => {
         setLoading(false);
       }
     }
-  }, [productId]);
+  }, [productId, product]);
 
   useEffect(() => {
     fetchProductDetail();

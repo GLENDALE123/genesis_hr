@@ -8,7 +8,7 @@ interface ConditionalLayoutProps {
   children: React.ReactNode;
 }
 
-export const ConditionalLayout: React.FC<ConditionalLayoutProps> = ({ 
+const ConditionalLayoutComponent: React.FC<ConditionalLayoutProps> = ({ 
   children 
 }) => {
   // 모든 훅을 항상 호출하여 훅의 개수를 일관되게 유지
@@ -104,8 +104,8 @@ export const ConditionalLayout: React.FC<ConditionalLayoutProps> = ({
     );
   }
 
-  // 채팅/워크스페이스 페이지는 여백 없이 렌더링
-  const fullscreenPages = ['/chat', '/workspace', '/direct-message', '/messages'];
+  // 풀스크린 페이지는 여백 없이 렌더링
+  const fullscreenPages: string[] = [];
   const isFullscreenPage = fullscreenPages.some((page) => pathname.startsWith(page));
 
   // 로그인된 사용자의 일반 페이지는 AppLayout과 함께 렌더링
@@ -115,3 +115,14 @@ export const ConditionalLayout: React.FC<ConditionalLayoutProps> = ({
     </AppLayout>
   );
 };
+
+ConditionalLayoutComponent.displayName = 'ConditionalLayout';
+
+// React.memo로 최적화 - pathname, user, isLoading 변경 시에만 리렌더링
+export const ConditionalLayout = React.memo(ConditionalLayoutComponent, (prevProps, nextProps) => {
+  // children이 변경되지 않았으면 리렌더링 스킵
+  // 주의: children은 React.ReactNode이므로 참조 비교만 가능
+  // 실제로는 pathname, user, isLoading 변경에 따라 리렌더링되어야 하므로
+  // 이 컴포넌트는 항상 리렌더링 허용 (내부에서 조건부 렌더링 처리)
+  return false; // 항상 리렌더링 허용 (내부 로직에서 최적화)
+});

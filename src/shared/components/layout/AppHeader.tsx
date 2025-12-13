@@ -68,7 +68,7 @@ const AppHeaderComponent: React.FC<AppHeaderProps> = ({
   const { isSmartphone } = useDeviceType();
   
   // 알림 관리 훅 사용
-  const { notifications, unreadCount } = useNotifications();
+  const { notifications, unreadCount, markAllAsReadOptimistic, markAsReadOptimistic } = useNotifications();
   const [isNotificationOpen, setIsNotificationOpen] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
   const [isMobileMarkingAllRead, setIsMobileMarkingAllRead] = React.useState(false);
@@ -116,6 +116,7 @@ const AppHeaderComponent: React.FC<AppHeaderProps> = ({
     if (!user?.uid) return;
     
     // 즉시 UI 업데이트 (낙관적 업데이트)
+    markAllAsReadOptimistic();
     setIsNotificationOpen(false);
     
     // 백그라운드에서 읽음 처리 (서버는 3일 후 자동 삭제)
@@ -124,7 +125,8 @@ const AppHeaderComponent: React.FC<AppHeaderProps> = ({
       await NotificationManager.markAllAsRead(user.uid);
     } catch (error) {
       console.error('❌ 백그라운드 읽음 처리 실패:', error);
-      toast.error('알림 읽음 처리 중 오류가 발생했습니다.');
+      // 실패해도 UI는 이미 업데이트되었으므로 사용자에게는 조용히 실패 처리
+      // 필요시 Firestore 리스너가 자동으로 상태를 동기화함
     }
   };
 
@@ -132,10 +134,14 @@ const AppHeaderComponent: React.FC<AppHeaderProps> = ({
     if (!user?.uid) return;
     
     // 즉시 UI에서 제거 (낙관적 업데이트)
+    markAsReadOptimistic(notificationId);
+    
     // 백그라운드에서 읽음 처리 (서버는 3일 후 자동 삭제)
     const { NotificationManager } = await import('@/shared/components/common/CustomNotification');
     NotificationManager.markAsRead(user.uid, notificationId).catch(err => {
       console.error('❌ 알림 읽음 처리 실패:', err);
+      // 실패해도 UI는 이미 업데이트되었으므로 사용자에게는 조용히 실패 처리
+      // 필요시 Firestore 리스너가 자동으로 상태를 동기화함
     });
   };
 
@@ -254,16 +260,6 @@ const AppHeaderComponent: React.FC<AppHeaderProps> = ({
 
           {/* Data Sync Status Indicator */}
           <DataSyncStatusIndicator />
-
-          {/* Messages */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate('/chat')}
-            className="relative"
-          >
-            <MessageSquare className="h-5 w-5" />
-          </Button>
 
           {/* Notifications */}
           {isSmartphone ? (

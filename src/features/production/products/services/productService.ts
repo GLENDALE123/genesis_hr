@@ -12,11 +12,11 @@ import {
   limit as firestoreLimit
 } from 'firebase/firestore';
 import { db } from '@/shared/services/firebase/config';
+import { Product } from '../types';
 import { PackagingReport } from '@/features/production/packaging';
 import type { QualityInspection } from '@/features/quality/types';
 import type { QualityIssue } from '@/features/quality/types';
 import { 
-  Product, 
   ProductDetail,
   ProductionHistoryItem,
   CoatingHistoryItem,
@@ -27,6 +27,7 @@ import {
   JigHistoryItem,
   ProductionTrendData
 } from '../types';
+import { getCachedProducts, cacheProducts } from '@/shared/services/cache/productSummaryCache';
 import { ShortageRequest } from '@/features/production/shortage';
 
 /**
@@ -46,9 +47,109 @@ export const generateProductId = (
 };
 
 /**
+ * 제품 목록 조회 (캐시 컬렉션에서)
+ * product-summary 컬렉션에서 사전 집계된 데이터 조회
+ * 필드 선택적 조회로 네트워크 비용 최적화
+ * 
+ * @param searchTerm 검색어 (supplier, productName, partName에서 검색)
+ * @param filters 필터 옵션 (supplier, productName, partName)
+ */
+export const getProductsFromCache = async (
+  searchTerm?: string,
+  filters?: {
+    supplier?: string;
+    productName?: string;
+    partName?: string;
+  }
+): Promise<Product[]> => {
+  try {
+    // 로컬 캐시 확인 (필터나 검색어가 없을 때만)
+    if (!searchTerm && !filters?.supplier && !filters?.productName && !filters?.partName) {
+      const cached = await getCachedProducts();
+      if (cached) {
+        return cached;
+      }
+    }
+
+    if (!db) {
+      throw new Error('Firebase not initialized');
+    }
+
+    let q = query(
+      collection(db, 'product-summary')
+    );
+
+    // 서버 사이드 필터링: supplier 필터
+    if (filters?.supplier) {
+      q = query(q, where('supplier', '==', filters.supplier));
+    }
+
+    // 서버 사이드 필터링: productName 필터
+    if (filters?.productName) {
+      q = query(q, where('productName', '==', filters.productName));
+    }
+
+    // 서버 사이드 필터링: partName 필터
+    if (filters?.partName) {
+      q = query(q, where('partName', '==', filters.partName));
+    }
+
+    // 정렬: supplier, productName 순서
+    q = query(q, orderBy('supplier', 'asc'), orderBy('productName', 'asc'));
+
+    const snapshot = await getDocs(q);
+    
+    let products: Product[] = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: data.id || doc.id,
+        supplier: data.supplier || '',
+        productName: data.productName || '',
+        partName: data.partName || '',
+        specification: data.specification || '',
+        latestJig: data.latestJig,
+        latestUndercoatData: data.latestUndercoatData,
+        latestTopcoatData: data.latestTopcoatData,
+        averagePersonnelCount: data.averagePersonnelCount,
+        latestLineRatio: data.latestLineRatio,
+        averageRPM: data.averageRPM
+      };
+    });
+
+    // 클라이언트 사이드 검색: 검색어가 있으면 필터링
+    // (Firestore의 텍스트 검색은 제한적이므로 클라이언트에서 부분 검색 수행)
+    if (searchTerm && searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase().trim();
+      products = products.filter(product => {
+        return (
+          product.supplier.toLowerCase().includes(searchLower) ||
+          product.productName.toLowerCase().includes(searchLower) ||
+          product.partName.toLowerCase().includes(searchLower) ||
+          product.specification.toLowerCase().includes(searchLower)
+        );
+      });
+    }
+
+    // 로컬 캐시에 저장 (필터나 검색어가 없을 때만)
+    if (!searchTerm && !filters?.supplier && !filters?.productName && !filters?.partName) {
+      cacheProducts(products).catch(() => {
+        // 캐시 저장 실패는 무시
+      });
+    }
+
+    return products;
+  } catch (error) {
+    console.error('Error fetching products from cache:', error);
+    // 캐시 조회 실패 시 기존 방식으로 fallback
+    return getProducts();
+  }
+};
+
+/**
  * 제품 목록 조회 (중복 제거)
  * packaging-reports에서 고유한 제품 목록 추출
  * 최신 사용지그, 최신 하도데이터, 최신 상도데이터 포함
+ * @deprecated 캐시 컬렉션이 구축되면 getProductsFromCache 사용 권장
  */
 export const getProducts = async (limitCount: number = 2000): Promise<Product[]> => {
   try {
@@ -314,64 +415,139 @@ export const getProducts = async (limitCount: number = 2000): Promise<Product[]>
  * 제품 상세 정보 조회
  * 여러 컬렉션에서 데이터를 병렬로 조회하여 집계
  */
-export const getProductDetail = async (productId: string): Promise<ProductDetail | null> => {
+export const getProductDetail = async (
+  productId: string,
+  productInfo?: { supplier?: string; productName?: string; partName?: string; specification?: string }
+): Promise<ProductDetail | null> => {
   try {
     if (!db) {
       throw new Error('Firebase not initialized');
     }
 
-    // productId에서 정보 추출 (형식: supplier_productName_partName_specification)
-    // 실제로는 productId만으로는 역추출이 어려우므로, 
-    // 모든 컬렉션을 조회한 후 클라이언트 사이드에서 필터링
-    // 또는 별도 인덱스 컬렉션 사용 고려
+    let supplier: string;
+    let productName: string;
+    let partName: string;
+    let specification: string;
 
-    // 일단 packaging-reports에서 먼저 조회하여 제품 정보 확인
-    const packagingQuery = query(
-      collection(db, 'packaging-reports'),
-      orderBy('workDate', 'desc'),
-      firestoreLimit(2000)
-    );
-
-    const packagingSnapshot = await getDocs(packagingQuery);
-    const allReports = packagingSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    } as PackagingReport));
-
-    // productId와 일치하는 첫 번째 리포트 찾기
-    const matchingReport = allReports.find(report => {
-      if (!report.supplier || !report.productName || !report.partName || !report.specification) {
-        return false;
-      }
-      const id = generateProductId(
-        report.supplier,
-        report.productName,
-        report.partName,
-        report.specification
+    // 이미 알고 있는 기본 정보가 있으면 재사용 (중복 조회 방지)
+    if (productInfo?.supplier && productInfo?.productName && productInfo?.partName && productInfo?.specification) {
+      supplier = productInfo.supplier;
+      productName = productInfo.productName;
+      partName = productInfo.partName;
+      specification = productInfo.specification;
+    } else {
+      // product-summary에서 기본 정보 조회 (빠른 조회)
+      const productSummaryRef = collection(db, 'product-summary');
+      const productSummaryDoc = await getDocs(
+        query(productSummaryRef, where('id', '==', productId), firestoreLimit(1))
       );
-      return id === productId;
-    });
 
-    if (!matchingReport) {
-      return null;
+      if (!productSummaryDoc.empty) {
+        // product-summary에서 정보 가져오기
+        const summaryData = productSummaryDoc.docs[0].data();
+        supplier = summaryData.supplier || '';
+        productName = summaryData.productName || '';
+        partName = summaryData.partName || '';
+        specification = summaryData.specification || '';
+      } else {
+        // product-summary에 없으면 packaging-reports에서 찾기 (fallback)
+        const packagingQuery = query(
+          collection(db, 'packaging-reports'),
+          orderBy('workDate', 'desc'),
+          firestoreLimit(2000)
+        );
+
+        const packagingSnapshot = await getDocs(packagingQuery);
+        const allReports = packagingSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        } as PackagingReport));
+
+        const matchingReport = allReports.find(report => {
+          if (!report.supplier || !report.productName || !report.partName || !report.specification) {
+            return false;
+          }
+          const id = generateProductId(
+            report.supplier,
+            report.productName,
+            report.partName,
+            report.specification
+          );
+          return id === productId;
+        });
+
+        if (!matchingReport) {
+          return null;
+        }
+
+        supplier = matchingReport.supplier;
+        productName = matchingReport.productName;
+        partName = matchingReport.partName;
+        specification = matchingReport.specification;
+      }
     }
 
-    const { supplier, productName, partName, specification } = matchingReport;
-
-    // 병렬로 모든 컬렉션 조회
+    // 병렬로 모든 컬렉션 조회 (서버 사이드 필터링 사용)
     const [
       packagingReports,
       qualityInspections,
       shortageRequests,
       qualityIssues
     ] = await Promise.all([
-      // packaging-reports는 이미 조회됨
-      Promise.resolve(allReports),
-      // quality-inspections 조회
+      // packaging-reports 조회 (서버 사이드 필터링)
+      (async () => {
+        try {
+          // 1) 기준 쿼리: supplier + productName + partName + specification
+          const baseQuery = query(
+            collection(db, 'packaging-reports'),
+            where('supplier', '==', supplier),
+            where('productName', '==', productName),
+            where('partName', '==', partName),
+            where('specification', '==', specification),
+            orderBy('workDate', 'desc'),
+            firestoreLimit(2000)
+          );
+          let snapshot = await getDocs(baseQuery);
+
+          // 2) 결과가 없으면 완화 쿼리: supplier + partName (productName/사양 표기 차이 대응)
+          if (snapshot.empty) {
+            const relaxedQuery = query(
+              collection(db, 'packaging-reports'),
+              where('supplier', '==', supplier),
+              where('partName', '==', partName),
+              orderBy('workDate', 'desc'),
+              firestoreLimit(2000)
+            );
+            snapshot = await getDocs(relaxedQuery);
+          }
+
+          return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          } as PackagingReport));
+        } catch (error) {
+          console.error('Error fetching packaging reports:', error);
+          // 인덱스가 없을 수 있으므로 fallback으로 전체 조회
+          const q = query(
+            collection(db, 'packaging-reports'),
+            orderBy('workDate', 'desc'),
+            firestoreLimit(2000)
+          );
+          const snapshot = await getDocs(q);
+          return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          } as PackagingReport));
+        }
+      })(),
+      // quality-inspections 조회 (서버 사이드 필터링)
       (async () => {
         try {
           const q = query(
             collection(db, 'quality-inspections'),
+            where('supplier', '==', supplier),
+            where('productName', '==', productName),
+            where('partName', '==', partName),
             orderBy('createdAt', 'desc'),
             firestoreLimit(2000)
           );
@@ -382,14 +558,28 @@ export const getProductDetail = async (productId: string): Promise<ProductDetail
           } as QualityInspection));
         } catch (error) {
           console.error('Error fetching quality inspections:', error);
-          return [];
+          // 인덱스가 없을 수 있으므로 fallback으로 전체 조회
+          const q = query(
+            collection(db, 'quality-inspections'),
+            orderBy('createdAt', 'desc'),
+            firestoreLimit(2000)
+          );
+          const snapshot = await getDocs(q);
+          return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          } as QualityInspection));
         }
       })(),
-      // shortage-requests 조회
+      // shortage-requests 조회 (서버 사이드 필터링)
       (async () => {
         try {
           const q = query(
             collection(db, 'shortage-requests'),
+            where('supplier', '==', supplier),
+            where('productName', '==', productName),
+            where('partName', '==', partName),
+            where('specification', '==', specification),
             orderBy('createdAt', 'desc'),
             firestoreLimit(1000)
           );
@@ -403,11 +593,16 @@ export const getProductDetail = async (productId: string): Promise<ProductDetail
           return [];
         }
       })(),
-      // quality-issues 조회
+      // quality-issues 조회 (서버 사이드 필터링)
       (async () => {
         try {
+          // specification 필터 포함 시도
           const q = query(
             collection(db, 'quality-issues'),
+            where('supplier', '==', supplier),
+            where('productName', '==', productName),
+            where('partName', '==', partName),
+            where('specification', '==', specification),
             orderBy('createdAt', 'desc'),
             firestoreLimit(1000)
           );
@@ -417,8 +612,26 @@ export const getProductDetail = async (productId: string): Promise<ProductDetail
             ...doc.data()
           } as QualityIssue));
         } catch (error) {
-          console.error('Error fetching quality issues:', error);
-          return [];
+          console.error('Error fetching quality issues with specification:', error);
+          // specification 필터가 실패하면 (인덱스 없음 등) specification 없이 재시도
+          try {
+            const q = query(
+              collection(db, 'quality-issues'),
+              where('supplier', '==', supplier),
+              where('productName', '==', productName),
+              where('partName', '==', partName),
+              orderBy('createdAt', 'desc'),
+              firestoreLimit(1000)
+            );
+            const snapshot = await getDocs(q);
+            return snapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            } as QualityIssue));
+          } catch (error2) {
+            console.error('Error fetching quality issues without specification:', error2);
+            return [];
+          }
         }
       })()
     ]);
@@ -430,10 +643,35 @@ export const getProductDetail = async (productId: string): Promise<ProductDetail
       itemPartName: string,
       itemSpecification: string
     ): boolean => {
-      return itemSupplier === supplier &&
-             itemProductName === productName &&
-             itemPartName === partName &&
-             itemSpecification === specification;
+      const norm = (v: string | undefined | null) => (v || '').trim().toLowerCase();
+      const aSupplier = norm(itemSupplier);
+      const aProduct = norm(itemProductName);
+      const aPart = norm(itemPartName);
+      const aSpec = norm(itemSpecification);
+      const bSupplier = norm(supplier);
+      const bProduct = norm(productName);
+      const bPart = norm(partName);
+      const bSpec = norm(specification);
+
+      // supplier, partName는 정확히 일치 (대소문자 무시)
+      if (aSupplier !== bSupplier || aPart !== bPart) {
+        return false;
+      }
+
+      // productName은 포함/포함당함 허용 (쉼표로 이어진 케이스 대응)
+      const productMatch =
+        aProduct === bProduct ||
+        aProduct.includes(bProduct) ||
+        bProduct.includes(aProduct);
+
+      if (!productMatch) {
+        return false;
+      }
+
+      // specification은 둘 중 하나가 비어도 통과, 있으면 일치 필요
+      const specMatch = !aSpec || !bSpec ? true : aSpec === bSpec;
+
+      return specMatch;
     };
 
     // 생산이력
@@ -603,22 +841,32 @@ export const getProductDetail = async (productId: string): Promise<ProductDetail
       }))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
-    // 품질이슈
+    // 품질이슈 (발주처, 제품명, 부속명, 사양으로 필터링 + 발주번호 매칭)
     const qualityIssueItems: QualityIssueItem[] = qualityIssues
       .filter(issue => {
-        // supplier, productName, partName이 일치하는지 확인
-        const matches = issue.supplier === supplier &&
+        // 기본 매칭: supplier, productName, partName
+        const basicMatch = issue.supplier === supplier &&
                        issue.productName === productName &&
                        issue.partName === partName;
-        
-        // specification이 있는 경우에만 비교, 없으면 무시
+
+        // specification 매칭: 제품에 spec이 있으면 issue에도 spec이 있고 같아야 함
         const issueSpec = (issue as any).specification;
-        if (specification && issueSpec) {
-          return matches && issueSpec === specification;
-        }
-        
-        // specification이 없는 경우는 supplier, productName, partName만으로 매칭
-        return matches;
+        const specMatch = specification
+          ? (issueSpec ? issueSpec === specification : false)
+          : !issueSpec; // 제품에 spec이 없으면 issue에도 spec이 없어야 함
+
+        // 발주번호 매칭: issue.orderNumber와 생산일보 orderNumbers가 하나라도 겹치면 매칭
+        const matchesOrderNumber = (() => {
+          if (!issue.orderNumber) return false;
+          const issueOrderNumbers = issue.orderNumber
+            .split(/[,\s]+/)
+            .map(s => s.trim())
+            .filter(Boolean);
+          return issueOrderNumbers.some(num => orderNumbersFromReports.has(num));
+        })();
+
+        // 기본+사양 매칭 OR 발주번호 매칭 중 하나라도 true이면 포함
+        return (basicMatch && specMatch) || matchesOrderNumber;
       })
       .map(issue => ({
         id: issue.id,

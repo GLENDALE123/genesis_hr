@@ -50,13 +50,6 @@ export interface QualityIssue {
   shippingWaitType?: string; // 출하대기 세부 타입 (선별대기, 한도대기, 세척대기 등)
   shippingWaitQuantity?: number; // 출하대기 제품 수량
   processedQuantity?: number; // 처리 완료된 수량
-  // 프로젝트 정보
-  projectInfo?: {
-    workspaceId: string;
-    channelId: string;
-    projectId: string;
-    createdAt: string;
-  };
 }
 
 export interface KeywordPair {

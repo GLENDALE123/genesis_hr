@@ -4,7 +4,7 @@
  */
 
 import React, { useMemo, useState, useEffect, useRef } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/shared/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Badge } from '@/shared/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/components/ui/table';
@@ -15,10 +15,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Product, QualityIssueItem } from '../types';
 import { useProductDetail } from '../hooks/useProductDetail';
 import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { AlertCircle, TrendingUp, Package, AlertTriangle, CheckCircle, XCircle, Sparkles, BarChart3, FileText, Settings } from 'lucide-react';
+import { AlertCircle, TrendingUp, Package, AlertTriangle, CheckCircle, XCircle, BarChart3, FileText, Settings } from 'lucide-react';
 import { useDeviceType } from '@/shared/hooks/use-device';
-import { analyzeProductionTrend } from '../services/productAIService';
 import { QualityHistoryCell, MemoModal } from '@/features/production/management';
 import { QualityInspection } from '@/features/quality/types';
 import { cn } from '@/shared/lib/utils';
@@ -37,9 +35,10 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   isOpen,
   onClose
 }) => {
-  const { productDetail, loading, error } = useProductDetail(product.id);
+  // 이미 알고 있는 product 정보를 전달하여 중복 조회 방지
+  const { productDetail, loading, error } = useProductDetail(product.id, product);
   const { isSmartphone } = useDeviceType();
-  const [activeTab, setActiveTab] = useState<'summary' | 'production'>('summary');
+  const [activeTab, setActiveTab] = useState<'summary'>('summary');
   const [showAllIncoming, setShowAllIncoming] = useState(false);
   const [showAllInProcess, setShowAllInProcess] = useState(false);
   
@@ -53,28 +52,50 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   // 실시간 품질이슈 구독 (품질이슈 페이지와 동일한 데이터 소스)
   const { issues: realtimeQualityIssues } = useQualityIssues();
   
-  // 제품과 매칭되는 실시간 품질이슈 필터링
+  // 생산일보에서 발주번호 수집 (발주번호 매칭용)
+  const orderNumbersFromReports = useMemo(() => {
+    if (!productDetail?.productionHistory) return new Set<string>();
+    const orderNumbers = new Set<string>();
+    productDetail.productionHistory.forEach(item => {
+      if (item.orderNumber && item.orderNumber.trim() !== '') {
+        orderNumbers.add(item.orderNumber.trim());
+      }
+    });
+    return orderNumbers;
+  }, [productDetail?.productionHistory]);
+
+  // 제품과 매칭되는 실시간 품질이슈 필터링 (발주처, 제품명, 부속명, 사양 + 발주번호로 필터링)
   const matchedRealtimeQualityIssues = useMemo(() => {
     if (!productDetail || !realtimeQualityIssues || realtimeQualityIssues.length === 0) {
       return [];
     }
     
     return realtimeQualityIssues.filter(issue => {
-      // supplier, productName, partName이 일치하는지 확인
-      const matches = issue.supplier === productDetail.supplier &&
-                     issue.productName === productDetail.productName &&
-                     issue.partName === productDetail.partName;
+      // 기본 매칭: supplier, productName, partName
+      const basicMatch = issue.supplier === productDetail.supplier &&
+                        issue.productName === productDetail.productName &&
+                        issue.partName === productDetail.partName;
       
-      // specification이 있는 경우에만 비교, 없으면 무시
+      // specification 매칭: 제품에 spec이 있으면 issue에도 spec이 있고 같아야 함
       const issueSpec = (issue as any).specification;
-      if (productDetail.specification && issueSpec) {
-        return matches && issueSpec === productDetail.specification;
-      }
+      const specMatch = productDetail.specification
+        ? (issueSpec ? issueSpec === productDetail.specification : false)
+        : !issueSpec; // 제품에 spec이 없으면 issue에도 spec이 없어야 함
       
-      // specification이 없는 경우는 supplier, productName, partName만으로 매칭
-      return matches;
+      // 발주번호 매칭: issue.orderNumber와 생산일보 orderNumbers가 하나라도 겹치면 매칭
+      const matchesOrderNumber = (() => {
+        if (!issue.orderNumber || orderNumbersFromReports.size === 0) return false;
+        const issueOrderNumbers = issue.orderNumber
+          .split(/[,\s]+/)
+          .map(s => s.trim())
+          .filter(Boolean);
+        return issueOrderNumbers.some(num => orderNumbersFromReports.has(num));
+      })();
+      
+      // 기본+사양 매칭 OR 발주번호 매칭 중 하나라도 true이면 포함
+      return (basicMatch && specMatch) || matchesOrderNumber;
     });
-  }, [productDetail, realtimeQualityIssues]);
+  }, [productDetail, realtimeQualityIssues, orderNumbersFromReports]);
   
   // QualityIssue를 QualityIssueItem 형식으로 변환
   const convertedRealtimeQualityIssues: QualityIssueItem[] = useMemo(() => {
@@ -477,28 +498,57 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     };
   }, [productDetail]);
 
-  // 생산추이 차트 데이터 (최근 30일, 시간당생산량)
+  // 생산추이 차트 데이터 (최근 30일, 인당생산량)
   const chartData = useMemo(() => {
-    if (!productDetail || !productDetail.productionTrend) {
-      console.log('[ProductDetailModal] productionTrend 없음:', { 
+    if (!productDetail || !productDetail.productionHistory || productDetail.productionHistory.length === 0) {
+      console.log('[ProductDetailModal] productionHistory 없음:', { 
         hasProductDetail: !!productDetail, 
-        hasTrend: !!productDetail?.productionTrend,
-        trendLength: productDetail?.productionTrend?.length 
+        hasHistory: !!productDetail?.productionHistory,
+        historyLength: productDetail?.productionHistory?.length 
       });
       return [];
     }
-    const trend = productDetail.productionTrend;
-    if (!Array.isArray(trend) || trend.length === 0) {
-      console.log('[ProductDetailModal] productionTrend가 빈 배열:', trend);
-      return [];
-    }
-    const recent30Days = trend.slice(-30);
+    
+    // 생산이력을 날짜별로 그룹화하여 인당생산량 계산
+    const historyByDate = new Map<string, { totalGood: number; totalPersonnel: number; count: number }>();
+    
+    productDetail.productionHistory.forEach(item => {
+      const date = item.workDate;
+      const goodQuantity = item.goodQuantity || 0;
+      const personnelCount = item.personnelCount || 0;
+      
+      if (!historyByDate.has(date)) {
+        historyByDate.set(date, { totalGood: 0, totalPersonnel: 0, count: 0 });
+      }
+      
+      const dayData = historyByDate.get(date)!;
+      dayData.totalGood += goodQuantity;
+      dayData.totalPersonnel += personnelCount;
+      dayData.count += 1;
+    });
+    
+    // 날짜별 인당생산량 계산 (양품수량 / 작업인원)
+    const recent30Days = Array.from(historyByDate.entries())
+      .map(([date, data]) => {
+        const perPerson = data.totalPersonnel > 0 
+          ? Math.round((data.totalGood / data.totalPersonnel) * 10) / 10 // 소수점 첫째자리까지
+          : 0;
+        return {
+          date,
+          perPerson,
+          sortDate: new Date(date).getTime()
+        };
+      })
+      .sort((a, b) => a.sortDate - b.sortDate)
+      .slice(-30); // 최근 30일
+    
     const mapped = recent30Days.map(item => ({
       date: item.date.split('-').slice(1).join('/'), // MM/DD 형식
-      '시간당생산량(UPH)': item.uph || 0
+      '인당생산량': item.perPerson
     }));
+    
     console.log('[ProductDetailModal] chartData 생성:', { 
-      trendLength: trend.length, 
+      historyLength: productDetail.productionHistory.length, 
       recent30DaysLength: recent30Days.length,
       mappedLength: mapped.length,
       sample: mapped.slice(0, 3)
@@ -512,86 +562,6 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     return productDetail.productionHistory.some(item => item.memo && item.memo.trim().length > 0);
   }, [productDetail?.productionHistory]);
 
-  // 생산추이 AI 분석
-  const [trendAnalysis, setTrendAnalysis] = useState<string | null>(null);
-  const [analyzingTrend, setAnalyzingTrend] = useState(false);
-  const analysisAbortRef = useRef<AbortController | null>(null);
-
-  useEffect(() => {
-    // 모달이 닫히거나 제품이 변경되면 이전 분석 취소 및 초기화
-    if (!isOpen || !productDetail) {
-      if (analysisAbortRef.current) {
-        analysisAbortRef.current.abort();
-        analysisAbortRef.current = null;
-      }
-      setTrendAnalysis(null);
-      setAnalyzingTrend(false);
-      return;
-    }
-
-    // 실시간 품질이슈가 준비되었을 때만 AI 분석 실행
-    // 실시간 품질이슈가 있으면 그것을 우선 사용, 없으면 기존 productDetail.qualityIssues 사용
-    const qualityIssuesForAnalysis = convertedRealtimeQualityIssues.length > 0 
-      ? convertedRealtimeQualityIssues 
-      : productDetail?.qualityIssues || [];
-    
-    // 이미 분석이 완료되었거나 진행 중이면 실행하지 않음
-    if (trendAnalysis || analyzingTrend || chartData.length === 0 || !productDetail) {
-      return;
-    }
-
-    // 이전 분석 취소
-    if (analysisAbortRef.current) {
-      analysisAbortRef.current.abort();
-    }
-
-    // 새로운 AbortController 생성
-    const abortController = new AbortController();
-    analysisAbortRef.current = abortController;
-
-    setAnalyzingTrend(true);
-    
-    if (!productDetail) return;
-    
-    analyzeProductionTrend(
-      productDetail.supplier,
-      productDetail.productName,
-      productDetail.partName,
-      productDetail.specification,
-      productDetail.productionTrend,
-      productDetail.productionHistory,
-      productDetail.coatingHistory,
-      productDetail.qualityInspections,
-      qualityIssuesForAnalysis
-    ).then(analysis => {
-      // 취소되지 않았을 때만 상태 업데이트
-      if (!abortController.signal.aborted) {
-        setTrendAnalysis(analysis);
-        setAnalyzingTrend(false);
-      }
-    }).catch((err) => {
-      // AbortError는 무시 (의도적인 취소)
-      if (err?.name !== 'AbortError' && !abortController.signal.aborted) {
-        setAnalyzingTrend(false);
-        // API 할당량 초과 등의 에러는 조용히 처리 (콘솔에만 로그)
-        if (err?.message?.includes('429') || err?.message?.includes('quota') || err?.message?.includes('Quota exceeded')) {
-          // 할당량 초과는 조용히 처리 (사용자에게는 "분석 데이터가 부족합니다" 메시지만 표시)
-          console.warn('[ProductDetailModal] AI 분석 할당량 초과 - 분석을 건너뜁니다.');
-        } else {
-          // 다른 에러는 로그만 남김
-          console.error('[ProductDetailModal] AI 분석 에러:', err);
-        }
-      }
-    });
-
-    // 클린업: 모달이 닫히거나 제품이 변경될 때 분석 취소
-    return () => {
-      if (analysisAbortRef.current === abortController) {
-        abortController.abort();
-        analysisAbortRef.current = null;
-      }
-    };
-  }, [isOpen, productDetail?.id, chartData.length]);
 
   // 에러 상태는 별도 처리 (로딩 중이 아닐 때만)
   if (error && !loading) {
@@ -600,6 +570,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
         <DialogContent className="w-[95vw] max-w-[1600px] h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>{product.productName} - {product.partName}</DialogTitle>
+            <DialogDescription className="sr-only">제품 상세 정보 오류</DialogDescription>
           </DialogHeader>
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center p-8 text-destructive">
@@ -618,6 +589,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
         <DialogContent className="w-[95vw] max-w-[1600px] h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>{product.productName} - {product.partName}</DialogTitle>
+            <DialogDescription className="sr-only">제품 상세 정보 없음</DialogDescription>
           </DialogHeader>
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center p-8 text-muted-foreground">
@@ -678,19 +650,18 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <BarChart3 className="h-4 w-4" />
                   요약
                 </TabsTrigger>
-                <TabsTrigger value="production" className="flex items-center gap-2">
-                  <Package className="h-4 w-4" />
-                  생산 상세
-                </TabsTrigger>
               </TabsList>
             </Tabs>
           </>
         }
       >
-        {/* 접근성을 위한 숨겨진 제목 */}
+        {/* 접근성을 위한 숨겨진 제목 및 설명 */}
         <DialogTitle className="sr-only">
           {productDetail?.productName || product.productName} ({productDetail?.partName || product.partName}) 제품 상세 정보
         </DialogTitle>
+        <DialogDescription className="sr-only">
+          {productDetail?.productName || product.productName} 제품의 생산이력, 품질이력, 도료사용이력 등 상세 정보를 확인할 수 있습니다.
+        </DialogDescription>
         
         {loading ? (
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)} className="w-full h-full flex flex-col">
@@ -720,28 +691,6 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     </CardContent>
                   </Card>
                 </div>
-              </div>
-            </TabsContent>
-            <TabsContent value="production" className="mt-0 space-y-4">
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <Skeleton className="h-6 w-48" />
-                  </CardHeader>
-                  <CardContent>
-                    <Skeleton className="h-[300px] w-full" />
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <Skeleton className="h-5 w-32" />
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {Array.from({ length: 3 }).map((_, idx) => (
-                      <Skeleton key={idx} className="h-24 w-full" />
-                    ))}
-                  </CardContent>
-                </Card>
               </div>
             </TabsContent>
           </Tabs>
@@ -1299,79 +1248,6 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     </Card>
                   )}
                 </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="production" className="mt-0 space-y-4">
-              <div className="space-y-6">
-                  {/* 생산추이 차트 */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <TrendingUp className="h-5 w-5" />
-                        생산추이 (시간당생산량)
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {chartData.length > 0 ? (
-                        <>
-                          <ResponsiveContainer width="100%" height={300}>
-                            <LineChart data={chartData}>
-                              <CartesianGrid strokeDasharray="3 3" />
-                              <XAxis 
-                                dataKey="date" 
-                                tick={{ fontSize: 12 }}
-                                angle={-45}
-                                textAnchor="end"
-                                height={60}
-                              />
-                              <YAxis 
-                                tick={{ fontSize: 12 }}
-                                label={{ value: '시간당생산량(UPH)', angle: -90, position: 'insideLeft' }}
-                              />
-                              <Tooltip />
-                              <Legend />
-                              <Line 
-                                type="monotone" 
-                                dataKey="시간당생산량(UPH)" 
-                                stroke="hsl(var(--primary))" 
-                                strokeWidth={2}
-                              />
-                            </LineChart>
-                          </ResponsiveContainer>
-                          
-                          {/* AI 분석 */}
-                          <div className="border-t pt-4">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Sparkles className="h-4 w-4 text-primary" />
-                              <span className="text-sm font-semibold">AI 생산추이 분석</span>
-                            </div>
-                            {analyzingTrend ? (
-                              <div className="space-y-2">
-                                <Skeleton className="h-4 w-full" />
-                                <Skeleton className="h-4 w-3/4" />
-                                <Skeleton className="h-4 w-5/6" />
-                              </div>
-                            ) : trendAnalysis ? (
-                              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                                {trendAnalysis}
-                              </p>
-                            ) : (
-                              <p className="text-sm text-muted-foreground">
-                                분석 데이터가 부족합니다.
-                              </p>
-                            )}
-                          </div>
-                        </>
-                      ) : (
-                        <div className="h-[300px] flex flex-col items-center justify-center text-muted-foreground">
-                          <BarChart3 className="h-12 w-12 mb-2 opacity-50" />
-                          <p className="text-sm">생산 데이터가 없습니다.</p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-
               </div>
             </TabsContent>
 

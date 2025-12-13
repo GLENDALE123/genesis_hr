@@ -9,6 +9,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/components/ui/table';
 import { Skeleton } from '@/shared/components/ui/skeleton';
+import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import { Search, RotateCcw, Package } from 'lucide-react';
 import { Product } from '../types';
 import { LoadingSpinner } from '@/shared/components/common/LoadingSpinner';
@@ -126,21 +127,16 @@ const ProductManagementTableComponent: React.FC<ProductManagementTableProps> = (
         <CardContent className="p-0 flex-1 min-h-0 flex flex-col">
           {loading ? (
             <>
-              <div className="flex-1 min-h-0 overflow-auto">
+              <ScrollArea className="flex-1 min-h-0" overflowX="auto" overflowY="auto">
                 <div className="rounded-lg border overflow-hidden">
-                  <Table className="min-w-[1400px]">
+                  <Table className="min-w-[800px]">
                     <TableHeader className="sticky top-0 z-10 bg-muted">
                       <TableRow className="hover:bg-muted border-b">
-                        <TableHead className="w-[10%] whitespace-nowrap bg-muted font-semibold rounded-tl-lg">발주처</TableHead>
-                        <TableHead className="w-[12%] whitespace-nowrap bg-muted font-semibold">제품명</TableHead>
-                        <TableHead className="w-[10%] whitespace-nowrap bg-muted font-semibold">부속명</TableHead>
-                        <TableHead className="w-[10%] whitespace-nowrap bg-muted font-semibold">사양</TableHead>
-                        <TableHead className="min-w-[150px] whitespace-nowrap bg-muted font-semibold">최신 사용지그</TableHead>
-                        <TableHead className="min-w-[250px] whitespace-nowrap bg-muted font-semibold">최신 하도데이터</TableHead>
-                        <TableHead className="min-w-[250px] whitespace-nowrap bg-muted font-semibold">최신 상도데이터</TableHead>
-                        <TableHead className="w-[7%] whitespace-nowrap bg-muted font-semibold">평균작업인원</TableHead>
-                        <TableHead className="w-[7%] whitespace-nowrap bg-muted font-semibold">최근 비율</TableHead>
-                        <TableHead className="w-[8%] whitespace-nowrap bg-muted font-semibold rounded-tr-lg">평균 작업속도(RPM)</TableHead>
+                        <TableHead className="w-[15%] whitespace-nowrap bg-muted font-semibold rounded-tl-lg">발주처</TableHead>
+                        <TableHead className="w-[25%] whitespace-nowrap bg-muted font-semibold">제품명</TableHead>
+                        <TableHead className="w-[15%] whitespace-nowrap bg-muted font-semibold">부속명</TableHead>
+                        <TableHead className="w-[20%] whitespace-nowrap bg-muted font-semibold">사양</TableHead>
+                        <TableHead className="w-[25%] whitespace-nowrap bg-muted font-semibold rounded-tr-lg">최신 사용지그</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -151,17 +147,12 @@ const ProductManagementTableComponent: React.FC<ProductManagementTableProps> = (
                           <TableCell><Skeleton className="h-4 w-full" /></TableCell>
                           <TableCell><Skeleton className="h-4 w-full" /></TableCell>
                           <TableCell><Skeleton className="h-4 w-full" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-full" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-full" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-12 mx-auto" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-12 mx-auto" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-12 mx-auto" /></TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
                 </div>
-              </div>
+              </ScrollArea>
               <div className="flex-shrink-0 p-4 border-t text-sm text-muted-foreground">
                 <div className="flex items-center justify-center gap-2">
                   <Skeleton className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -180,21 +171,16 @@ const ProductManagementTableComponent: React.FC<ProductManagementTableProps> = (
             </div>
           ) : (
             <>
-              <div className="flex-1 min-h-0 overflow-auto">
+              <ScrollArea className="flex-1 min-h-0" overflowX="auto" overflowY="auto">
                 <div className="rounded-lg border overflow-hidden">
-                  <Table className="min-w-[1400px]">
+                  <Table className="min-w-[800px]">
                     <TableHeader className="sticky top-0 z-10 bg-muted">
                       <TableRow className="hover:bg-muted border-b">
-                        <TableHead className="w-[10%] whitespace-nowrap bg-muted font-semibold rounded-tl-lg">발주처</TableHead>
-                        <TableHead className="w-[12%] whitespace-nowrap bg-muted font-semibold">제품명</TableHead>
-                        <TableHead className="w-[10%] whitespace-nowrap bg-muted font-semibold">부속명</TableHead>
-                        <TableHead className="w-[10%] whitespace-nowrap bg-muted font-semibold">사양</TableHead>
-                        <TableHead className="min-w-[150px] whitespace-nowrap bg-muted font-semibold">최신 사용지그</TableHead>
-                        <TableHead className="min-w-[250px] whitespace-nowrap bg-muted font-semibold">최신 하도데이터</TableHead>
-                        <TableHead className="min-w-[250px] whitespace-nowrap bg-muted font-semibold">최신 상도데이터</TableHead>
-                        <TableHead className="w-[7%] whitespace-nowrap bg-muted font-semibold">평균작업인원</TableHead>
-                        <TableHead className="w-[7%] whitespace-nowrap bg-muted font-semibold">최근 비율</TableHead>
-                        <TableHead className="w-[8%] whitespace-nowrap bg-muted font-semibold rounded-tr-lg">평균 작업속도(RPM)</TableHead>
+                        <TableHead className="w-[15%] whitespace-nowrap bg-muted font-semibold rounded-tl-lg">발주처</TableHead>
+                        <TableHead className="w-[25%] whitespace-nowrap bg-muted font-semibold">제품명</TableHead>
+                        <TableHead className="w-[15%] whitespace-nowrap bg-muted font-semibold">부속명</TableHead>
+                        <TableHead className="w-[20%] whitespace-nowrap bg-muted font-semibold">사양</TableHead>
+                        <TableHead className="w-[25%] whitespace-nowrap bg-muted font-semibold rounded-tr-lg">최신 사용지그</TableHead>
                       </TableRow>
                     </TableHeader>
                   <TableBody>
@@ -211,27 +197,12 @@ const ProductManagementTableComponent: React.FC<ProductManagementTableProps> = (
                         <TableCell className="text-sm text-muted-foreground break-words whitespace-normal">
                           {product.latestJig || '-'}
                         </TableCell>
-                        <TableCell className="text-sm text-muted-foreground break-words whitespace-normal min-w-[250px]">
-                          {product.latestUndercoatData || '-'}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground break-words whitespace-normal min-w-[250px]">
-                          {product.latestTopcoatData || '-'}
-                        </TableCell>
-                        <TableCell className="text-sm text-center">
-                          {product.averagePersonnelCount !== undefined ? product.averagePersonnelCount.toFixed(1) : '-'}
-                        </TableCell>
-                        <TableCell className="text-sm text-center">
-                          {product.latestLineRatio || '-'}
-                        </TableCell>
-                        <TableCell className="text-sm text-center">
-                          {product.averageRPM !== undefined ? product.averageRPM.toFixed(1) : '-'}
-                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
                 </div>
-              </div>
+              </ScrollArea>
               <div className="flex-shrink-0 p-4 border-t text-sm text-muted-foreground">
                 총 {filteredProducts.length}개 제품
               </div>
@@ -270,12 +241,7 @@ export const ProductManagementTable = React.memo(ProductManagementTableComponent
     const next = nextProps.products[i];
     
     if (prev.id !== next.id ||
-        prev.latestJig !== next.latestJig ||
-        prev.latestUndercoatData !== next.latestUndercoatData ||
-        prev.latestTopcoatData !== next.latestTopcoatData ||
-        prev.averagePersonnelCount !== next.averagePersonnelCount ||
-        prev.latestLineRatio !== next.latestLineRatio ||
-        prev.averageRPM !== next.averageRPM) {
+        prev.latestJig !== next.latestJig) {
       return false;
     }
   }

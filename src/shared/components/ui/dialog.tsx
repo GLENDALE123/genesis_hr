@@ -177,7 +177,6 @@ const DialogContent = React.forwardRef<
         style={{
           WebkitFontSmoothing: 'antialiased',
           MozOsxFontSmoothing: 'grayscale',
-          textRendering: 'optimizeLegibility',
         } as React.CSSProperties}
         {...props}
       >
@@ -257,7 +256,6 @@ const DialogHeader = ({
     style={{
       WebkitFontSmoothing: 'antialiased',
       MozOsxFontSmoothing: 'grayscale',
-      textRendering: 'optimizeLegibility',
     } as React.CSSProperties}
     {...props}
   />

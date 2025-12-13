@@ -293,125 +293,348 @@ export const analyzeProductionTrend = async (
 
     const genAI = new GoogleGenerativeAI(API_KEY);
     
-    // 비용 효율적인 모델 우선 사용: gemini-2.0-flash (가장 저렴)
-    // 2.0 Flash: 입력 $0.15/1M, 출력 $0.60/1M
-    // 2.5 Flash: 입력 $0.30/1M, 출력 $2.50/1M (약 4배 비쌈)
-    let model;
-    try {
-      // gemini-2.0-flash 우선 사용 (비용 효율적)
-      model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-    } catch (error) {
-      try {
-        // fallback: gemini-2.5-flash
-        model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-      } catch (error2) {
-        try {
-          // 최종 fallback: gemini-1.5-flash
-          model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-        } catch (error3) {
-          throw new Error('사용 가능한 Gemini 모델을 찾을 수 없습니다.');
+    // 비용 효율적인 모델 우선 사용: gemini-2.0-flash-lite (가장 저렴하고 빠름)
+    // 2.0 Flash-Lite: 입력 $0.10/1M, 출력 $0.40/1M
+    // 여러 모델을 순차적으로 시도 (429 에러 시 다음 모델로 자동 전환)
+    const modelsToTry = ['gemini-2.0-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-flash-latest'];
+
+    // 인당생산량 추이 데이터 계산 (생산이력 기반, 최근 30일)
+    const historyByDate = new Map<string, { totalGood: number; totalPersonnel: number; count: number }>();
+    
+    productionHistory.forEach(item => {
+      const date = item.workDate;
+      const goodQuantity = item.goodQuantity || 0;
+      const personnelCount = item.personnelCount || 0;
+      
+      if (!historyByDate.has(date)) {
+        historyByDate.set(date, { totalGood: 0, totalPersonnel: 0, count: 0 });
+      }
+      
+      const dayData = historyByDate.get(date)!;
+      dayData.totalGood += goodQuantity;
+      dayData.totalPersonnel += personnelCount;
+      dayData.count += 1;
+    });
+    
+    const trendSummary = Array.from(historyByDate.entries())
+      .map(([date, data]) => {
+        const perPerson = data.totalPersonnel > 0 
+          ? Math.round((data.totalGood / data.totalPersonnel) * 10) / 10
+          : 0;
+        return {
+          date,
+          perPerson,
+          sortDate: new Date(date).getTime()
+        };
+      })
+      .sort((a, b) => a.sortDate - b.sortDate)
+      .slice(-30)
+      .map(item => ({
+        date: item.date,
+        perPerson: item.perPerson
+      }));
+
+    // 생산이력 상세 요약 (최근 20건) - 더 많은 정보 포함
+    const recentHistory = productionHistory.slice(0, 20).map(item => {
+      const inputQty = item.inputQuantity || 0;
+      const goodQty = item.goodQuantity || 0;
+      const defectQty = item.defectQuantity || 0;
+      const personnel = item.personnelCount || 0;
+      const defectRate = inputQty > 0 ? ((defectQty / inputQty) * 100).toFixed(2) : '0.00';
+      
+      // 가동시간 계산
+      let workingHours = null;
+      if (item.startTime && item.endTime) {
+        const start = item.startTime.split(':').map(Number);
+        const end = item.endTime.split(':').map(Number);
+        if (start.length === 2 && end.length === 2) {
+          const startMinutes = start[0] * 60 + start[1];
+          const endMinutes = end[0] * 60 + end[1];
+          const diffMinutes = endMinutes >= startMinutes 
+            ? endMinutes - startMinutes 
+            : (24 * 60 - startMinutes) + endMinutes;
+          workingHours = (diffMinutes / 60).toFixed(1);
         }
       }
-    }
+      
+      return {
+        date: item.workDate,
+        orderNumber: item.orderNumber,
+        line: item.productionLine || '-',
+        orderQty: item.orderQuantity || 0,
+        inputQty: inputQty,
+        goodQty: goodQty,
+        defectQty: defectQty,
+        defectRate: `${defectRate}%`,
+        personnelCount: personnel,
+        perPerson: personnel > 0 && goodQty
+          ? Math.round((goodQty / personnel) * 10) / 10
+          : null,
+        lineRatio: item.lineRatio || '-',
+        workingHours: workingHours,
+        memo: item.memo || null
+      };
+    });
 
-    // 생산추이 데이터 요약 (최근 30일)
-    const recentTrend = productionTrend.slice(-30);
-    const trendSummary = recentTrend.map(item => ({
-      date: item.date,
-      uph: item.uph
-    }));
+    // 통계 데이터 계산
+    const validPerPerson = trendSummary
+      .map(t => t.perPerson)
+      .filter(p => p > 0);
+    
+    const stats = validPerPerson.length > 0 ? {
+      average: Math.round((validPerPerson.reduce((a, b) => a + b, 0) / validPerPerson.length) * 10) / 10,
+      max: Math.max(...validPerPerson),
+      min: Math.min(...validPerPerson),
+      trend: validPerPerson.length >= 2 
+        ? (validPerPerson[validPerPerson.length - 1] > validPerPerson[0] ? '증가' : '감소')
+        : '변동없음',
+      volatility: validPerPerson.length >= 2
+        ? Math.round((Math.max(...validPerPerson) - Math.min(...validPerPerson)) * 10) / 10
+        : 0
+    } : null;
 
-    // 생산이력 요약 (최근 20건)
-    const recentHistory = productionHistory.slice(0, 20).map(item => ({
-      date: item.workDate,
-      orderNumber: item.orderNumber,
-      line: item.productionLine,
-      input: item.inputQuantity || 0,
-      good: item.goodQuantity || 0,
-      defect: item.defectQuantity || 0,
-      defectRate: item.inputQuantity && item.inputQuantity > 0 
-        ? ((item.defectQuantity || 0) / item.inputQuantity * 100).toFixed(2) 
-        : '0.00',
-      personnelCount: item.personnelCount || null, // 생산인원
-      lineRatio: item.lineRatio || null, // 스핀들 비율 (라인 비율)
-      startTime: item.startTime || null, // 시작시간
-      endTime: item.endTime || null // 종료시간
-    }));
-
-    // 품질이력 요약 (최근 20건)
-    const recentInspections = qualityInspections.slice(0, 20).map(item => ({
+    // 품질이력 상세 요약 (최근 15건)
+    const recentInspections = qualityInspections.slice(0, 15).map(item => ({
       date: item.inspectionDate,
+      orderNumber: item.orderNumber,
       type: item.inspectionType === 'incoming' ? '수입' : item.inspectionType === 'inProcess' ? '공정' : '출하',
       result: item.result,
       keywords: item.keywordPairs?.map(p => `${p.process}-${p.defect}`).join(', ') || ''
     }));
 
-    // 품질이슈 요약 (최근 10건)
+    // 품질이슈 상세 요약 (최근 10건)
     const recentIssues = qualityIssues.slice(0, 10).map(item => ({
       date: item.createdAt.split('T')[0],
       orderNumber: item.orderNumber,
       status: item.status,
-      issues: item.issues?.map(i => typeof i === 'string' ? i : i.content).join(', ') || ''
+      issues: item.issues?.map(i => typeof i === 'string' ? i : i.content).join(' | ') || '',
+      keywords: item.keywordPairs?.map(p => `${p.process}-${p.defect}`).join(', ') || ''
     }));
 
-    // 도료사용이력 요약 (최근 10건)
-    const recentCoating = coatingHistory.slice(0, 10).map(item => ({
-      date: item.workDate,
-      type: item.coatingType === 'undercoat' ? '하도' : item.coatingType === 'topcoat' ? '상도' : '하도+상도',
-      conditions: item.coatingData.conditions || item.coatingData.undercoat?.conditions || ''
-    }));
+    // 도료사용이력 상세 요약 (최근 10건)
+    const recentCoating = coatingHistory.slice(0, 10).map(item => {
+      const data = item.coatingType === 'both' 
+        ? {
+            undercoat: item.coatingData.undercoat ? {
+              conditions: item.coatingData.undercoat.conditions || '-',
+              remarks: item.coatingData.undercoat.remarks || null
+            } : null,
+            topcoat: item.coatingData.topcoat ? {
+              conditions: item.coatingData.topcoat.conditions || '-',
+              remarks: item.coatingData.topcoat.remarks || null
+            } : null,
+            // 공통 정보는 최상위에서 가져오기
+            material: item.coatingData.coatingMaterial || '-',
+            color: item.coatingData.coatingColor || '-',
+            thickness: item.coatingData.coatingThickness || '-'
+          }
+        : {
+            material: item.coatingData.coatingMaterial || '-',
+            color: item.coatingData.coatingColor || '-',
+            thickness: item.coatingData.coatingThickness || '-',
+            conditions: item.coatingData.conditions || '-',
+            remarks: item.coatingData.remarks || null
+          };
+      
+      return {
+        date: item.workDate,
+        orderNumber: item.orderNumber,
+        line: item.productionLine || '-',
+        type: item.coatingType === 'undercoat' ? '하도' : item.coatingType === 'topcoat' ? '상도' : '하도+상도',
+        data: data
+      };
+    });
 
-    const prompt = `다음은 "${supplier}"의 "${productName}" (${partName}, ${specification}) 제품의 생산 데이터입니다.
+    // 생산이력 메모 요약 (최근 10건)
+    const recentMemos = productionHistory
+      .filter(item => item.memo && item.memo.trim() !== '')
+      .slice(0, 10)
+      .map(item => ({
+        date: item.workDate,
+        orderNumber: item.orderNumber,
+        memo: item.memo
+      }));
 
-**중요: 우리는 사출업체가 아닌 코팅/증착 후가공 업체입니다.**
-- 사출물은 외부에서 구매한 것으로, 우리는 이를 코팅/증착 후가공하는 업체입니다.
-- 생산 공정은 주로 코팅(하도/상도), 증착, 후가공 공정으로 구성됩니다.
-- 사출 관련 불량(사출-기름, 사출-찍힘 등)은 사출물 자체의 문제이거나, 코팅/증착 공정에서 발생하는 문제입니다.
-- 품질 검사 용어: "입고 검사"가 아닌 "수입검사"로 명칭합니다. (수입검사, 공정검사, 출하검사)
+    const prompt = `당신은 코팅/증착 후가공 업체의 생산 분석 전문가입니다. 다음 데이터를 종합적으로 분석하여 전문가 수준의 생산성 분석 보고서를 작성해주세요.
 
-## 시간당생산량(UPH) 추이 데이터 (최근 30일):
+**업체 정보:**
+- 업체명: ${supplier}
+- 제품명: ${productName}
+- 부속명: ${partName}
+- 사양: ${specification}
+- 업종: 코팅/증착 후가공 (사출물을 코팅/증착하여 후가공하는 업체)
+
+## 📊 인당생산량 추이 통계 (최근 30일)
 ${JSON.stringify(trendSummary, null, 2)}
 
-## 생산이력 (최근 20건):
+${stats ? `### 통계 요약:
+- 평균 인당생산량: ${stats.average}
+- 최대값: ${stats.max}
+- 최소값: ${stats.min}
+- 전체 추세: ${stats.trend}
+- 변동폭: ${stats.volatility}` : ''}
+
+## 📋 생산이력 상세 (최근 20건)
 ${JSON.stringify(recentHistory, null, 2)}
 
-## 품질이력 (최근 20건):
+## 🔍 품질이력 (최근 15건)
 ${JSON.stringify(recentInspections, null, 2)}
 
-## 품질이슈 (최근 10건):
+## ⚠️ 품질이슈 (최근 10건)
 ${JSON.stringify(recentIssues, null, 2)}
 
-## 도료사용이력 (최근 10건):
+## 🎨 도료사용이력 상세 (최근 10건)
 ${JSON.stringify(recentCoating, null, 2)}
 
-위의 모든 데이터를 종합적으로 분석하여, 시간당생산량(UPH) 추이가 이렇게 나타나는 이유를 추측하고, 개선 방안을 제시해주세요.
+${recentMemos.length > 0 ? `## 📝 생산 메모 (최근 10건)
+${JSON.stringify(recentMemos, null, 2)}` : ''}
 
-**특히 다음 사항을 반드시 고려해주세요:**
-- 우리는 코팅/증착 후가공 업체이므로, 코팅 공정과 증착 공정의 효율성이 UPH에 직접적인 영향을 미칩니다.
-- 생산인원(personnelCount)과 스핀들 비율(lineRatio)이 UPH에 미치는 영향
-- 생산인원 대비 생산량 비율 (인원 효율성)
-- 스핀들 비율과 실제 생산량의 관계
-- 가동시간(startTime, endTime)과 생산량의 관계
-- 생산인원, 스핀들 비율, 불량률의 상관관계
-- 코팅/증착 공정 조건(도료사용이력)이 생산성과 품질에 미치는 영향
-- 사출물 품질 문제가 코팅/증착 공정에 미치는 영향
+**분석 요청사항:**
 
-다음 형식으로 답변해주세요:
-1. **추이 분석**: 시간당생산량이 증가/감소/변동하는 패턴과 그 이유 (코팅/증착 공정 관점, 생산인원, 스핀들 비율 포함)
-2. **주요 원인 추측**: 생산이력(생산인원, 스핀들 비율 포함), 품질이력, 도료사용이력 등을 종합하여 추정되는 원인 (코팅/증착 공정 중심으로 분석)
-3. **개선 방안**: 구체적인 개선 제안사항 (코팅/증착 공정 개선, 생산인원 배치, 스핀들 비율 최적화 포함)
+주어진 데이터만을 기반으로 객관적이고 전문가 수준의 현황 분석을 제공해주세요. 개선 방안이나 제안은 포함하지 마세요.
 
-간결하고 실용적인 분석을 제공해주세요. (500자 이내)`;
+**반드시 다음 형식으로 간결하고 한눈에 파악 가능하게 작성해주세요:**
 
-    const result = await model.generateContent(prompt);
-    const response = result.response;
-    const text = response.text();
+## 📊 핵심 요약
+- 평균: [수치] | 최대: [수치] ([날짜]) | 최소: [수치] ([날짜]) | 변동폭: [수치]
+- 전반적 추세: [한 줄 요약]
+
+## 📈 주요 변화 시점
+**중요: 각 날짜별로 해당 날짜의 데이터만 참조하고, 이전 날짜와 비교하여 증가/감소를 정확히 판단하세요.**
+
+| 날짜 | 인당생산량 | 변화 | 주요 원인 |
+|------|-----------|------|----------|
+| [날짜] | [수치] | [증가/감소] | [해당 날짜 데이터 기반, 한 줄 요약] |
+| [날짜] | [수치] | [증가/감소] | [해당 날짜 데이터 기반, 한 줄 요약] |
+
+## 🔍 주요 요인 분석
+
+### 생산 인원
+- 평균: [수치]명 | 고인원([수치]명↑): [수치] | 저인원([수치]명↓): [수치]
+- 패턴: [한 줄 요약]
+
+### 불량률
+- 평균: [수치]% | 최고([날짜]): [수치]% ([수치]) | 최저([날짜]): [수치]% ([수치])
+- 패턴: [한 줄 요약]
+
+### 스핀들비율
+- 주요 비율: [비율들] | 각 비율별 평균: [데이터]
+- 패턴: [한 줄 요약]
+
+### 가동시간
+- 평균: [수치]시간 | 패턴: [데이터 기반 사실 또는 "데이터 부족"]
+
+### 도료조건
+- 변경 시점: [날짜들] | 영향: [한 줄 요약]
+
+### 품질이슈
+- 발생 시점: [날짜들] | 연관성: [한 줄 요약]
+
+### 생산라인
+- 라인별 평균: [라인명: 수치] | 차이: [한 줄 요약 또는 "데이터 부족"]
+
+## 📊 패턴 분석
+
+**고생산량 날 특징**
+- 날짜: [날짜들]
+- 특징: 인원 [수치]명, 스핀들비율 [비율], 불량률 [수치]%, [기타 핵심 요인]
+
+**저생산량 날 특징**
+- 날짜: [날짜들]
+- 특징: 인원 [수치]명, 스핀들비율 [비율], 불량률 [수치]%, [기타 핵심 요인]
+
+**반복 패턴**
+- [핵심 패턴 1]: [한 줄 설명]
+- [핵심 패턴 2]: [한 줄 설명]
+
+## ⚠️ 위험 요소
+
+| 날짜 | 인당생산량 | 동시 발생 현상 |
+|------|-----------|---------------|
+| [날짜] | [수치] | [불량률 증가/품질이슈/도료조건 변경 등, 한 줄] |
+
+**공정 불안정성**
+- 변동성: [수치] | 이상치: [날짜들] | 주요 요인: [핵심 요인 나열]
+
+**중요 지침 (반드시 준수):**
+1. **간결하고 명확하게 작성하세요.** 불필요한 반복 설명을 제거하고 핵심만 기술하세요.
+2. **표 형식을 활용하세요.** 데이터 비교는 표로 작성하여 한눈에 파악 가능하게 하세요.
+3. **한 줄 요약을 원칙으로 하세요.** 각 항목은 한 줄로 핵심만 기술하세요.
+4. **날짜와 데이터를 정확히 매칭하세요.** 각 날짜별 분석 시 반드시 해당 날짜의 생산이력 상세 데이터만 참조하세요.
+5. **증가/감소를 정확히 판단하세요.** 이전 날짜와 비교하여 증가인지 감소인지 명확히 구분하세요.
+6. 주어진 데이터만을 분석하세요. 데이터에 없는 내용은 추측하지 마세요.
+7. 개선 방안, 제안, 권장사항은 포함하지 마세요.
+8. 객관적 사실과 데이터 패턴만 기술하세요.
+9. 각 분석은 구체적인 수치와 날짜를 근거로 제시하세요.
+10. 데이터가 없는 항목은 "데이터 부족"으로 표시하세요.
+11. **800-1000자 내외로 간결하게 작성하세요.** 핵심만 담아 가독성을 높이세요.
+
+**작성 예시:**
+- ❌ 잘못된 예: 
+  - "2025-09-24: 인당생산량 493.9 → 감소 원인: 2025년 12월 3일 생산이력 상세 데이터 확인 결과, 벨트 끊김으로 인한 조치 및 재작업, 마무리 시간 증가 (38분) 등의 요인 발생으로 인한 생산 차질..." (날짜 혼동, 너무 장황함)
+- ✅ 올바른 예: 
+  - 핵심 요약: 평균: 417.4 | 최대: 493.9 (2025-09-24) | 최소: 340.8 (2025-12-03) | 변동폭: 153.1
+  - 표 형식:
+    | 날짜 | 인당생산량 | 변화 | 주요 원인 |
+    |------|-----------|------|----------|
+    | 2025-09-24 | 493.9 | 증가 | 인원 14명, 불량률 2.62%, 스핀들비율 1:4 |
+    | 2025-12-03 | 340.8 | 감소 | 벨트 끊김, 불량률 41.24%, 인원 10명 |
+
+**반드시 다음 순서대로 모든 섹션을 작성하세요:**
+1. 📊 핵심 요약 (한 줄)
+2. 📈 주요 변화 시점 (표 형식)
+3. 🔍 주요 요인 분석 (간결한 항목별 요약)
+4. 📊 패턴 분석 (고/저생산량 특징, 반복 패턴)
+5. ⚠️ 위험 요소 (표 형식)
+
+분석 결과를 한국어로 작성해주세요. 800-1000자 내외로 간결하게.`;
+
+    // 여러 모델을 순차적으로 시도 (429 에러 시 다음 모델로 자동 전환)
+    for (const modelName of modelsToTry) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent(prompt);
+        const response = result.response;
+        const text = response.text();
+        console.log(`[AI Service] 생산추이 분석 성공 (${modelName})`);
+        return text;
+      } catch (error: any) {
+        // 429 에러인 경우 다음 모델로 넘어가기
+        const isQuotaError = error?.message?.includes('429') || 
+                            error?.message?.includes('quota') || 
+                            error?.message?.includes('Quota exceeded') ||
+                            error?.response?.status === 429 ||
+                            error?.status === 429;
+        
+        if (isQuotaError) {
+          console.warn(`[AI Service] API 할당량 초과 (${modelName}) - 다음 모델로 시도...`);
+          continue; // 다음 모델로 넘어가기
+        }
+        
+        // 다른 에러는 로그만 남기고 다음 모델 시도
+        console.warn(`[AI Service] 모델 실패 (${modelName}):`, error?.message || error);
+        continue;
+      }
+    }
     
-    return text;
+    // 모든 모델 실패
+    console.warn('[AI Service] 모든 모델 시도 실패 - 분석을 건너뜁니다.');
+    return null;
   } catch (error: any) {
-    // 429 에러 (할당량 초과)는 조용히 처리
-    if (error?.message?.includes('429') || error?.message?.includes('quota') || error?.message?.includes('Quota exceeded')) {
-      console.warn('[AI Service] API 할당량 초과 - 분석을 건너뜁니다.');
+    // 429 에러 (할당량 초과) - 재시도 후에도 실패
+    if (error?.message?.includes('429') || 
+        error?.message?.includes('quota') || 
+        error?.message?.includes('Quota exceeded') ||
+        error?.response?.status === 429 ||
+        error?.status === 429) {
+      console.warn('[AI Service] API 할당량 초과 - 모든 재시도 실패. 결제 후 할당량 반영까지 몇 분~몇 시간이 걸릴 수 있습니다.');
+      return null;
+    }
+    // 모델을 찾을 수 없는 경우도 조용히 처리
+    if (error?.message?.includes('모델을 찾을 수 없') || 
+        error?.message?.includes('model not found') ||
+        error?.message?.includes('404')) {
+      console.warn('[AI Service] 모델을 찾을 수 없습니다 - 분석을 건너뜁니다.');
       return null;
     }
     // 다른 에러는 로그만 남기고 null 반환

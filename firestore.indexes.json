@@ -69,6 +69,130 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "product-summary",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "supplier",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "productName",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "packaging-reports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "supplier",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "productName",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "partName",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "specification",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "workDate",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "quality-inspections",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "supplier",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "productName",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "partName",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "shortage-requests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "supplier",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "productName",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "partName",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "specification",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "quality-issues",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "supplier",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "productName",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "partName",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "product-summary-queue",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "processed",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "scheduledFor",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

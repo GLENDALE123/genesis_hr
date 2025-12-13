@@ -87,7 +87,7 @@ export const DataSyncStatusProvider: React.FC<{ children: React.ReactNode }> = (
   // 캐시 데이터 감지
   const setCacheDataDetected = useCallback((fromCache: boolean, sourceId?: string) => {
     setState(prev => {
-      const newCacheDataSources = new Set(prev.cacheDataCount > 0 ? cacheDataSources.current : new Set());
+      const newCacheDataSources = new Set<string>(prev.cacheDataCount > 0 ? Array.from(cacheDataSources.current) : []);
       
       if (fromCache) {
         if (sourceId) {

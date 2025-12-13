@@ -87,16 +87,6 @@ const subNavigationItems: NavItem[] = [
     href: '/work-schedule',
     icon: ROUTE_ICONS['/work-schedule'],
   },
-  {
-    title: '워크스페이스 (채널)',
-    href: '/workspace',
-    icon: ROUTE_ICONS['/workspace'],
-  },
-  {
-    title: '다이렉트 메시지',
-    href: '/direct-message',
-    icon: ROUTE_ICONS['/direct-message'],
-  },
 ];
 
 const AppSidebarComponent = ({
@@ -112,6 +102,14 @@ const AppSidebarComponent = ({
   const navigate = useNavigate();
   const [isHovered, setIsHovered] = React.useState(false);
   const { updatePreferences } = useGlobalStore();
+  
+  // 낙관적 업데이트: 클릭 시 즉시 하이라이트 변경
+  const [optimisticPath, setOptimisticPath] = React.useState<string | null>(null);
+  
+  // pathname 변경 시 낙관적 상태 초기화
+  React.useEffect(() => {
+    setOptimisticPath(null);
+  }, [pathname]);
   
   // 모바일/태블릿/데스크톱 구분
   const [isMobile, setIsMobile] = React.useState(false);
@@ -144,10 +142,15 @@ const AppSidebarComponent = ({
   // 모바일에서는 항상 확장된 상태로 표시, 데스크톱에서는 collapsed 상태에 따라
   const isExpanded = isMobile ? true : (collapsed ? isHovered : !collapsed);
 
-  // 성능 최적화: isActive 함수를 더 간단하게
+  // 성능 최적화: isActive 함수 (낙관적 업데이트 포함)
   const checkIsActive = React.useCallback((href: string) => {
+    // 낙관적 업데이트: 클릭한 경로는 즉시 활성화
+    if (optimisticPath === href || optimisticPath?.startsWith(href + '/')) {
+      return true;
+    }
+    // 실제 pathname 확인
     return pathname === href || pathname.startsWith(href + '/');
-  }, [pathname]);
+  }, [pathname, optimisticPath]);
 
   // 성능 최적화: 활성 경로를 미리 계산 (메모이제이션)
   const activePathMap = React.useMemo(() => {
@@ -170,7 +173,7 @@ const AppSidebarComponent = ({
     return map;
   }, [checkIsActive]);
 
-  // 클릭 핸들러 (router.push로 명시적 네비게이션)
+  // 클릭 핸들러 (낙관적 업데이트 적용)
   const handleLinkClick = React.useCallback((href: string, event: React.MouseEvent) => {
     const isTablet = !isMobile && !isDesktop;
     
@@ -189,6 +192,9 @@ const AppSidebarComponent = ({
       }
       return;
     }
+    
+    // 낙관적 업데이트: 즉시 하이라이트 변경
+    setOptimisticPath(href);
     
     // 모바일: 사이드바 먼저 닫기
     if (onMobileClose && isMobile) {

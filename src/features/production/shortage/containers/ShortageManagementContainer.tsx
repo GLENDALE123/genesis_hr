@@ -113,15 +113,21 @@ const ShortageManagementContainerComponent: React.FC = () => {
       return;
     }
     
+    // 낙관적 업데이트: 즉시 UI 업데이트
+    updateCachedRequest(requestId, { status: newStatus });
+    
+    // 선택된 요청도 업데이트
+    if (selectedRequest?.id === requestId) {
+      setSelectedRequest(prev => prev ? { ...prev, status: newStatus } : null);
+    }
+    
+    // 백그라운드에서 서버 업데이트
     try {
       await updateShortageStatus(
         requestId, 
         newStatus,
         { uid: user.uid, displayName: getUserDisplayName(user, userProfile, '관리자') }
       );
-      
-      // 스토어 캐시도 업데이트 (실시간 구독이 자동으로 반영하지만 즉시 UI 업데이트)
-      updateCachedRequest(requestId, { status: newStatus });
       
       toast.success(newStatus === 'completed' 
         ? '부족분 요청이 완료 처리되었습니다.' 
@@ -131,8 +137,17 @@ const ShortageManagementContainerComponent: React.FC = () => {
       console.error('상태 업데이트 실패:', error);
       const errorInfo = getFirebaseErrorMessage(error);
       toast.error(errorInfo.message);
+      
+      // 실패 시 롤백 (실시간 구독이 원래 상태로 복원)
+      const originalRequest = requests.find(r => r.id === requestId);
+      if (originalRequest) {
+        updateCachedRequest(requestId, { status: originalRequest.status });
+        if (selectedRequest?.id === requestId) {
+          setSelectedRequest(originalRequest);
+        }
+      }
     }
-  }, [user, userProfile, updateCachedRequest]);
+  }, [user, userProfile, updateCachedRequest, selectedRequest, requests]);
 
   // 삭제 확인 핸들러
   const handleDeleteClick = useCallback((request: ShortageRequest) => {
@@ -150,24 +165,29 @@ const ShortageManagementContainerComponent: React.FC = () => {
       return;
     }
 
+    const requestToDelete = deleteConfirmState.request;
+    
+    // 낙관적 업데이트: 즉시 목록에서 제거
+    deleteCachedRequest(requestToDelete.id);
+    
+    // 상세 정보가 열려있던 항목이면 닫기
+    if (selectedRequest?.id === requestToDelete.id) {
+      setSelectedRequest(null);
+    }
+    
+    setDeleteConfirmState({ isOpen: false, request: null });
+    toast.success('부족분 요청이 삭제되었습니다.');
+    
+    // 백그라운드에서 서버 삭제
     try {
-      await deleteShortageRequest(deleteConfirmState.request.id);
-      
-      // 스토어 캐시도 업데이트
-      deleteCachedRequest(deleteConfirmState.request.id);
-      
-      // 상세 정보가 열려있던 항목이면 닫기
-      if ((selectedRequest && selectedRequest.id) === deleteConfirmState.request.id) {
-        setSelectedRequest(null);
-      }
-      
-      toast.success('부족분 요청이 삭제되었습니다.');
-      setDeleteConfirmState({ isOpen: false, request: null });
+      await deleteShortageRequest(requestToDelete.id);
     } catch (error) {
       console.error('삭제 실패:', error);
       const errorInfo = getFirebaseErrorMessage(error);
       toast.error(errorInfo.message);
-      setDeleteConfirmState({ isOpen: false, request: null });
+      
+      // 실패 시 롤백 (실시간 구독이 원래 상태로 복원)
+      // 실시간 구독이 자동으로 복원하므로 별도 처리 불필요
     }
   }, [deleteConfirmState.request, selectedRequest, deleteCachedRequest, userProfile]);
 

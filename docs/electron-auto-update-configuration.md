@@ -170,3 +170,10 @@ electron-updater는 `blockmap` 파일을 사용하여 **delta 업데이트**를 
 
 
 
+
+
+
+
+
+
+

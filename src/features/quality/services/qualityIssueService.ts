@@ -630,25 +630,3 @@ export const deleteQualityIssue = async (issueId: string): Promise<void> => {
   }
 };
 
-/**
- * 품질이슈 프로젝트 정보 업데이트
- */
-export const updateIssueProjectInfo = async (
-  issueId: string,
-  projectInfo: {
-    workspaceId: string;
-    channelId: string;
-    projectId: string;
-    createdAt: string;
-  }
-): Promise<void> => {
-  try {
-    const docRef = getDocRef(issueId);
-    await updateDoc(docRef, {
-      projectInfo,
-      updatedAt: new Date().toISOString(),
-    });
-  } catch (error) {
-    throw error;
-  }
-};

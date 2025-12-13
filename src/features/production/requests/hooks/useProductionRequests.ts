@@ -77,6 +77,22 @@ export const useProductionRequests = () => {
     userName: string,
     reason?: string
   ) => {
+    // 낙관적 업데이트: 즉시 UI 업데이트
+    const originalRequest = requests.find(r => r.id === requestId);
+    if (originalRequest) {
+      setRequests(prev => prev.map(req =>
+        req.id === requestId
+          ? { ...req, status }
+          : req
+      ));
+      cachedRequests = cachedRequests.map(req =>
+        req.id === requestId
+          ? { ...req, status }
+          : req
+      );
+    }
+    
+    // 백그라운드에서 서버 업데이트
     try {
       await ProductionRequestService.updateRequestStatus(
         requestId,
@@ -86,6 +102,19 @@ export const useProductionRequests = () => {
       );
       toast.success('상태가 업데이트되었습니다.');
     } catch (err) {
+      // 실패 시 롤백
+      if (originalRequest) {
+        setRequests(prev => prev.map(req =>
+          req.id === requestId
+            ? originalRequest
+            : req
+        ));
+        cachedRequests = cachedRequests.map(req =>
+          req.id === requestId
+            ? originalRequest
+            : req
+        );
+      }
       toast.error('상태 업데이트에 실패했습니다.');
       throw err;
     }
@@ -105,10 +134,32 @@ export const useProductionRequests = () => {
   };
 
   const deleteRequest = async (requestId: string) => {
+    // 낙관적 업데이트: 즉시 목록에서 제거
+    const originalRequest = requests.find(r => r.id === requestId);
+    setRequests(prev => prev.filter(req => req.id !== requestId));
+    cachedRequests = cachedRequests.filter(req => req.id !== requestId);
+    toast.success('요청이 삭제되었습니다.');
+    
+    // 백그라운드에서 서버 삭제
     try {
       await ProductionRequestService.deleteRequest(requestId);
-      toast.success('요청이 삭제되었습니다.');
     } catch (err) {
+      // 실패 시 롤백
+      if (originalRequest) {
+        setRequests(prev => {
+          const merged = [...prev, originalRequest];
+          return merged.sort((a, b) => {
+            const timeA = a.createdAt || '';
+            const timeB = b.createdAt || '';
+            return timeB.localeCompare(timeA);
+          });
+        });
+        cachedRequests = [...cachedRequests, originalRequest].sort((a, b) => {
+          const timeA = a.createdAt || '';
+          const timeB = b.createdAt || '';
+          return timeB.localeCompare(timeA);
+        });
+      }
       toast.error('요청 삭제에 실패했습니다.');
       throw err;
     }

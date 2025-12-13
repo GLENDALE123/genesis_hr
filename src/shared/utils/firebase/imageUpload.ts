@@ -95,7 +95,7 @@ const compressImageSmart = async (file: File): Promise<File> => {
 
   const options = {
     maxSizeMB: 1,          // 최대 1MB
-    maxWidthOrHeight: 1280, // FHD보다 약간 작게 (채팅용으로 적절)
+    maxWidthOrHeight: 1280, // FHD보다 약간 작게
     useWebWorker: true,     // Web Worker 사용으로 성능 최적화
     initialQuality: 0.8,    // 초기 품질
     alwaysKeepResolution: true // 해상도 유지 (너무 작아지는 것 방지)

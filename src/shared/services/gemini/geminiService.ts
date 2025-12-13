@@ -383,11 +383,9 @@ analyzeInspectionHistory 호출.`;
     });
 
     // REST API 직접 호출을 우선 시도 (SDK 오버헤드 제거)
-    // 가장 빠르고 안정적인 모델만 선정 (2.5-flash 우선)
-    // 비용 효율적인 모델 우선 사용: gemini-2.0-flash (가장 저렴)
-    // 2.0 Flash: 입력 $0.15/1M, 출력 $0.60/1M
-    // 2.5 Flash: 입력 $0.30/1M, 출력 $2.50/1M (약 4배 비쌈)
-    const modelsToTry = ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-flash-latest'];
+    // 비용 효율적인 모델 우선 사용: gemini-2.0-flash-lite (가장 저렴하고 빠름)
+    // 2.0 Flash-Lite: 입력 $0.10/1M, 출력 $0.40/1M
+    const modelsToTry = ['gemini-2.0-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-flash-latest'];
     
     // 1. REST API 시도 (Function Calling 사용)
     for (const modelName of modelsToTry) {
@@ -416,6 +414,12 @@ analyzeInspectionHistory 호출.`;
         });
         
         clearTimeout(timeoutId);
+
+        // 429 에러 (할당량 초과)인 경우 다음 모델로 넘어가기
+        if (response.status === 429) {
+          console.warn(`REST API 할당량 초과 (${modelName}) - 다음 모델로 시도...`);
+          continue;
+        }
 
         if (response.ok) {
           const data = await response.json();
@@ -448,9 +452,19 @@ analyzeInspectionHistory 호출.`;
             sessionStorage.setItem(cacheKey, JSON.stringify(parsed));
             return parsed;
           }
+        } else {
+          // 다른 HTTP 에러인 경우도 다음 모델로 넘어가기
+          console.warn(`REST API 실패 (${modelName}): HTTP ${response.status}`);
+          continue;
         }
       } catch (e) {
-        console.warn(`REST API 실패 (${modelName}):`, e);
+        // 네트워크 에러나 타임아웃 등
+        const error = e as any;
+        if (error?.message?.includes('429') || error?.response?.status === 429 || error?.status === 429) {
+          console.warn(`REST API 할당량 초과 (${modelName}) - 다음 모델로 시도...`);
+        } else {
+          console.warn(`REST API 실패 (${modelName}):`, e);
+        }
         continue;
       }
     }
@@ -510,7 +524,17 @@ analyzeInspectionHistory 호출.`;
         sessionStorage.setItem(cacheKey, JSON.stringify(parsed));
         return parsed;
       } catch (e) {
-        console.warn(`SDK 실패 (${modelName}):`, e);
+        const error = e as any;
+        // 429 에러인 경우 명시적으로 로그
+        if (error?.message?.includes('429') || 
+            error?.message?.includes('quota') || 
+            error?.message?.includes('Quota exceeded') ||
+            error?.response?.status === 429 ||
+            error?.status === 429) {
+          console.warn(`SDK 할당량 초과 (${modelName}) - 다음 모델로 시도...`);
+        } else {
+          console.warn(`SDK 실패 (${modelName}):`, e);
+        }
         continue;
       }
     }

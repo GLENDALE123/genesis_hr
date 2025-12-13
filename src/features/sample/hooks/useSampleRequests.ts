@@ -195,6 +195,17 @@ export const useSampleRequests = () => {
       throw new Error('User not authenticated');
     }
 
+    // 낙관적 업데이트: 즉시 UI 업데이트
+    const originalRequest = requests.find(r => r.id === id);
+    if (originalRequest) {
+      setCachedRequests(requests.map(req =>
+        req.id === id
+          ? { ...req, status, workData: workData || req.workData }
+          : req
+      ));
+    }
+
+    // 백그라운드에서 서버 업데이트
     try {
       // FirebaseAuth를 먼저 사용하여 사용자 정보 가져오기
       let displayName = '사용자';
@@ -211,10 +222,18 @@ export const useSampleRequests = () => {
       toast.success(`상태가 "${status}"로 변경되었습니다.`);
     } catch (error) {
       console.error('❌ 상태 변경 실패:', error);
+      // 실패 시 롤백
+      if (originalRequest) {
+        setCachedRequests(requests.map(req =>
+          req.id === id
+            ? originalRequest
+            : req
+        ));
+      }
       toast.error('상태 변경에 실패했습니다.');
       throw error;
     }
-  }, [user, userProfile]);
+  }, [user, userProfile, requests, setCachedRequests]);
 
   /**
    * 작업 데이터 수정
